@@ -38,7 +38,7 @@ export function buildCashflowBarModel(data: MainData): CashflowBarModel {
     return result;
   };
   const allocations = [
-    allocation('consumption', '소비', cashflow.consumptionWon),
+    allocation('consumption', '지출', cashflow.consumptionWon),
     allocation('saving', '저축', cashflow.savingWon),
     allocation('investment', '투자', cashflow.investmentWon),
   ];

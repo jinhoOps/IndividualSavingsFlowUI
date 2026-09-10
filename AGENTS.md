@@ -16,7 +16,7 @@
 ## Minimum Rules
 
 - Main과 Simulation은 완료된 현재 제품 기준선이다.
-- Main이 직접 소유하는 제품 데이터는 다섯 월간 금액이며 현재 Main UI에서 수정한다.
+- Main은 다섯 월간 금액과 지출 계산 도우미의 보조 답변을 소유하며 Main UI에서 수정한다.
 - Simulation은 Main을 읽기 전용으로 사용하며 자체 복리 시뮬레이션 초안만 소유한다.
 - Portfolio와 Account Map은 현재 지원 제품이며 버그 수정 중이다.
 - Account Map은 최신 Main 다섯 월 금액을 읽기 전용 기준으로 사용하고 `workspace.locations`와 `workspace.accountMap`만 갱신한다. Main·Simulation·Portfolio에는 write-back하지 않는다.

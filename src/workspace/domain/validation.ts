@@ -1,3 +1,4 @@
+import { parseExpenseAssistant } from '../../main/domain/expenseAssistant';
 import type { MainData, SetupStep } from '../../main/domain/model';
 import { isMainDataShape, validateMainData, validateMainDraft } from '../../main/domain/validation';
 import type { SetupProgress, SetupProgressKind } from '../../main/infrastructure/mainRepository';
@@ -38,6 +39,7 @@ import {
   type WorkspaceDocument,
   type WorkspaceDocumentV3,
   type WorkspaceDocumentV4,
+  type WorkspaceDocumentV5,
 } from './model';
 
 const setupSteps = new Set<SetupStep>([
@@ -56,14 +58,15 @@ const outflowPurposeIds = new Set<OutflowPurposeId>([
   'system:investing',
 ]);
 
-type VersionedWorkspaceDocument = WorkspaceDocumentV3 | WorkspaceDocumentV4;
+type VersionedWorkspaceDocument = WorkspaceDocumentV3 | WorkspaceDocumentV4 | WorkspaceDocumentV5;
 
 export type WorkspaceDocumentValidationResult<T extends VersionedWorkspaceDocument = WorkspaceDocument> =
   | { status: 'valid'; workspace: T }
   | { status: 'schema' | 'reference' };
 
 export function parseWorkspaceDocument(value: unknown): WorkspaceDocument | null {
-  return parseWorkspaceV4Document(value);
+  const result = validateWorkspaceDocument(value);
+  return result.status === 'valid' ? result.workspace : null;
 }
 
 export function parseWorkspaceV3Document(value: unknown): WorkspaceDocumentV3 | null {
@@ -77,7 +80,15 @@ export function parseWorkspaceV4Document(value: unknown): WorkspaceDocumentV4 | 
 }
 
 export function validateWorkspaceDocument(value: unknown): WorkspaceDocumentValidationResult {
-  return validateWorkspaceV4Document(value);
+  if (!hasExactKeys(value, ['schemaVersion', 'revision', 'updatedAt', 'main', 'simulation', 'portfolio', 'locations', 'accountMap'])
+    || value.schemaVersion !== 5 || !hasExactKeys(value.main, ['applied', 'setupProgress', 'expenseAssistant'])) return { status: 'schema' };
+  const expenseAssistant = value.main.expenseAssistant === null ? null : parseExpenseAssistant(value.main.expenseAssistant);
+  if (value.main.expenseAssistant !== null && expenseAssistant === null) return { status: 'schema' };
+  const previous = validateWorkspaceV4Document({ ...value, schemaVersion: 4,
+    main: { applied: value.main.applied, setupProgress: value.main.setupProgress } });
+  if (previous.status !== 'valid') return { status: previous.status };
+  return { status: 'valid', workspace: { ...previous.workspace, schemaVersion: 5,
+    main: { ...previous.workspace.main, expenseAssistant } } };
 }
 
 export function validateWorkspaceV3Document(
@@ -174,7 +185,7 @@ function parseWorkspaceV4Shape(value: unknown): WorkspaceDocumentV4 | null {
   };
 }
 
-function parseMainSlice(value: unknown): WorkspaceDocument['main'] | null {
+function parseMainSlice(value: unknown): WorkspaceDocumentV4['main'] | null {
   if (!hasExactKeys(value, ['applied', 'setupProgress'])) return null;
   const applied = value.applied === null ? null : parseAppliedMain(value.applied);
   const setupProgress = value.setupProgress === null ? null : parseSetupProgress(value.setupProgress);

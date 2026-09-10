@@ -3,7 +3,7 @@ import {accountCacheKeys, accountRecoveryRecords, hasAccountRecovery} from '../.
 
 afterEach(() => window.localStorage.clear());
 it('includes both generations for recovery and logout, but only the exact project/account', () => {
-  const prefix = 'isf-account-workspace-v2:project:user-a';
+  const prefix = 'isf-account-workspace-v3:project:user-a';
   const keys = [`${prefix}:new`, 'isf-account-workspace-v1:project:user-a:old'];
   for (const key of [...keys, 'isf-account-workspace-v1:project:user-ab:old', 'isf-account-workspace-v1:other:user-a:old']) {
     window.localStorage.setItem(key, JSON.stringify({pending: {unsent: true}}));

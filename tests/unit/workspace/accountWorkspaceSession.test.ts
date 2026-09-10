@@ -1,3 +1,4 @@
+import {createExpenseDraft} from '../../../src/main/domain/expenseAssistant';
 import { describe, expect, it } from 'vitest';
 import { createEmptyWorkspace, type WorkspaceDocument } from '../../../src/workspace/domain/model';
 import { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
@@ -15,7 +16,7 @@ class MemoryStorage {
 const localStorage = new MemoryStorage();
 
 function row(workspace = createEmptyWorkspace(1000), user = 'user-a') {
-  return {user_id: user, schema_version: 4, revision: workspace.revision,
+  return {user_id: user, schema_version: 5, revision: workspace.revision,
     payload: workspacePayload(workspace), created_at: new Date(1000).toISOString(),
     updated_at: new Date(workspace.updatedAt).toISOString()};
 }
@@ -65,7 +66,7 @@ describe('account workspace session', () => {
     expect(workspaceFromRow({...row(), user_id: 'user-b'}, 'user-a')).toBeNull();
     expect(workspaceFromRow({...row(), revision: '9007199254740992'}, 'user-a')).toBeNull();
     expect(workspaceFromRow({...row(), schema_version: 3}, 'user-a')).toBeNull();
-    expect(workspaceFromRow({...row(), schema_version: 5}, 'user-a')).toBeNull();
+    expect(workspaceFromRow({...row(), schema_version: 6}, 'user-a')).toBeNull();
   });
 
   it('only sends the owned slice, preserving local legacy records', async () => {
@@ -126,6 +127,19 @@ describe('account workspace session', () => {
     expect((await session.reapply()).status).toBe('saved');
     expect(calls[1].revision).toBe(2);
     expect(calls[1].id).not.toBe(calls[0].id);
+  });
+
+  it('preserves latest expense answers when explicitly reapplying an older direct Main edit', async () => {
+    localStorage.clear();
+    const {session, setCurrent, calls} = fixture(); await session.refresh();
+    const latest = createEmptyWorkspace(1000); latest.revision = 2;
+    latest.main.expenseAssistant = {schemaVersion: 1, draft: createExpenseDraft(1000), lastApplied: null};
+    latest.main.expenseAssistant.draft.answers.rent = {amountWon: 600000, period: 'month'};
+    setCurrent(latest);
+    expect((await session.scope('main').update(0, w => w)).status).toBe('conflict');
+    expect((await session.reapply()).status).toBe('saved');
+    expect(calls[1].payload).toEqual({main: latest.main});
+    expect(session.snapshot?.main.expenseAssistant).toEqual(latest.main.expenseAssistant);
   });
 
   it('ignores a late read after logout and removes only its own cache', async () => {
@@ -311,7 +325,7 @@ describe('account workspace session', () => {
     localStorage.clear();
     const cached = createEmptyWorkspace(1000);
     localStorage.setItem('isf-account-workspace-v1:project:legacy', JSON.stringify({
-      version: 1, snapshot: {...cached, schemaVersion: 3}, pending: null,
+      version: 1, snapshot: {...cached, schemaVersion: 3, main: {applied: cached.main.applied, setupProgress: cached.main.setupProgress}}, pending: null,
     }));
     const session = new AccountWorkspaceSession({
       read: async () => {throw new Error('offline');},
@@ -327,8 +341,8 @@ describe('account workspace session', () => {
     localStorage.clear();
     const malformed = {operation: 'save_main', expectedRevision: 0,
       payload: {simulation: {draft: null}}, mutationId: '00000000-0000-4000-8000-000000000003'};
-    localStorage.setItem('isf-account-workspace-v2:project:broken', JSON.stringify({
-      version: 2, snapshot: createEmptyWorkspace(1000), pending: malformed,
+    localStorage.setItem('isf-account-workspace-v3:project:broken', JSON.stringify({
+      version: 3, snapshot: createEmptyWorkspace(1000), pending: malformed,
     }));
     const session = new AccountWorkspaceSession({
       read: async () => null,
@@ -379,7 +393,7 @@ describe('account workspace session', () => {
     const {session, remote, setCurrent, calls} = fixture();
     const main = {schemaVersion: 2 as const, updatedAt: 1, monthlyNetIncomeWon: 4_000_000,
       monthlyHousingWon: 900_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 500_000, monthlyInvestmentWon: 600_000};
-    setCurrent({...createEmptyWorkspace(1000), main: {applied: main, setupProgress: null}});
+    setCurrent({...createEmptyWorkspace(1000), main: { expenseAssistant: null,applied: main, setupProgress: null}});
     await session.refresh();
     session.scope('account-map');
     session.recordRecoveryDraft('account-map-main', {...main, monthlyNetIncomeWon: 5_000_000});
@@ -405,7 +419,7 @@ describe('account workspace session', () => {
     const {session, remote, setCurrent} = fixture();
     const main = {schemaVersion: 2 as const, updatedAt: 1, monthlyNetIncomeWon: 4_000_000,
       monthlyHousingWon: 900_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 500_000, monthlyInvestmentWon: 600_000};
-    setCurrent({...createEmptyWorkspace(1000), main: {applied: main, setupProgress: null}});
+    setCurrent({...createEmptyWorkspace(1000), main: { expenseAssistant: null,applied: main, setupProgress: null}});
     await session.refresh();
     session.scope('account-map');
     remote.write = async () => {throw new Error('response lost');};

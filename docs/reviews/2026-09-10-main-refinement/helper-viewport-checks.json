@@ -1,0 +1,732 @@
+[
+  {
+    "name": "helper-result-390",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "focus": "\n    자금 흐름이번 달 자금 흐름수입과 지출, 저축, 투자 뒤에 남는 돈을 확인하세요.저축·투자 비중15.6%15.6%한 달 수입 기준월 지출56.3%180만 원180만 원항목별로 계산주거 80만 원 · 생활 100만 원남는 돈28.1%90만 원90만 원월 저축9.4%30만 원30만 원월 투자6.3%20만 원20만 원월 금액 편집다음 단계Simulation으로 계획 이어가기저축·투자로 미래 자산을 확인해요.Simulation으로 이어가기자세히 보기월 자금 구성월 수입을 이렇게 나눠 쓰고 있어요종류금액수입 대비지출180만 원56.3%저축30만 원9.4%투자20만 원6.3%남는 돈90만 원28.1%\n    이 앱은 브라우저에서 JavaScript를 활성화해야 사용할 수 있습니다.\n    \n  \n\n",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 114.203125,
+        "height": 56
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 358,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-question-390",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "dialog": {
+      "x": 0,
+      "y": 172,
+      "width": 390,
+      "height": 672,
+      "top": 172,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "footer": {
+      "x": 0,
+      "y": 719,
+      "width": 390,
+      "height": 125,
+      "top": 719,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "focus": "매달 월세로 얼마를 내나요?",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 114.203125,
+        "height": 56
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 358,
+        "height": 44
+      },
+      {
+        "name": "도우미 닫기",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "이전 질문",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "한 달 평균",
+        "width": 88.90625,
+        "height": 44
+      },
+      {
+        "name": "1년 총액",
+        "width": 77.8046875,
+        "height": 44
+      },
+      {
+        "name": "",
+        "width": 324.15625,
+        "height": 52
+      },
+      {
+        "name": "없어요",
+        "width": 135.1953125,
+        "height": 44
+      },
+      {
+        "name": "다음",
+        "width": 202.796875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-editor-390",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "dialog": {
+      "x": 0,
+      "y": 266.203125,
+      "width": 390,
+      "height": 577.796875,
+      "top": 266.203125,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "focus": "편집기 닫기",
+    "controls": [
+      {
+        "name": "월 금액 편집",
+        "width": 358,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-result-768",
+    "width": 768,
+    "height": 844,
+    "scrollWidth": 768,
+    "focus": "월 금액 편집",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 141.6875,
+        "height": 65.796875
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-question-768",
+    "width": 768,
+    "height": 844,
+    "scrollWidth": 768,
+    "dialog": {
+      "x": 256,
+      "y": 0,
+      "width": 512,
+      "height": 844,
+      "top": 0,
+      "right": 768,
+      "bottom": 844,
+      "left": 256
+    },
+    "footer": {
+      "x": 256,
+      "y": 719,
+      "width": 512,
+      "height": 125,
+      "top": 719,
+      "right": 768,
+      "bottom": 844,
+      "left": 256
+    },
+    "focus": "매달 월세로 얼마를 내나요?",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 141.6875,
+        "height": 65.796875
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      },
+      {
+        "name": "도우미 닫기",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "이전 질문",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "한 달 평균",
+        "width": 88.90625,
+        "height": 44
+      },
+      {
+        "name": "1년 총액",
+        "width": 77.8046875,
+        "height": 44
+      },
+      {
+        "name": "",
+        "width": 438.15625,
+        "height": 52
+      },
+      {
+        "name": "없어요",
+        "width": 180.796875,
+        "height": 44
+      },
+      {
+        "name": "다음",
+        "width": 271.203125,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-editor-768",
+    "width": 768,
+    "height": 844,
+    "scrollWidth": 768,
+    "focus": "편집기 닫기",
+    "controls": [
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-result-1280",
+    "width": 1280,
+    "height": 844,
+    "scrollWidth": 1280,
+    "focus": "월 금액 편집",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 141.6875,
+        "height": 65.796875
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-question-1280",
+    "width": 1280,
+    "height": 844,
+    "scrollWidth": 1280,
+    "dialog": {
+      "x": 768,
+      "y": 0,
+      "width": 512,
+      "height": 844,
+      "top": 0,
+      "right": 1280,
+      "bottom": 844,
+      "left": 768
+    },
+    "footer": {
+      "x": 768,
+      "y": 719,
+      "width": 512,
+      "height": 125,
+      "top": 719,
+      "right": 1280,
+      "bottom": 844,
+      "left": 768
+    },
+    "focus": "매달 월세로 얼마를 내나요?",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 141.6875,
+        "height": 65.796875
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      },
+      {
+        "name": "도우미 닫기",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "이전 질문",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "한 달 평균",
+        "width": 88.90625,
+        "height": 44
+      },
+      {
+        "name": "1년 총액",
+        "width": 77.8046875,
+        "height": 44
+      },
+      {
+        "name": "",
+        "width": 438.15625,
+        "height": 52
+      },
+      {
+        "name": "없어요",
+        "width": 180.796875,
+        "height": 44
+      },
+      {
+        "name": "다음",
+        "width": 271.203125,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-editor-1280",
+    "width": 1280,
+    "height": 844,
+    "scrollWidth": 1280,
+    "focus": "편집기 닫기",
+    "controls": [
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-review-390",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "dialog": {
+      "x": 0,
+      "y": 172,
+      "width": 390,
+      "height": 672,
+      "top": 172,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "footer": {
+      "x": 0,
+      "y": 656.8125,
+      "width": 390,
+      "height": 187.1875,
+      "top": 656.8125,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "focus": "한 달 지출을 확인해보세요",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 114.203125,
+        "height": 56
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 358,
+        "height": 44
+      },
+      {
+        "name": "도우미 닫기",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "월세 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "주거 대출 이자 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "관리비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "보험료 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "통신비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "정기 구독 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "공과금 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "식비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "교통비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "경조사비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "여가비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "그 밖의 주거비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "그 밖의 생활비 답변 수정",
+        "width": 350,
+        "height": 48
+      },
+      {
+        "name": "이 금액으로 반영",
+        "width": 350,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-review-768",
+    "width": 768,
+    "height": 844,
+    "scrollWidth": 768,
+    "dialog": {
+      "x": 256,
+      "y": 0,
+      "width": 512,
+      "height": 844,
+      "top": 0,
+      "right": 768,
+      "bottom": 844,
+      "left": 256
+    },
+    "footer": {
+      "x": 256,
+      "y": 656.8125,
+      "width": 512,
+      "height": 187.1875,
+      "top": 656.8125,
+      "right": 768,
+      "bottom": 844,
+      "left": 256
+    },
+    "focus": "한 달 지출을 확인해보세요",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 141.6875,
+        "height": 65.796875
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      },
+      {
+        "name": "도우미 닫기",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "월세 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "주거 대출 이자 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "관리비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "보험료 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "통신비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "정기 구독 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "공과금 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "식비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "교통비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "경조사비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "여가비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "그 밖의 주거비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "그 밖의 생활비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "이 금액으로 반영",
+        "width": 464,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-review-1280",
+    "width": 1280,
+    "height": 844,
+    "scrollWidth": 1280,
+    "dialog": {
+      "x": 768,
+      "y": 0,
+      "width": 512,
+      "height": 844,
+      "top": 0,
+      "right": 1280,
+      "bottom": 844,
+      "left": 768
+    },
+    "footer": {
+      "x": 768,
+      "y": 656.8125,
+      "width": 512,
+      "height": 187.1875,
+      "top": 656.8125,
+      "right": 1280,
+      "bottom": 844,
+      "left": 768
+    },
+    "focus": "한 달 지출을 확인해보세요",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 180만 원",
+        "width": 141.6875,
+        "height": 65.796875
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 103.8671875,
+        "height": 44
+      },
+      {
+        "name": "도우미 닫기",
+        "width": 44,
+        "height": 44
+      },
+      {
+        "name": "월세 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "주거 대출 이자 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "관리비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "보험료 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "통신비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "정기 구독 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "공과금 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "식비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "교통비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "경조사비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "여가비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "그 밖의 주거비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "그 밖의 생활비 답변 수정",
+        "width": 464,
+        "height": 48
+      },
+      {
+        "name": "이 금액으로 반영",
+        "width": 464,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-completed-390",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "focus": "지출 계산 도우미 · 현재 150만 원",
+    "controls": [
+      {
+        "name": "지출 계산 도우미 · 현재 150만 원",
+        "width": 130.21875,
+        "height": 56
+      },
+      {
+        "name": "월 금액 편집",
+        "width": 358,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "name": "helper-review-bottom-390",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "dialog": {
+      "x": 0,
+      "y": 172,
+      "width": 390,
+      "height": 672,
+      "top": 172,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "footer": {
+      "x": 0,
+      "y": 656.8125,
+      "width": 390,
+      "height": 187.1875,
+      "top": 656.8125,
+      "right": 390,
+      "bottom": 844,
+      "left": 0
+    },
+    "lastItem": {
+      "x": 20,
+      "y": 585.09375,
+      "width": 350,
+      "height": 48,
+      "top": 585.09375,
+      "right": 370,
+      "bottom": 633.09375,
+      "left": 20
+    },
+    "tool": "Playwright",
+    "pageErrors": []
+  }
+]

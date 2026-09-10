@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const storageKey = 'isf-workspace-v4';
+const storageKey = 'isf-workspace-v5';
 const now = Date.UTC(2026, 8, 5, 6);
 test.use({ hasTouch: true });
 
@@ -114,10 +114,10 @@ const main = {
 
 function workspace(withMain = true) {
   return {
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     revision: 1,
     updatedAt: now,
-    main: { applied: withMain ? main : null, setupProgress: null },
+    main: { expenseAssistant: null, applied: withMain ? main : null, setupProgress: null },
     simulation: { draft: null },
     portfolio: { plans: [], draft: null },
     locations: [

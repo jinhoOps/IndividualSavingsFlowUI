@@ -3,9 +3,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { calculateCashflow } from '../../domain/cashflow';
 import { calculateCashflowInsight, type DonutAllocation } from '../../domain/cashflowInsight';
 import type { MainData } from '../../domain/model';
-import { formatDashboardWon } from './CashflowSummary';
+import { CashflowSummary, formatDashboardWon } from './CashflowSummary';
 import {
   createDonutSegmentGeometry,
   exitingDonutSegment,
@@ -20,9 +21,10 @@ import { hitTestDonutAllocation } from './donutHitTest';
 
 export interface CashflowDonutSummaryProps {
   data: MainData;
+  onExpense?(opener: HTMLElement): void;
 }
 
-export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
+export function CashflowDonutSummary({ data, onExpense }: CashflowDonutSummaryProps) {
   const [hoveredId, setHoveredId] = useState<DonutAllocation['id']>();
   const [focusedId, setFocusedId] = useState<DonutAllocation['id']>();
   const [tappedId, setTappedId] = useState<DonutAllocation['id']>();
@@ -198,58 +200,61 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
   return (
     <section className="cashflow-donut" aria-label="월 수입 배분" ref={sectionRef}>
       {hasIncome ? (
-        <div className="cashflow-donut__chart">
-          <svg
-            viewBox="0 0 100 100"
-            role="img"
-            aria-label={insight.allocations.map((allocation) => `${allocation.label} ${formatPercentage(allocation.percentage)}`).join(', ')}
-            onPointerDown={(event) => {
-              const allocationId = allocationAtPointer(
-                event.currentTarget,
-                event.clientX,
-                event.clientY,
-              );
-              if (allocationId !== undefined) {
-                setTappedId((id) => id === allocationId ? undefined : allocationId);
-              }
-            }}
-            onPointerMove={(event) => {
-              if (event.pointerType !== 'touch') {
-                setHoveredId(allocationAtPointer(
+        <div className="cashflow-donut__overview">
+          <div className="cashflow-donut__chart">
+            <svg
+              viewBox="0 0 100 100"
+              role="img"
+              aria-label={insight.allocations.map((allocation) => `${allocation.label} ${formatPercentage(allocation.percentage)}`).join(', ')}
+              onPointerDown={(event) => {
+                const allocationId = allocationAtPointer(
                   event.currentTarget,
                   event.clientX,
                   event.clientY,
-                ));
-              }
-            }}
-            onPointerLeave={() => setHoveredId(undefined)}
-          >
-            {renderedVisualSegmentIds.map((id) => {
-              const geometry = segmentGeometry.find((segment) => segment.id === id)
-                ?? exitingDonutSegment(id);
-              return (
-                <circle
-                  aria-hidden="true"
-                  className={`cashflow-donut__segment--${id}${activeAllocation?.id === id ? ' cashflow-donut__segment--active' : ''}`}
-                  cx="50"
-                  cy="50"
-                  fill="none"
-                  key={id}
-                  pathLength="100"
-                  ref={(element) => {
-                    if (element === null) circleRefs.current.delete(id);
-                    else circleRefs.current.set(id, element);
-                  }}
-                  r="40"
-                  strokeDasharray={`${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`}
-                  strokeDashoffset={geometry.dashoffset}
-                  strokeWidth="14"
-                  transform="rotate(-90 50 50)"
-                />
-              );
-            })}
-          </svg>
+                );
+                if (allocationId !== undefined) {
+                  setTappedId((id) => id === allocationId ? undefined : allocationId);
+                }
+              }}
+              onPointerMove={(event) => {
+                if (event.pointerType !== 'touch') {
+                  setHoveredId(allocationAtPointer(
+                    event.currentTarget,
+                    event.clientX,
+                    event.clientY,
+                  ));
+                }
+              }}
+              onPointerLeave={() => setHoveredId(undefined)}
+            >
+              {renderedVisualSegmentIds.map((id) => {
+                const geometry = segmentGeometry.find((segment) => segment.id === id)
+                  ?? exitingDonutSegment(id);
+                return (
+                  <circle
+                    aria-hidden="true"
+                    className={`cashflow-donut__segment--${id}${activeAllocation?.id === id ? ' cashflow-donut__segment--active' : ''}`}
+                    cx="50"
+                    cy="50"
+                    fill="none"
+                    key={id}
+                    pathLength="100"
+                    ref={(element) => {
+                      if (element === null) circleRefs.current.delete(id);
+                      else circleRefs.current.set(id, element);
+                    }}
+                    r="40"
+                    strokeDasharray={`${geometry.visiblePercentage} ${100 - geometry.visiblePercentage}`}
+                    strokeDashoffset={geometry.dashoffset}
+                    strokeWidth="14"
+                    transform="rotate(-90 50 50)"
+                  />
+                );
+              })}
+            </svg>
+          </div>
           <div className="cashflow-donut__center">
+            <p className="cashflow-donut__caption">{activeAllocation ? '월 수입 배분' : '저축·투자 비중'}</p>
             <strong>
               {activeAllocation ? formatPercentage(activeAllocation.percentage) : (
                 <>
@@ -268,32 +273,22 @@ export function CashflowDonutSummary({ data }: CashflowDonutSummaryProps) {
                 <span>{activeAllocation.label}</span>
                 <span>{formatDashboardWon(activeAllocation.amountWon)}</span>
               </span>
-            ) : <span>저축·투자</span>}
+            ) : <span>한 달 수입 기준</span>}
             {!activeAllocation && insight.isOverIncome ? <small>소득 초과</small> : null}
           </div>
         </div>
       ) : <p className="cashflow-donut__guidance">월소득을 입력해주세요.</p>}
-      <div className="cashflow-donut__legend">
-        {insight.allocations.map((allocation) => {
-          return (
-            <button
-              aria-label={`${allocation.label} · ${formatDashboardWon(allocation.amountWon)} · ${formatPercentage(allocation.percentage)}`}
-              aria-pressed={tappedId === allocation.id}
-              className={`cashflow-donut__legend-button cashflow-donut__segment--${allocation.id}`}
-              key={allocation.id}
-              onBlur={() => setFocusedId(undefined)}
-              onClick={() => setTappedId((id) => id === allocation.id ? undefined : allocation.id)}
-              onFocus={() => setFocusedId(allocation.id)}
-              onPointerEnter={() => setHoveredId(allocation.id)}
-              onPointerLeave={() => setHoveredId(undefined)}
-              type="button"
-            >
-              <span>{allocation.label}</span>
-              <AnimatedVisualNumber value={allocation.percentage} format={formatPercentage} />
-            </button>
-          );
-        })}
-      </div>
+      <CashflowSummary
+        summary={calculateCashflow(data)}
+        onExpense={onExpense}
+        selection={{
+          activeId: activeAllocation?.id,
+          selectedId: tappedId,
+          onHover: setHoveredId,
+          onFocus: setFocusedId,
+          onSelect: (id) => setTappedId((current) => current === id ? undefined : id),
+        }}
+      />
     </section>
   );
 }

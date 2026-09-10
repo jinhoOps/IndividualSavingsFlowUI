@@ -54,7 +54,7 @@ describe('BrowserWorkspaceSaveLock namespaces', () => {
     });
     await new BrowserWorkspaceSaveLock().runExclusive(async () => undefined);
 
-    expect(requestedNames).toEqual(['isf-workspace-v4-save']);
+    expect(requestedNames).toEqual(['isf-workspace-v5-save']);
 
     vi.stubGlobal('navigator', {});
     const storage = new MemoryStorage();
@@ -65,7 +65,7 @@ describe('BrowserWorkspaceSaveLock namespaces', () => {
     }).runExclusive(async () => undefined);
 
     expect([...storage.keys()]).toContainEqual(
-      expect.stringMatching(/^isf-workspace-v4-save-lease:/),
+      expect.stringMatching(/^isf-workspace-v5-save-lease:/),
     );
     expect([...storage.keys()]).not.toContainEqual(
       expect.stringMatching(/^isf-workspace-v3-save-lease:/),
@@ -87,7 +87,7 @@ describe('BrowserWorkspaceSaveLock namespaces', () => {
       expect.stringMatching(/^isf-workspace-v3-save-lease:/),
     );
     expect([...storage.keys()]).not.toContainEqual(
-      expect.stringMatching(/^isf-workspace-v4-save-lease:/),
+      expect.stringMatching(/^isf-workspace-v5-save-lease:/),
     );
   });
 

@@ -178,10 +178,10 @@ function readBlob(blob: Blob): Promise<string> {
 function workspace(monthlyNetIncomeWon: number, revision = 1): WorkspaceDocument {
   const applied = data(monthlyNetIncomeWon, { updatedAt: 100 });
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     revision,
     updatedAt: 500,
-    main: { applied, setupProgress: null },
+    main: { expenseAssistant: null, applied, setupProgress: null },
     simulation: {
       draft: {
         schemaVersion: 3,
@@ -235,7 +235,7 @@ function backupFile(value: unknown): File {
 function backupEnvelope(value: WorkspaceDocument): unknown {
   return {
     format: 'isf-workspace-backup',
-    formatVersion: 3,
+    formatVersion: 4,
     exportedAt: 900,
     workspace: value,
   };
@@ -433,7 +433,7 @@ describe('MainApp', () => {
     const parsed = JSON.parse(await readBlob(blob as Blob));
     expect(parsed).toMatchObject({
       format: 'isf-workspace-backup',
-      formatVersion: 3,
+      formatVersion: 4,
       workspace: current,
     });
     expect(Object.keys(parsed).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
@@ -690,7 +690,7 @@ describe('MainApp', () => {
 
     const invalidCurrent = backupEnvelope({
       ...workspace(4_000_000, 99),
-      main: {
+      main: { expenseAssistant: null,
         applied: data(-1),
         setupProgress: null,
       },
@@ -864,11 +864,12 @@ describe('MainApp', () => {
   it.each([
     ['empty Main', (base: WorkspaceDocument) => ({
       ...base,
-      main: { applied: null, setupProgress: null },
+      main: { applied: null, setupProgress: null, expenseAssistant: null },
     }), 'setup:welcome'],
     ['initial progress', (base: WorkspaceDocument) => ({
       ...base,
       main: {
+        expenseAssistant: null,
         applied: null,
         setupProgress: {
           kind: 'initial' as const,
@@ -881,6 +882,7 @@ describe('MainApp', () => {
     ['restart progress', (base: WorkspaceDocument) => ({
       ...base,
       main: {
+        expenseAssistant: null,
         applied: data(4_000_000, { updatedAt: 100 }),
         setupProgress: {
           kind: 'restart' as const,

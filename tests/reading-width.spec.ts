@@ -11,10 +11,10 @@ const appliedMain = {
 };
 
 const seededWorkspace = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   revision: 3,
   updatedAt: appliedMain.updatedAt,
-  main: { applied: appliedMain, setupProgress: null },
+  main: { expenseAssistant: null, applied: appliedMain, setupProgress: null },
   simulation: {
     draft: {
       schemaVersion: 3,
@@ -134,7 +134,7 @@ test('keeps the shared reading frame stable during layered CSS replacement', asy
   await page.setViewportSize({ width: 768, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((workspace) => {
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
   }, seededWorkspace);
   await page.goto('apps/main/');
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
@@ -210,7 +210,7 @@ for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((workspace) => {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
     }, seededWorkspace);
 
     for (const app of apps) {
@@ -235,7 +235,7 @@ for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((workspace) => {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
     }, zeroInvestmentWorkspace);
     await page.goto('apps/portfolio/');
 
@@ -432,9 +432,9 @@ for (const viewport of viewports) {
       const marker = 'isf-reading-width-first-review-seeded';
       if (sessionStorage.getItem(marker) !== null) return;
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v4', JSON.stringify({
+      localStorage.setItem('isf-workspace-v5', JSON.stringify({
         ...workspace,
-        main: {
+        main: { expenseAssistant: null,
           applied: null,
           setupProgress: {
             kind: 'initial',

@@ -8,7 +8,7 @@ import {
 describe('cashflow donut geometry', () => {
   it('clips visible arcs at 100 while retaining canonical order', () => {
     const geometry = createDonutSegmentGeometry([
-      { id: 'consumption', label: '소비', amountWon: 60, percentage: 60, displayPercentage: 60 },
+      { id: 'consumption', label: '지출', amountWon: 60, percentage: 60, displayPercentage: 60 },
       { id: 'saving', label: '저축', amountWon: 30, percentage: 30, displayPercentage: 30 },
       { id: 'investment', label: '투자', amountWon: 25, percentage: 25, displayPercentage: 25 },
     ]);

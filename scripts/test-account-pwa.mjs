@@ -35,17 +35,17 @@ try {
       user: {id: user, email: 'pwa@example.com', app_metadata: {}, user_metadata: {}, aud: 'authenticated'}}));
     sessionStorage.setItem('pwa-auth-seeded', '1');
   }, user);
-  await context.route('https://isf-test.supabase.co/**', route => !online ? route.abort('internetdisconnected') : route.fulfill({json: [{user_id: user, schema_version: 4, revision: 0, created_at: new Date(1000).toISOString(), updated_at: new Date(1000).toISOString(), payload: {
-    main: {applied: {schemaVersion: 2, updatedAt: 1000, monthlyNetIncomeWon: 3200000, monthlyHousingWon: 800000, monthlyLivingWon: 1000000, monthlySavingWon: 300000, monthlyInvestmentWon: 200000}, setupProgress: null},
+  await context.route('https://isf-test.supabase.co/**', route => !online ? route.abort('internetdisconnected') : route.fulfill({json: [{user_id: user, schema_version: 5, revision: 0, created_at: new Date(1000).toISOString(), updated_at: new Date(1000).toISOString(), payload: {
+    main: {expenseAssistant: null, applied: {schemaVersion: 2, updatedAt: 1000, monthlyNetIncomeWon: 3200000, monthlyHousingWon: 800000, monthlyLivingWon: 1000000, monthlySavingWon: 300000, monthlyInvestmentWon: 200000}, setupProgress: null},
     simulation: {draft: null}, portfolio: {plans: [], draft: null}, locations: [], accountMap: {applied: null, draft: null},
   }}]}));
   const page = await context.newPage();
   await page.goto(`${base}apps/main/`);
-  await page.getByRole('button', {name: '월 소비 편집'}).waitFor();
+  await page.getByRole('button', {name: '월 금액 편집'}).waitFor();
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
   await page.reload();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
-  await page.getByRole('button', {name: '월 소비 편집'}).waitFor();
+  await page.getByRole('button', {name: '월 금액 편집'}).waitFor();
   await page.goto(`${base}apps/auth/callback/?code=fixture-unused-code&error=access_denied`);
   await page.getByRole('link', {name: '로그인 화면으로 돌아가기'}).waitFor();
   assert.equal(new URL(page.url()).search, '');
@@ -60,7 +60,7 @@ try {
   await context.setOffline(true);
   await page.goto(`${base}apps/main/`);
   await page.getByText('오프라인 · 마지막 저장 계획').waitFor();
-  assert.ok(await page.getByRole('button', {name: '월 소비 편집'}).isDisabled(), 'offline plan must be read-only');
+  assert.ok(await page.getByRole('button', {name: '월 금액 편집'}).isDisabled(), 'offline plan must be read-only');
   console.log(`PASS: production PWA ${cachedUrls.length} shell cache entries; no Auth/Data/code cache; authenticated offline Main is read-only.`);
 } finally {
   await browser?.close();

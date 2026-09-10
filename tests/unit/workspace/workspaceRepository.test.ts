@@ -353,7 +353,7 @@ describe('BrowserWorkspaceRepository', () => {
 
   it('prefers a valid v4 record over the v3 rollback source without touching either raw value', () => {
     const v4 = { ...createEmptyWorkspace(100), revision: 7 };
-    const v3 = { ...v4, schemaVersion: 3, revision: 99 };
+    const v3 = { ...v4, schemaVersion: 3, revision: 99, main: {applied: null, setupProgress: null} };
     const v4Raw = JSON.stringify(v4, null, 2);
     const v3Raw = JSON.stringify(v3, null, 2);
     const storage = new MemoryStorage(new Map([
@@ -368,7 +368,7 @@ describe('BrowserWorkspaceRepository', () => {
   });
 
   it('surfaces an invalid v4 record without falling back to a valid v3 rollback source', () => {
-    const v3 = { ...createEmptyWorkspace(100), schemaVersion: 3 };
+    const v3 = { ...createEmptyWorkspace(100), schemaVersion: 3, main: {applied: null, setupProgress: null} };
     const invalidV4Raw = '{invalid-v4';
     const v3Raw = JSON.stringify(v3, null, 2);
     const storage = new MemoryStorage(new Map([
@@ -382,7 +382,7 @@ describe('BrowserWorkspaceRepository', () => {
   });
 
   it('uses the v3 rollback source before the retired v1/v2 source when v4 is absent', () => {
-    const v3 = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 7 };
+    const v3 = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 7, main: {applied: null, setupProgress: null} };
     const v3Raw = JSON.stringify(v3, null, 2);
     const retiredRaw = JSON.stringify(retiredWorkspace(2), null, 2);
     const storage = new MemoryStorage(new Map([
@@ -394,7 +394,7 @@ describe('BrowserWorkspaceRepository', () => {
     expect(repository.load()).toMatchObject({
       status: 'found',
       needsMigration: true,
-      workspace: { schemaVersion: 4, revision: 7 },
+      workspace: { schemaVersion: 5, revision: 7 },
     });
     expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(v3Raw);
     expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(retiredRaw);
@@ -402,7 +402,7 @@ describe('BrowserWorkspaceRepository', () => {
   });
 
   it('converts a v3 rollback source under source and destination locks without changing its bytes', async () => {
-    const source = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4 };
+    const source = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4, main: {applied: null, setupProgress: null} };
     const sourceRaw = JSON.stringify(source, null, 2);
     const events: string[] = [];
     const storage = new MemoryStorage(new Map([[PREVIOUS_WORKSPACE_STORAGE_KEY, sourceRaw]]));
@@ -413,17 +413,17 @@ describe('BrowserWorkspaceRepository', () => {
     });
 
     const loaded = repository.load();
-    expect(loaded).toMatchObject({ status: 'found', needsMigration: true, workspace: { schemaVersion: 4 } });
+    expect(loaded).toMatchObject({ status: 'found', needsMigration: true, workspace: { schemaVersion: 5 } });
     const result = await repository.migrate(4);
 
-    expect(result).toMatchObject({ status: 'saved', workspace: { schemaVersion: 4, revision: 5 } });
+    expect(result).toMatchObject({ status: 'saved', workspace: { schemaVersion: 5, revision: 5 } });
     expect(events).toEqual(['v3:enter', 'v4:enter', 'v4:exit', 'v3:exit']);
     expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(sourceRaw);
-    expect(JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '')).toMatchObject({ schemaVersion: 4, revision: 5 });
+    expect(JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '')).toMatchObject({ schemaVersion: 5, revision: 5 });
   });
 
   it('re-reads a v3 writer update under the v3 source lock before committing v4', async () => {
-    const original = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4 };
+    const original = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4, main: {applied: null, setupProgress: null} };
     const latest = { ...original, revision: 5, updatedAt: 450 };
     const latestRaw = JSON.stringify(latest, null, 2);
     const events: string[] = [];
@@ -439,14 +439,14 @@ describe('BrowserWorkspaceRepository', () => {
     });
 
     await expect(repository.migrate(5)).resolves.toMatchObject({
-      status: 'saved', workspace: { schemaVersion: 4, revision: 6 },
+      status: 'saved', workspace: { schemaVersion: 5, revision: 6 },
     });
     expect(events).toEqual(['v3:enter', 'v4:enter', 'v4:exit', 'v3:exit']);
     expect(storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY)).toBe(latestRaw);
   });
 
   it('rolls back an unverified v4 conversion without changing the v3 source bytes', async () => {
-    const source = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4 };
+    const source = { ...createEmptyWorkspace(100), schemaVersion: 3 as const, revision: 4, main: {applied: null, setupProgress: null} };
     const sourceRaw = JSON.stringify(source, null, 2);
     const values = new Map<string, string>([[PREVIOUS_WORKSPACE_STORAGE_KEY, sourceRaw]]);
     let corruptNextV4Write = true;
@@ -528,7 +528,7 @@ describe('BrowserWorkspaceRepository', () => {
         status: 'found',
         needsMigration: true,
         workspace: {
-          schemaVersion: 4,
+          schemaVersion: 5,
           revision: 4,
           updatedAt: 500,
           main: source.main,
@@ -558,7 +558,7 @@ describe('BrowserWorkspaceRepository', () => {
 
     expect(result).toMatchObject({
       status: 'saved',
-      workspace: { schemaVersion: 4, revision: 5, updatedAt: 501 },
+      workspace: { schemaVersion: 5, revision: 5, updatedAt: 501 },
     });
     expect(storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY)).toBe(sourceRaw);
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(JSON.stringify(
@@ -1445,7 +1445,7 @@ function leaseOptions(owner: string, clock: ControlledLeaseClock) {
 }
 
 function leaseStorageKey(owner: string): string {
-  return `isf-workspace-v4-save-lease:${encodeURIComponent(owner)}`;
+  return `isf-workspace-v5-save-lease:${encodeURIComponent(owner)}`;
 }
 
 function activeLeaseRecord(owner: string, expiresAt: number, ticket = 1): string {

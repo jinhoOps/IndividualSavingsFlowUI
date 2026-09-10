@@ -73,10 +73,11 @@ const investingLink = {
 
 function validWorkspace() {
   return {
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     revision: 4,
     updatedAt: 400,
     main: {
+      expenseAssistant: null,
       applied: { ...validMain },
       setupProgress: {
         kind: 'restart' as const,
@@ -111,10 +112,10 @@ function validWorkspace() {
   };
 }
 
-describe('Workspace v4 validation', () => {
+describe('Workspace v5 validation', () => {
   it('creates and parses an exact current empty workspace', () => {
     expect(parseWorkspaceDocument(createEmptyWorkspace(100))).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       revision: 0,
       updatedAt: 100,
       accountMap: { applied: null, draft: null },
@@ -280,7 +281,8 @@ describe('Workspace v4 validation', () => {
   });
 
   it('keeps exact v3 parsing read-only instead of accepting a v3 envelope as current', () => {
-    const v3 = { ...validWorkspace(), schemaVersion: 3 as const };
+    const current = validWorkspace();
+    const v3 = { ...current, schemaVersion: 3 as const, main: {applied: current.main.applied, setupProgress: current.main.setupProgress} };
 
     expect(parseWorkspaceDocument(v3)).toBeNull();
     expect(parseWorkspaceV3Document(v3)).toEqual(v3);

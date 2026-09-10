@@ -299,9 +299,9 @@ describe('AllocationBar', () => {
     expect(within(table).getByRole('columnheader', { name: '종류' })).toBeVisible();
     expect(within(table).getByRole('columnheader', { name: '금액' })).toBeVisible();
     expect(within(table).getByRole('columnheader', { name: '수입 대비' })).toBeVisible();
-    const consumptionRow = within(table).getByRole('row', { name: /소비 180만 원 56\.3%/ });
+    const consumptionRow = within(table).getByRole('row', { name: /지출 180만 원 56\.3%/ });
     expect(consumptionRow).toBeVisible();
-    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '지출 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '남는 돈 상세 정보' })).toBeVisible();
@@ -309,16 +309,16 @@ describe('AllocationBar', () => {
 
   it('shows a shared percentage tooltip for hover, focus, and tap', () => {
     render(<AllocationBar data={cashflowFixture} />);
-    const consumption = screen.getByRole('button', { name: '소비 상세 정보' });
+    const consumption = screen.getByRole('button', { name: '지출 상세 정보' });
 
     fireEvent.pointerEnter(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^소비 · 180만 원 · 56\.3%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^지출 · 180만 원 · 56\.3%$/);
     fireEvent.pointerLeave(consumption);
     fireEvent.focus(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^소비 · 180만 원 · 56\.3%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^지출 · 180만 원 · 56\.3%$/);
     fireEvent.blur(consumption);
     fireEvent.click(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^소비 · 180만 원 · 56\.3%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^지출 · 180만 원 · 56\.3%$/);
     fireEvent.click(consumption);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
@@ -336,24 +336,24 @@ describe('AllocationBar', () => {
 
   it('keeps a focused segment tooltip open after the pointer leaves, then closes it on blur', () => {
     render(<AllocationBar data={cashflowFixture} />);
-    const consumption = screen.getByRole('button', { name: '소비 상세 정보' });
+    const consumption = screen.getByRole('button', { name: '지출 상세 정보' });
 
     fireEvent.focus(consumption);
     fireEvent.pointerLeave(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent('소비 · 180만 원 · 56.3%');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('지출 · 180만 원 · 56.3%');
     fireEvent.blur(consumption);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   it('closes a tapped segment tooltip when focus moves outside its wrapper', () => {
     render(<><AllocationBar data={cashflowFixture} /><button type="button">outside</button></>);
-    const consumption = screen.getByRole('button', { name: '소비 상세 정보' });
+    const consumption = screen.getByRole('button', { name: '지출 상세 정보' });
     const outside = screen.getByRole('button', { name: 'outside' });
 
     fireEvent.pointerDown(consumption);
     fireEvent.focus(consumption);
     fireEvent.click(consumption);
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^소비 · 180만 원 · 56\.3%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^지출 · 180만 원 · 56\.3%$/);
 
     fireEvent.blur(consumption, { relatedTarget: outside });
     fireEvent.focus(outside);
@@ -363,16 +363,16 @@ describe('AllocationBar', () => {
   it('provides a legend-linked control for zero-width allocations', () => {
     render(<AllocationBar data={emptyFixture} />);
 
-    expect(screen.getByRole('row', { name: /소비 0원 0\.0%/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('row', { name: /지출 0원 0\.0%/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: '지출 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '남는 돈 상세 정보' })).toBeVisible();
 
-    fireEvent.focus(screen.getByRole('button', { name: '소비 상세 정보' }));
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^소비 · 0원 · 0\.0%$/);
+    fireEvent.focus(screen.getByRole('button', { name: '지출 상세 정보' }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^지출 · 0원 · 0\.0%$/);
   });
 
   it.each([
-    ['zero-width', emptyFixture, '소비 상세 정보', '소비 · 0원 · 0.0%'],
+    ['zero-width', emptyFixture, '지출 상세 정보', '지출 · 0원 · 0.0%'],
     ['tiny-width', tinyFixture, '투자 상세 정보', '투자 · 1,000원 · 0.0%'],
   ])('toggles the %s table tooltip by tap and closes it on click-away', (_case, fixture, accessibleName, tooltipText) => {
     render(<AllocationBar data={fixture} />);
@@ -407,7 +407,7 @@ describe('AllocationBar', () => {
     render(<AllocationBar data={adjacentSmallFixture} />);
 
     for (const [name, text, percentage] of [
-      ['소비 상세 정보', '소비', '5.0%'],
+      ['지출 상세 정보', '지출', '5.0%'],
       ['저축 상세 정보', '저축', '6.0%'],
       ['투자 상세 정보', '투자', '7.0%'],
     ] as const) {
@@ -428,7 +428,7 @@ describe('AllocationBar', () => {
   it('represents a deficit against planned outflow without a negative remaining segment', () => {
     render(<AllocationBar data={{ ...cashflowFixture, monthlyInvestmentWon: 1_500_000 }} />);
 
-    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '지출 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
     expect(screen.queryByLabelText(/남는 돈/)).not.toBeInTheDocument();

@@ -6,7 +6,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도·계좌 흐름·Main overlay 표현은 [Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)을 따릅니다. 과거 레거시 화면과 superseded Account Map design의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
-현재 delivery boundary는 명확히 나눕니다. schema v4의 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. v3는 read-only migration/rollback source다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
+현재 delivery boundary는 명확히 나눕니다. 현재 코드의 schema v5 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. v4/v3는 read-only migration/rollback source이며 v5 운영 DB 적용·배포는 아직 진행하지 않았습니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
 
 ## Experience Principles
 
@@ -40,20 +40,30 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 인트로 skip은 접근 가능한 hit area를 유지한 text-only control이며, setup reveal이 진행되지 않아도 1/6 진행 action과 6/6 조립 시각화는 final state로 복구된다. 상세 cleanup·timing 계약은 [Main setup 모션 복구와 조용한 인트로 건너뛰기 설계](docs/superpowers/specs/2026-08-14-main-setup-viewport-containment-design.md)를 따른다.
 - 정적 브랜드 아이콘과 웰컴 인트로는 세 상승 막대와 다섯 꼭짓점의 비보장 추세선을 같은 geometry로 공유한다. 추세선은 화살표 대신 마지막 원형 점으로 끝난다.
 - 기본 화면은 월 수입, 생활비, 저축, 투자와 순현금흐름을 우선 보여줍니다.
-- Main은 다섯 월간 금액만 직접 소유하며 항목·계좌·카테고리 편집을 제공하지 않습니다.
+- Main은 다섯 월간 금액과 지출 도우미의 보조 답변을 소유합니다. 승인된 13개 질문 외의 계좌·사용자 정의 카테고리 관리는 제공하지 않습니다.
 - dashboard 편집기를 열거나 탐색하는 것만으로 dirty 상태를 만들지 않습니다.
 - 실제 draft 변경이 있을 때 Apply Bar가 나타납니다.
 - `취소`와 `적용`은 현재 draft와 적용된 계획의 차이를 명확히 처리합니다.
 - 요약과 월 자금 구성은 적용된 데이터만 반영합니다.
-- 월 자금 구성 도넛의 네 항목은 `소비`, `저축`, `투자`, `여윳돈`으로 표시합니다. 모든 viewport의 범례는 44px 터치 영역 안에 색상·명칭·비율만 두 열로 표시하고, 금액은 접근성 이름과 선택된 중앙 상세에서만 제공합니다.
-- 도넛 조각의 pointer·touch 선택과 keyboard 범례는 선택 조각을 확장하고, 중앙을 해당 명칭·금액·비율로 바꿉니다. 별도 tooltip은 사용하지 않습니다.
+- 2026-09-10 선택된 목록형 시안을 기준으로, 월 자금 구성은 도넛·저축과 투자 비중·네 금액 행을 하나의 요약 표면에 모읍니다. 도넛 옆 요약에 비율을 한 번 표시하고, 별도 범례 카드와 2×2 금액 카드는 사용하지 않습니다.
+- 금액 행은 `월 지출`, `남는 돈`, `월 저축`, `월 투자` 순서로 색상·명칭·금액·비율을 함께 보여줍니다. 주거·생활비 상세와 음수·초과 문구도 해당 행에서 읽습니다. 지출 명칭·비율과 나머지 행은 도넛을 탐색하고, 지출 금액은 지팡이 아이콘과 `항목별로 계산` 안내로 도우미를 엽니다. 지출 행의 접근성 설명에 주거·생활비 상세를 연결합니다. 다섯 금액 편집은 단일 `월 금액 편집`으로 열고 행마다 수정 아이콘을 반복하지 않습니다. 767px 이하는 화면 아래 고정된 접힌 바, 768px 이상은 요약 카드 하단 버튼으로 배치합니다. 바는 탭·키보드 진입점이며 드래그 동작은 제공하지 않습니다. 모든 조작 영역은 44px 이상을 유지합니다.
+- 도넛의 의미·원호 순서는 `지출`, `저축`, `투자`, `여윳돈`을 유지합니다. 도넛 조각의 pointer·touch 선택과 keyboard 행 선택은 같은 조각을 확장하고, 도넛 옆 요약을 해당 명칭·금액·비율로 바꿉니다. 음수 잔액은 금액 행에 남기되 도넛 조각으로 만들지 않습니다. 별도 tooltip은 사용하지 않습니다.
+- Main 소유 편집기는 제목·닫기·설명 뒤에 다섯 금액을 label–input 행으로 표시합니다. 단위는 입력 오른쪽에 두고, 빠른 금액 조정은 focus된 행에서만 펼칩니다. 오류는 해당 행 아래에 연결합니다. 모바일은 bottom sheet, 768px 이상은 읽을 수 있는 너비의 side panel을 유지합니다.
+- 편집 footer는 상태 문구 아래 `취소`·`적용`을 한 줄로 배치합니다. 변경 전 적용 비활성, 저장 중 잠금, 실패 재시도와 draft 보존 동작은 유지합니다. Main과 Account Map에서 여는 Main 소유 편집기에 같은 규칙을 적용합니다.
+
+### 지출 계산 도우미
+
+- 한 번에 한 질문과 월/연 기준 금액을 입력하고 고정비 → 변동비 순서와 월평균 소계를 보여줍니다. 빈 답변과 `없어요`의 0원을 구분합니다.
+- 완료 전에는 항목 내역과 주거·생활·월 지출 합계를 보여줍니다. 내역의 금액에서 단일 답변으로 바로 이동하며 재방문에도 내역과 질문 단계를 기억합니다.
+- `이 금액으로 반영`은 직접 입력했던 주거비·생활비를 항목 합계로 대체합니다. 중간 답변 저장은 적용 금액을 바꾸지 않습니다. 의미와 저장 계약은 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)를 따릅니다.
+- 모바일 bottom sheet와 768px 이상 우측 modal panel은 배경 비활성화·focus trap·Escape·진입 금액으로 focus 복원을 제공합니다. footer 합계와 행동은 고정하고 질문/13개 내역만 내부 스크롤합니다. 저장 결과 불명과 충돌은 패널 내부에서 재시도할 수 있습니다.
 
 ### Current Journey
 
 - 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`, `계좌 연결 (Account Map)`을 각각 집, 상승 그래프, 분할 도넛, 펼친 통장 아이콘으로 표시합니다.
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
-- Simulation과 Portfolio는 현재 `isf-workspace-v4`의 최신 Main 값을 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다. v4가 없을 때만 v3을 one-way conversion 후보로 읽고, v3도 없을 때에만 retired v1/v2 workspace 원본을 읽습니다. invalid v4는 v3/v1 fallback을 허용하지 않습니다.
+- Simulation과 Portfolio는 현재 v5 workspace의 Main applied를 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다. 브라우저 이전 후보는 v5 → v4 → v3 → retired v1/v2 우선순위로 읽고, 존재하지만 invalid인 최신 원본에서 이전 버전으로 fallback하지 않습니다.
 - Simulation과 Portfolio의 Main read는 읽기 전용입니다. Portfolio는 자기 slice만, Account Map은 자기 slice와 공유 금융 위치 registry만 갱신합니다. 성공한 write마다 monotonic revision을 증가시킵니다.
 
 ### Simulation
@@ -192,8 +202,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 ### DataHubModal
 
 - Main 관리 메뉴는 current whole-workspace 백업의 진입점입니다.
-- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 backup format v3 envelope로 내보냅니다.
-- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 v4 workspace를 교체합니다. format v2의 v3와 format v1 retired input은 같은 read-only converter로 검증·변환하며, invalid input은 현재 raw workspace를 유지합니다.
+- export는 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 backup format 4 envelope로 내보냅니다.
+- import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 확인 dialog 뒤 한 번에 v5 workspace를 교체합니다. format 3의 v4, format 2의 v3와 format 1 retired input은 같은 read-only converter로 검증·변환하며, invalid input은 현재 raw workspace를 유지합니다.
 
 ### Button
 
@@ -280,7 +290,7 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다. 일
 - 공통 header, feedback, storage와 formatting utility를 먼저 확인합니다.
 - Main 현재 데이터 소유권, URL-only 탐색과 상세 앱의 명시적인 workspace Main read 경계를 유지합니다.
 - Workspace write는 각 앱의 소유 slice에 한정하고 Portfolio는 공유 금융 위치 registry를 갱신하지 않습니다. 어떤 writer도 stale revision을 조용히 덮어쓰면 안 됩니다.
-- Main의 다섯 값 계약을 넘어서는 편집 UI를 현재 제품에 추가하지 않습니다.
+- Main의 다섯 값 직접 편집과 승인된 지출 계산 보조 질문 외의 재무 편집 UI를 추가하지 않습니다.
 - 외부 동작과 모바일 화면을 함께 검증합니다.
 - CSS 수정 전후 responsive media query와 파일 구조를 확인합니다.
 

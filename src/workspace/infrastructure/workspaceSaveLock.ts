@@ -8,6 +8,11 @@ export interface WorkspaceSaveLockNamespace {
 }
 
 export const CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE = {
+  lockName: 'isf-workspace-v5-save',
+  leasePrefix: 'isf-workspace-v5-save-lease:',
+} satisfies WorkspaceSaveLockNamespace;
+
+export const V4_WORKSPACE_SAVE_LOCK_NAMESPACE = {
   lockName: 'isf-workspace-v4-save',
   leasePrefix: 'isf-workspace-v4-save-lease:',
 } satisfies WorkspaceSaveLockNamespace;

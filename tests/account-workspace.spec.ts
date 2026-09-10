@@ -1,3 +1,5 @@
+import {createExpenseDraft, EXPENSE_ITEMS} from '../src/main/domain/expenseAssistant';
+import {withExpenseDraft} from '../src/main/infrastructure/expenseAssistantRepository';
 import {expect, test, type BrowserContext} from '@playwright/test';
 import {createEmptyWorkspace, type WorkspaceDocument} from '../src/workspace/domain/model';
 import {workspacePayload} from '../src/workspace/infrastructure/workspaceRemote';
@@ -6,7 +8,7 @@ import {exportWorkspaceBackup} from '../src/workspace/infrastructure/workspaceBa
 const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 function plan(income = 3200000): WorkspaceDocument {
-  return {...createEmptyWorkspace(1000), main: {applied: {
+  return {...createEmptyWorkspace(1000), main: {expenseAssistant: null, applied: {
     schemaVersion: 2, updatedAt: 1000, monthlyNetIncomeWon: income, monthlyHousingWon: 800000,
     monthlyLivingWon: 1000000, monthlySavingWon: 300000, monthlyInvestmentWon: 200000,
   }, setupProgress: null}};
@@ -28,7 +30,7 @@ function fakeServer() {
   let failWrite = false;
   let loseResponse = false;
   const operations: string[] = [];
-  const row = (user: string, workspace: WorkspaceDocument) => ({user_id: user, schema_version: 4,
+  const row = (user: string, workspace: WorkspaceDocument) => ({user_id: user, schema_version: 5,
     revision: workspace.revision, payload: workspacePayload(workspace), updated_at: new Date(workspace.updatedAt).toISOString(), created_at: new Date(1000).toISOString()});
   async function attach(context: BrowserContext, user: string | null, passwordAccount?: {id: string; email: string; password: string}) {
     if (user) await context.addInitScript(({user}) => {
@@ -63,14 +65,16 @@ function fakeServer() {
       operations.push(operation);
       if (failWrite) {await route.abort('failed'); return;}
       const request = route.request().postDataJSON();
-      if (request.p_schema_version !== 4) {await route.fulfill({json: {status: 'invalid'}}); return;}
+      if (request.p_schema_version !== 5) {await route.fulfill({json: {status: 'invalid'}}); return;}
       const receiptKey = `${user}:${request.p_mutation_id}`;
       if (receipts.has(receiptKey)) {await route.fulfill({json: receipts.get(receiptKey)}); return;}
       if (operation === 'initialize_workspace' && current) {await route.fulfill({json: {status: 'exists', workspace: row(user, current)}}); return;}
       if (operation !== 'initialize_workspace' && current?.revision !== request.p_expected_revision) {
         await route.fulfill({json: {status: 'conflict', workspace: row(user, current!)}}); return;
       }
-      const next = {...(current ?? createEmptyWorkspace()), ...request.p_payload, revision: current ? current.revision + 1 : 0, updatedAt: Date.now()};
+      const candidate = current && ['save_expense_draft', 'apply_expense'].includes(operation)
+        ? withExpenseDraft(current, request.p_payload.main.expenseAssistant.draft, operation === 'apply_expense', Date.now()) : {...(current ?? createEmptyWorkspace()), ...request.p_payload};
+      const next = {...candidate, revision: current ? current.revision + 1 : 0, updatedAt: Date.now()};
       rows.set(user, next);
       const result = {status: 'saved', workspace: row(user, next), committed_revision: next.revision};
       receipts.set(receiptKey, result);
@@ -114,17 +118,17 @@ test('password login rejects wrong credentials and loads the same account worksp
   await page.getByRole('button', {name: '이메일로 로그인'}).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await expect(page.getByLabel('비밀번호', {exact: true})).toHaveValue('');
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toHaveCount(0);
   expect(server.operations).toEqual([]);
   await page.getByLabel('비밀번호', {exact: true}).fill(password);
   await page.getByLabel('비밀번호', {exact: true}).press('Enter');
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1100000');
   await page.getByRole('button', {name: '적용', exact: true}).click();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('190만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
   await page.reload();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('190만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
   expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
   expect(await page.evaluate(() => JSON.stringify({...localStorage}) + JSON.stringify({...sessionStorage}))).not.toContain(password);
   expect(page.url()).not.toContain(password);
@@ -134,7 +138,7 @@ test('password reauthentication restores unsent input without automatically savi
   const server = fakeServer(); server.rows.set(userA, plan());
   await server.attach(context, userA, {id: userA, email: 'a@example.com', password: 'fixture-reauth-password'});
   await page.goto('apps/main/');
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1700000');
   await page.evaluate(() => {
     const channel = new BroadcastChannel('sb-isf-test-auth-token');
@@ -145,8 +149,8 @@ test('password reauthentication restores unsent input without automatically savi
   await expect(page.getByTestId('app-shell')).toHaveCount(0);
   await page.getByLabel('비밀번호', {exact: true}).fill('fixture-reauth-password');
   await page.getByRole('button', {name: '이메일로 로그인'}).click();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
   expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);
   expect(server.operations).toEqual([]);
@@ -154,12 +158,12 @@ test('password reauthentication restores unsent input without automatically savi
 
 test('imports this browser only after explicit choice and preserves its original', async ({page, context}) => {
   const server = fakeServer(); await server.attach(context, userA);
-  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace)), {...plan(), schemaVersion: 3});
+  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace)), {...plan(), schemaVersion: 3, main: {applied: plan().main.applied, setupProgress: null}});
   await page.goto('apps/main/');
   await expect(page.getByRole('button', {name: '이 브라우저 계획 가져오기'})).toBeVisible();
   expect(server.rows.has(userA)).toBe(false);
   await page.getByRole('button', {name: '이 브라우저 계획 가져오기'}).click();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   expect(server.rows.get(userA)?.main.applied?.monthlyNetIncomeWon).toBe(3200000);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v3')!).revision)).toBe(0);
 });
@@ -171,15 +175,15 @@ test('two browsers share edits and another Google account keeps its own plan', a
     await server.attach(context, userA); await server.attach(second, userA); await server.attach(third, userB);
     const other = await second.newPage(); const different = await third.newPage();
     await page.goto('apps/main/'); await other.goto('apps/main/'); await different.goto('apps/main/');
-    await expect(other.getByRole('button', {name: '월 소비 편집'})).toContainText('180만 원');
-    await page.getByRole('button', {name: '월 소비 편집'}).click();
+    await expect(other.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('180만 원');
+    await page.getByRole('button', {name: '월 금액 편집'}).click();
     await page.getByLabel('월평균 생활비').fill('1100000');
     await page.getByRole('button', {name: '적용', exact: true}).click();
-    await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('190만 원');
+    await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
     await other.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(other.getByRole('button', {name: '월 소비 편집'})).toContainText('190만 원');
+    await expect(other.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
     expect(server.rows.get(userB)?.main.applied?.monthlyLivingWon).toBe(1000000);
-    await expect(different.getByRole('button', {name: '월 소비 편집'})).toContainText('180만 원');
+    await expect(different.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('180만 원');
     expect(server.operations).toContain('save_main');
   } finally {await second.close(); await third.close();}
 });
@@ -187,14 +191,14 @@ test('two browsers share edits and another Google account keeps its own plan', a
 test('lost save response retries once without applying the same edit twice', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1200000');
   server.loseNextResponse();
   await page.getByRole('button', {name: '적용', exact: true}).click();
   await expect(page.getByRole('button', {name: '저장 결과 다시 확인'})).toBeVisible();
   expect(server.rows.get(userA)?.revision).toBe(1);
   await page.getByRole('button', {name: '저장 결과 다시 확인'}).click();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('200만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('200만 원');
   expect(server.rows.get(userA)?.revision).toBe(1);
 });
 
@@ -203,7 +207,7 @@ test('lost restore response reports uncertainty without falsely promising unchan
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
   await page.getByLabel('백업 가져오기').setInputFiles({name: 'restore.json', mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify({format: 'isf-workspace-backup', formatVersion: 3, exportedAt: Date.now(), workspace: plan(4800000)}))});
+    buffer: Buffer.from(JSON.stringify({format: 'isf-workspace-backup', formatVersion: 4, exportedAt: Date.now(), workspace: plan(4800000)}))});
   server.loseNextResponse();
   await page.getByRole('button', {name: '백업으로 바꾸기', exact: true}).click();
   await expect(page.getByRole('dialog')).toContainText('복원 결과를 확인하지 못했습니다. 최신 저장 상태와 복구 안내를 확인해 주세요.');
@@ -211,7 +215,7 @@ test('lost restore response reports uncertainty without falsely promising unchan
   expect(server.rows.get(userA)?.revision).toBe(1);
   await page.getByRole('dialog').getByRole('button', {name: '취소', exact: true}).click();
   await page.getByRole('button', {name: '저장 결과 다시 확인', exact: true}).click();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   expect(server.rows.get(userA)?.revision).toBe(1);
   expect(server.operations).toEqual(['restore_workspace', 'restore_workspace']);
 });
@@ -219,7 +223,7 @@ test('lost restore response reports uncertainty without falsely promising unchan
 test('a concurrent edit retains input and requires explicit reapply', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1400000');
   const newer = plan(); newer.revision = 2; newer.main.applied!.monthlyHousingWon = 900000;
   server.rows.set(userA, newer);
@@ -229,7 +233,7 @@ test('a concurrent edit retains input and requires explicit reapply', async ({pa
   expect(server.rows.get(userA)?.revision).toBe(2);
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', {name: '최신 상태에서 다시 적용'}).click();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toContainText('220만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('220만 원');
   expect(server.rows.get(userA)?.revision).toBe(3);
 });
 
@@ -271,7 +275,7 @@ test('account actions stay inside settings and remain usable offline while edits
   server.setFailRead(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeDisabled();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeDisabled();
   const settings = page.getByRole('button', {name: '관리 메뉴', exact: true});
   await expect(settings).toBeEnabled(); await settings.click();
   await expect(page.getByRole('menuitem', {name: '처음부터 다시', exact: true})).toBeDisabled();
@@ -325,11 +329,11 @@ test('static callback refresh scrubs OAuth errors and exposes a safe return link
 test('unsent Main input survives reload without changing the server', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1300000');
   await page.reload();
   await expect(page.getByText('이 계정에서 보내지 못한 입력을 복구했습니다.', {exact: false})).toBeVisible();
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,300,000');
   expect(server.operations).toEqual([]);
   expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);
@@ -338,17 +342,17 @@ test('unsent Main input survives reload without changing the server', async ({pa
 test('an authenticated offline revisit is read-only and does not upload cached data', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   server.setFailRead(true);
   await page.reload();
   await expect(page.getByText('오프라인 · 마지막 저장 계획')).toBeVisible();
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeDisabled();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeDisabled();
   expect(server.operations).toEqual([]);
 });
 
 test('first creation race uses the existing server plan without marking a local import complete', async ({page, context}) => {
   const server = fakeServer(); await server.attach(context, userA);
-  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace)), {...plan(), schemaVersion: 3});
+  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace)), {...plan(), schemaVersion: 3, main: {applied: plan().main.applied, setupProgress: null}});
   await page.goto('apps/main/');
   await expect(page.getByRole('button', {name: '이 브라우저 계획 가져오기'})).toBeVisible();
   server.rows.set(userA, plan(6000000));
@@ -360,15 +364,15 @@ test('first creation race uses the existing server plan without marking a local 
 
 test('local logout clears both tabs and account caches but preserves the migration source', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
-  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace)), {...plan(), schemaVersion: 3});
+  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v3', JSON.stringify(workspace)), {...plan(), schemaVersion: 3, main: {applied: plan().main.applied, setupProgress: null}});
   const second = await context.newPage();
   await page.goto('apps/main/'); await second.goto('apps/main/');
-  await expect(second.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await expect(second.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
   await page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'}).click();
   await expect(page.getByRole('button', {name: 'Google로 계속하기'})).toBeVisible();
   await expect(second.getByRole('button', {name: 'Google로 계속하기'})).toBeVisible();
-  expect(await page.evaluate(() => Object.keys(localStorage).some(key => /^isf-account-workspace-v[12]:/.test(key)))).toBe(false);
+  expect(await page.evaluate(() => Object.keys(localStorage).some(key => /^isf-account-workspace-v[123]:/.test(key)))).toBe(false);
   expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v3'))).not.toBeNull();
   await second.close();
 });
@@ -376,18 +380,18 @@ test('local logout clears both tabs and account caches but preserves the migrati
 test('a duplicated tab polling does not overwrite unsent input recovery', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await expect(page.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   const copiedId = await page.evaluate(() => sessionStorage.getItem('isf-account-tab-id'));
   const second = await context.newPage();
   await second.addInitScript(id => sessionStorage.setItem('isf-account-tab-id', id!), copiedId);
   await second.goto('apps/main/');
-  await expect(second.getByRole('button', {name: '월 소비 편집'})).toBeVisible();
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await expect(second.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1600000');
   await second.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('isf-account-workspace-v2:')).length)).toBe(2);
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('isf-account-workspace-v3:')).length)).toBe(2);
   await page.reload();
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,600,000');
   expect(server.operations).toEqual([]);
   await second.close();
@@ -396,7 +400,7 @@ test('a duplicated tab polling does not overwrite unsent input recovery', async 
 test('automatic sign-out preserves an in-memory recovery download when cache is unavailable', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.evaluate(() => {Storage.prototype.setItem = () => {throw new DOMException('quota', 'QuotaExceededError');};});
   await page.getByLabel('월평균 생활비').fill('1700000');
   await page.evaluate(() => {
@@ -485,12 +489,12 @@ test('Account Map immediately drops replay on a refreshed Main-null cloud snapsh
 });
 
 for (const width of [390, 768, 1280]) {
-  test(`cloud v4 Journey overlay owns Main only and preserves local data at ${width}px`, async ({page, context}) => {
+  test(`cloud v5 Journey overlay owns Main only and preserves local data at ${width}px`, async ({page, context}) => {
     const server = fakeServer(); const initial = mappedPlan(); initial.main.applied!.updatedAt = 2000;
     initial.updatedAt = 2000; server.rows.set(userA, initial);
     await server.attach(context, userA);
     const localRaw = JSON.stringify(plan(9000000));
-    await page.addInitScript(raw => localStorage.setItem('isf-workspace-v4', raw), localRaw);
+    await page.addInitScript(raw => localStorage.setItem('isf-workspace-v5', raw), localRaw);
     await page.setViewportSize({width, height: 900});
     await page.emulateMedia({reducedMotion: 'reduce'});
     await page.goto('apps/account-map/');
@@ -522,7 +526,7 @@ for (const width of [390, 768, 1280]) {
     expect(server.operations).toEqual(['save_main']);
     expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
     expect(server.rows.get(userA)?.accountMap).toEqual(initial.accountMap);
-    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v4'))).toBe(localRaw);
+    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(localRaw);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.reload();
     await expect(page.getByRole('button', {name: /계좌 급여통장/})).toBeVisible();
@@ -561,7 +565,7 @@ test('cloud overlay recovery survives reload and reauthentication without auto-s
   expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);
 });
 
-test('cloud v4 fixed and sweep input recover without replay and save only Account Map', async ({page, context}) => {
+test('cloud v5 fixed and sweep input recover without replay and save only Account Map', async ({page, context}) => {
   const server = fakeServer(); const initial = mappedPlan(); server.rows.set(userA, initial);
   await server.attach(context, userA);
   await page.emulateMedia({reducedMotion: 'reduce'});
@@ -587,7 +591,7 @@ test('cloud v4 fixed and sweep input recover without replay and save only Accoun
   await expect(editor.getByRole('radio', {name: '남은 금액 전부'})).toBeChecked();
 });
 
-test('cloud v4 setup keeps new location and custom-purpose input through reload without a write', async ({page, context}) => {
+test('cloud v5 setup keeps new location and custom-purpose input through reload without a write', async ({page, context}) => {
   const initial = mappedPlan();
   const {setupCompletedAt: _completed, ...applied} = initial.accountMap.applied!;
   initial.accountMap = {applied: null, draft: {...applied, schemaVersion: 2, step: 'locations'}};
@@ -620,7 +624,7 @@ test('cloud v4 setup keeps new location and custom-purpose input through reload 
   expect(server.rows.get(userA)).toEqual(initial);
 });
 
-test('cloud v4 location edit recovers its fields on reload without changing the map', async ({page, context}) => {
+test('cloud v5 location edit recovers its fields on reload without changing the map', async ({page, context}) => {
   const server = fakeServer(); const initial = mappedPlan(); server.rows.set(userA, initial);
   await server.attach(context, userA); await page.emulateMedia({reducedMotion: 'no-preference'});
   const openLocation = async () => {
@@ -647,7 +651,7 @@ test('cloud v4 location edit recovers its fields on reload without changing the 
 test('a later tab can export closed-tab recovery without applying it to the account', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
-  await page.getByRole('button', {name: '월 소비 편집'}).click();
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('1900000');
   await page.close();
   const later = await context.newPage();
@@ -664,3 +668,166 @@ test('a later tab can export closed-tab recovery without applying it to the acco
   expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);
   expect(server.operations).toEqual([]);
 });
+
+const expenseQuestions = [
+  {label: '월세', amount: '600000'},
+  {label: '주거 대출 이자', amount: '100000'},
+  {label: '관리비', amount: '100000'},
+  {label: '보험료', amount: '120000', annual: true},
+  {label: '통신비', amount: '50000'},
+  {label: '정기 구독', amount: '0'},
+  {label: '공과금', amount: '1200000', annual: true},
+  {label: '식비', amount: '400000'},
+  {label: '교통비', amount: '50000'},
+  {label: '경조사비', amount: '120000', annual: true},
+  {label: '여가비', amount: '600000', annual: true},
+  {label: '그 밖의 주거비', amount: '0'},
+  {label: '그 밖의 생활비', amount: '30000'},
+];
+
+test('expense assistant remembers each answer, replaces rough totals only on completion and survives manual edits', async ({page, context, browser, baseURL}) => {
+  const server = fakeServer(); const original = mappedPlan(); server.rows.set(userA, original);
+  await server.attach(context, userA, {id: userA, email: 'a@example.com', password: 'fixture-reauth-password'});
+  await page.setViewportSize({width: 390, height: 844});
+  await page.goto('apps/main/');
+  const open = () => page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+  await open();
+  const dialog = page.getByRole('dialog');
+  for (let index = 0; index < expenseQuestions.length; index++) {
+    const question = expenseQuestions[index];
+    const input = dialog.getByLabel(`${question.label} 금액`, {exact: true});
+    await expect(input).toBeVisible();
+    if (question.annual) await dialog.getByRole('button', {name: '1년 총액', exact: true}).click();
+    await input.fill(question.amount);
+    if (index === 1) {
+      // Recovery keeps an unsent answer through reauthentication without a server write.
+      await page.evaluate(() => {
+        const channel = new BroadcastChannel('sb-isf-test-auth-token');
+        channel.postMessage({event: 'SIGNED_OUT', session: null}); channel.close();
+      });
+      await page.getByLabel('비밀번호', {exact: true}).fill('fixture-reauth-password');
+      await page.getByRole('button', {name: '이메일로 로그인'}).click();
+      await open();
+      await expect(input).toHaveValue('100,000');
+      expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.housingInterest).toBeNull();
+    }
+    if (question.amount === '0') await dialog.getByRole('button', {name: '없어요', exact: true}).click();
+    else await dialog.getByRole('button', {name: index === expenseQuestions.length - 1 ? '합계 확인' : '다음', exact: true}).click();
+    await expect.poll(() => server.operations.filter(op => op === 'save_expense_draft').length).toBe(index + 1);
+    expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
+    if (index === 0) {
+      await dialog.getByRole('button', {name: '도우미 닫기'}).click();
+      await page.reload(); await open();
+      await expect(dialog.getByLabel('주거 대출 이자 금액')).toHaveValue('');
+      expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.rent?.amountWon).toBe(600000);
+    }
+  }
+  await expect(dialog.getByRole('heading', {name: '한 달 지출을 확인해보세요'})).toBeVisible();
+  await expect(dialog.locator('.expense-assistant__total')).toContainText('150만 원');
+  await expect(dialog).toContainText('직접 입력한 주거비와 생활비를 이 합계로 바꿔요.');
+  await dialog.getByRole('button', {name: '이 금액으로 반영'}).click();
+  await expect(dialog).toHaveCount(0);
+  const completed = server.rows.get(userA)!;
+  expect(completed.revision).toBe(original.revision + 14);
+  expect(completed.main.applied).toMatchObject({monthlyHousingWon: 900000, monthlyLivingWon: 600000, monthlyNetIncomeWon: 3200000, monthlySavingWon: 300000, monthlyInvestmentWon: 200000});
+  for (const key of ['simulation', 'portfolio', 'locations', 'accountMap'] as const) expect(completed[key]).toEqual(original[key]);
+  await expect(page.getByRole('button', {name: /^지출 계산 도우미 · 현재/})).toBeFocused();
+  // A separate browser loads saved answers and can edit a single item directly.
+  const secondContext = await browser.newContext({baseURL});
+  try {
+    await server.attach(secondContext, userA);
+    const second = await secondContext.newPage(); await second.goto('apps/main/');
+    await second.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+    await expect(second.getByRole('heading', {name: '한 달 지출을 확인해보세요'})).toBeVisible();
+    await second.getByRole('button', {name: '경조사비 답변 수정'}).click();
+    await expect(second.getByLabel('경조사비 금액')).toHaveValue('120,000');
+    await expect(second.getByRole('button', {name: '1년 총액'})).toHaveAttribute('aria-pressed', 'true');
+  } finally {await secondContext.close();}
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
+  await page.getByLabel('월평균 생활비').fill('2000000');
+  await page.getByRole('button', {name: '적용', exact: true}).click();
+  await page.getByRole('button', {name: '편집기 닫기'}).click();
+  await open();
+  await expect(dialog.getByRole('heading', {name: '한 달 지출을 확인해보세요'})).toBeVisible();
+  await dialog.getByRole('button', {name: '식비 답변 수정'}).click();
+  await expect(dialog.getByLabel('식비 금액')).toHaveValue('400,000');
+  await dialog.getByLabel('식비 금액').fill('450000');
+  await dialog.getByRole('button', {name: '도우미 닫기'}).click();
+  await open();
+  await expect(dialog.getByLabel('식비 금액')).toHaveValue('450,000');
+  await dialog.getByRole('button', {name: '내역으로', exact: true}).click();
+  expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(2000000);
+  await dialog.getByRole('button', {name: '이 금액으로 반영'}).click();
+  await expect(dialog).toHaveCount(0);
+  expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(650000);
+  await page.reload();
+  await expect(page.getByRole('button', {name: /^지출 계산 도우미 · 현재/})).toContainText('155만 원');
+});
+
+for (const width of [390, 768, 1280]) {
+  test(`expense entry and whole-plan editor have distinct contained controls and focus at ${width}px`, async ({page, context}) => {
+    const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+    await page.setViewportSize({width, height: 844}); await page.goto('apps/main/');
+    const edit = page.getByRole('button', {name: '월 금액 편집'});
+    const expense = page.getByRole('button', {name: /^지출 계산 도우미 · 현재/});
+    for (const button of [edit, expense]) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    if (width === 390) {
+      const box = (await edit.boundingBox())!;
+      expect(box.y).toBeGreaterThan(740); expect(box.y + box.height).toBeLessThanOrEqual(844);
+    }
+    await expense.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading')).toBeFocused();
+    await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
+    await dialog.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+    const box = (await dialog.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(844);
+    await page.keyboard.press('Shift+Tab');
+    await expect(dialog.getByRole('button', {name: '없어요', exact: true})).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(dialog.getByRole('button', {name: '도우미 닫기'})).toBeFocused();
+    await dialog.getByRole('button', {name: '1년 총액'}).click();
+    await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(expense).toBeFocused();
+    await edit.click(); await expect(page.getByRole('button', {name: '편집기 닫기'})).toBeFocused();
+    await page.keyboard.press('Escape'); await expect(edit).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    server.setFailRead(true); await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(edit).toBeDisabled(); await expect(expense).toBeDisabled();
+  });
+}
+
+for (const failure of ['response-lost', 'conflict'] as const) {
+  test(`expense completion recovers ${failure} inside the dialog without duplicate sums or stale Main writes`, async ({page, context}) => {
+    const server = fakeServer();
+    const draft = createExpenseDraft(1000); draft.step = 'review';
+    for (const {id} of EXPENSE_ITEMS) draft.answers[id] = {amountWon: id === 'rent' ? 600000 : 0, period: 'month'};
+    const original = withExpenseDraft(mappedPlan(), draft, false, 1000);
+    server.rows.set(userA, original); await server.attach(context, userA);
+    await page.goto('apps/main/');
+    await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+    if (failure === 'response-lost') server.loseNextResponse();
+    else server.rows.set(userA, {...original, revision: original.revision + 1, updatedAt: 2000, main: {...original.main,
+      applied: {...original.main.applied!, monthlyNetIncomeWon: 5500000, monthlySavingWon: 700000, updatedAt: 2000}}});
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', {name: '이 금액으로 반영'}).click();
+    const recovery = dialog.getByRole('button', {name: failure === 'response-lost' ? '저장 결과 다시 확인' : '최신 상태에서 다시 적용'});
+    await expect(recovery).toBeVisible();
+    if (failure === 'conflict') page.once('dialog', prompt => prompt.accept());
+    await recovery.click(); await expect(dialog).toHaveCount(0);
+    expect(server.rows.get(userA)?.revision).toBe(failure === 'response-lost' ? 1 : 2);
+    expect(server.rows.get(userA)?.main.applied).toMatchObject({monthlyHousingWon: 600000, monthlyLivingWon: 0,
+      monthlyNetIncomeWon: failure === 'response-lost' ? 3200000 : 5500000,
+      monthlySavingWon: failure === 'response-lost' ? 300000 : 700000});
+    expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
+    await expect(page.getByRole('button', {name: /^지출 계산 도우미 · 현재/})).toContainText('60만 원');
+    await page.getByRole('button', {name: '월 금액 편집'}).click();
+    await page.getByLabel('월 투자액').fill('250000');
+    await page.getByRole('button', {name: '적용', exact: true}).click();
+    await expect.poll(() => server.rows.get(userA)?.main.applied?.monthlyInvestmentWon).toBe(250000);
+    expect(server.rows.get(userA)?.main.expenseAssistant?.lastApplied?.answers.rent?.amountWon).toBe(600000);
+  });
+}

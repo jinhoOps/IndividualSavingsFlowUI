@@ -12,11 +12,11 @@ const appliedMain = {
 async function seedMain(page: Page, fixture = appliedMain) {
   await page.addInitScript((value) => {
     if (sessionStorage.getItem('isf-simulation-e2e-seeded') !== null) return;
-    localStorage.setItem('isf-workspace-v4', JSON.stringify({
-      schemaVersion: 4,
+    localStorage.setItem('isf-workspace-v5', JSON.stringify({
+      schemaVersion: 5,
       revision: 1,
       updatedAt: value.updatedAt,
-      main: { applied: value, setupProgress: null },
+      main: { expenseAssistant: null, applied: value, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
@@ -61,7 +61,7 @@ for (const viewport of [
     await initialAmount.blur();
     await expect(initialAmount).toHaveValue('12,000,000');
     await expect.poll(() => page.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
         initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
@@ -74,20 +74,22 @@ for (const viewport of [
     });
 
     const committedHeadline = await headline.textContent();
-    const committedWorkspace = await page.evaluate(() => localStorage.getItem('isf-workspace-v4'));
+    const committedWorkspace = await page.evaluate(() => localStorage.getItem('isf-workspace-v5'));
     await initialAmount.fill('');
     await initialAmount.blur();
     await expect(initialAmount).toHaveValue('12,000,000');
     await expect(initialAmount).toHaveAttribute('aria-invalid', 'false');
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(headline).toHaveText(committedHeadline ?? '');
-    await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-workspace-v4')))
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-workspace-v5')))
       .toBe(committedWorkspace);
 
     const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
       .map((name) => page.getByRole('button', { name }));
     const adjustmentControl = page.locator('.simulation-principal-adjustments');
     const inputControl = initialAmount.locator('xpath=..');
+    // Measure the final typography before scrolling a control to the viewport edge.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await initialAmount.scrollIntoViewIfNeeded();
     await expect.poll(async () => {
       const box = await initialAmount.boundingBox();
@@ -148,7 +150,7 @@ for (const viewport of [
     await adjustments[0].click();
     await expect(initialAmount).toHaveValue('0');
     await expect.poll(() => page.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
         initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
@@ -161,7 +163,7 @@ for (const viewport of [
     await adjustments[2].click();
     await expect(initialAmount).toHaveValue('50,000,000');
     await expect.poll(() => page.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
         initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
@@ -174,7 +176,7 @@ for (const viewport of [
     await adjustments[1].click();
     await expect(initialAmount).toHaveValue('0');
     await expect.poll(() => page.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
         initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
@@ -187,7 +189,7 @@ for (const viewport of [
     await adjustments[3].click();
     await expect(initialAmount).toHaveValue('100,000,000');
     await expect.poll(() => page.evaluate(() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
         initialInvestmentWon: workspace.simulation.draft?.initialInvestmentWon,
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
@@ -240,7 +242,7 @@ test('guides automatic-goal first run, supports boundary years and keeps Main re
   await page.getByText('계산 기준').click();
   await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
   expect(await page.evaluate(() => ({
-    workspace: JSON.parse(localStorage.getItem('isf-workspace-v4')!),
+    workspace: JSON.parse(localStorage.getItem('isf-workspace-v5')!),
   }))).toMatchObject({
     workspace: {
       main: { applied: appliedMain },
@@ -284,15 +286,15 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   await seedMain(page);
   await openFirstResult(page);
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v4')!).simulation.draft?.years
+    JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft?.years
   ))).toBe(20);
   await page.reload();
   await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
     .toBeVisible();
 
   await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
-    localStorage.setItem('isf-workspace-v4', JSON.stringify({
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify({
       ...workspace,
       revision: workspace.revision + 1,
       updatedAt: workspace.updatedAt + 1,
@@ -309,7 +311,7 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   await page.reload();
   await expect(page.getByText(/월 저축 90만 원/)).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v4')!).simulation.draft?.source.monthlySavingsWon
+    JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft?.source.monthlySavingsWon
   ))).toBe(900_000);
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -317,7 +319,7 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   await page.getByRole('button', { name: '다시 설정' }).click();
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
   expect(await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return {
       mainSaving: workspace.main.applied.monthlySavingWon,
       simulation: workspace.simulation,
@@ -367,11 +369,11 @@ test('migrated v2 high-principal workspace completes the goal without changing M
   })).toBeVisible();
 
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return workspace.simulation.draft?.targetAmountWon;
   })).toBe(300_000_000);
   expect(await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return workspace.main.applied;
   })).toEqual(appliedMain);
 });
@@ -384,9 +386,9 @@ test('keeps a failed reset dialog scrollable, contained, and focused in a short 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
   await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
   await page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     workspace.simulation.draft.years = workspace.simulation.draft.years === 20 ? 19 : 20;
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
   });
 
   await page.getByRole('button', { name: '다시 설정' }).click();

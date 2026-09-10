@@ -7,7 +7,7 @@ import {createEmptyWorkspace} from '../workspace/domain/model';
 import {authCallbackUrl, getBrowserClient, readSupabaseConfig, RETURN_PATH_KEY, safeReturnPath, type SupabaseConfig} from './auth';
 import {downloadText, downloadWorkspace, workspaceSummary} from './accountFiles';
 import './account.css';
-import {AccountDraftContext} from './AccountDraftContext';
+import {AccountDraftContext, AccountWriteRecoveryContext} from './AccountDraftContext';
 import {importWorkspaceBackup} from '../workspace/infrastructure/workspaceBackup';
 import {accountCacheKeys, accountCachePrefix, accountRecoveryRecords, getAccountTabId, hasAccountRecovery} from './accountTab';
 import {AccountSignIn} from './AccountSignIn';
@@ -287,7 +287,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     <fieldset key={`${runtime.user.id}:${runtime.generation}:${appGeneration}`}
       onInputCapture={() => workspace.markEdited()} onChangeCapture={() => workspace.markEdited()}
       className="account-product">
-      <AccountDraftContext.Provider value={workspace}>{children(workspace)}</AccountDraftContext.Provider>
+      <AccountWriteRecoveryContext.Provider value={retry}><AccountDraftContext.Provider value={workspace}>{children(workspace)}</AccountDraftContext.Provider></AccountWriteRecoveryContext.Provider>
     </fieldset>
   </AccountManagementContext.Provider>;
 }

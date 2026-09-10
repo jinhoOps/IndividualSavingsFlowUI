@@ -64,10 +64,10 @@ const PORTFOLIO_PLAN = {
 };
 
 const WORKSPACE = {
-  schemaVersion: 4 as const,
+  schemaVersion: 5 as const,
   revision: 3,
   updatedAt: Date.UTC(2026, 7, 12, 4, 2),
-  main: { applied: MAIN, setupProgress: null },
+  main: { expenseAssistant: null, applied: MAIN, setupProgress: null },
   simulation: { draft: SIMULATION },
   portfolio: { plans: [PORTFOLIO_PLAN], draft: null },
   locations: [],
@@ -82,7 +82,7 @@ const VIEWPORTS = [
 
 const MAIN_DONUT_INITIAL = {
   activeAnimations: 0,
-  semanticName: '소비 56.3%, 저축 9.4%, 투자 6.3%, 여윳돈 28.1%',
+  semanticName: '지출 56.3%, 저축 9.4%, 투자 6.3%, 여윳돈 28.1%',
   centerSemantic: '15.6%',
   centerVisual: '15.6%',
   segments: [
@@ -95,7 +95,7 @@ const MAIN_DONUT_INITIAL = {
 
 const MAIN_DONUT_AFTER_EDIT = {
   activeAnimations: 0,
-  semanticName: '소비 59.4%, 저축 9.4%, 투자 6.3%, 여윳돈 25.0%',
+  semanticName: '지출 59.4%, 저축 9.4%, 투자 6.3%, 여윳돈 25.0%',
   centerSemantic: '15.6%',
   centerVisual: '15.6%',
   segments: [
@@ -152,7 +152,7 @@ for (const viewport of VIEWPORTS) {
     }, 'deficit-clipped');
 
     await openWithWorkspace(page, 'apps/main/', WORKSPACE);
-    const mainEditTrigger = page.getByRole('button', { name: '월 소비 편집' });
+    const mainEditTrigger = page.getByRole('button', { name: '월 금액 편집' });
     await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_INITIAL);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `main-${viewport.width}-edit-before.png`);
     await mainEditTrigger.click();
@@ -170,13 +170,13 @@ for (const viewport of VIEWPORTS) {
     expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
     expect(mainTransitionStart.segments).not.toEqual(MAIN_DONUT_AFTER_EDIT.segments);
     await expect.poll(() => page.evaluate(() => (
-      JSON.parse(localStorage.getItem('isf-workspace-v4')!).main.applied.monthlyLivingWon
+      JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
     await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_AFTER_EDIT);
     await page.getByRole('button', { name: '편집기 닫기' }).click();
     await expect(mainEditTrigger).toBeFocused();
-    await expect(mainEditTrigger).toContainText('190만 원');
-    await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('80만 원');
+    await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
+    await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('80만 원');
     await expect(page.getByRole('status', { name: '저장됨' })).toHaveCount(0);
     await expectNoDocumentOverflow(page);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `main-${viewport.width}-edit-after.png`);
@@ -325,7 +325,7 @@ async function captureMainReview(
 ): Promise<void> {
   await openWithWorkspace(page, 'apps/main/', {
     ...WORKSPACE,
-    main: {
+    main: { expenseAssistant: null,
       applied: null,
       setupProgress: {
         kind: 'initial' as const,
@@ -378,7 +378,7 @@ async function captureMainReview(
     (draft.monthlyHousingWon + draft.monthlyLivingWon) / draft.monthlyNetIncomeWon * 100
   ).toFixed(1);
   await expect(bar.getByRole('button', {
-    name: new RegExp(`소비.*${escapeRegExp(consumptionPercentage)}%`),
+    name: new RegExp(`지출.*${escapeRegExp(consumptionPercentage)}%`),
   })).toBeVisible();
   if (phase === 'normal') {
     await expect(bar.getByRole('button', { name: /남는 돈.*28\.1%/ })).toBeVisible();
@@ -395,7 +395,7 @@ async function captureMainReview(
 async function captureReducedMotionFinals(page: Page, width: number): Promise<void> {
   await openWithWorkspace(page, 'apps/main/', {
     ...WORKSPACE,
-    main: {
+    main: { expenseAssistant: null,
       applied: null,
       setupProgress: {
         kind: 'initial' as const,
@@ -471,7 +471,7 @@ async function openWithWorkspace(
   await page.evaluate(({ value, clearPreference }) => {
     localStorage.clear();
     sessionStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(value));
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(value));
     if (clearPreference) localStorage.removeItem('isf-portfolio-view-preferences-v1');
   }, { value: workspace, clearPreference: clearPortfolioPreferences });
   await page.reload();

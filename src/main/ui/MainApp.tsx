@@ -223,6 +223,8 @@ export function MainApp({
           : { kind: 'error', message: plan.progressWarning }}
         journeyEntry={journeyEntry}
         initialFocusPath={initialEditPath}
+        expenseRepository={repository.expenseAssistant}
+        onExpenseApplied={plan.acceptAppliedData}
       />
     </AppShell>
   );

@@ -1,7 +1,10 @@
+import { convertWorkspaceV4Document, upgradeWorkspaceV4 } from './workspaceV4Migration';
+import type { ExpenseAssistantDraft } from '../../main/domain/expenseAssistant';
 import {
   PREVIOUS_WORKSPACE_STORAGE_KEY,
   RETIRED_WORKSPACE_STORAGE_KEY,
   WORKSPACE_STORAGE_KEY,
+  WORKSPACE_V4_STORAGE_KEY,
   createEmptyWorkspace,
   type WorkspaceDocument,
 } from '../domain/model';
@@ -10,6 +13,7 @@ import { parseWorkspaceDocument } from '../domain/validation';
 import {
   BrowserWorkspaceSaveLock,
   CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE,
+  V4_WORKSPACE_SAVE_LOCK_NAMESPACE,
   PREVIOUS_WORKSPACE_SAVE_LOCK_NAMESPACE,
   RETIRED_WORKSPACE_SAVE_LOCK_NAMESPACE,
   type WorkspaceSaveGuard,
@@ -50,6 +54,7 @@ export type WorkspaceInvalidResetResult =
   | { status: 'changed' | 'unavailable' };
 
 export interface WorkspaceRepository {
+  saveExpense?(expectedRevision: number, draft: ExpenseAssistantDraft, complete: boolean): Promise<WorkspaceWriteResult>;
   load(): WorkspaceLoadResult;
   migrate(expectedRevision: number): Promise<WorkspaceWriteResult>;
   update(
@@ -68,6 +73,7 @@ export interface BrowserWorkspaceRepositoryOptions {
   now?: () => number;
   saveLock?: WorkspaceSaveLock;
   previousSaveLock?: WorkspaceSaveLock;
+  v4SaveLock?: WorkspaceSaveLock;
   retiredSaveLock?: WorkspaceSaveLock;
   saveLeaseOptions?: WorkspaceSaveLeaseOptions;
   eventTarget?: Window;
@@ -77,6 +83,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
   private readonly now: () => number;
   private readonly saveLock: WorkspaceSaveLock;
   private readonly previousSaveLock: WorkspaceSaveLock;
+  private readonly v4SaveLock: WorkspaceSaveLock;
   private readonly retiredSaveLock: WorkspaceSaveLock;
   private readonly eventTarget: Window;
   private readonly notificationStorageGroup: object;
@@ -91,6 +98,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
         ...options.saveLeaseOptions,
         namespace: CURRENT_WORKSPACE_SAVE_LOCK_NAMESPACE,
       });
+    this.v4SaveLock = options.v4SaveLock ?? new BrowserWorkspaceSaveLock(storageOverride, { ...options.saveLeaseOptions, namespace: V4_WORKSPACE_SAVE_LOCK_NAMESPACE });
     this.previousSaveLock = options.previousSaveLock
       ?? new BrowserWorkspaceSaveLock(storageOverride, {
         ...options.saveLeaseOptions,
@@ -113,6 +121,9 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     const current = this.loadCurrentOnly();
     if (current.status !== 'empty') return current;
 
+    const v4 = this.loadV4Only();
+    if (v4.status !== 'empty') return v4;
+
     const previous = this.loadPreviousOnly();
     if (previous.status !== 'empty') return previous;
 
@@ -131,10 +142,11 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     try {
       const source = this.detectSource();
       if (source === 'unavailable') return { status: 'unavailable' };
+      if (source === 'v4') return await this.updateFromV4(expectedRevision, mutate);
       if (source === 'v3') return await this.updateFromPrevious(expectedRevision, mutate);
       if (source === 'retired') return await this.updateFromRetired(expectedRevision, mutate);
       return await this.saveLock.runExclusive(async (guard) => (
-        this.updateV4OrEmptyLocked(expectedRevision, mutate, guard)
+        this.updateV5OrEmptyLocked(expectedRevision, mutate, guard)
       ));
     } catch {
       return { status: 'unavailable' };
@@ -152,9 +164,10 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     try {
       const source = this.detectSource();
       if (source === 'unavailable') return { status: 'unavailable' };
-      if (source === 'v4') return await this.saveLock.runExclusive(async (guard) => (
+      if (source === 'v5') return await this.saveLock.runExclusive(async (guard) => (
         this.resetCurrentInvalidLocked(expectedRaw, guard)
       ));
+      if (source === 'v4') return await this.resetV4Invalid(expectedRaw);
       if (source === 'v3') return await this.resetPreviousInvalid(expectedRaw);
       if (source === 'retired') return await this.resetRetiredInvalid(expectedRaw);
       return { status: 'changed' };
@@ -171,7 +184,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     );
   }
 
-  private async updateV4OrEmptyLocked(
+  private async updateV5OrEmptyLocked(
     expectedRevision: number,
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
     guard: WorkspaceSaveGuard,
@@ -179,8 +192,26 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     const current = this.loadCurrentOnly();
     if (current.status !== 'empty') return this.updateLocked(expectedRevision, mutate, guard, current);
     const source = this.detectSource();
-    if (source !== 'empty' && source !== 'v4') return { status: 'unavailable' };
+    if (source !== 'empty' && source !== 'v5') return { status: 'unavailable' };
     return this.updateLocked(expectedRevision, mutate, guard, current);
+  }
+
+  private async updateFromV4(
+    expectedRevision: number,
+    mutate: (current: WorkspaceDocument) => WorkspaceDocument,
+  ): Promise<WorkspaceWriteResult> {
+    return await this.v4SaveLock.runExclusive(async (previousGuard) => (
+      await this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(previousGuard, currentGuard);
+        const current = this.loadCurrentOnly();
+        if (current.status === 'invalid' || current.status === 'unavailable') return { status: current.status };
+        if (current.status === 'found') return this.updateLocked(expectedRevision, mutate, currentGuard, current);
+        const previous = this.loadV4Only();
+        if (previous.status === 'invalid' || previous.status === 'unavailable') return { status: previous.status };
+        if (previous.status === 'empty') return { status: 'unavailable' };
+        return this.updateLocked(expectedRevision, mutate, guard, previous);
+      })
+    ));
   }
 
   private async updateFromPrevious(
@@ -188,16 +219,18 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
   ): Promise<WorkspaceWriteResult> {
     return await this.previousSaveLock.runExclusive(async (previousGuard) => (
-      await this.saveLock.runExclusive(async (currentGuard) => {
-        const guard = combineGuards(previousGuard, currentGuard);
+      await this.v4SaveLock.runExclusive(async (v4Guard) => this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(previousGuard, v4Guard, currentGuard);
         const current = this.loadCurrentOnly();
         if (current.status === 'invalid' || current.status === 'unavailable') return { status: current.status };
         if (current.status === 'found') return this.updateLocked(expectedRevision, mutate, currentGuard, current);
+        const v4 = this.loadV4Only();
+        if (v4.status !== 'empty') return this.updateLocked(expectedRevision, mutate, guard, v4);
         const previous = this.loadPreviousOnly();
         if (previous.status === 'invalid' || previous.status === 'unavailable') return { status: previous.status };
         if (previous.status === 'empty') return { status: 'unavailable' };
         return this.updateLocked(expectedRevision, mutate, guard, previous);
-      })
+      }))
     ));
   }
 
@@ -206,16 +239,18 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     mutate: (current: WorkspaceDocument) => WorkspaceDocument,
   ): Promise<WorkspaceWriteResult> {
     return await this.retiredSaveLock.runExclusive(async (retiredGuard) => (
-      await this.saveLock.runExclusive(async (currentGuard) => {
-        const guard = combineGuards(retiredGuard, currentGuard);
+      await this.v4SaveLock.runExclusive(async (v4Guard) => this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(retiredGuard, v4Guard, currentGuard);
         const current = this.loadCurrentOnly();
         if (current.status === 'invalid' || current.status === 'unavailable') return { status: current.status };
         if (current.status === 'found') return this.updateLocked(expectedRevision, mutate, currentGuard, current);
+        const v4 = this.loadV4Only();
+        if (v4.status !== 'empty') return this.updateLocked(expectedRevision, mutate, guard, v4);
         const retired = this.loadRetiredOnly();
         if (retired.status === 'invalid' || retired.status === 'unavailable') return { status: retired.status };
         if (retired.status === 'empty') return { status: 'unavailable' };
         return this.updateLocked(expectedRevision, mutate, guard, retired);
-      })
+      }))
     ));
   }
 
@@ -270,9 +305,9 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     return this.commitEmptyReset(guard, observedRaw);
   }
 
-  private async resetPreviousInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
-    return await this.previousSaveLock.runExclusive(async (previousGuard) => {
-      const previous = this.loadPreviousOnly();
+  private async resetV4Invalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
+    return await this.v4SaveLock.runExclusive(async (previousGuard) => {
+      const previous = this.loadV4Only();
       if (previous.status !== 'invalid') return previous.status === 'unavailable'
         ? { status: 'unavailable' }
         : { status: 'changed' };
@@ -282,7 +317,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
         try {
           guard.assertOwned();
           if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null
-            || this.storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
+            || this.storage.getItem(WORKSPACE_V4_STORAGE_KEY) !== expectedRaw) {
             return { status: 'changed' };
           }
         } catch {
@@ -293,6 +328,30 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     });
   }
 
+  private async resetPreviousInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
+    return await this.previousSaveLock.runExclusive(async (previousGuard) => {
+      const previous = this.loadPreviousOnly();
+      if (previous.status !== 'invalid') return previous.status === 'unavailable'
+        ? { status: 'unavailable' }
+        : { status: 'changed' };
+      if (previous.raw !== expectedRaw) return { status: 'changed' };
+      return await this.v4SaveLock.runExclusive(async (v4Guard) => this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(previousGuard, v4Guard, currentGuard);
+        try {
+          guard.assertOwned();
+          if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null
+            || this.storage.getItem(WORKSPACE_V4_STORAGE_KEY) !== null
+            || this.storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
+            return { status: 'changed' };
+          }
+        } catch {
+          return { status: 'unavailable' };
+        }
+        return this.commitEmptyReset(guard, null);
+      }));
+    });
+  }
+
   private async resetRetiredInvalid(expectedRaw: string): Promise<WorkspaceInvalidResetResult> {
     return await this.retiredSaveLock.runExclusive(async (retiredGuard) => {
       const retired = this.loadRetiredOnly();
@@ -300,11 +359,12 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
         ? { status: 'unavailable' }
         : { status: 'changed' };
       if (retired.raw !== expectedRaw) return { status: 'changed' };
-      return await this.saveLock.runExclusive(async (currentGuard) => {
-        const guard = combineGuards(retiredGuard, currentGuard);
+      return await this.v4SaveLock.runExclusive(async (v4Guard) => this.saveLock.runExclusive(async (currentGuard) => {
+        const guard = combineGuards(retiredGuard, v4Guard, currentGuard);
         try {
           guard.assertOwned();
           if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null
+            || this.storage.getItem(WORKSPACE_V4_STORAGE_KEY) !== null
             || this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== expectedRaw) {
             return { status: 'changed' };
           }
@@ -312,7 +372,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
           return { status: 'unavailable' };
         }
         return this.commitEmptyReset(guard, null);
-      });
+      }));
     });
   }
 
@@ -390,9 +450,10 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     }
   }
 
-  private detectSource(): 'v4' | 'v3' | 'retired' | 'empty' | 'unavailable' {
+  private detectSource(): 'v5' | 'v4' | 'v3' | 'retired' | 'empty' | 'unavailable' {
     try {
-      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) return 'v4';
+      if (this.storage.getItem(WORKSPACE_STORAGE_KEY) !== null) return 'v5';
+      if (this.storage.getItem(WORKSPACE_V4_STORAGE_KEY) !== null) return 'v4';
       if (this.storage.getItem(PREVIOUS_WORKSPACE_STORAGE_KEY) !== null) return 'v3';
       if (this.storage.getItem(RETIRED_WORKSPACE_STORAGE_KEY) !== null) return 'retired';
       return 'empty';
@@ -411,6 +472,27 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
     return raw === null ? this.createEmptyLoadResult() : this.parseCurrentRaw(raw);
   }
 
+  private loadV4Only(): WorkspaceLoadResult {
+    let raw: string | null;
+    try {
+      raw = this.storage.getItem(WORKSPACE_V4_STORAGE_KEY);
+    } catch {
+      return { status: 'unavailable' };
+    }
+    if (raw === null) return this.createEmptyLoadResult();
+    try {
+      const converted = convertWorkspaceV4Document(JSON.parse(raw));
+      if (converted.status === 'invalid') return { status: 'invalid', raw };
+      return {
+        status: 'found',
+        workspace: converted.workspace,
+        needsMigration: true,
+      };
+    } catch (error) {
+      return error instanceof SyntaxError ? { status: 'invalid', raw } : { status: 'unavailable' };
+    }
+  }
+
   private loadPreviousOnly(): WorkspaceLoadResult {
     let raw: string | null;
     try {
@@ -424,7 +506,7 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       if (converted.status === 'invalid') return { status: 'invalid', raw };
       return {
         status: 'found',
-        workspace: converted.workspace,
+        workspace: upgradeWorkspaceV4(converted.workspace),
         needsMigration: true,
       };
     } catch (error) {
@@ -444,11 +526,11 @@ export class BrowserWorkspaceRepository implements WorkspaceRepository {
       const converted = convertRetiredWorkspaceToV4(JSON.parse(raw), this.now());
       if (converted.status === 'invalid') return { status: 'invalid', raw };
       if (converted.simulationMigration === null) {
-        return { status: 'found', workspace: converted.workspace, needsMigration: true };
+        return { status: 'found', workspace: upgradeWorkspaceV4(converted.workspace), needsMigration: true };
       }
       return {
         status: 'found',
-        workspace: converted.workspace,
+        workspace: upgradeWorkspaceV4(converted.workspace),
         needsMigration: true,
         simulationMigration: converted.simulationMigration,
       };

@@ -1,7 +1,7 @@
 import type {SupabaseConfig} from './config';
 
 export function accountCachePrefix(config: SupabaseConfig, userId: string): string {
-  return `isf-account-workspace-v2:${config.projectRef}:${userId}`;
+  return `isf-account-workspace-v3:${config.projectRef}:${userId}`;
 }
 let tabClaim: Promise<string> | undefined;
 export function getAccountTabId(): Promise<string> {
@@ -41,7 +41,7 @@ if (typeof window !== 'undefined') window.addEventListener('pageshow', event => 
   if (event.persisted) window.location.reload();
 });
 export function accountCacheKeys(storage: Storage, prefix: string): string[] {
-  const prefixes = [prefix, prefix.replace(/^isf-account-workspace-v2:/, 'isf-account-workspace-v1:')];
+  const prefixes = [prefix, ...[1, 2].map(version => prefix.replace(/^isf-account-workspace-v3:/, `isf-account-workspace-v${version}:`))];
   return Object.keys(storage).filter(key => prefixes.some(candidate => key === candidate || key.startsWith(`${candidate}:`)));
 }
 export function hasAccountRecovery(storage: Storage | undefined, prefix: string): boolean {

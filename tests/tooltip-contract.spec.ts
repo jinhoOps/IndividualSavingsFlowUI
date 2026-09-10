@@ -39,11 +39,11 @@ for (const viewport of [
     const visualTarget = page.locator('.allocation-bar__segment-target').first();
     await visualTarget.hover({ position: { x: 1, y: 22 } });
     const tooltip = page.getByRole('tooltip');
-    await expect(tooltip).toHaveText('소비 · 100만 원 · 100.0%');
+    await expect(tooltip).toHaveText('지출 · 100만 원 · 100.0%');
     await expectTooltipContract(page, tooltip, 'normal');
     await expect(visualTarget).toHaveAttribute('aria-describedby', await tooltip.getAttribute('id'));
 
-    const longValue = '소비 · 1,000,000원 · 100.0% · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명';
+    const longValue = '지출 · 1,000,000원 · 100.0% · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명';
     await tooltip.evaluate((element, text) => {
       element.textContent = text;
     }, longValue);
@@ -81,7 +81,7 @@ test('keeps an open right-edge visual tooltip within the stage and viewport afte
   if (targetBox === null) throw new Error('Expected visual allocation target');
   await visualTarget.click({ position: { x: targetBox.width - 1, y: 22 } });
   const tooltip = page.getByRole('tooltip');
-  await expect(tooltip).toHaveText('소비 · 100만 원 · 100.0%');
+  await expect(tooltip).toHaveText('지출 · 100만 원 · 100.0%');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expectTooltipContract(page, tooltip, 'normal');
@@ -197,7 +197,7 @@ async function expectLongTooltipOverflow(tooltip: ReturnType<Page['getByRole']>)
     };
   });
 
-  expect(state.fullText).toBe('소비 · 1,000,000원 · 100.0% · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명');
+  expect(state.fullText).toBe('지출 · 1,000,000원 · 100.0% · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명 · 화면 폭이 제한될 때에도 전체 접근 가능 텍스트를 유지하는 긴 설명');
   expect(state.isClipped).toBe(true);
   expect(state.whiteSpace).toBe('nowrap');
   expect(state.textOverflow).toBe('ellipsis');

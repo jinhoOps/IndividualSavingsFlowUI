@@ -55,10 +55,10 @@ function serialLock() {
 
 function workspace(overrides: Partial<WorkspaceDocument['portfolio']> = {}): WorkspaceDocument {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     revision: 4,
     updatedAt: 400,
-    main: {
+    main: { expenseAssistant: null,
       applied: {
         schemaVersion: 2,
         updatedAt: 100,
@@ -107,6 +107,7 @@ describe('BrowserPortfolioRepository workspace adapter', () => {
     });
     expect(storage.reads).toEqual([
       WORKSPACE_STORAGE_KEY,
+      'isf-workspace-v4',
       PREVIOUS_WORKSPACE_STORAGE_KEY,
       RETIRED_WORKSPACE_STORAGE_KEY,
     ]);

@@ -1,3 +1,4 @@
+import { withExpenseDraft } from '../../main/infrastructure/expenseAssistantRepository';
 import type { WorkspaceDocument } from '../domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
 import { parsePortfolioDraft } from '../../portfolio/domain/validation';
@@ -113,7 +114,7 @@ export class AccountWorkspaceSession {
         const decoded = workspaceFromRow(row, this.options.userId);
         if (!decoded) {
           this.rawRemote = cloneRemote(row);
-          this.status = remoteSchemaVersion(row) !== 4 ? 'unsupported' : 'invalid';
+          this.status = remoteSchemaVersion(row) !== 5 ? 'unsupported' : 'invalid';
         } else {
           if ((oldRevision === undefined || decoded.revision > oldRevision)
             && (this.accountMapScopeUsed || this.isAccountMapWrite(this.pending)
@@ -154,6 +155,12 @@ export class AccountWorkspaceSession {
     const existing = this.scopes.get(scope);
     if (existing) return existing;
     const port: WorkspaceRepository = {
+      ...(scope === 'main' ? { saveExpense: (revision: number, draft: import('../../main/domain/expenseAssistant').ExpenseAssistantDraft, complete: boolean) => {
+        if (!this.snapshot) return Promise.resolve({status: 'unavailable'} as const);
+        try {
+          return this.save(scope, revision, withExpenseDraft(this.snapshot, draft, complete, Date.now()), complete ? 'apply_expense' : 'save_expense_draft');
+        } catch { return Promise.resolve({status: 'invalid'} as const); }
+      } } : {}),
       load: () => this.snapshot && !this.disposed && !this.locked
         ? {status: 'found', workspace: structuredClone(this.snapshot), needsMigration: false}
         : {status: 'unavailable'},
@@ -171,7 +178,7 @@ export class AccountWorkspaceSession {
     this.scopes.set(scope, port);
     return port;
   }
-  private save(scope: WorkspaceScope, revision: number, candidate: WorkspaceDocument): Promise<WorkspaceWriteResult> {
+  private save(scope: WorkspaceScope, revision: number, candidate: WorkspaceDocument, operation = operations[scope]): Promise<WorkspaceWriteResult> {
     const rebasingAccountMapConflict = scope === 'account-map'
       && this.status === 'conflict'
       && this.pending?.operation === 'save_account_map';
@@ -185,7 +192,7 @@ export class AccountWorkspaceSession {
       return Promise.resolve({status: 'invalid'});
     }
     const payload = Object.fromEntries(keys[scope].map(key => [key, validated[key]]));
-    this.pending = {operation: operations[scope], expectedRevision: revision, payload, mutationId: this.id(),
+    this.pending = {operation, expectedRevision: revision, payload, mutationId: this.id(),
       ...(this.accountMapScopeUsed && scope === 'main' ? {context: 'account-map' as const} : {})};
     return this.sendPending();
   }
@@ -229,7 +236,15 @@ export class AccountWorkspaceSession {
       this.discardPending();
       return Promise.resolve({status: 'invalid'});
     }
-    const candidate = {...this.snapshot, ...this.pending.payload};
+    const expense = this.pending.operation === 'save_expense_draft' || this.pending.operation === 'apply_expense';
+    if (expense && this.snapshot.main.applied === null) return Promise.resolve({status: 'invalid'});
+    let candidate: WorkspaceDocument;
+    try {
+      candidate = expense ? withExpenseDraft(this.snapshot, this.pending.payload.main!.expenseAssistant!.draft, this.pending.operation === 'apply_expense', Date.now())
+        : {...this.snapshot, ...this.pending.payload};
+    } catch { return Promise.resolve({status: 'invalid'}); }
+    if (this.pending.operation === 'save_main') candidate.main = {...candidate.main, expenseAssistant: structuredClone(this.snapshot.main.expenseAssistant)};
+    if (expense || this.pending.operation === 'save_main') this.pending = {...this.pending, payload: {main: candidate.main}};
     if (!parseWorkspaceDocument(candidate)) return Promise.resolve({status: 'invalid'});
     this.pending = {...this.pending, expectedRevision: this.snapshot.revision, mutationId: this.id()};
     return this.sendPending();
@@ -300,6 +315,10 @@ export class AccountWorkspaceSession {
   }
 
   private clearCoveredRecoveryDrafts(pending: PendingWorkspaceWrite): void {
+    if ((pending.operation === 'save_expense_draft' || pending.operation === 'apply_expense')
+      && sameJson((this.recoveryDrafts['main-expense']?.value as {answers?: unknown} | undefined)?.answers, pending.payload.main?.expenseAssistant?.draft.answers)) {
+      delete this.recoveryDrafts['main-expense'];
+    }
     if (pending.operation === 'save_main' && mainRecoveryIsCovered(this.recoveryDrafts.main?.value, pending.payload)) {
       delete this.recoveryDrafts.main;
     }
@@ -341,7 +360,7 @@ function remoteSchemaVersion(value: unknown): unknown {
 function remoteRevision(value: unknown, userId: string): number | null {
   if (typeof value !== 'object' || value === null) return null;
   const row = value as Record<string, unknown>;
-  if (row.user_id !== userId || row.schema_version !== 4) return null;
+  if (row.user_id !== userId || row.schema_version !== 5) return null;
   const rawRevision = row.revision;
   const revision = typeof rawRevision === 'string' && /^\d+$/.test(rawRevision)
     ? Number(rawRevision)

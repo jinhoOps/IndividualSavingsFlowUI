@@ -1,0 +1,26 @@
+[
+  {
+    "result": "{\"width\":390,\"scrollWidth\":390,\"focus\":\"편집기 닫기\",\"editor\":{\"x\":0,\"y\":266.203125,\"width\":390,\"height\":577.796875}}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  {
+    "result": "{\"width\":390,\"focus\":\"월 금액 편집\",\"editButtons\":1}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  {
+    "result": "{\"width\":768,\"scrollWidth\":768,\"focus\":\"편집기 닫기\",\"editor\":{\"x\":288,\"y\":0,\"width\":480,\"height\":900}}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  {
+    "result": "{\"width\":768,\"focus\":\"월 금액 편집\",\"editButtons\":1}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  {
+    "result": "{\"width\":1280,\"scrollWidth\":1280,\"focus\":\"편집기 닫기\",\"editor\":{\"x\":800,\"y\":0,\"width\":480,\"height\":900}}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  {
+    "result": "{\"width\":1280,\"focus\":\"월 금액 편집\",\"editButtons\":1}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  }
+]

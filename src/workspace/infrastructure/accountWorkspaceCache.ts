@@ -1,3 +1,4 @@
+import { convertWorkspaceV4Document, upgradeWorkspaceV4 } from './workspaceV4Migration';
 import type { WorkspaceDocument } from '../domain/model';
 import { parseWorkspaceDocument, validateWorkspaceV3Document } from '../domain/validation';
 import type { WorkspaceOperation, WorkspacePayload } from './workspaceRemote';
@@ -24,13 +25,15 @@ export const INVALID_CACHE_RECOVERY_KEY = '__invalid-current-cache__';
 const operationPayloadKeys: Record<WorkspaceOperation, readonly (keyof WorkspacePayload)[]> = {
   initialize_workspace: ['main', 'simulation', 'portfolio', 'locations', 'accountMap'],
   save_main: ['main'],
+  save_expense_draft: ['main'],
+  apply_expense: ['main'],
   save_simulation: ['simulation'],
   save_portfolio: ['portfolio'],
   save_account_map: ['locations', 'accountMap'],
   restore_workspace: ['main', 'simulation', 'portfolio', 'locations', 'accountMap'],
 };
 export interface AccountCache {
-  version: 2;
+  version: 3;
   snapshot: WorkspaceDocument | null;
   pending: PendingWorkspaceWrite | null;
   recoveryDrafts: Record<string, RecoveryDraft>;
@@ -38,17 +41,19 @@ export interface AccountCache {
 export class AccountWorkspaceCache {
   readonly key: string;
   private readonly legacyKey: string;
+  private readonly v4Key: string;
   constructor(namespace: string, private readonly storage?: CacheStorage) {
-    this.key = `isf-account-workspace-v2:${namespace}`;
+    this.key = `isf-account-workspace-v3:${namespace}`;
+    this.v4Key = `isf-account-workspace-v2:${namespace}`;
     this.legacyKey = `isf-account-workspace-v1:${namespace}`;
   }
   read(): AccountCache | null {
     let raw: string | null | undefined;
     try {
       raw = this.storage?.getItem(this.key);
-      if (raw === null || raw === undefined) return this.readLegacy();
+      if (raw === null || raw === undefined) return this.readV4();
       const data = JSON.parse(raw) as AccountCache;
-      if (data.version !== 2) return this.invalidCurrent(raw);
+      if (data.version !== 3) return this.invalidCurrent(raw);
       const snapshot = data.snapshot === null ? null : parseWorkspaceDocument(data.snapshot);
       if (data.snapshot !== null && snapshot === null) return this.invalidCurrent(raw);
       const recoveryDrafts = parseRecoveryDrafts(data.recoveryDrafts);
@@ -56,15 +61,33 @@ export class AccountWorkspaceCache {
       if (data.pending !== null && pending === null) {
         recoveryDrafts[INVALID_PENDING_RECOVERY_KEY] = {baseRevision: 0, value: data.pending};
       }
-      return {version: 2, snapshot, pending, recoveryDrafts};
+      return {version: 3, snapshot, pending, recoveryDrafts};
     } catch { return typeof raw === 'string' ? this.invalidCurrent(raw) : null; }
   }
   private invalidCurrent(raw: string): AccountCache {
     // A successful server refresh will replace this mutable cache. Preserve
     // undecodable unsent data inside its recovery envelope before that write.
-    return {version: 2, snapshot: null, pending: null, recoveryDrafts: {
+    return {version: 3, snapshot: null, pending: null, recoveryDrafts: {
       [INVALID_CACHE_RECOVERY_KEY]: {baseRevision: 0, value: {key: this.key, raw}},
     }};
+  }
+  private readV4(): AccountCache | null {
+    const raw = this.storage?.getItem(this.v4Key);
+    if (raw === null || raw === undefined) return this.readLegacy();
+    let snapshot: WorkspaceDocument | null = null;
+    let needsRecovery = true;
+    try {
+      const data: unknown = JSON.parse(raw);
+      if (isRecord(data) && data.version === 2) {
+        const converted = convertWorkspaceV4Document(data.snapshot);
+        if (converted.status === 'converted') snapshot = converted.workspace;
+        needsRecovery = (data.snapshot !== null && snapshot === null) || data.pending != null
+          || (isRecord(data.recoveryDrafts) && Object.keys(data.recoveryDrafts).length > 0)
+          || (data.recoveryDrafts != null && !isRecord(data.recoveryDrafts));
+      }
+    } catch { /* Keep old pending requests downloadable, never replay them as v5. */ }
+    return {version: 3, snapshot, pending: null, recoveryDrafts: needsRecovery
+      ? {'__legacy-v4-cache__': {baseRevision: snapshot?.revision ?? 0, value: {key: this.v4Key, raw}}} : {}};
   }
   private readLegacy(): AccountCache | null {
     const raw = this.storage?.getItem(this.legacyKey);
@@ -78,14 +101,14 @@ export class AccountWorkspaceCache {
         if (validated.status === 'valid') {
           // A cached server confirmation keeps its original timestamp and
           // subslice generations. Only its envelope is converted in memory.
-          snapshot = parseWorkspaceDocument({...validated.workspace, schemaVersion: 4});
+          snapshot = upgradeWorkspaceV4({...validated.workspace, schemaVersion: 4});
         }
         needsRecovery = (data.snapshot !== null && snapshot === null)
           || data.pending != null || (isRecord(data.recoveryDrafts) && Object.keys(data.recoveryDrafts).length > 0)
           || (data.recoveryDrafts != null && !isRecord(data.recoveryDrafts));
       }
     } catch { /* Preserve the exact old record as downloadable recovery. */ }
-    return {version: 2, snapshot, pending: null, recoveryDrafts: needsRecovery
+    return {version: 3, snapshot, pending: null, recoveryDrafts: needsRecovery
       ? {[LEGACY_CACHE_RECOVERY_KEY]: {baseRevision: snapshot?.revision ?? 0, value: {key: this.legacyKey, raw}}}
       : {}};
   }
@@ -97,13 +120,13 @@ export class AccountWorkspaceCache {
     try {
       if (this.storage === undefined) return false;
       this.storage.setItem(this.key, JSON.stringify({
-        version: 2, snapshot, pending, recoveryDrafts,
+        version: 3, snapshot, pending, recoveryDrafts,
       } satisfies AccountCache));
       return true;
     } catch { return false; }
   }
   clear(): void {
-    for (const key of [this.key, this.legacyKey]) {
+    for (const key of [this.key, this.v4Key, this.legacyKey]) {
       try {this.storage?.removeItem(key);} catch { /* Session memory is still revoked. */ }
     }
   }

@@ -3,7 +3,7 @@ import type { WorkspaceDocument } from '../domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
 
 export type WorkspacePayload = Pick<WorkspaceDocument, 'main' | 'simulation' | 'portfolio' | 'locations' | 'accountMap'>;
-export type WorkspaceOperation = 'initialize_workspace' | 'save_main' | 'save_simulation' | 'save_portfolio' | 'save_account_map' | 'restore_workspace';
+export type WorkspaceOperation = 'initialize_workspace' | 'save_main' | 'save_simulation' | 'save_portfolio' | 'save_account_map' | 'restore_workspace' | 'save_expense_draft' | 'apply_expense';
 export interface RemoteCommit {
   status: 'saved' | 'exists' | 'conflict' | 'invalid';
   workspace?: unknown;
@@ -20,12 +20,12 @@ export function workspacePayload(workspace: WorkspaceDocument): WorkspacePayload
 export function workspaceFromRow(value: unknown, userId: string): WorkspaceDocument | null {
   if (typeof value !== 'object' || value === null) return null;
   const row = value as Record<string, unknown>;
-  if (row.user_id !== userId || row.schema_version !== 4 || typeof row.updated_at !== 'string'
+  if (row.user_id !== userId || row.schema_version !== 5 || typeof row.updated_at !== 'string'
     || typeof row.payload !== 'object' || row.payload === null || Array.isArray(row.payload)) return null;
   const revision = typeof row.revision === 'string' && /^\d+$/.test(row.revision) ? Number(row.revision) : row.revision;
   const payload = row.payload as Record<string, unknown>;
   if (Object.keys(payload).sort().join(',') !== 'accountMap,locations,main,portfolio,simulation') return null;
-  return parseWorkspaceDocument({...payload, schemaVersion: 4, revision, updatedAt: Date.parse(row.updated_at)});
+  return parseWorkspaceDocument({...payload, schemaVersion: 5, revision, updatedAt: Date.parse(row.updated_at)});
 }
 export function createWorkspaceRemote(client: SupabaseClient, userId: string): WorkspaceRemote {
   async function authorization(): Promise<string> {
@@ -47,7 +47,7 @@ export function createWorkspaceRemote(client: SupabaseClient, userId: string): W
     async write(operation, revision, payload, mutationId) {
       const token = await authorization();
       const {data, error, status} = await client.rpc(operation, {
-        p_payload: payload, p_mutation_id: mutationId, p_schema_version: 4,
+        p_payload: payload, p_mutation_id: mutationId, p_schema_version: 5,
         ...(operation === 'initialize_workspace' ? {} : {p_expected_revision: revision}),
       }).setHeader('Authorization', token).retry(false);
       if (error) throw {...error, status};

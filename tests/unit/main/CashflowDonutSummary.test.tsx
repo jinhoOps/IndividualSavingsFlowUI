@@ -104,10 +104,10 @@ describe('CashflowDonutSummary', () => {
 
   it('keeps the applied card value semantic while its visual number interpolates', () => {
     const { rerender, unmount } = render(
-      <CashflowSummary summary={calculateCashflow(appliedData)} onEdit={vi.fn()} />,
+      <CashflowSummary summary={calculateCashflow(appliedData)} />,
     );
 
-    const consumption = screen.getByRole('button', { name: '월 소비 편집' });
+    const consumption = screen.getByText('월 지출').closest('.cashflow-metric')!;
     const visualValue = consumption.querySelector('strong > [aria-hidden="true"]');
     expect(visualValue).toHaveTextContent('180만 원');
 
@@ -116,9 +116,9 @@ describe('CashflowDonutSummary', () => {
       updatedAt: 2,
       monthlyLivingWon: 1_200_000,
     };
-    rerender(<CashflowSummary summary={calculateCashflow(updated)} onEdit={vi.fn()} />);
+    rerender(<CashflowSummary summary={calculateCashflow(updated)} />);
 
-    expect(consumption).toHaveAccessibleDescription(expect.stringMatching(/200만 원/));
+    expect(consumption.querySelector('strong > .sr-only')).toHaveTextContent('200만 원');
     expect(visualValue).toHaveAttribute('aria-hidden', 'true');
     expect(visualValue).toHaveTextContent('180만 원');
 
@@ -142,7 +142,7 @@ describe('CashflowDonutSummary', () => {
     }));
     const { rerender } = render(
       <MainErrorBoundary>
-        <CashflowSummary summary={calculateCashflow(appliedData)} onEdit={vi.fn()} />
+        <CashflowSummary summary={calculateCashflow(appliedData)} />
       </MainErrorBoundary>,
     );
 
@@ -150,7 +150,6 @@ describe('CashflowDonutSummary', () => {
       <MainErrorBoundary>
         <CashflowSummary
           summary={calculateCashflow({ ...appliedData, monthlyLivingWon: 1_200_000 })}
-          onEdit={vi.fn()}
         />
       </MainErrorBoundary>,
     );
@@ -158,15 +157,14 @@ describe('CashflowDonutSummary', () => {
       <MainErrorBoundary>
         <CashflowSummary
           summary={calculateCashflow({ ...appliedData, monthlyLivingWon: 1_400_000 })}
-          onEdit={vi.fn()}
         />
       </MainErrorBoundary>,
     );
 
     expect(screen.queryByRole('heading', { name: '화면을 표시하지 못했습니다' }))
       .not.toBeInTheDocument();
-    const consumption = screen.getByRole('button', { name: '월 소비 편집' });
-    expect(consumption).toHaveAccessibleDescription(expect.stringMatching(/220만 원/));
+    const consumption = screen.getByText('월 지출').closest('.cashflow-metric')!;
+    expect(consumption.querySelector('strong > .sr-only')).toHaveTextContent('220만 원');
     expect(consumption.querySelector('strong > [aria-hidden="true"]')).toHaveTextContent('220만 원');
   });
 
@@ -337,38 +335,38 @@ describe('CashflowDonutSummary', () => {
     expect(exitingResult.cancel).toHaveBeenCalledOnce();
   });
 
-  it('renders legend labels and percentages while keeping amounts in accessible names', () => {
+  it('groups labels, visible amounts, and percentages in the selectable metric rows', () => {
     const { container } = render(<CashflowDonutSummary data={appliedData} />);
 
-    expect(screen.getByRole('img', { name: /소비 56\.3%.*저축 9\.4%.*투자 6\.3%.*여윳돈 28\.1%/ })).toBeVisible();
+    expect(screen.getByRole('img', { name: /지출 56\.3%.*저축 9\.4%.*투자 6\.3%.*여윳돈 28\.1%/ })).toBeVisible();
     expect(screen.getByText('15.6%', { selector: '[aria-hidden="true"]' })).toBeVisible();
-    expect(screen.getByText('저축·투자')).toBeVisible();
-    const legend = container.querySelector('.cashflow-donut__legend');
+    expect(screen.getByText('저축·투자 비중')).toBeVisible();
+    const legend = container.querySelector('.cashflow-summary');
     expect(legend).not.toBeNull();
     for (const [label, amount, percentage] of [
-      ['소비', '180만 원', '56.3%'],
+      ['지출', '180만 원', '56.3%'],
       ['저축', '30만 원', '9.4%'],
       ['투자', '20만 원', '6.3%'],
       ['여윳돈', '90만 원', '28.1%'],
     ]) {
       expect(screen.getByRole('button', { name: `${label} · ${amount} · ${percentage}` })).toBeVisible();
-      expect(legend).not.toHaveTextContent(amount);
+      expect(legend).toHaveTextContent(amount);
     }
-    expect(document.querySelectorAll('.cashflow-donut__legend-amount')).toHaveLength(0);
+    expect(legend!.querySelectorAll('.cashflow-metric__value')).toHaveLength(4);
   });
 
   it('shows focused allocation detail in the donut center without a tooltip overlay', () => {
     const { container } = render(<CashflowDonutSummary data={appliedData} />);
-    const consumption = screen.getByRole('button', { name: '소비 · 180만 원 · 56.3%' });
+    const consumption = screen.getByRole('button', { name: '지출 · 180만 원 · 56.3%' });
 
     fireEvent.focus(consumption);
     const center = container.querySelector('.cashflow-donut__center');
     expect(within(center as HTMLElement).getByText('56.3%')).toBeVisible();
-    expect(within(center as HTMLElement).getByText('소비')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('지출')).toBeVisible();
     expect(within(center as HTMLElement).getByText('180만 원')).toBeVisible();
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     fireEvent.blur(consumption);
-    expect(within(center as HTMLElement).getByText('저축·투자')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('저축·투자 비중')).toBeVisible();
   });
 
   it('selects a touched ring segment and dismisses the fixed detail outside', () => {
@@ -378,7 +376,7 @@ describe('CashflowDonutSummary', () => {
         <button type="button">outside</button>
       </>,
     );
-    const chart = screen.getByRole('img', { name: /소비 56\.3%/ });
+    const chart = screen.getByRole('img', { name: /지출 56\.3%/ });
     Object.defineProperty(chart, 'getBoundingClientRect', {
       value: () => ({ left: 0, top: 0, width: 100, height: 100 }),
     });
@@ -392,10 +390,10 @@ describe('CashflowDonutSummary', () => {
     const center = container.querySelector('.cashflow-donut__center');
     expect(center).not.toBeNull();
     expect(within(center as HTMLElement).getByText('56.3%')).toBeVisible();
-    expect(within(center as HTMLElement).getByText('소비')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('지출')).toBeVisible();
     expect(container.querySelector('.cashflow-donut__segment--consumption'))
       .toHaveClass('cashflow-donut__segment--active');
-    expect(screen.getByRole('button', { name: '소비 · 180만 원 · 56.3%' }))
+    expect(screen.getByRole('button', { name: '지출 · 180만 원 · 56.3%' }))
       .toHaveAttribute('aria-pressed', 'true');
     expect(within(center as HTMLElement).getByText('180만 원')).toBeVisible();
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
@@ -403,13 +401,13 @@ describe('CashflowDonutSummary', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'outside' }));
 
     expect(within(center as HTMLElement).getByText('15.6%', { selector: '[aria-hidden="true"]' })).toBeVisible();
-    expect(within(center as HTMLElement).getByText('저축·투자')).toBeVisible();
+    expect(within(center as HTMLElement).getByText('저축·투자 비중')).toBeVisible();
     expect(container.querySelector('.cashflow-donut__segment--active')).not.toBeInTheDocument();
   });
 
   it('ignores pointer input inside the hole or outside the ring', () => {
     const { container } = render(<CashflowDonutSummary data={appliedData} />);
-    const chart = screen.getByRole('img', { name: /소비 56\.3%/ });
+    const chart = screen.getByRole('img', { name: /지출 56\.3%/ });
     Object.defineProperty(chart, 'getBoundingClientRect', {
       value: () => ({ left: 0, top: 0, width: 100, height: 100 }),
     });

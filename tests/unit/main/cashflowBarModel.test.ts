@@ -40,7 +40,7 @@ describe('buildCashflowBarModel', () => {
 
     expect(model).toMatchObject({ incomeWon: 3_200_000, deficitWon: 0 });
     expect(model.allocations).toEqual([
-      { id: 'consumption', label: '소비', amountWon: 1_800_000, percentage: 56.25, startPercent: 0, widthPercent: 56.25 },
+      { id: 'consumption', label: '지출', amountWon: 1_800_000, percentage: 56.25, startPercent: 0, widthPercent: 56.25 },
       { id: 'saving', label: '저축', amountWon: 300_000, percentage: 9.375, startPercent: 56.25, widthPercent: 9.375 },
       { id: 'investment', label: '투자', amountWon: 200_000, percentage: 6.25, startPercent: 65.625, widthPercent: 6.25 },
       { id: 'remaining', label: '남는 돈', amountWon: 900_000, percentage: 28.125, startPercent: 71.875, widthPercent: 28.125 },

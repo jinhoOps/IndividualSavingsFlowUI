@@ -66,7 +66,7 @@ try {
   assert.throws(() => sql(`set role migration_admin; ${v4Migration}`), /already exists/, 'late migration failure must roll back before-images and metadata');
   verifyUpgradeRollback();
   sql('drop function private.normalize_workspace_v4(jsonb)');
-  for (const file of orderedMigrations.filter(f => f >= '202609080002')) sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8')}`);
+  for (const file of orderedMigrations.filter(f => f >= '202609080002' && f < '202609100001')) sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8')}`);
   const upgradedRow = JSON.parse(sql(`select to_jsonb(w) from public.user_workspaces w where user_id='${legacyUser}'`));
   assert.equal(upgradedRow.schema_version, 4, 'existing v3 rows must upgrade to v4');
   assert.deepEqual({ ...upgradedRow, schema_version: 3 }, legacyRow, 'upgrade must preserve payload, revision and timestamps exactly');
@@ -115,7 +115,7 @@ try {
     assert.equal(sql(`select has_function_privilege('${role}','private.request_uid()','EXECUTE')`), 'f', 'only the RPC owner may call the private request identity reader');
   }
   vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
-  const { parseWorkspaceDocument } = await vite.ssrLoadModule('/src/workspace/domain/validation.ts');
+  const { parseWorkspaceV4Document: parseWorkspaceDocument } = await vite.ssrLoadModule('/src/workspace/domain/validation.ts');
   for (const fixture of fixtures) {
     const parsed = parseWorkspaceDocument({ schemaVersion: 4, revision: 0, updatedAt: 0, ...fixture.payload });
     assert.equal(parsed !== null, fixture.valid, `TS expected verdict: ${fixture.name}`);
@@ -210,6 +210,8 @@ try {
   assert.equal(sql(`select count(*) from private.workspace_mutations where user_id='${userB}'`), '0');
   assert.equal(sql("select rolcanlogin or rolbypassrls from pg_roles where rolname='workspace_rpc_owner'"), 'f');
   assert.equal(sql("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('initialize_workspace','save_main','save_simulation','save_portfolio','save_account_map','restore_workspace') and p.prosecdef and p.proowner = 'workspace_rpc_owner'::regrole and p.proconfig @> array['search_path=\"\"']"), '6');
+  const { verifyExpenseDatabase } = await import('./verify-expense-db.mjs');
+  await verifyExpenseDatabase({sql, quote, asUser, vite, userA, userC});
   console.log(`PASS: ${fixtures.length} shared TS/SQL fixtures; v3 upgrade/before-images/rollback; required v4 protocol; PostgreSQL RLS, narrow RPCs, revisions, receipts, concurrent writes/retries/initialization.`);
 } finally {
   await vite?.close();

@@ -15,13 +15,13 @@ describe('PercentageTooltip', () => {
       <PercentageTooltip
         id="tip"
         open
-        value="소비 · 180만 원 · 56.3%"
+        value="지출 · 180만 원 · 56.3%"
         position={{ xPercent: 42 }}
       />,
     );
 
     expect(screen.getByRole('tooltip')).toHaveAttribute('id', 'tip');
-    expect(screen.getByRole('tooltip')).toHaveTextContent(/^소비 · 180만 원 · 56\.3%$/);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/^지출 · 180만 원 · 56\.3%$/);
     expect(screen.getByRole('tooltip')).toHaveStyle({ left: '42%' });
   });
 
@@ -68,7 +68,7 @@ describe('PercentageTooltip', () => {
       <PercentageTooltip
         id="tip"
         open
-        value="소비 · 100만 원 · 100.0%"
+        value="지출 · 100만 원 · 100.0%"
         position={{ xPercent: 100 }}
       />,
     );

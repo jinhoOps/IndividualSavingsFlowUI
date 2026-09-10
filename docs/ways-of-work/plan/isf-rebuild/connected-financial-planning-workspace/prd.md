@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 개인 재무 계획 도구다. 정적 웹에서 Google 로그인과 Supabase 계정별 저장을 사용한다.
 
-현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌 간 고정·남은 금액 전부 계획 흐름을 제공한다. 네 앱은 계정당 하나의 schema v4 workspace를 사용한다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
+현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌 간 고정·남은 금액 전부 계획 흐름을 제공한다. 네 앱은 계정당 하나의 schema v5 workspace를 사용한다. 2026-09-10 v5 구현은 운영 DB 적용·배포 전이다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
 
 ## 2. Epic
 
@@ -40,7 +40,7 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 - Portfolio 위치별 배분·계좌·보관처 편집, 복수 독립 계획, 시세·수익률·매수 실행
 - 금융기관 실연동, 계좌번호·잔액·거래·실시간 시세 조회, 자동이체 실행과 금융 자문
 - 은행 이체 실행, 실제 잔액·거래의 추론 또는 월 계획 흐름을 실제 자금 이동으로 표현하는 일
-- 지출 카테고리·실제 사용액·가구 예산 관리
+- 사용자 정의 지출 카테고리·거래별 실제 사용액·가구 예산 관리
 - 레거시 Sankey 또는 계좌별 장기 자산 projection
 - Phase C의 Main 연결 결과 카드와 별도 후속 작업인 hidden trophy room
 - 구 앱 저장 키나 Main 전용 백업을 새 workspace로 가져오는 migration
@@ -81,15 +81,15 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 4. 월 저축액
 5. 월 투자액
 
-각 단계는 같은 `MainData` draft를 갱신한다. 사용자는 중간에 이탈한 뒤 이어서 설정할 수 있고, 마지막 검토에서 소비·저축·투자·남는 돈 또는 적자를 확인한 뒤 계획을 적용한다.
+각 단계는 같은 `MainData` draft를 갱신한다. 사용자는 중간에 이탈한 뒤 이어서 설정할 수 있고, 마지막 검토에서 지출·저축·투자·남는 돈 또는 적자를 확인한 뒤 계획을 적용한다.
 
 ### Main dashboard
 
 적용된 계획이 있으면 대시보드는 다음을 제공한다.
 
 - 월간 현금흐름 요약
-- 주거비와 생활비를 합친 소비
-- 소비·저축·투자·남는 돈의 금액과 비율
+- 주거비와 생활비를 합친 지출
+- 지출·저축·투자·남는 돈의 금액과 비율
 - 적자 상태
 - 현재 다섯 값 수정
 - Main·Simulation·Portfolio·공유 위치를 함께 다루는 whole-workspace JSON 내보내기와 가져오기
@@ -121,22 +121,24 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 
 ### Shared workspace와 backup
 
-- Main, Simulation, Portfolio, 공유 금융 위치와 Account Map applied/draft를 schema v4의 계정별 Supabase workspace 한 행에 저장한다.
+- Main, Simulation, Portfolio, 공유 금융 위치와 Account Map applied/draft를 schema v5의 계정별 Supabase workspace 한 행에 저장한다.
 - write ownership은 각 앱이 소유한 slice로 한정한다. Simulation과 Portfolio는 최신 Main slice를 읽기 전용으로 읽고 Portfolio는 자기 plan과 draft만 갱신한다. 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
 - Account Map은 Main을 읽기 전용 기준으로 사용하며 `workspace.locations`와 `workspace.accountMap`만 갱신한다.
 - 공유 금융 위치 registry의 유일한 관리 진입점은 Account Map이며 Portfolio는 이를 갱신하지 않는다.
 - stale revision을 기준으로 시작한 writer는 더 최신 workspace를 덮어쓰지 못한다.
-- v4가 없을 때만 v3 `isf-workspace-v3`을 read-only rollback source로 읽어 v4 후보로 변환한다. 읽기만으로는 어느 원본도 쓰거나 삭제하지 않고, 명시 저장만 v4를 원자적으로 만든다. v3도 없을 때에만 유효한 retired workspace v1/v2 원본 `isf-workspace-v1`을 같은 방식으로 읽는다. 존재하지만 invalid인 v4는 v3/v1 fallback을 허용하지 않는다.
+- 브라우저 현재 키는 `isf-workspace-v5`다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본을 읽기 전용 변환한다. 읽기만으로 원본을 쓰거나 삭제하지 않고 명시 저장만 source/destination lock 안에서 v5를 만든다. 존재하지만 invalid인 최신 원본에서 이전 버전으로 fallback하지 않는다.
 - `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`과 retired journey snapshot은 현재 workspace 제품이 읽거나 변경하지 않는 foreign record다.
-- 현재 백업 export는 format v3 whole-workspace envelope다. format v3는 strict v4를 내보내며, format v2의 v3와 format v1의 retired v1/v2 input은 읽기 전용 converter를 거쳐 v4로 검증한다. 모든 slice와 참조를 먼저 검증하고 유효하면 한 번의 v4 workspace replacement로 복원하며 invalid 입력은 아무것도 바꾸지 않는다.
+- 현재 백업 export는 format 4/workspace v5이며 Main의 도우미 답변을 포함한다. format 3/v4, format 2/v3와 format 1/retired input은 역사적 strict parser와 읽기 전용 converter를 거쳐 검증한다. 모든 slice와 참조를 먼저 검증하고 한 번의 v5 replacement로 복원하며 invalid 입력은 아무것도 바꾸지 않는다.
 
 ### Main
 
 - 다섯 월간 값을 workspace의 정규화된 Main v2 slice로 저장한다.
-- 주거비와 생활비를 소비로 합산하고 총 유출과 잔액 또는 적자를 계산한다.
+- 주거비와 생활비를 지출로 합산하고 총 유출과 잔액 또는 적자를 계산한다. 화면 표현은 `지출`로 통일하며 내부 `consumptionWon` 계산 키는 유지한다.
+- 지출 금액은 항목별 계산 도우미를 열고, 명칭·비율과 나머지 금액 행은 도넛 탐색을 제공한다. 다섯 값의 직접 수정은 단일 `월 금액 편집`으로 열며 모바일 하단 고정 바, 768px 이상 요약 카드 하단에 배치한다.
+- Main은 고정비·변동비 13개 항목의 금액·월/연 기준·진행 단계·마지막 완료 답변을 보조 입력으로 소유한다. 중간 답변 저장은 기존 월 금액을 보존하고 완료는 서버에서 계산한 합계로 주거비·생활비를 대체한다. 수입·저축·투자와 다른 slice는 보존한다. 재방문과 직접 금액 편집 후에도 답변을 기억한다. 상세 계약은 [지출 도우미 설계](../../../../superpowers/specs/2026-09-10-main-expense-assistant-design.md)를 따른다.
 - 유효하지 않은 적용은 차단하되 불완전한 setup draft는 재개할 수 있다.
 - 현재 값과 적용 값의 관계를 사용자에게 명확히 보여준다.
-- 현재 v4 workspace가 없을 때만 v3을 read-only conversion 후보로 읽고, v3도 없을 때에만 유효한 retired workspace v1/v2 원본을 읽는다. standalone 구 저장 키와 retired journey snapshot은 fallback으로 읽지 않고 foreign record로 그대로 둔다.
+- 현재 v5가 없을 때만 v4 → v3 → 유효한 retired workspace v1/v2 순으로 read-only conversion 후보를 읽는다. standalone 구 저장 키와 retired journey snapshot은 fallback으로 읽지 않고 foreign record로 그대로 둔다.
 - whole-workspace JSON import는 envelope, 모든 slice와 참조 검증을 통과해야 한다.
 
 ### Journey
@@ -195,9 +197,9 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-08 사용자 요�
 
 ## 9. Data Contract
 
-현재 제품의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v4를 사용한다. 여기에는 Main applied/setup progress, Simulation draft, aggregate-only Portfolio plans/draft, 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. current Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
+현재 제품의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v5를 사용한다. 여기에는 Main applied/setup progress/expenseAssistant, Simulation draft, aggregate-only Portfolio plans/draft, 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. current Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
 
-기존 브라우저 `isf-workspace-v4`는 사용자 선택에 따른 read-only 이전 후보다. v4가 없을 때만 v3를, 둘 다 없을 때만 유효한 retired v1/v2 `isf-workspace-v1`을 v4로 변환해 읽으며 invalid 최신 원본에서는 fallback하지 않는다. 이전 성공 후에도 원본과 foreign record를 변경·삭제하지 않는다. 계정별 캐시·미전송 draft는 별도 namespace이며 서버 확정 상태로 표시하지 않는다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 계약 상세는 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)를 따른다.
+기존 브라우저 데이터는 사용자 선택에 따른 read-only 이전 후보다. v5 → v4 → v3 → 유효한 retired v1/v2 순으로 읽고 invalid 최신 원본에서 fallback하지 않는다. 이전 성공 후에도 원본·foreign record를 보존한다. 계정 캐시는 `isf-account-workspace-v3`/cache version 3이며 구 v2/v1의 미전송 요청을 자동 재생하지 않고 복구 원문으로 격리한다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 기존 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)와 [v5 확장 계약](../../../../superpowers/specs/2026-09-10-main-expense-assistant-design.md)을 따른다.
 
 `MainData`의 제품 필드는 다음과 같다.
 
@@ -240,7 +242,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 - [x] Main은 다섯 월간 값으로 새 계획을 만들고 다시 수정할 수 있다.
 - [x] setup draft를 저장하고 재개할 수 있다.
-- [x] 소비·저축·투자·남는 돈 또는 적자가 동일한 데이터에서 계산된다.
+- [x] 지출·저축·투자·남는 돈 또는 적자가 동일한 데이터에서 계산된다.
 - [x] 유효한 계획을 계정 workspace에 저장하고 다시 불러오는 앱·DB 계약과 로컬 데이터 호환성을 검증한다. 실제 Google provider/운영 배포는 별도 rollout gate다.
 - [x] 현재 JSON을 내보내고 검증된 JSON을 가져올 수 있다.
 - [x] Main에서 Simulation으로 명시적으로 이동할 수 있다.
@@ -260,7 +262,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 구 Main·Simulation·Portfolio·Account Map·rebuild 키는 새 제품에서 fallback, migration, write 또는 delete 대상으로 사용하지 않는다.
 - [x] stale workspace writer는 최신 revision을 덮어쓰지 못한다.
 - [x] Portfolio는 전체 기준 배분만 제공하고 계좌·기관·보관처 관리 UI를 표시하지 않는다.
-- [x] whole-workspace 백업은 format v3를 export하고 format v2/v3/v1 import를 원자적으로 검증·변환하며, invalid 입력에는 현재 raw workspace를 유지한다.
+- [x] whole-workspace 백업은 format 4를 export하고 format 4/3/2/1 import를 원자적으로 검증·변환하며, invalid 입력에는 현재 raw workspace를 유지한다.
 - [x] Account Map은 하나의 계좌 우선 노드 지도, 목적 배정과 계좌 간 고정/sweep 월 계획 흐름, 가역적 계좌·보관처 관리의 승인 계약을 모두 구현하며 Main 연결 결과 카드는 Phase C 전까지 기존 UI를 유지한다.
 - [x] Account Map Main overlay는 map을 mounted·inert 상태로 유지하고 Main 소유 저장·취소·dirty 확인·Back/Escape·실패 input 보존·focus 복원을 제공한다. 저장 뒤에는 명시적 Main-basis 확인만 stale 상태를 해제하고 transfer를 변경하지 않는다.
 - [x] Simulation과 Portfolio의 다시 설정은 해당 앱 데이터만 변경하고 Main과 다른 앱의 데이터를 보존한다.
@@ -271,7 +273,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [x] 적용 지도에서 다른 계좌 연결과 add-only role 확장을 한 write로 완료한다.
 - [x] Custom purpose 보관·복원과 link 비자동복구를 제공한다.
 - [x] 일반적인 stale conflict·collision에서는 최신 상태를 다시 읽고 사용자 입력을 보존해 명시적으로 재적용하며, 채택한 최신 workspace에 Main이 없으면 복구나 replay 없이 Main-required로 전환한다.
-- [x] 동기화된 v4 backup은 custom target capacity를 검증하고 이후 Main 감소로 생긴 기존 초과는 correction 가능하게 읽는다.
+- [x] 동기화된 current backup은 custom target capacity를 검증하고 이후 Main 감소로 생긴 기존 초과는 correction 가능하게 읽는다.
 - [x] backup·stale(Main-null 안전 예외 포함)·custom purpose·다대다·touch·keyboard·Portfolio 보존 회귀를 통과한다.
 - [x] 최신 `origin/main` 통합 후 PR diff에 승인 범위 밖 역행 변경이나 conflict가 없다.
 - [x] 위 gate를 모두 통과한 같은 변경에서 Account Map을 현재 지원 제품으로 승격하고 관련 미완료 항목을 함께 `[x]`로 바꾼다.
@@ -302,6 +304,8 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [ ] 실제 Google 왕복과 임시 로그인 전후 동일 UID·workspace 유지 확인
 - [ ] 사용할 인증 경로의 실제 로그인, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포
 
+2026-09-10 지출 도우미와 workspace v5 확장을 구현했다. v4 before-image를 보관하고 답변을 null로 추가하는 신규 migration을 준비했으며 기존 다섯 금액과 다른 slice를 보존한다. 모든 RPC는 protocol 5를 요구한다. 운영 DB migration·frontend 배포·실제 계정 검증은 아직 실행하지 않았고, 앞의 v4 운영 증거를 v5 완료 증거로 취급하지 않는다.
+
 ## 12. Future Product Direction
 
 ### 앱 확장 방향
@@ -315,7 +319,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 
 Phase C는 현재 Main의 metric 영역을 Main·Simulation·Portfolio·Account Map 연결 결과 카드로 바꾼다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8의 [최종 전체 검증](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 이 상태를 통과로 기록했다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
 
-지출 capture, 가구 병합, 과거 비교와 주거 구매력은 발견 단계의 후보다. 별도 문제 검증과 PRD 승인 전에는 구현 범위나 완료 요구사항으로 취급하지 않는다.
+거래별 지출 기록, 가구 병합, 과거 비교와 주거 구매력은 발견 단계의 후보다. 별도 문제 검증과 PRD 승인 전에는 구현 범위나 완료 요구사항으로 취급하지 않는다.
 
 ## 13. Success Signals
 

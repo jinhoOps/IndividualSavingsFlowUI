@@ -1,10 +1,10 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. Google provider 설정은 아직 미완료입니다. [배포 기록](docs/superpowers/evidence/2026-09-08-supabase-pages-deployment.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 2026-09-10 지출 도우미·workspace v5는 로컬 구현 상태이며 운영 DB 적용·배포 전입니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. Google provider 설정은 아직 미완료입니다. [배포 기록](docs/superpowers/evidence/2026-09-08-supabase-pages-deployment.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
-- **Main**: 월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 보여주고 whole-workspace 백업을 관리하는 현재 제품 기준선입니다.
+- **Main**: 월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 보여주고 whole-workspace 백업을 관리하는 현재 제품 기준선입니다.
 - **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
 - **Portfolio**: 최신 Main 투자금을 첫 설정 흐름에서 전체 기준으로 배분하고, 이후 안정 비중 중심 결과와 집중 편집 화면을 제공합니다.
 - **Account Map**: Main의 다섯 월 금액을 읽어 목적 배정과 계좌 간 월 계획 흐름을 만들고 노드 지도로 관리합니다.
@@ -35,16 +35,17 @@ ISF의 네 앱은 다음 질문에 답합니다.
 
 ### Main
 
-Main은 월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 보여줍니다.
+Main은 월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 보여줍니다.
 
-처음에는 월 실수령액, 주거 고정비, 평균 생활비, 저축, 투자를 빠르게 입력합니다. 각 단계에서 현재 계획과 남는 돈을 바로 확인하고, 마지막 확인 화면에서 소비, 저축, 투자, 남는 돈의 비율을 살펴본 뒤 계획을 적용합니다. 적용 후에는 대시보드에서 같은 수치를 확인하고 수정할 수 있습니다.
+처음에는 월 실수령액, 주거 고정비, 평균 생활비, 저축, 투자를 빠르게 입력합니다. 각 단계에서 현재 계획과 남는 돈을 바로 확인하고, 마지막 확인 화면에서 지출, 저축, 투자, 남는 돈의 비율을 살펴본 뒤 계획을 적용합니다. 적용 후에는 대시보드에서 같은 수치를 확인하고 수정할 수 있습니다.
 
 Main에서 다루는 주요 내용:
 
 - 월간 현금흐름 요약
 - 2분 빠른 설정과 중간 이탈 후 재개
-- 소비, 저축, 투자, 남는 돈의 금액과 비율
+- 지출, 저축, 투자, 남는 돈의 금액과 비율
 - 월 실수령액과 월간 계획 수치 편집
+- 지출 금액을 눌러 고정비·변동비 13개 항목을 계산하고, 기억한 답변의 합계로 주거비·생활비 대체
 - 모든 현재 앱 slice와 공유 위치를 한 번에 다루는 whole-workspace JSON 백업
 
 ### Simulation
@@ -72,7 +73,7 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 현재 네 앱은 다음 기반을 공유합니다.
 
 - 네 목적지 앱 런처와 현재 위치 표시
-- 계정당 하나의 Supabase JSONB workspace(schema v4)와 앱별 typed slice adapter
+- 계정당 하나의 Supabase JSONB workspace(schema v5)와 앱별 typed slice adapter
 - RLS 계정 격리, 서버 revision 검사와 mutation receipt를 사용한 동시 저장·중복 재시도 보호
 - Main·Simulation·Portfolio·공유 금융 위치와 Account Map 상태를 포함하는 whole-workspace 백업
 - 모든 slice와 참조를 먼저 검증한 뒤 한 번에 교체하는 atomic restore
@@ -82,14 +83,14 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 
 금융 데이터 원본은 로그인한 계정의 서버 workspace입니다. 브라우저에는 계정별 마지막 snapshot과 미전송 입력을 복구용으로 보관합니다. 오프라인 재방문은 읽기 전용이며, 열린 화면은 focus·online 복귀 또는 visible 상태의 30초 조회로 최신화합니다. 다른 기기가 먼저 저장했으면 입력을 유지하고 명시적으로 재적용합니다. Portfolio의 금액 표시·정렬 같은 보기 설정은 금융 workspace와 별개의 브라우저 설정입니다.
 
-최신 main의 계획 이체·Main overlay를 포함한 [workspace v4 통합 설계](docs/superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md)를 따릅니다. v4 저장 요청은 schema version을 명시하고, 구 v3 클라이언트의 쓰기는 차단합니다. 현재 계정 캐시는 `isf-account-workspace-v2`에 보관하며 구 v1 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 남깁니다.
+현재 코드는 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)의 workspace v5를 사용합니다. 기존 [v4 통합](docs/superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md) 위에 Main 항목별 답변을 추가하고 모든 RPC에 protocol 5를 요구합니다. 계정 캐시는 `isf-account-workspace-v3`이며 구 v2/v1 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 보관합니다.
 
-기존 브라우저 `isf-workspace-v4`는 명시적 가져오기 후보로 읽습니다. v4가 없을 때만 v3, 둘 다 없을 때만 유효한 retired v1/v2 원본 `isf-workspace-v1`을 v4로 변환해 읽으며, invalid 최신 원본에서 과거 버전으로 fallback하지 않습니다. 원본은 변경·삭제하지 않습니다. 기존 standalone 앱 키와 은퇴한 journey snapshot은 읽거나 변경하지 않는 foreign record입니다. 정상 export는 서버 확정 데이터의 backup format v3이며 format v2/v1은 v4로 검증·변환해 가져옵니다. 미전송 입력은 일반 백업과 구분한 복구 파일로 제공합니다.
+브라우저 현재 키는 `isf-workspace-v5`이며 명시적 가져오기 후보입니다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본 `isf-workspace-v1` 순으로 읽기 전용 변환합니다. invalid 최신 원본에서는 과거 버전으로 fallback하지 않고 원본·foreign record를 변경하거나 삭제하지 않습니다. 정상 export는 서버 확정 데이터의 backup format 4/workspace v5이며 format 3/2/1은 역사적 parser와 converter를 거칩니다. 미전송 입력은 별도의 복구 파일로 제공합니다.
 
 ## 제품 원칙
 
 - **요약 먼저**: 기본 화면은 입력 폼보다 현재 상태와 다음 행동을 먼저 보여줍니다.
-- **작고 명확한 입력 계약**: Main은 다섯 월간 금액만 직접 소유합니다.
+- **작고 명확한 입력 계약**: Main은 다섯 월간 금액과 지출 계산용 보조 답변을 소유합니다.
 - **명시적 저장**: 큰 편집은 적용 전까지 draft로 유지합니다.
 - **계정별 원본**: 서버 저장 확정 후 성공을 표시하고, 로컬 원본과 미전송 입력은 구분해 보존합니다.
 - **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.

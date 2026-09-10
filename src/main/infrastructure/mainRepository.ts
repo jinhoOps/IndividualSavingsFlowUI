@@ -5,6 +5,7 @@ import {
   type WorkspaceWriteResult,
 } from '../../workspace/infrastructure/workspaceRepository';
 import type { MainData, SetupStep } from '../domain/model';
+import { createExpenseAssistantRepository, type ExpenseAssistantRepository } from './expenseAssistantRepository';
 import { isMainDataShape, validateMainData, validateMainDraft } from '../domain/validation';
 
 export { isMainDataShape } from '../domain/validation';
@@ -38,6 +39,7 @@ export type MainLoadResult =
   };
 
 export interface MainRepository {
+  expenseAssistant?: ExpenseAssistantRepository;
   load(): Promise<MainLoadResult>;
   save(data: MainData): Promise<MainData>;
   saveSetupProgress(
@@ -60,13 +62,21 @@ export interface SetupProgress {
 }
 
 export class BrowserMainRepository implements MainRepository {
+  readonly expenseAssistant: ExpenseAssistantRepository;
   private appliedBase: MainData | null | typeof untrackedBase = untrackedBase;
   private setupProgressBase: SetupProgress | null | typeof untrackedBase = untrackedBase;
 
   constructor(
     private readonly workspaceRepository: WorkspaceRepository = new BrowserWorkspaceRepository(),
     private readonly now: () => number = Date.now,
-  ) {}
+  ) {
+    const assistant = createExpenseAssistantRepository(workspaceRepository, now);
+    this.expenseAssistant = { load: () => assistant.load(), save: async (draft, complete) => {
+      const saved = await assistant.save(draft, complete);
+      if (complete) this.appliedBase = cloneMainData(saved.data);
+      return saved;
+    } };
+  }
 
   async load(): Promise<MainLoadResult> {
     const loaded = this.workspaceRepository.load();

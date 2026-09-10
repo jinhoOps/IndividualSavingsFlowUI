@@ -19,7 +19,7 @@ describe('workspace remote account-bound requests', () => {
   it.each(['initialize_workspace', 'save_main', 'save_simulation', 'save_portfolio', 'save_account_map', 'restore_workspace'] as const)('declares the required v4 protocol for %s', async operation => {
     const {remote, rpc} = fixture();
     await remote.write(operation, operation === 'initialize_workspace' ? null : 0, {}, 'mutation');
-    expect(rpc).toHaveBeenCalledWith(operation, expect.objectContaining({p_schema_version: 4}));
+    expect(rpc).toHaveBeenCalledWith(operation, expect.objectContaining({p_schema_version: 5}));
   });
   it('does not send an old account payload with a new account session', async () => {
     const {remote, session, rpc} = fixture();

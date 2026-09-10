@@ -462,7 +462,7 @@ describe('SetupFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
     expect(animeMocks.createTimeline).toHaveBeenCalledOnce();
     expect(screen.queryByText(/배분/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '소비 상세 정보' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '지출 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '저축 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '투자 상세 정보' })).toBeVisible();
     expect(screen.getByRole('button', { name: '남는 돈 상세 정보' })).toBeVisible();

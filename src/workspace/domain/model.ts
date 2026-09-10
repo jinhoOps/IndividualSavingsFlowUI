@@ -1,3 +1,4 @@
+import type { ExpenseAssistant } from '../../main/domain/expenseAssistant';
 import type { MainData } from '../../main/domain/model';
 import type { SetupProgress } from '../../main/infrastructure/mainRepository';
 import type { PortfolioDraft, PortfolioPlan } from '../../portfolio/domain/model';
@@ -12,9 +13,10 @@ import type { FinancialLocation } from './financialLocation';
 
 export const WORKSPACE_V3_SCHEMA_VERSION = 3 as const;
 export const WORKSPACE_V4_SCHEMA_VERSION = 4 as const;
-export const WORKSPACE_SCHEMA_VERSION = WORKSPACE_V4_SCHEMA_VERSION;
+export const WORKSPACE_V5_SCHEMA_VERSION = 5 as const;
+export const WORKSPACE_SCHEMA_VERSION = WORKSPACE_V5_SCHEMA_VERSION;
 export const WORKSPACE_V4_STORAGE_KEY = 'isf-workspace-v4';
-export const WORKSPACE_STORAGE_KEY = WORKSPACE_V4_STORAGE_KEY;
+export const WORKSPACE_STORAGE_KEY = 'isf-workspace-v5';
 export const PREVIOUS_WORKSPACE_STORAGE_KEY = 'isf-workspace-v3';
 export const RETIRED_WORKSPACE_STORAGE_KEY = 'isf-workspace-v1';
 
@@ -53,15 +55,20 @@ export interface WorkspaceDocumentV4 extends WorkspaceSlices {
   };
 }
 
-/** The only writable workspace envelope after the v4 repository cutover. */
-export type WorkspaceDocument = WorkspaceDocumentV4;
+export interface WorkspaceDocumentV5 extends Omit<WorkspaceDocumentV4, 'schemaVersion' | 'main'> {
+  schemaVersion: typeof WORKSPACE_V5_SCHEMA_VERSION;
+  main: WorkspaceSlices['main'] & { expenseAssistant: ExpenseAssistant | null };
+}
+
+/** Only v5 accepts writes; historical envelopes remain read-only conversion sources. */
+export type WorkspaceDocument = WorkspaceDocumentV5;
 
 export function createEmptyWorkspace(now: number = Date.now()): WorkspaceDocument {
   return {
     schemaVersion: WORKSPACE_SCHEMA_VERSION,
     revision: 0,
     updatedAt: now,
-    main: { applied: null, setupProgress: null },
+    main: { applied: null, setupProgress: null, expenseAssistant: null },
     simulation: { draft: null },
     portfolio: { plans: [], draft: null },
     locations: [],

@@ -1,3 +1,4 @@
+import { convertWorkspaceV4Document, upgradeWorkspaceV4 } from './workspaceV4Migration';
 import type { WorkspaceDocument } from '../domain/model';
 import { validateWorkspaceDocument } from '../domain/validation';
 import { convertRetiredWorkspaceToV4 } from './retiredWorkspaceMigration';
@@ -5,7 +6,7 @@ import { convertWorkspaceV3Document } from './workspaceV3Migration';
 
 export interface WorkspaceBackupEnvelope {
   format: 'isf-workspace-backup';
-  formatVersion: 3;
+  formatVersion: 4;
   exportedAt: number;
   workspace: WorkspaceDocument;
 }
@@ -21,7 +22,7 @@ export function exportWorkspaceBackup(
   if (!isTimestamp(now)) throw new Error('backup-schema');
   return JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 3,
+    formatVersion: 4,
     exportedAt: now,
     workspace: current.workspace,
   } satisfies WorkspaceBackupEnvelope);
@@ -40,26 +41,31 @@ export function importWorkspaceBackup(text: string): WorkspaceDocument {
     throw new Error('backup-format');
   }
   if (!isTimestamp(value.exportedAt)) throw new Error('backup-schema');
-  if (value.formatVersion === 3) {
+  if (value.formatVersion === 4) {
     const current = validateWorkspaceDocument(value.workspace);
     if (current.status !== 'valid') {
       throw new Error(current.status === 'reference' ? 'backup-reference' : 'backup-schema');
     }
     return current.workspace;
   }
+  if (value.formatVersion === 3) {
+    const previous = convertWorkspaceV4Document(value.workspace);
+    if (previous.status === 'invalid') throw new Error(previous.reason === 'reference' ? 'backup-reference' : 'backup-schema');
+    return previous.workspace;
+  }
   if (value.formatVersion === 2) {
     const previous = convertWorkspaceV3Document(value.workspace, value.exportedAt);
     if (previous.status === 'invalid') {
       throw new Error(previous.reason === 'reference' ? 'backup-reference' : 'backup-schema');
     }
-    return previous.workspace;
+    return upgradeWorkspaceV4(previous.workspace);
   }
   if (value.formatVersion === 1) {
     const retired = convertRetiredWorkspaceToV4(value.workspace, value.exportedAt);
     if (retired.status === 'invalid') {
       throw new Error(retired.reason === 'reference' ? 'backup-reference' : 'backup-schema');
     }
-    return retired.workspace;
+    return upgradeWorkspaceV4(retired.workspace);
   }
   throw new Error('backup-format');
 }

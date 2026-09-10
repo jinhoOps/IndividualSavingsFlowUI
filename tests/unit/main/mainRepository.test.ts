@@ -87,10 +87,10 @@ function mainData(overrides: Partial<MainData> = {}): MainData {
 
 function populatedWorkspace(): WorkspaceDocument {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     revision: 4,
     updatedAt: 400,
-    main: { applied: mainData(), setupProgress: null },
+    main: { expenseAssistant: null, applied: mainData(), setupProgress: null },
     simulation: {
       draft: {
         schemaVersion: 3,
@@ -175,6 +175,7 @@ describe('BrowserMainRepository workspace adapter', () => {
 
     expect(storage.reads).toEqual([
       WORKSPACE_STORAGE_KEY,
+      'isf-workspace-v4',
       PREVIOUS_WORKSPACE_STORAGE_KEY,
       RETIRED_WORKSPACE_STORAGE_KEY,
     ]);
@@ -213,7 +214,7 @@ describe('BrowserMainRepository workspace adapter', () => {
     const saved = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
     expect(saved.revision).toBe(5);
     expect(saved.updatedAt).toBe(600);
-    expect(saved.main).toEqual({ applied: { ...draft, updatedAt: 500 }, setupProgress: null });
+    expect(saved.main).toEqual({ expenseAssistant: null, applied: { ...draft, updatedAt: 500 }, setupProgress: null });
     for (const slice of ['simulation', 'portfolio', 'locations', 'accountMap'] as const) {
       expect(saved[slice]).toEqual(workspace[slice]);
     }

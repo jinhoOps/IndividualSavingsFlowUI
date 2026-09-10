@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import type { MainData } from '../../domain/model';
 import type { ValidationCode, ValidationResult } from '../../domain/validation';
 import { Button } from '../common/Button';
@@ -36,18 +37,18 @@ export function MainPlanEditor({
   }, [initialFocusPath]);
 
   const className = presentation === 'content'
-    ? 'grid gap-6 p-5 sm:p-7'
-    : 'grid flex-1 content-start gap-6 p-6';
+    ? 'main-plan-editor'
+    : 'main-plan-editor main-plan-editor--panel';
   const content = (
     <>
-      <header className="flex items-start justify-between gap-4">
+      <header className="main-plan-editor__header">
         <div>
-          <p className="m-0 text-sm font-black tracking-wide text-accent">MONTHLY FLOW</p>
-          <h2 className="m-0 mt-2 text-2xl font-bold text-slate-950" id="cashflow-editor-title">월 자금 계획 편집</h2>
+          <h2 id="cashflow-editor-title">월 자금 계획 편집</h2>
+          <p>한 달 기준 금액을 입력해 주세요.</p>
         </div>
-        <Button type="button" variant="quiet" aria-label="편집기 닫기" data-dialog-initial-focus disabled={saving} onClick={onRequestClose}>닫기</Button>
+        <Button className="main-plan-editor__close" type="button" variant="quiet" aria-label="편집기 닫기" data-dialog-initial-focus disabled={saving} onClick={onRequestClose}><X size={22} strokeWidth={1.75} aria-hidden="true" /></Button>
       </header>
-      <fieldset className="grid gap-6" disabled={saving}>
+      <fieldset className="main-plan-editor__fields" disabled={saving}>
         <legend className="sr-only">월 자금 계획</legend>
         <MoneyField id="dashboard-monthly-net-income" label="월 실수령액" valueWon={draft.monthlyNetIncomeWon} error={findIssue(issues, 'monthlyNetIncomeWon')} validationPath="monthlyNetIncomeWon" disabled={saving} adjustmentsVisibility="focused" onChange={(valueWon) => onChange({ ...draft, monthlyNetIncomeWon: valueWon })} />
         <MoneyField id="dashboard-monthly-housing" label="월 주거 고정비" valueWon={draft.monthlyHousingWon} error={findIssue(issues, 'monthlyHousingWon')} validationPath="monthlyHousingWon" disabled={saving} adjustmentsVisibility="focused" onChange={(valueWon) => onChange({ ...draft, monthlyHousingWon: valueWon })} />

@@ -1,18 +1,20 @@
 import { animate } from 'animejs';
+import { ChevronUp } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppContentFrame } from '../../../components/common/AppContentFrame';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import type { MainState } from '../../application/mainReducer';
-import { calculateCashflow } from '../../domain/cashflow';
 import type { MainData } from '../../domain/model';
 import type { ValidationResult } from '../../domain/validation';
 import { Surface } from '../common/Surface';
+import { Button } from '../common/Button';
 import { ApplyBar } from '../editor/ApplyBar';
 import { AllocationBar } from '../setup/AllocationBar';
 import { CashflowDonutSummary } from './CashflowDonutSummary';
-import { CashflowSummary } from './CashflowSummary';
 import { MainPlanEditor } from './MainPlanEditor';
+import { ExpenseAssistantDialog } from './ExpenseAssistantDialog';
+import type { ExpenseAssistantRepository } from '../../infrastructure/expenseAssistantRepository';
 
 export interface SummaryDashboardProps {
   applied: MainData;
@@ -27,6 +29,8 @@ export interface SummaryDashboardProps {
   backupStatus?: { kind: 'success' | 'error'; message: string } | null;
   journeyEntry?: ReactNode;
   initialFocusPath?: keyof MainData;
+  expenseRepository?: ExpenseAssistantRepository;
+  onExpenseApplied?(data: MainData): void;
 }
 
 export function SummaryDashboard({
@@ -42,11 +46,13 @@ export function SummaryDashboard({
   backupStatus = null,
   journeyEntry,
   initialFocusPath,
+  expenseRepository,
+  onExpenseApplied,
 }: SummaryDashboardProps) {
   const [editorOpen, setEditorOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
   const isMobile = useMobileEditor();
-  const summary = calculateCashflow(applied);
   const mobileModalOpen = isMobile && editorOpen;
   const modalRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     revealEditor(root, 'vertical', reducedMotion);
@@ -80,7 +86,7 @@ export function SummaryDashboard({
   }, [initialFocusPath]);
 
   useEffect(() => {
-    if (editorOpen) {
+    if (editorOpen || expenseOpen) {
       return;
     }
 
@@ -88,7 +94,7 @@ export function SummaryDashboard({
       openerRef.current.focus();
       openerRef.current = null;
     }
-  }, [editorOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
+  }, [editorOpen, expenseOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
 
   useEffect(() => {
     if (!editorOpen) return;
@@ -136,15 +142,15 @@ export function SummaryDashboard({
       aria-labelledby="summary-dashboard-title"
     >
       <div
-        className="grid min-w-0 gap-6"
-        aria-hidden={mobileModalOpen ? 'true' : undefined}
+        className="main-dashboard__content"
+        aria-hidden={mobileModalOpen || expenseOpen ? 'true' : undefined}
         data-testid="dashboard-controls"
-        inert={mobileModalOpen || undefined}
+        inert={mobileModalOpen || expenseOpen || undefined}
       >
         <header className="main-dashboard__header">
           <p className="main-eyebrow">자금 흐름</p>
           <h1 className="main-page-title" id="summary-dashboard-title">이번 달 자금 흐름</h1>
-          <p className="main-dashboard__description">수입과 소비, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
+          <p className="main-dashboard__description">수입과 지출, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
         </header>
 
         {backupStatus === null ? null : (
@@ -157,10 +163,15 @@ export function SummaryDashboard({
         )}
 
         <Surface as="section" className="main-dashboard__summary" aria-label="월 자금 구성 요약">
-          <CashflowDonutSummary data={applied} />
+          <CashflowDonutSummary data={applied} onExpense={expenseRepository && !editorOpen && !dirty ? (opener) => {
+            if (saving) return;
+            openerRef.current = opener;
+            setExpenseOpen(true);
+          } : undefined} />
+          <div className="main-dashboard__edit-dock" data-editor-open={editorOpen || expenseOpen || undefined}>
+            <Button type="button" variant="quiet" className="main-dashboard__edit" disabled={saving} onClick={(event) => openEditor(event.currentTarget)}><ChevronUp size={18} aria-hidden="true" />월 금액 편집</Button>
+          </div>
         </Surface>
-
-        <CashflowSummary summary={summary} disabled={saving} onEdit={openEditor} />
 
         {journeyEntry === undefined ? null : journeyEntry}
 
@@ -174,6 +185,8 @@ export function SummaryDashboard({
           </Surface>
         </details>
       </div>
+
+      {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
 
       {!editorOpen && dirty ? (
         <ApplyBar
@@ -189,7 +202,7 @@ export function SummaryDashboard({
           <>
             <div className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm" aria-hidden="true" data-testid="editor-backdrop" onClick={requestClose} />
             <div
-              className="fixed inset-x-0 bottom-0 z-40 max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+              className="main-editor-sheet"
               aria-labelledby="cashflow-editor-title"
               aria-modal="true"
               onKeyDown={trapModalFocus}
@@ -210,7 +223,7 @@ export function SummaryDashboard({
           </>
         ) : (
           <div
-            className="fixed inset-y-0 right-0 z-30 flex w-[min(34rem,42vw)] flex-col overflow-y-auto border-l border-slate-200 bg-white shadow-2xl"
+            className="main-editor-panel"
             ref={desktopEditorRef}
           >
             <MainPlanEditor

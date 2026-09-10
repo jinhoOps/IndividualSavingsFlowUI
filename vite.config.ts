@@ -28,7 +28,7 @@ export default defineConfig({
         short_name: '가계흐름',
         lang: 'ko-KR',
         version: packageJson.version,
-        description: '월 실수령액, 소비, 저축, 투자와 남는 돈을 한눈에 확인하는 월간 자금 흐름 도구',
+        description: '월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 확인하는 월간 자금 흐름 도구',
         theme_color: '#0f766e',
         background_color: '#f8f6f1',
         display: 'standalone',

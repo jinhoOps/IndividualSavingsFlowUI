@@ -70,7 +70,7 @@ describe('Shared location commands', () => {
         createdAt: 500,
         updatedAt: 500,
       },
-      workspace: { schemaVersion: 4, updatedAt: 500 },
+      workspace: { schemaVersion: 5, updatedAt: 500 },
     });
   });
 

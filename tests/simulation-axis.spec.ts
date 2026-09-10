@@ -15,11 +15,11 @@ for (const years of [3, 20, 30]) {
   test(`${years}-year chart keeps readable, contained axis labels while resizing`, async ({ page }, testInfo) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(({ main, years, updatedAt }) => {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify({
-        schemaVersion: 4,
+      localStorage.setItem('isf-workspace-v5', JSON.stringify({
+        schemaVersion: 5,
         revision: 1,
         updatedAt,
-        main: { applied: main, setupProgress: null },
+        main: { expenseAssistant: null, applied: main, setupProgress: null },
         simulation: {
           draft: {
             schemaVersion: 3,

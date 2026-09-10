@@ -76,12 +76,12 @@ test('React Main workspace save writes v4 while leaving retired standalone recor
   });
   await page.goto('apps/main/');
 
-  await page.getByRole('button', { name: '월 투자 편집' }).click();
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
   await page.getByLabel('월 투자액').fill('650000');
   await page.getByRole('button', { name: '적용' }).click();
 
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4') ?? '{}');
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5') ?? '{}');
     return workspace.main?.applied?.monthlyInvestmentWon;
   })).toEqual(650_000);
   await expect.poll(() => page.evaluate(() => ({

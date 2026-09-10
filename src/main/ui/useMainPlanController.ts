@@ -33,6 +33,7 @@ export interface MainIntroEntry {
 
 export interface MainPlanController {
   state: MainState | null;
+  acceptAppliedData(data: MainData): void;
   issues: ValidationIssue[];
   validationAttempt: number;
   progressWarning: string | null;
@@ -127,6 +128,12 @@ export function useMainPlanController({
   const dispatch = useCallback((action: MainAction) => {
     setState((current) => current === null ? current : mainReducer(current, action));
   }, []);
+
+  const acceptAppliedData = useCallback((data: MainData) => {
+    setIssues([]);
+    dispatch({ type: 'save-succeeded', data });
+    planActionNotifications.notify('apply');
+  }, [dispatch, planActionNotifications]);
 
   const persistSetupProgress = useCallback((
     step: SetupStep,
@@ -336,6 +343,7 @@ export function useMainPlanController({
 
   return {
     state,
+    acceptAppliedData,
     issues,
     validationAttempt,
     progressWarning,

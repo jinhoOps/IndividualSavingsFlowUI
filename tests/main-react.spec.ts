@@ -22,9 +22,8 @@ const appliedWorkspaceV1 = {
   accountMap: { applied: null, draft: null, instruments: [], flows: [] },
 };
 
-const appliedWorkspaceV4 = {
-  ...appliedWorkspaceV1,
-  schemaVersion: 4 as const,
+const appliedWorkspaceV5 = { ...appliedWorkspaceV1, main: {...appliedWorkspaceV1.main, expenseAssistant: null},
+  schemaVersion: 5 as const,
   accountMap: { applied: null, draft: null },
 };
 
@@ -191,9 +190,8 @@ const emptyAccountMapV4 = {
   draft: null,
 };
 
-const connectedWorkspaceV4 = {
-  ...connectedWorkspaceV1,
-  schemaVersion: 4 as const,
+const connectedWorkspaceV5 = { ...connectedWorkspaceV1, main: {...connectedWorkspaceV1.main, expenseAssistant: null},
+  schemaVersion: 5 as const,
   portfolio: {
     plans: [connectedWorkspaceV1.portfolio.plans[0]],
     draft: null,
@@ -203,9 +201,8 @@ const connectedWorkspaceV4 = {
 
 const { layout: _retiredLayout, ...releaseGateAppliedV3 } = releaseGateAccountMapV2.applied;
 
-const releaseGateWorkspaceV4 = {
-  ...releaseGateWorkspaceV2,
-  schemaVersion: 4 as const,
+const releaseGateWorkspaceV5 = { ...releaseGateWorkspaceV2, main: {...releaseGateWorkspaceV2.main, expenseAssistant: null},
+  schemaVersion: 5 as const,
   portfolio: {
     plans: [releaseGateWorkspaceV2.portfolio.plans[0]],
     draft: releaseGateWorkspaceV2.portfolio.draft,
@@ -536,13 +533,13 @@ async function expectDashboardSummary(page: Page, amounts: {
   await expect(summary).toBeVisible();
   await page.mouse.move(0, 0);
   await expect(summary.locator('.cashflow-donut__center strong > [aria-hidden="true"]')).toHaveText('15.6%');
-  await expect(summary.getByText('저축·투자', { exact: true })).toBeVisible();
+  await expect(summary.getByText('저축·투자 비중', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toHaveCount(0);
   await expect(page.locator('details.allocation-details')).not.toHaveAttribute('open');
-  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText(amounts.consumption);
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText(amounts.remaining);
-  await expect(page.getByRole('button', { name: '월 저축 편집' })).toContainText(amounts.saving);
-  await expect(page.getByRole('button', { name: '월 투자 편집' })).toContainText(amounts.investment);
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText(amounts.consumption);
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText(amounts.remaining);
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 저축' })).toContainText(amounts.saving);
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 투자' })).toContainText(amounts.investment);
   await page.getByText('자세히 보기', { exact: true }).click();
   await expect(page.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
 }
@@ -567,7 +564,7 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
     const center = donut.querySelector<HTMLElement>('.cashflow-donut__center')!;
     const centerValue = center.querySelector<HTMLElement>('strong')!;
     const centerLabel = center.querySelector<HTMLElement>(':scope > span')!;
-    const chartRect = chart.getBoundingClientRect();
+    const chartRect = donut.querySelector<HTMLElement>('.cashflow-donut__overview')!.getBoundingClientRect();
     const valueRect = centerValue.getBoundingClientRect();
     const labelRect = centerLabel.getBoundingClientRect();
     const relativeLuminance = (color: string) => {
@@ -618,10 +615,10 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
     document.documentElement.scrollWidth <= window.innerWidth
   ))).toBe(true);
 
-  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
   const editor = viewport.width < 768
     ? page.getByRole('dialog')
-    : page.locator('div.fixed.inset-y-0.right-0');
+    : page.locator('.main-editor-panel');
   await expect(editor).toBeVisible();
   await expect.poll(() => editor.evaluate((element) => (
     element.getAnimations().every((animation) => animation.playState === 'finished')
@@ -654,7 +651,7 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   await page.getByRole('button', { name: '빈 초안으로 다시 시작' }).click();
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
-    const currentRaw = localStorage.getItem('isf-workspace-v4');
+    const currentRaw = localStorage.getItem('isf-workspace-v5');
     return {
       retiredRaw: localStorage.getItem('isf-workspace-v1'),
       current: currentRaw === null ? null : JSON.parse(currentRaw),
@@ -662,9 +659,9 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   })).toEqual({
     retiredRaw: invalidRaw,
     current: expect.objectContaining({
-      schemaVersion: 4,
+      schemaVersion: 5,
       revision: 1,
-      main: { applied: null, setupProgress: null },
+      main: { expenseAssistant: null, applied: null, setupProgress: null },
       simulation: { draft: null },
       portfolio: { plans: [], draft: null },
       locations: [],
@@ -687,7 +684,7 @@ test('downloads and explicitly resets an invalid workspace before a durable appl
   await page.reload();
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
-    JSON.parse(localStorage.getItem('isf-workspace-v4')!).main.applied.monthlyNetIncomeWon
+    JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlyNetIncomeWon
   ))).toBe(3_200_000);
   expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v1'))).toBe(invalidRaw);
   await expect.poll(() => page.evaluate((keys) => Object.fromEntries(
@@ -715,7 +712,7 @@ for (const viewport of mainBrandIntroViewports) {
     await expect(page.getByTestId('main-welcome-intro')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => {
-      const raw = localStorage.getItem('isf-workspace-v4');
+      const raw = localStorage.getItem('isf-workspace-v5');
       return raw === null ? null : JSON.parse(raw).main.setupProgress;
     })).toMatchObject({ kind: 'initial', step: 'welcome' });
 
@@ -755,8 +752,8 @@ test('Main brand intro restart preserves the applied plan and writes restart wel
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -768,7 +765,7 @@ test('Main brand intro restart preserves the applied plan and writes restart wel
   await expect(page.getByRole('button', { name: '화면을 눌러 건너뛰기' })).toBeFocused();
   await expect(page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
   })).toEqual({
     applied: appliedMainV2,
@@ -798,7 +795,7 @@ test('Main brand intro reduced motion skips fresh animation and writes initial w
   await expect(welcome).toBeVisible();
   await expect(welcome).toBeFocused();
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v4');
+    const raw = localStorage.getItem('isf-workspace-v5');
     return raw === null ? null : JSON.parse(raw).main.setupProgress;
   })).toMatchObject({ kind: 'initial', step: 'welcome' });
 });
@@ -807,8 +804,8 @@ test('Main brand intro reduced motion skips restart animation and preserves the 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -821,7 +818,7 @@ test('Main brand intro reduced motion skips restart animation and preserves the 
   await expect(welcome).toBeVisible();
   await expect(welcome).toBeFocused();
   await expect.poll(() => page.evaluate(() => {
-    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v4')!);
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
   })).toEqual({
     applied: appliedMainV2,
@@ -864,7 +861,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
 
   await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
   await expect(page.locator('.allocation-bar__visual-track')).toBeVisible();
-  await expect(page.getByRole('button', { name: '소비 · 180만 원 · 56.3%' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '지출 · 180만 원 · 56.3%' })).toBeVisible();
   await expect(page.getByRole('button', { name: /저축 (상세 정보|· 30만 원 · 9\.4%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /투자 (상세 정보|· 20만 원 · 6\.3%)/ })).toBeVisible();
   await expect(page.getByRole('button', { name: '남는 돈 · 90만 원 · 28.1%' })).toBeVisible();
@@ -885,7 +882,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
     };
   });
   expect(reviewBounds).toEqual({ cardInsideSurface: true, stageInside: true, tableInside: true });
-  await expect(reviewTable.getByRole('row', { name: /소비.*180만 원.*56\.3%/ })).toBeVisible();
+  await expect(reviewTable.getByRole('row', { name: /지출.*180만 원.*56\.3%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /저축.*30만 원.*9\.4%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /투자.*20만 원.*6\.3%/ })).toBeVisible();
   await expect(reviewTable.getByRole('row', { name: /남는 돈.*90만 원.*28\.1%/ })).toBeVisible();
@@ -907,7 +904,7 @@ test('new user applies the v2 quick setup and refreshes into matching dashboard 
   });
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v4');
+    const raw = localStorage.getItem('isf-workspace-v5');
     if (raw === null) return null;
     const workspace = JSON.parse(raw);
     const { updatedAt: _updatedAt, ...stored } = workspace.main.applied;
@@ -955,9 +952,9 @@ test('setup motion reaches final state in real time at required viewports', asyn
   await page.addInitScript((workspace) => {
     if (sessionStorage.getItem('isf-main-real-time-motion-seeded') !== null) return;
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify({
+    localStorage.setItem('isf-workspace-v5', JSON.stringify({
       ...workspace,
-      main: {
+      main: { expenseAssistant: null,
         applied: null,
         setupProgress: {
           kind: 'initial',
@@ -968,7 +965,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
       },
     }));
     sessionStorage.setItem('isf-main-real-time-motion-seeded', 'true');
-  }, appliedWorkspaceV4);
+  }, appliedWorkspaceV5);
 
   for (const viewport of mainBrandIntroViewports) {
     await page.setViewportSize(viewport);
@@ -985,9 +982,9 @@ test('setup motion reaches final state in real time at required viewports', asyn
     })).toBeCloseTo(0, 3);
 
     await page.evaluate((workspace) => {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify({
+      localStorage.setItem('isf-workspace-v5', JSON.stringify({
         ...workspace,
-        main: {
+        main: { expenseAssistant: null,
           applied: null,
           setupProgress: {
             kind: 'initial',
@@ -997,7 +994,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
           },
         },
       }));
-    }, appliedWorkspaceV4);
+    }, appliedWorkspaceV5);
     await page.reload();
 
     await expect.poll(() => page.locator('.setup-flow-surface').evaluate((root) => ({
@@ -1023,9 +1020,9 @@ test('setup motion reaches final state in real time at required viewports', asyn
     ))).toBe(true);
 
     await page.evaluate((workspace) => {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify({
+      localStorage.setItem('isf-workspace-v5', JSON.stringify({
         ...workspace,
-        main: {
+        main: { expenseAssistant: null,
           applied: workspace.main.applied,
           setupProgress: {
             kind: 'restart',
@@ -1035,7 +1032,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
           },
         },
       }));
-    }, appliedWorkspaceV4);
+    }, appliedWorkspaceV5);
     await page.reload();
 
     await expect(page.getByRole('button', { name: '계획 적용' })).toBeVisible();
@@ -1046,9 +1043,9 @@ test('setup motion reaches final state in real time at required viewports', asyn
     ))).toBe(true);
 
     await page.evaluate((workspace) => {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify({
+      localStorage.setItem('isf-workspace-v5', JSON.stringify({
         ...workspace,
-        main: {
+        main: { expenseAssistant: null,
           applied: null,
           setupProgress: {
             kind: 'initial',
@@ -1058,7 +1055,7 @@ test('setup motion reaches final state in real time at required viewports', asyn
           },
         },
       }));
-    }, appliedWorkspaceV4);
+    }, appliedWorkspaceV5);
   }
 });
 
@@ -1177,9 +1174,9 @@ test('review assembly captures timed deficit geometry and reduced motion', async
   ) => {
     await page.evaluate(({ workspace, reviewDraft, setupKind }) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v4', JSON.stringify({
+      localStorage.setItem('isf-workspace-v5', JSON.stringify({
         ...workspace,
-        main: {
+        main: { expenseAssistant: null,
           applied: setupKind === 'restart' ? workspace.main.applied : null,
           setupProgress: {
             kind: setupKind,
@@ -1189,7 +1186,7 @@ test('review assembly captures timed deficit geometry and reduced motion', async
           },
         },
       }));
-    }, { workspace: appliedWorkspaceV4, reviewDraft: draft, setupKind: kind });
+    }, { workspace: appliedWorkspaceV5, reviewDraft: draft, setupKind: kind });
     await page.reload();
     await expect(page.getByRole('heading', { name: '입력한 월 자금 계획을 확인해주세요' })).toBeVisible();
   };
@@ -1327,8 +1324,8 @@ test('review assembly captures timed deficit geometry and reduced motion', async
 test('live dashboard keeps the donut, cards, Simulation, details, and editor contained at required viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
 
   for (const viewport of [
     { width: 390, height: 844 },
@@ -1345,23 +1342,24 @@ test.describe('mobile cashflow donut', () => {
     hasTouch: true,
   });
 
-  test('keeps a compact legend and reveals touched ring details', async ({ page }) => {
+  test('keeps readable amount rows and reveals touched ring details', async ({ page }) => {
     await page.addInitScript((fixture) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
-    }, appliedWorkspaceV4);
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+    }, appliedWorkspaceV5);
     await page.goto('apps/main/');
 
     const donut = page.getByRole('region', { name: '월 수입 배분' });
     const legendLayout = await donut.locator('.cashflow-donut__legend-button').evaluateAll((buttons) => (
       buttons.map((button) => {
-        const rect = button.getBoundingClientRect();
+        const row = button.closest('.cashflow-metric')!;
+        const rect = row.getBoundingClientRect();
         const label = button.querySelector('span:first-child')!.getBoundingClientRect();
-        const percentage = button.querySelector('span:last-child')!.getBoundingClientRect();
+        const amount = row.querySelector('.cashflow-metric__value')!.getBoundingClientRect();
         return {
           height: rect.height,
-          oneLine: Math.abs(label.top - percentage.top) <= 1,
-          text: button.textContent ?? '',
+          alignedAmount: amount.left >= label.right && amount.bottom <= rect.bottom,
+          text: row.textContent ?? '',
           accessibleName: button.getAttribute('aria-label') ?? '',
         };
       })
@@ -1370,18 +1368,18 @@ test.describe('mobile cashflow donut', () => {
     expect(legendLayout).toHaveLength(4);
     for (const item of legendLayout) {
       expect(item.height).toBeGreaterThanOrEqual(44);
-      expect(item.oneLine).toBe(true);
-      expect(item.text).not.toContain('만 원');
+      expect(item.alignedAmount).toBe(true);
+      expect(item.text).toContain('만 원');
       expect(item.accessibleName).toContain('만 원');
     }
-    await expect(donut.locator('.cashflow-donut__legend-amount')).toHaveCount(0);
+    await expect(donut.locator('.cashflow-metric__value')).toHaveCount(4);
 
-    const chart = donut.getByRole('img', { name: /소비 56\.3%.*여윳돈 28\.1%/ });
+    const chart = donut.getByRole('img', { name: /지출 56\.3%.*여윳돈 28\.1%/ });
     const chartBox = await chart.boundingBox();
     expect(chartBox).not.toBeNull();
     const center = donut.locator('.cashflow-donut__center');
     for (const allocation of [
-      { id: 'consumption', label: '소비', amount: '180만 원', percentage: '56.3%', x: 89.2, y: 57.8 },
+      { id: 'consumption', label: '지출', amount: '180만 원', percentage: '56.3%', x: 89.2, y: 57.8 },
       { id: 'saving', label: '저축', amount: '30만 원', percentage: '9.4%', x: 24.6, y: 80.9 },
       { id: 'investment', label: '투자', amount: '20만 원', percentage: '6.3%', x: 13, y: 65.3 },
       { id: 'remaining', label: '여윳돈', amount: '90만 원', percentage: '28.1%', x: 19.1, y: 24.6 },
@@ -1409,12 +1407,12 @@ test.describe('mobile cashflow donut', () => {
 
     await page.getByRole('heading', { name: '이번 달 자금 흐름' }).tap();
     await expect(center.locator('strong > [aria-hidden="true"]')).toHaveText('15.6%');
-    await expect(center.getByText('저축·투자', { exact: true })).toBeVisible();
+    await expect(center.getByText('저축·투자 비중', { exact: true })).toBeVisible();
     await expect(donut.locator('.cashflow-donut__segment--active')).toHaveCount(0);
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
     await page.setViewportSize({ width: 768, height: 900 });
-    await expect(donut.locator('.cashflow-donut__legend-amount')).toHaveCount(0);
+    await expect(donut.locator('.cashflow-metric__value')).toHaveCount(4);
 
     const tabletChartBox = await chart.boundingBox();
     expect(tabletChartBox).not.toBeNull();
@@ -1439,7 +1437,7 @@ test.describe('mobile cashflow donut', () => {
     await expect(center.getByText('투자', { exact: true })).toBeVisible();
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(donut.locator('.cashflow-donut__legend-amount')).toHaveCount(0);
+    await expect(donut.locator('.cashflow-metric__value')).toHaveCount(4);
     await saving.hover();
     await expect(center.getByText('9.4%', { exact: true })).toBeVisible();
     await expect(center.getByText('30만 원', { exact: true })).toBeVisible();
@@ -1450,15 +1448,15 @@ test.describe('mobile cashflow donut', () => {
 test('live dashboard removes donut circle transitions when reduced motion is requested', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/main/');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
 
   await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).toBeVisible();
-  const chart = page.getByRole('img', { name: /소비 56\.3%/ });
+  const chart = page.getByRole('img', { name: /지출 56\.3%/ });
   const chartBox = await chart.boundingBox();
   expect(chartBox).not.toBeNull();
   await chart.click({ position: { x: chartBox!.width / 2, y: chartBox!.height * 0.1 } });
@@ -1515,7 +1513,7 @@ test.describe('mobile quick setup', () => {
     await expect(table.getByRole('columnheader')).toHaveText(['종류', '금액', '수입 대비']);
     await expect(table.getByRole('row')).toHaveText([
       '종류금액수입 대비',
-      '소비0원0.0%',
+      '지출0원0.0%',
       '저축0원0.0%',
       '투자1,000원0.0%',
       '남는 돈319.9만 원100.0%',
@@ -1555,7 +1553,7 @@ test.describe('mobile quick setup', () => {
 
     for (const name of [
       '남는 돈 · 319.9만 원 · 100.0%',
-      '소비 상세 정보',
+      '지출 상세 정보',
       '투자 상세 정보',
     ]) {
       const target = page.getByRole('button', { name });
@@ -1588,7 +1586,7 @@ test.describe('mobile quick setup', () => {
     await page.getByRole('button', { name: '다음' }).tap();
 
     for (const [name, percentage] of [
-      ['소비 상세 정보', '소비 · 50만 원 · 5.0%'],
+      ['지출 상세 정보', '지출 · 50만 원 · 5.0%'],
       ['저축 상세 정보', '저축 · 60만 원 · 6.0%'],
       ['투자 상세 정보', '투자 · 70만 원 · 7.0%'],
     ] as const) {
@@ -1614,19 +1612,19 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   await page.addInitScript(({ workspace, oldRecords }) => {
     if (sessionStorage.getItem('isf-backup-roundtrip-seeded') === null) {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
       for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
       sessionStorage.setItem('isf-backup-roundtrip-seeded', 'true');
     }
     const originalSetItem = Storage.prototype.setItem;
     Object.defineProperty(window, '__workspaceWrites', { configurable: true, value: 0, writable: true });
     Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (key === 'isf-workspace-v4') {
+      if (key === 'isf-workspace-v5') {
         (window as typeof window & { __workspaceWrites: number }).__workspaceWrites += 1;
       }
       originalSetItem.call(this, key, value);
     };
-  }, { workspace: releaseGateWorkspaceV4, oldRecords: seededOldMainRecords });
+  }, { workspace: releaseGateWorkspaceV5, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -1642,15 +1640,15 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   expect(Object.keys(exported).sort()).toEqual(['exportedAt', 'format', 'formatVersion', 'workspace']);
   expect(exported).toMatchObject({
     format: 'isf-workspace-backup',
-    formatVersion: 3,
+    formatVersion: 4,
     workspace: {
-      schemaVersion: 4,
-      revision: releaseGateWorkspaceV4.revision,
-      main: releaseGateWorkspaceV4.main,
-      simulation: releaseGateWorkspaceV4.simulation,
-      portfolio: releaseGateWorkspaceV4.portfolio,
-      locations: releaseGateWorkspaceV4.locations,
-      accountMap: releaseGateWorkspaceV4.accountMap,
+      schemaVersion: 5,
+      revision: releaseGateWorkspaceV5.revision,
+      main: releaseGateWorkspaceV5.main,
+      simulation: releaseGateWorkspaceV5.simulation,
+      portfolio: releaseGateWorkspaceV5.portfolio,
+      locations: releaseGateWorkspaceV5.locations,
+      accountMap: releaseGateWorkspaceV5.accountMap,
     },
   });
   for (const excluded of ['isf-main-v2', 'save-lease', 'trophy', '트로피']) {
@@ -1658,21 +1656,21 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
   }
 
   const mutatedWorkspace = {
-    ...connectedWorkspaceV4,
+    ...connectedWorkspaceV5,
     revision: 10,
     updatedAt: 1_000,
-    main: {
+    main: { expenseAssistant: null,
       applied: { ...appliedMainV2, monthlyNetIncomeWon: 6_000_000, updatedAt: 1_000 },
       setupProgress: null,
     },
   };
   const mutatedRaw = JSON.stringify(mutatedWorkspace);
   await page.evaluate((raw) => {
-    localStorage.setItem('isf-workspace-v4', raw);
+    localStorage.setItem('isf-workspace-v5', raw);
     (window as typeof window & { __workspaceWrites: number }).__workspaceWrites = 0;
   }, mutatedRaw);
   await page.reload();
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('370만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('370만 원');
 
   await trigger.click();
   const input = page.getByLabel('백업 가져오기');
@@ -1696,34 +1694,34 @@ test('complete Phase-B backup round-trips atomically in the contained mobile con
       && document.documentElement.scrollWidth <= window.innerWidth;
   });
   expect(containment).toBe(true);
-  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v4'))).toBe(mutatedRaw);
+  expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(mutatedRaw);
 
   await dialog.getByRole('button', { name: '백업으로 바꾸기' }).click();
 
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('90만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('90만 원');
   await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
   await expect(trigger).toBeFocused();
   const durable = await page.evaluate(() => ({
-    raw: localStorage.getItem('isf-workspace-v4'),
+    raw: localStorage.getItem('isf-workspace-v5'),
     old: Object.fromEntries(Object.keys(localStorage)
-      .filter((key) => key !== 'isf-workspace-v4' && key.startsWith('isf-'))
+      .filter((key) => key !== 'isf-workspace-v5' && key.startsWith('isf-'))
       .map((key) => [key, localStorage.getItem(key)])),
     writes: (window as typeof window & { __workspaceWrites: number }).__workspaceWrites,
   }));
   const restored = JSON.parse(durable.raw!);
   expect(restored.revision).toBe(11);
-  expect(restored.main).toEqual(releaseGateWorkspaceV4.main);
-  expect(restored.simulation).toEqual(releaseGateWorkspaceV4.simulation);
-  expect(restored.portfolio).toEqual(releaseGateWorkspaceV4.portfolio);
-  expect(restored.locations).toEqual(releaseGateWorkspaceV4.locations);
-  expect(restored.accountMap).toEqual(releaseGateWorkspaceV4.accountMap);
+  expect(restored.main).toEqual(releaseGateWorkspaceV5.main);
+  expect(restored.simulation).toEqual(releaseGateWorkspaceV5.simulation);
+  expect(restored.portfolio).toEqual(releaseGateWorkspaceV5.portfolio);
+  expect(restored.locations).toEqual(releaseGateWorkspaceV5.locations);
+  expect(restored.accountMap).toEqual(releaseGateWorkspaceV5.accountMap);
   expect(durable.writes).toBe(1);
   expect(durable.old).toEqual(seededOldMainRecords);
 });
 
-test('imports a format-v2 backup with workspace v3 as a canonical v4 workspace', async ({ page }) => {
+test('imports a format-v2 backup with workspace v3 as a canonical v5 workspace', async ({ page }) => {
   const v3BackupWorkspace = {
-    ...appliedWorkspaceV4,
+    ...appliedWorkspaceV5,
     schemaVersion: 3 as const,
     main: {
       applied: { ...appliedMainV2, monthlyNetIncomeWon: 4_100_000 },
@@ -1732,8 +1730,8 @@ test('imports a format-v2 backup with workspace v3 as a canonical v4 workspace',
   };
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1750,22 +1748,22 @@ test('imports a format-v2 backup with workspace v3 as a canonical v4 workspace',
   await page.getByRole('dialog').getByRole('button', { name: '백업으로 바꾸기' }).click();
   await expect(page.getByRole('status').filter({ hasText: '모든 앱 데이터를 백업에서 복원했습니다.' })).toBeVisible();
 
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v4')!))).toMatchObject({
-    schemaVersion: 4,
-    main: { applied: { monthlyNetIncomeWon: 4_100_000 } },
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!))).toMatchObject({
+    schemaVersion: 5,
+    main: { expenseAssistant: null, applied: { monthlyNetIncomeWon: 4_100_000 } },
   });
 });
 
 test('canonical backup restores empty Main through the brand intro and preserves every non-Main slice', async ({ page }) => {
   const importedWorkspace = {
-    ...connectedWorkspaceV4,
-    main: { applied: null, setupProgress: null },
+    ...connectedWorkspaceV5,
+    main: { expenseAssistant: null, applied: null, setupProgress: null },
   };
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
-  }, connectedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+  }, connectedWorkspaceV5);
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1774,7 +1772,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify({
       format: 'isf-workspace-backup',
-      formatVersion: 3,
+      formatVersion: 4,
       exportedAt: 900,
       workspace: importedWorkspace,
     })),
@@ -1794,7 +1792,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
   await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v4');
+    const raw = localStorage.getItem('isf-workspace-v5');
     if (raw === null) return null;
     const workspace = JSON.parse(raw);
     const { savedAt: _savedAt, ...progress } = workspace.main.setupProgress;
@@ -1834,7 +1832,7 @@ test('canonical backup restores empty Main through the brand intro and preserves
 for (const restoreCase of [
   {
     name: 'initial setup progress',
-    main: {
+    main: { expenseAssistant: null,
       applied: null,
       setupProgress: {
         kind: 'initial' as const,
@@ -1847,7 +1845,7 @@ for (const restoreCase of [
   },
   {
     name: 'restart setup progress',
-    main: {
+    main: { expenseAssistant: null,
       applied: appliedMainV2,
       setupProgress: {
         kind: 'restart' as const,
@@ -1860,11 +1858,11 @@ for (const restoreCase of [
   },
 ] as const) {
   test(`canonical backup restores ${restoreCase.name} directly with persistent status and setup focus`, async ({ page }) => {
-    const importedWorkspace = { ...connectedWorkspaceV4, main: restoreCase.main };
+    const importedWorkspace = { ...connectedWorkspaceV5, main: restoreCase.main };
     await page.addInitScript((workspace) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
-    }, connectedWorkspaceV4);
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+    }, connectedWorkspaceV5);
     await page.goto('apps/main/');
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
@@ -1873,7 +1871,7 @@ for (const restoreCase of [
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify({
         format: 'isf-workspace-backup',
-        formatVersion: 3,
+        formatVersion: 4,
         exportedAt: 900,
         workspace: importedWorkspace,
       })),
@@ -1890,7 +1888,7 @@ for (const restoreCase of [
     await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveCount(0);
 
     await expect.poll(() => page.evaluate(() => {
-      const raw = localStorage.getItem('isf-workspace-v4');
+      const raw = localStorage.getItem('isf-workspace-v5');
       if (raw === null) return null;
       const workspace = JSON.parse(raw);
       return {
@@ -1915,22 +1913,22 @@ for (const restoreCase of [
 test('invalid, old, reference, duplicate, and capacity backups retain the exact raw workspace', async ({ page }) => {
   await page.addInitScript(({ workspace, oldRecords }) => {
     localStorage.clear();
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
     for (const [key, raw] of Object.entries(oldRecords)) localStorage.setItem(key, raw);
-  }, { workspace: connectedWorkspaceV4, oldRecords: seededOldMainRecords });
+  }, { workspace: connectedWorkspaceV5, oldRecords: seededOldMainRecords });
   await page.goto('apps/main/');
-  const raw = JSON.stringify(connectedWorkspaceV4);
+  const raw = JSON.stringify(connectedWorkspaceV5);
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
-  const referenceWorkspace = { ...releaseGateWorkspaceV4, locations: [] };
+  const referenceWorkspace = { ...releaseGateWorkspaceV5, locations: [] };
   const duplicateWorkspace = {
-    ...connectedWorkspaceV4,
+    ...connectedWorkspaceV5,
     locations: [
-      ...connectedWorkspaceV4.locations,
-      { ...connectedWorkspaceV4.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
+      ...connectedWorkspaceV5.locations,
+      { ...connectedWorkspaceV5.locations[0], id: 'loc-duplicate', shortName: ' isa ' },
     ],
   };
   const capacityWorkspace = {
-    ...connectedWorkspaceV4,
+    ...connectedWorkspaceV5,
     locations: [
       ...connectedWorkspaceV1.locations,
       ...Array.from({ length: 11 }, (_, index) => ({
@@ -1945,7 +1943,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
   };
   const envelope = (workspace: unknown) => JSON.stringify({
     format: 'isf-workspace-backup',
-    formatVersion: 3,
+    formatVersion: 4,
     exportedAt: 900,
     workspace,
   });
@@ -1953,8 +1951,8 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     ['malformed.json', '{bad', '백업 JSON을 읽을 수 없습니다.'],
     ['old-main.json', JSON.stringify(appliedMainV2), '새 전체 workspace 백업 파일만 가져올 수 있습니다.'],
     ['schema.json', envelope({
-      ...connectedWorkspaceV4,
-      main: {
+      ...connectedWorkspaceV5,
+      main: { expenseAssistant: null,
         applied: { ...appliedMainV2, monthlyNetIncomeWon: -1 },
         setupProgress: null,
       },
@@ -1973,7 +1971,7 @@ test('invalid, old, reference, duplicate, and capacity backups retain the exact 
     });
     await expect(page.getByRole('alert'), name).toContainText(expectedMessage);
     await expect(trigger).toBeFocused();
-    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v4'))).toBe(raw);
+    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(raw);
     expect(await page.evaluate((keys) => Object.fromEntries(
       keys.map((key) => [key, localStorage.getItem(key)]),
     ), Object.keys(seededOldMainRecords))).toEqual(seededOldMainRecords);
@@ -1988,15 +1986,15 @@ for (const invalidImport of [
   test(`invalid ${invalidImport.name} import performs zero workspace writes and retains raw bytes`, async ({ page }) => {
     await page.addInitScript((workspace) => {
       localStorage.clear();
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(workspace));
-    }, connectedWorkspaceV4);
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+    }, connectedWorkspaceV5);
     await page.goto('apps/main/');
-    const raw = JSON.stringify(connectedWorkspaceV4);
+    const raw = JSON.stringify(connectedWorkspaceV5);
     await page.evaluate(() => {
       const originalSetItem = Storage.prototype.setItem;
       Object.defineProperty(window, '__invalidImportWrites', { configurable: true, value: 0, writable: true });
       Storage.prototype.setItem = function setItem(key: string, value: string) {
-        if (key === 'isf-workspace-v4') {
+        if (key === 'isf-workspace-v5') {
           (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites += 1;
         }
         originalSetItem.call(this, key, value);
@@ -2017,7 +2015,7 @@ for (const invalidImport of [
 
     await expect(page.getByRole('alert')).toContainText('백업의 앱 연결 정보가 올바르지 않습니다.');
     const result = await page.evaluate(() => ({
-      raw: localStorage.getItem('isf-workspace-v4'),
+      raw: localStorage.getItem('isf-workspace-v5'),
       writes: (window as typeof window & { __invalidImportWrites: number }).__invalidImportWrites,
     }));
     expect(result.raw).toBe(raw);
@@ -2028,8 +2026,8 @@ for (const invalidImport of [
 
 test('backup import has a matching accessible name and visible keyboard focus ring', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
 
   const trigger = page.getByRole('button', { name: '관리 메뉴' });
@@ -2082,7 +2080,7 @@ test('keyboard-only user completes the full quick setup', async ({ page }) => {
   await page.keyboard.press('Enter');
 
   await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('90만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('90만 원');
 });
 
 test('interrupted setup reloads at housing with its v2 draft intact', async ({ page }) => {
@@ -2094,7 +2092,7 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
   await page.getByLabel('월 주거 고정비').fill('800000');
 
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v4');
+    const raw = localStorage.getItem('isf-workspace-v5');
     return raw === null ? null : JSON.parse(raw).main.setupProgress;
   })).toMatchObject({
     kind: 'initial',
@@ -2116,23 +2114,23 @@ test('interrupted setup reloads at housing with its v2 draft intact', async ({ p
 
 test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    if (localStorage.getItem('isf-workspace-v4') === null) {
-      localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
+    if (localStorage.getItem('isf-workspace-v5') === null) {
+      localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
     }
-  }, appliedWorkspaceV4);
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
 
-  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
   await page.getByLabel('월평균 생활비').fill('1100000');
   await page.getByRole('button', { name: '적용' }).click();
-  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
-  await expect(page.getByRole('button', { name: '남는 돈 편집' })).toContainText('80만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('80만 원');
 
   await page.reload();
 
-  await expect(page.getByRole('button', { name: '월 소비 편집' })).toContainText('190만 원');
+  await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
   await expect.poll(() => page.evaluate(() => {
-    const raw = localStorage.getItem('isf-workspace-v4');
+    const raw = localStorage.getItem('isf-workspace-v5');
     return raw === null ? null : Object.keys(JSON.parse(raw).main.applied).sort();
   })).toEqual([
     'monthlyHousingWon',
@@ -2148,13 +2146,13 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
 test('dashboard deficit entry keeps exiting remaining geometry until interpolation completes', async ({ page }, testInfo) => {
   await page.clock.install({ time: new Date('2026-08-12T00:00:00Z') });
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
   await page.clock.pauseAt(new Date('2026-08-12T00:01:00Z'));
   await page.getByText('자세히 보기', { exact: true }).click();
 
-  await page.getByRole('button', { name: '월 투자 편집' }).click();
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
   await page.getByLabel('월 투자액').fill('1500000');
   await page.getByRole('button', { name: '적용' }).click();
 
@@ -2203,10 +2201,10 @@ test('dashboard deficit entry keeps exiting remaining geometry until interpolati
 
 test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표시한다', async ({ page }) => {
   await page.addInitScript((fixture) => {
-    localStorage.setItem('isf-workspace-v4', JSON.stringify(fixture));
-  }, appliedWorkspaceV4);
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
   await page.goto('apps/main/');
-  await page.getByRole('button', { name: '월 소비 편집' }).click();
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
 
   const editor = page.locator('[aria-labelledby="cashflow-editor-title"]');
   const fields = editor.locator('.money-field');

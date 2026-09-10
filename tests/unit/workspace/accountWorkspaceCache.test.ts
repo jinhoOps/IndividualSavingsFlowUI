@@ -4,21 +4,21 @@ import {AccountWorkspaceCache} from '../../../src/workspace/infrastructure/accou
 
 const namespace = 'project:user:tab';
 const oldKey = `isf-account-workspace-v1:${namespace}`;
-const key = `isf-account-workspace-v2:${namespace}`;
+const key = `isf-account-workspace-v3:${namespace}`;
 const pending = {operation: 'save_main' as const, expectedRevision: 0,
-  payload: {main: {applied: null, setupProgress: null}}, mutationId: '00000000-0000-4000-8000-000000000001'};
+  payload: {main: {applied: null, setupProgress: null, expenseAssistant: null}}, mutationId: '00000000-0000-4000-8000-000000000001'};
 afterEach(() => window.localStorage.clear());
 
 describe('v4 account cache boundary', () => {
   it('converts only the old snapshot envelope and keeps v3 pending as raw recovery, never a v4 retry', () => {
-    const snapshot = {...createEmptyWorkspace(1000), schemaVersion: 3};
+    const snapshot = {...createEmptyWorkspace(1000), schemaVersion: 3, main: {applied: null, setupProgress: null}};
     const raw = JSON.stringify({version: 1, snapshot, pending, recoveryDrafts: {main: {baseRevision: 0, value: {typed: 123}}}});
     window.localStorage.setItem(oldKey, raw);
     const cache = new AccountWorkspaceCache(namespace, window.localStorage);
     const result = cache.read()!;
     expect(cache.key).toBe(key);
-    expect(result.version).toBe(2);
-    expect(result.snapshot).toEqual({...snapshot, schemaVersion: 4});
+    expect(result.version).toBe(3);
+    expect(result.snapshot).toEqual({...snapshot, schemaVersion: 5, main: {...snapshot.main, expenseAssistant: null}});
     expect(result.pending).toBeNull();
     expect(result.recoveryDrafts).toEqual({'__legacy-v3-cache__': {baseRevision: 0, value: {key: oldKey, raw}}});
     expect(window.localStorage.getItem(oldKey)).toBe(raw);
@@ -35,7 +35,7 @@ describe('v4 account cache boundary', () => {
     expect(result.recoveryDrafts['__legacy-v3-cache__'].value).toEqual({key: oldKey, raw: '{broken'});
   });
   it('never falls back to old cache when the new cache exists but is invalid', () => {
-    window.localStorage.setItem(oldKey, JSON.stringify({version: 1, snapshot: {...createEmptyWorkspace(1000), schemaVersion: 3}, pending}));
+    window.localStorage.setItem(oldKey, JSON.stringify({version: 1, snapshot: {...createEmptyWorkspace(1000), schemaVersion: 3, main: {applied: null, setupProgress: null}}, pending}));
     window.localStorage.setItem(key, '{broken');
     const cache = new AccountWorkspaceCache(namespace, window.localStorage);
     const restored = cache.read()!;
@@ -46,7 +46,7 @@ describe('v4 account cache boundary', () => {
     expect(cache.read()?.recoveryDrafts).toEqual(restored.recoveryDrafts);
   });
   it('quarantines damaged current snapshot and original unsent input instead of dropping it on refresh', () => {
-    const raw = JSON.stringify({version: 2, snapshot: {broken: true}, pending,
+    const raw = JSON.stringify({version: 3, snapshot: {broken: true}, pending,
       recoveryDrafts: {main: {baseRevision: 1, value: {typed: 123}}}});
     window.localStorage.setItem(key, raw);
     const cache = new AccountWorkspaceCache(namespace, window.localStorage);

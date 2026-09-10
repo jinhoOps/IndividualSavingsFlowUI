@@ -1,0 +1,23 @@
+{
+  "selection": {
+    "result": "월 수입 배분9.4%저축30만 원",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  "initialFocus": {
+    "result": "편집기 닫기",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  "dirty": {
+    "result": "{\"value\":\"350,000\",\"applyDisabled\":false}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  "cancel": {
+    "result": "{\"value\":\"300,000\",\"applyDisabled\":true}",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  "restoredFocus": {
+    "result": "월 저축 편집",
+    "origin": "http://127.0.0.1:5410/IndividualSavingsFlowUI/apps/main/"
+  },
+  "consoleErrorsOrWarnings": []
+}

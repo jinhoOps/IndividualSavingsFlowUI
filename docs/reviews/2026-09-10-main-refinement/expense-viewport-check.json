@@ -1,0 +1,122 @@
+[
+  {
+    "surface": "result",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "fonts": "loaded",
+    "visibleControlsMinimumHeight": 44,
+    "editButton": {
+      "name": "월 금액 편집",
+      "x": 286.1328125,
+      "y": 82,
+      "w": 87.8671875,
+      "h": 44,
+      "font": "14px",
+      "weight": "700",
+      "radius": "12px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "cls": "ui-button ui-button--quiet main-dashboard__edit"
+    }
+  },
+  {
+    "surface": "editor",
+    "width": 390,
+    "height": 844,
+    "scrollWidth": 390,
+    "fonts": "loaded",
+    "visibleControlsMinimumHeight": 44,
+    "editButton": {
+      "name": "월 금액 편집",
+      "x": 286.1328125,
+      "y": 82,
+      "w": 87.8671875,
+      "h": 44,
+      "font": "14px",
+      "weight": "700",
+      "radius": "12px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "cls": "ui-button ui-button--quiet main-dashboard__edit"
+    }
+  },
+  {
+    "surface": "result",
+    "width": 768,
+    "height": 900,
+    "scrollWidth": 768,
+    "fonts": "loaded",
+    "visibleControlsMinimumHeight": 44,
+    "editButton": {
+      "name": "월 금액 편집",
+      "x": 664.1328125,
+      "y": 82,
+      "w": 87.8671875,
+      "h": 44,
+      "font": "14px",
+      "weight": "700",
+      "radius": "12px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "cls": "ui-button ui-button--quiet main-dashboard__edit"
+    }
+  },
+  {
+    "surface": "editor",
+    "width": 768,
+    "height": 900,
+    "scrollWidth": 768,
+    "fonts": "loaded",
+    "visibleControlsMinimumHeight": 44,
+    "editButton": {
+      "name": "월 금액 편집",
+      "x": 664.1328125,
+      "y": 82,
+      "w": 87.8671875,
+      "h": 44,
+      "font": "14px",
+      "weight": "700",
+      "radius": "12px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "cls": "ui-button ui-button--quiet main-dashboard__edit"
+    }
+  },
+  {
+    "surface": "result",
+    "width": 1280,
+    "height": 900,
+    "scrollWidth": 1280,
+    "fonts": "loaded",
+    "visibleControlsMinimumHeight": 44,
+    "editButton": {
+      "name": "월 금액 편집",
+      "x": 936.1328125,
+      "y": 90,
+      "w": 87.8671875,
+      "h": 44,
+      "font": "14px",
+      "weight": "700",
+      "radius": "12px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "cls": "ui-button ui-button--quiet main-dashboard__edit"
+    }
+  },
+  {
+    "surface": "editor",
+    "width": 1280,
+    "height": 900,
+    "scrollWidth": 1280,
+    "fonts": "loaded",
+    "visibleControlsMinimumHeight": 44,
+    "editButton": {
+      "name": "월 금액 편집",
+      "x": 936.1328125,
+      "y": 90,
+      "w": 87.8671875,
+      "h": 44,
+      "font": "14px",
+      "weight": "700",
+      "radius": "12px",
+      "bg": "rgba(0, 0, 0, 0)",
+      "cls": "ui-button ui-button--quiet main-dashboard__edit"
+    }
+  }
+]
