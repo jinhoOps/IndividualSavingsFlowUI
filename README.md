@@ -1,6 +1,6 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 2026-09-10 지출 도우미·workspace v5는 로컬 구현 상태이며 운영 DB 적용·배포 전입니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. Google provider 설정은 아직 미완료입니다. [배포 기록](docs/superpowers/evidence/2026-09-08-supabase-pages-deployment.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 2026-09-10 지출 도우미·workspace v5도 운영 DB에 적용하고 Pages 배포와 실제 계정 저장을 검증했습니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. Google provider 설정은 아직 미완료입니다. [최신 배포 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 

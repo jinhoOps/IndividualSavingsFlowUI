@@ -1,6 +1,6 @@
 # Supabase 계정 저장 운영 안내
 
-2026-09-10: 현재 브랜치에 지출 도우미와 workspace v5를 구현했다. 신규 SQL은 로컬 PostgreSQL에서 검증했으며 운영에는 아직 적용하지 않았다. 아래 v4 운영 기록과 구분하고 [v5 적용 절차](#workspace-v5-지출-도우미-적용-대기)를 따른다.
+2026-09-10: 사용자 후속 요청에 따라 지출 도우미와 workspace v5를 운영에 적용하고 Pages 배포·실제 계정 검증을 완료했다. 기존 v4 데이터와 저장 이력의 정확한 보존, 답변 기억·두 브라우저 재개·합계 덮어쓰기를 확인했다. [v5 운영 기록](superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [적용 절차](#workspace-v5-지출-도우미-운영-적용)를 따른다.
 
 운영 확인 기록: 2026-09-08 후속 사용자 요청으로 원격 main push와 Pages 배포를 완료했다. 공개 사이트의 실제 이메일 로그인·Supabase 저장·두 브라우저 동기화가 통과했다. 아래 최초 통합 당시의 미배포 상태와 구분하며 최신 증거는 [Pages 배포 기록](superpowers/evidence/2026-09-08-supabase-pages-deployment.md)을 따른다. Google provider는 아직 미설정이므로 임시 이메일 로그인을 사용한다.
 
@@ -118,9 +118,9 @@ E2E의 `cloud` 프로젝트는 실제 production entry와 Supabase SDK를 사용
 
 정상 백업에는 서버 확정 workspace만 포함한다. 계정별 미전송 복구 기록은 탭별로 분리해 다른 탭의 조회가 덮어쓰지 않도록 하며, logout은 해당 계정의 모든 탭 기록을 명시적 확인 후 지운다. 원래의 비계정 브라우저 이전 원본은 남긴다.
 
-## Workspace v5 지출 도우미 적용 대기
+## Workspace v5 지출 도우미 운영 적용
 
-담당: 계정 저장·배포 운영자. 시작 문서는 [지출 도우미 설계](superpowers/specs/2026-09-10-main-expense-assistant-design.md)와 [202609100001 migration](../supabase/migrations/202609100001_workspace_v5_expense_assistant.sql)이다. 이 변경은 **SQL 준비와 로컬 검증까지** 진행했으며 운영 실행 기록은 없다.
+담당: 계정 저장·배포 운영자. 시작 문서는 [지출 도우미 설계](superpowers/specs/2026-09-10-main-expense-assistant-design.md)와 [202609100001 migration](../supabase/migrations/202609100001_workspace_v5_expense_assistant.sql)이다. 2026-09-10 운영 SQL Editor의 인증된 관리자 세션으로 적용했고 Pages 배포와 실제 계정 검증을 완료했다. 결과는 [v5 운영 기록](superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)을 따른다. 아래는 이번 적용 순서이며 이미 적용된 운영 DB에는 migration을 재실행하지 않는다.
 
 1. 운영자 권한으로 대상 프로젝트·기존 migration 적용 상태와 백업을 확인한다. 현재 행은 모두 정상 workspace v4여야 한다. 아래 조회는 금융 payload를 출력하지 않는다.
 2. 신규 migration 파일 전체를 하나의 트랜잭션으로 실행한다. 기존 migration은 다시 실행하지 않는다. 정상 v4 행을 검증하고 private before-image를 보관한 뒤 답변을 null로 추가한다. 기존 금액·다른 slice·revision·시각을 유지하며 실패하면 전체를 rollback한다.

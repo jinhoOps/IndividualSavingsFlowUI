@@ -1,0 +1,27 @@
+{
+  "ui": {
+    "status": "passed",
+    "results": [
+      "real Supabase email sign-in",
+      "protocol 5 initialization of disposable account",
+      "published Pages app password form in two independent browsers",
+      "draft answer persists through reload and second-browser revisit without changing totals",
+      "13 answers including annual amounts replace rough housing/living totals atomically; other values preserved",
+      "second browser focus refresh and completed annual-answer revisit",
+      "direct total saved and confirmed by server",
+      "manual total edits preserve answers; later helper completion overwrites again and survives reload",
+      "live Main at 390, 768 and 1280px without horizontal overflow",
+      "published routes for Simulation, Portfolio and Account Map",
+      "old-protocol writes and anonymous expense RPC denied; no browser page errors"
+    ],
+    "pageErrors": [],
+    "finalRevision": 20
+  },
+  "rpc": {
+    "status": "passed",
+    "results": [
+      "real Supabase email sign-in",
+      "real expense RPC duplicate retry increments once; stale CAS and direct writes denied; stale requested Main saving ignored"
+    ]
+  }
+}

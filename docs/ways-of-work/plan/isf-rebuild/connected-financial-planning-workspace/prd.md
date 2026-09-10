@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 개인 재무 계획 도구다. 정적 웹에서 Google 로그인과 Supabase 계정별 저장을 사용한다.
 
-현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌 간 고정·남은 금액 전부 계획 흐름을 제공한다. 네 앱은 계정당 하나의 schema v5 workspace를 사용한다. 2026-09-10 v5 구현은 운영 DB 적용·배포 전이다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
+현재 지원 제품은 **Main, Simulation, Portfolio와 Account Map**이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. Account Map은 Main 기반 목적과 계좌 간 고정·남은 금액 전부 계획 흐름을 제공한다. 네 앱은 계정당 하나의 schema v5 workspace를 사용한다. 2026-09-10 v5 운영 DB 적용·Pages 배포와 실제 계정 검증을 완료했다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
 
 ## 2. Epic
 
@@ -304,7 +304,7 @@ Simulation, Portfolio와 Account Map은 workspace 안의 최신 Main을 읽기 �
 - [ ] 실제 Google 왕복과 임시 로그인 전후 동일 UID·workspace 유지 확인
 - [ ] 사용할 인증 경로의 실제 로그인, 운영 base 직접 진입·새로고침, 두 기기와 다중 탭 검증 후 배포
 
-2026-09-10 지출 도우미와 workspace v5 확장을 구현했다. v4 before-image를 보관하고 답변을 null로 추가하는 신규 migration을 준비했으며 기존 다섯 금액과 다른 slice를 보존한다. 모든 RPC는 protocol 5를 요구한다. 운영 DB migration·frontend 배포·실제 계정 검증은 아직 실행하지 않았고, 앞의 v4 운영 증거를 v5 완료 증거로 취급하지 않는다.
+2026-09-10 지출 도우미와 workspace v5를 운영에 적용했다. v4 before-image를 보관하고 답변을 null로 추가하며 기존 다섯 금액·다른 slice·revision·시각·receipt의 정확한 보존을 확인했다. 모든 RPC는 protocol 5를 요구한다. Pages 배포와 실제 계정의 중간 답변 저장·두 브라우저 재개·합계 덮어쓰기·직접 금액 수정 후 답변 재사용을 검증했다. [v5 운영 기록](../../../../superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)을 따르며 앞의 v4 증거와 구분한다.
 
 ## 12. Future Product Direction
 

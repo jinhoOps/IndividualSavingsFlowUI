@@ -1,6 +1,6 @@
 # Main 지출 계산 도우미
 
-작성일: 2026-09-10. 상태: 사용자 요청에 따라 UI·workspace v5·SQL migration 구현. 로컬 검증 대상이며 운영 DB 적용과 배포는 별도다.
+작성일: 2026-09-10. 상태: 사용자 요청에 따라 UI·workspace v5·SQL migration 구현. 로컬 검증 후 운영 DB 적용·Pages 배포·실제 계정 검증까지 완료했다.
 
 기준: [Product PRD](../../ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), [DESIGN](../../../DESIGN.md), [기존 Supabase v4 통합 설계](2026-09-08-supabase-workspace-v4-integration-design.md).
 
@@ -73,4 +73,4 @@ main.expenseAssistant        null 또는 아래 객체
 
 관련 검증: `npm run check`, unit suite, `tests/account-workspace.spec.ts`의 expense group, 전체 Playwright, `node scripts/test-workspace-db.mjs`, `node scripts/test-account-pwa.mjs`. Node 26 환경의 Vitest는 `NODE_OPTIONS=--no-experimental-webstorage`를 사용한다.
 
-운영 적용 전에는 이 문서와 [SQL migration](../../../supabase/migrations/202609100001_workspace_v5_expense_assistant.sql)을 검토하고 계정 저장 운영 담당자가 DB migration과 v5 frontend 배포를 같은 변경 창에서 진행한다. v4 클라이언트 쓰기는 의도적으로 차단되므로 열린 이전 앱은 새로고침이 필요하다. 운영 DB에는 아직 실행하지 않았다. 실제 운영 저장·두 브라우저 동기화 확인은 로컬 DB/모의 인증 테스트와 구분한다.
+운영 적용 전에는 이 문서와 [SQL migration](../../../supabase/migrations/202609100001_workspace_v5_expense_assistant.sql)을 검토하고 계정 저장 운영 담당자가 DB migration과 v5 frontend 배포를 같은 변경 창에서 진행한다. v4 클라이언트 쓰기는 의도적으로 차단되므로 열린 이전 앱은 새로고침이 필요하다. 2026-09-10 운영 적용과 실제 저장·두 브라우저 동기화를 완료했다. [운영 기록](../evidence/2026-09-10-expense-assistant-production-rollout.md)은 로컬 DB/모의 인증 테스트와 구분한다.

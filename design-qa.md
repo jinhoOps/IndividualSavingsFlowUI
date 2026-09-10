@@ -37,7 +37,7 @@
 - `npm run check:harness`, `git diff --check`, 변경 문서 8개의 상대 파일 링크 확인: 통과.
 - public test Supabase 환경값을 사용한 `npx vite build`: 통과. 버전 증가 없는 직접 Vite 빌드다.
 
-변경 범위: Main 요약·도우미·편집과 Main 소유 repository, workspace v5 parser/이전/백업/계정 캐시/RPC, 신규 SQL과 호환성 검증이다. PRD·DESIGN·README·AGENTS도 현재 경계와 일치시켰으며 앱 설치 설명의 지출 용어도 통일했다. 운영 Supabase migration과 Pages 배포는 실행하지 않았다. 운영 담당자는 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)와 [적용 안내](docs/supabase-account-setup.md#workspace-v5-지출-도우미-적용-대기)에서 시작한다.
+변경 범위: Main 요약·도우미·편집과 Main 소유 repository, workspace v5 parser/이전/백업/계정 캐시/RPC, 신규 SQL과 호환성 검증이다. PRD·DESIGN·README·AGENTS도 현재 경계와 일치시켰으며 앱 설치 설명의 지출 용어도 통일했다. 후속 진행 요청으로 운영 Supabase migration·Pages 배포·실제 계정 저장 검증까지 완료했다. [v5 운영 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)에 배포 commit, 기존 데이터 보존, 두 브라우저 재개·합계 대체와 실제 390px·768px·1280px 화면을 기록했다. 아래 이전 단계의 로컬 검증 기록과 구분한다.
 
 ---
 
