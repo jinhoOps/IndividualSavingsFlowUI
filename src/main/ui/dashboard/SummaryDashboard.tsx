@@ -14,6 +14,7 @@ import { AllocationBar } from '../setup/AllocationBar';
 import { CashflowDonutSummary } from './CashflowDonutSummary';
 import { MainPlanEditor } from './MainPlanEditor';
 import { ExpenseAssistantDialog } from './ExpenseAssistantDialog';
+import { RemainingAllocationDialog } from './RemainingAllocationDialog';
 import type { ExpenseAssistantRepository } from '../../infrastructure/expenseAssistantRepository';
 
 export interface SummaryDashboardProps {
@@ -51,7 +52,9 @@ export function SummaryDashboard({
 }: SummaryDashboardProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [remainingOpen, setRemainingOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
+  const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
   const isMobile = useMobileEditor();
   const mobileModalOpen = isMobile && editorOpen;
   const modalRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
@@ -76,8 +79,8 @@ export function SummaryDashboard({
   }, [dirty]);
 
   useEffect(() => {
-    if (firstIssuePath !== undefined) setEditorOpen(true);
-  }, [firstIssuePath, validationAttempt]);
+    if (firstIssuePath !== undefined && !remainingOpen) setEditorOpen(true);
+  }, [firstIssuePath, validationAttempt, remainingOpen]);
 
   useEffect(() => {
     if (initialFocusPath === undefined || initialFocusConsumed.current) return;
@@ -86,15 +89,16 @@ export function SummaryDashboard({
   }, [initialFocusPath]);
 
   useEffect(() => {
-    if (editorOpen || expenseOpen) {
+    if (editorOpen || expenseOpen || remainingOpen) {
       return;
     }
 
     if (openerRef.current !== null) {
-      openerRef.current.focus();
+      if (openerRef.current.isConnected) openerRef.current.focus();
+      else summaryHeadingRef.current?.focus();
       openerRef.current = null;
     }
-  }, [editorOpen, expenseOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
+  }, [editorOpen, expenseOpen, remainingOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
 
   useEffect(() => {
     if (!editorOpen) return;
@@ -143,13 +147,13 @@ export function SummaryDashboard({
     >
       <div
         className="main-dashboard__content"
-        aria-hidden={mobileModalOpen || expenseOpen ? 'true' : undefined}
+        aria-hidden={mobileModalOpen || expenseOpen || remainingOpen ? 'true' : undefined}
         data-testid="dashboard-controls"
-        inert={mobileModalOpen || expenseOpen || undefined}
+        inert={mobileModalOpen || expenseOpen || remainingOpen || undefined}
       >
         <header className="main-dashboard__header">
           <p className="main-eyebrow">자금 흐름</p>
-          <h1 className="main-page-title" id="summary-dashboard-title">이번 달 자금 흐름</h1>
+          <h1 className="main-page-title" id="summary-dashboard-title" tabIndex={-1} ref={summaryHeadingRef}>이번 달 자금 흐름</h1>
           <p className="main-dashboard__description">수입과 지출, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
         </header>
 
@@ -167,8 +171,12 @@ export function SummaryDashboard({
             if (saving) return;
             openerRef.current = opener;
             setExpenseOpen(true);
+          } : undefined} onRemaining={!editorOpen && (!dirty || remainingOpen) ? opener => {
+            if (saving) return;
+            openerRef.current = opener;
+            setRemainingOpen(true);
           } : undefined} />
-          <div className="main-dashboard__edit-dock" data-editor-open={editorOpen || expenseOpen || undefined}>
+          <div className="main-dashboard__edit-dock" data-editor-open={editorOpen || expenseOpen || remainingOpen || undefined}>
             <Button type="button" variant="quiet" className="main-dashboard__edit" disabled={saving} onClick={(event) => openEditor(event.currentTarget)}><ChevronUp size={18} aria-hidden="true" />월 금액 편집</Button>
           </div>
         </Surface>
@@ -188,7 +196,10 @@ export function SummaryDashboard({
 
       {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
 
-      {!editorOpen && dirty ? (
+      {remainingOpen ? <RemainingAllocationDialog applied={applied} dirty={dirty} saveStatus={saveStatus}
+        onDraftChange={onDraftChange} onApply={onApply} onCancel={onCancel} onClose={() => setRemainingOpen(false)} /> : null}
+
+      {!editorOpen && !remainingOpen && dirty ? (
         <ApplyBar
           dirty={dirty}
           saveStatus={saveStatus}

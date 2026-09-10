@@ -1,7 +1,7 @@
 export const EXPENSE_ITEMS = [
   { id: 'rent', label: '월세', question: '매달 월세로 얼마를 내나요?', hint: '월세가 없다면 없어요를 선택하세요.', group: 'fixed', target: 'housing' },
   { id: 'housingInterest', label: '주거 대출 이자', question: '주거 대출 이자는 얼마인가요?', hint: '전세·주택 대출의 이자만 입력해요.', group: 'fixed', target: 'housing' },
-  { id: 'maintenance', label: '관리비', question: '관리비는 보통 얼마인가요?', hint: '관리비에 포함된 공과금은 뒤에서 다시 입력하지 않아요.', group: 'fixed', target: 'housing' },
+  { id: 'maintenance', label: '관리비', question: '관리비는 보통 얼마인가요?', hint: '공용관리비(일반관리비), 수도세, 전기세, 가스비를 포함해요. 관리비에 포함된 요금만 합치고, 따로 내는 요금은 뒤의 공과금에서 입력해주세요.', group: 'fixed', target: 'housing' },
   { id: 'insurance', label: '보험료', question: '보험료로 얼마가 나가나요?', hint: '직접 내는 보험료를 모두 합쳐주세요.', group: 'fixed', target: 'living' },
   { id: 'telecom', label: '통신비', question: '휴대폰·인터넷 요금은 얼마인가요?', hint: '휴대폰, 인터넷, TV 요금을 합쳐주세요.', group: 'fixed', target: 'living' },
   { id: 'subscriptions', label: '정기 구독', question: '정기 구독에 얼마를 쓰나요?', hint: '영상·음악 서비스, 멤버십 등 정기 결제를 떠올려보세요.', group: 'fixed', target: 'living' },

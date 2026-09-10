@@ -695,6 +695,7 @@ test('expense assistant remembers each answer, replaces rough totals only on com
   const dialog = page.getByRole('dialog');
   for (let index = 0; index < expenseQuestions.length; index++) {
     const question = expenseQuestions[index];
+    if (question.label === '관리비') await expect(page.getByRole('dialog')).toContainText('공용관리비(일반관리비), 수도세, 전기세, 가스비');
     const input = dialog.getByLabel(`${question.label} 금액`, {exact: true});
     await expect(input).toBeVisible();
     if (question.annual) await dialog.getByRole('button', {name: '1년 총액', exact: true}).click();
@@ -831,3 +832,146 @@ for (const failure of ['response-lost', 'conflict'] as const) {
     expect(server.rows.get(userA)?.main.expenseAssistant?.lastApplied?.answers.rent?.amountWon).toBe(600000);
   });
 }
+
+for (const width of [390, 768, 1280]) {
+  test(`remaining allocation previews, cancels and persists partial additions at ${width}px`, async ({page, context}) => {
+    const server = fakeServer();
+    const original = mappedPlan();
+    original.main.expenseAssistant = {schemaVersion: 1, draft: createExpenseDraft(1000), lastApplied: null};
+    server.rows.set(userA, original); await server.attach(context, userA);
+    await page.setViewportSize({width, height: 844});
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.goto('apps/main/');
+    const opener = page.getByRole('button', {name: /^남는 돈 분배 도우미 · 현재/});
+    await expect(opener).toContainText('90만 원');
+    expect((await opener.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await opener.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading')).toBeFocused();
+    await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
+    await expect(dialog.getByRole('button', {name: '이렇게 나누기'})).toBeDisabled();
+    await page.keyboard.press('Shift+Tab'); await expect(dialog.getByRole('button', {name: '나중에'})).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(dialog.getByRole('button', {name: '분배 도우미 닫기'})).toBeFocused();
+    expect(server.operations).toEqual([]);
+    await dialog.getByRole('button', {name: '저축에 전부'}).click();
+    await expect(dialog.getByLabel('저축에 추가')).toHaveValue('900,000');
+    await dialog.getByRole('button', {name: '투자에 전부'}).click();
+    await expect(dialog.getByLabel('저축에 추가')).toHaveValue('');
+    await expect(dialog.getByLabel('투자에 추가')).toHaveValue('900,000');
+    await dialog.getByRole('button', {name: '반씩 나누기'}).click();
+    await expect(dialog.getByLabel('저축에 추가')).toHaveValue('450,000');
+    page.once('dialog', prompt => prompt.dismiss());
+    await page.keyboard.press('Escape'); await expect(dialog).toBeVisible();
+    page.once('dialog', prompt => prompt.accept());
+    await dialog.getByRole('button', {name: '나중에'}).click();
+    await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
+    expect(server.rows.get(userA)).toEqual(original);
+    await opener.click();
+    await dialog.getByLabel('저축에 추가').fill('600000');
+    await dialog.getByLabel('투자에 추가').fill('400000');
+    await expect(dialog.getByRole('alert')).toContainText('남는 돈보다 많아요');
+    await expect(dialog.getByRole('button', {name: '이렇게 나누기'})).toBeDisabled();
+    await dialog.getByLabel('저축에 추가').fill('100000');
+    await dialog.getByLabel('투자에 추가').fill('200000');
+    await expect(dialog.locator('.expense-assistant__total')).toContainText('600,000원');
+    await expect(dialog.locator('#remaining-saving-preview')).toContainText('반영 후 400,000원');
+    await expect(dialog.locator('#remaining-investment-preview')).toContainText('반영 후 400,000원');
+    const preview = (await dialog.locator('#remaining-investment-preview').boundingBox())!;
+    const footer = (await dialog.locator('footer').boundingBox())!;
+    expect(preview.y + preview.height).toBeLessThanOrEqual(footer.y);
+    expect(server.rows.get(userA)).toEqual(original);
+    const box = (await dialog.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(844);
+    for (const control of await dialog.locator('input,button').all()) expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path: `test-results/remaining-allocation-${width}.png`, fullPage: true});
+    await dialog.getByRole('button', {name: '이렇게 나누기'}).click();
+    await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
+    await expect(opener).toContainText('60만 원');
+    const saved = server.rows.get(userA)!;
+    expect(saved.main.applied).toMatchObject({...original.main.applied, updatedAt: expect.any(Number), monthlySavingWon: 400000, monthlyInvestmentWon: 400000});
+    for (const key of ['locations', 'accountMap', 'simulation', 'portfolio'] as const) expect(saved[key]).toEqual(original[key]);
+    expect(saved.main.expenseAssistant).toEqual(original.main.expenseAssistant);
+    expect(server.operations.filter(op => op === 'save_main')).toHaveLength(1);
+    await page.reload(); await expect(opener).toContainText('60만 원');
+    await opener.click();
+    await dialog.getByRole('button', {name: '저축에 전부'}).click();
+    await expect(dialog.getByLabel('저축에 추가')).toHaveValue('600,000');
+    await dialog.getByRole('button', {name: '이렇게 나누기'}).click();
+    await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
+    expect(server.rows.get(userA)?.main.applied?.monthlySavingWon).toBe(1000000);
+    await opener.click();
+    await expect(dialog.getByRole('heading')).toHaveText('지금은 나눌 돈이 없어요');
+    await expect(dialog.locator('input')).toHaveCount(0);
+    await dialog.getByRole('button', {name: '확인', exact: true}).click();
+    await expect(opener).toBeFocused();
+    server.setFailRead(true); await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(opener).toBeDisabled();
+  });
+}
+
+test('remaining allocation explains a deficit without writing or offering additions', async ({page, context}) => {
+  const server = fakeServer(); const original = plan(2000000); server.rows.set(userA, original); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: /^남는 돈 분배 도우미 · 현재/}).click();
+  await expect(page.getByRole('dialog')).toContainText('수입보다 나가는 돈이 많아요');
+  await expect(page.getByRole('dialog').locator('input')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  expect(server.operations).toEqual([]); expect(server.rows.get(userA)).toEqual(original);
+});
+
+for (const failure of ['response-lost', 'conflict'] as const) {
+  test(`remaining allocation recovers ${failure} without adding twice or overwriting a newer plan`, async ({page, context}) => {
+    const server = fakeServer(); const original = mappedPlan(); server.rows.set(userA, original); await server.attach(context, userA);
+    await page.goto('apps/main/');
+    const opener = page.getByRole('button', {name: /^남는 돈 분배 도우미 · 현재/});
+    await opener.click(); const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', {name: '반씩 나누기'}).click();
+    if (failure === 'response-lost') server.loseNextResponse();
+    else server.rows.set(userA, {...original, revision: 1, updatedAt: 2000, main: {...original.main,
+      applied: {...original.main.applied!, monthlyNetIncomeWon: 4000000, monthlySavingWon: 500000, updatedAt: 2000}}});
+    await dialog.getByRole('button', {name: '이렇게 나누기'}).click();
+    if (failure === 'response-lost') {
+      await dialog.getByRole('button', {name: '저장 결과 다시 확인'}).click();
+      await expect(dialog).toHaveCount(0);
+      expect(server.rows.get(userA)?.revision).toBe(1);
+      expect(server.rows.get(userA)?.main.applied).toMatchObject({monthlySavingWon: 750000, monthlyInvestmentWon: 650000});
+    } else {
+      await expect(dialog.getByLabel('저축에 추가')).toHaveValue('450,000');
+      await dialog.getByRole('button', {name: '닫고 저장 상태 확인'}).click();
+      expect(server.rows.get(userA)?.revision).toBe(1);
+      page.once('dialog', prompt => prompt.accept());
+      await page.getByRole('button', {name: '최신 저장 계획 보기'}).click();
+      await expect(opener).toContainText('150만 원'); await opener.click();
+      await dialog.getByRole('button', {name: '투자에 전부'}).click();
+      await expect(dialog.getByLabel('투자에 추가')).toHaveValue('1,500,000');
+      await dialog.getByRole('button', {name: '이렇게 나누기'}).click(); await expect(dialog).toHaveCount(0);
+      expect(server.rows.get(userA)?.main.applied).toMatchObject({monthlyNetIncomeWon: 4000000, monthlySavingWon: 500000, monthlyInvestmentWon: 1700000});
+      expect(server.rows.get(userA)?.revision).toBe(2);
+    }
+    expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
+  });
+}
+
+test('canceling an initially invalid remaining allocation releases account edits for remote refresh', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  const opener = page.getByRole('button', {name: /^남는 돈 분배 도우미 · 현재/});
+  for (const [index, raw] of ['9999999', '-10'].entries()) {
+    await opener.click();
+    await page.getByRole('dialog').getByLabel('저축에 추가').fill(raw);
+    await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
+    await expect(page.getByRole('dialog').getByRole('button', {name: '이렇게 나누기'})).toBeDisabled();
+    page.once('dialog', prompt => prompt.accept());
+    await page.getByRole('dialog').getByRole('button', {name: '나중에'}).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const next = plan(4000000 + index * 1000000);
+    next.revision = index + 1; next.updatedAt = 2000 + index;
+    server.rows.set(userA, next);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(opener).toContainText(index === 0 ? '170만 원' : '270만 원');
+    expect(server.operations).toEqual([]);
+  }
+});

@@ -8,6 +8,7 @@ type AllocationId = 'consumption' | 'remaining' | 'saving' | 'investment';
 export interface CashflowSummaryProps {
   summary: CashflowTotals;
   onExpense?(opener: HTMLElement): void;
+  onRemaining?(opener: HTMLElement): void;
   selection?: {
     activeId?: AllocationId;
     selectedId?: AllocationId;
@@ -17,7 +18,7 @@ export interface CashflowSummaryProps {
   };
 }
 
-export function CashflowSummary({ summary, selection, onExpense }: CashflowSummaryProps) {
+export function CashflowSummary({ summary, selection, onExpense, onRemaining }: CashflowSummaryProps) {
   const rows = [
     { id: 'consumption' as const, label: '월 지출', chartLabel: '지출', valueWon: summary.consumptionWon,
       context: `주거 ${formatDashboardWon(summary.housingWon)} · 생활 ${formatDashboardWon(summary.livingWon)}` },
@@ -30,7 +31,8 @@ export function CashflowSummary({ summary, selection, onExpense }: CashflowSumma
   return (
     <section className="cashflow-summary" aria-label="월간 핵심 수치">
       {rows.map((row) => (
-        <MetricRow key={row.id} {...row} incomeWon={summary.incomeWon} selection={selection} onExpense={row.id === 'consumption' ? onExpense : undefined} />
+        <MetricRow key={row.id} {...row} incomeWon={summary.incomeWon} selection={selection}
+          onAssistant={row.id === 'consumption' ? onExpense : row.id === 'remaining' ? onRemaining : undefined} />
       ))}
     </section>
   );
@@ -44,10 +46,10 @@ interface MetricRowProps {
   incomeWon: number;
   context?: string;
   selection?: CashflowSummaryProps['selection'];
-  onExpense?: CashflowSummaryProps['onExpense'];
+  onAssistant?: CashflowSummaryProps['onExpense'];
 }
 
-function MetricRow({ id, label, chartLabel, valueWon, incomeWon, context, selection, onExpense }: MetricRowProps) {
+function MetricRow({ id, label, chartLabel, valueWon, incomeWon, context, selection, onAssistant }: MetricRowProps) {
   const contextId = useId();
   const percentage = incomeWon > 0 ? `${(valueWon / incomeWon * 100).toFixed(1)}%` : '—';
   const selectable = selection !== undefined && valueWon >= 0 && incomeWon > 0;
@@ -55,13 +57,13 @@ function MetricRow({ id, label, chartLabel, valueWon, incomeWon, context, select
     <>
       <span className="cashflow-metric__label">{label}</span>
       <span className="cashflow-metric__percentage">{percentage}</span>
-      {context && !onExpense ? <small id={contextId} className="cashflow-metric__context">{context}</small> : null}
-      {!onExpense ? <strong className="cashflow-metric__value"><AnimatedMetricValue valueWon={valueWon} /></strong> : null}
+      {context && !onAssistant ? <small id={contextId} className="cashflow-metric__context">{context}</small> : null}
+      {!onAssistant ? <strong className="cashflow-metric__value"><AnimatedMetricValue valueWon={valueWon} /></strong> : null}
     </>
   );
 
   return (
-    <div className={`cashflow-metric cashflow-donut__segment--${id}${onExpense ? ' cashflow-metric--assistant' : ''}`} data-active={selection?.activeId === id || undefined} data-deficit={valueWon < 0 || undefined}>
+    <div className={`cashflow-metric cashflow-donut__segment--${id}${onAssistant ? ' cashflow-metric--assistant' : ''}`} data-active={selection?.activeId === id || undefined} data-deficit={valueWon < 0 || undefined}>
       {selectable ? (
         <button
           type="button"
@@ -76,10 +78,10 @@ function MetricRow({ id, label, chartLabel, valueWon, incomeWon, context, select
           onPointerLeave={() => selection.onHover()}
         >{content}</button>
       ) : <div className="cashflow-metric__inspect">{content}</div>}
-      {onExpense ? <>
-        <button type="button" className="cashflow-metric__assistant" aria-label={`지출 계산 도우미 · 현재 ${formatDashboardWon(valueWon)}`} onClick={event => onExpense(event.currentTarget)}>
+      {onAssistant ? <>
+        <button type="button" className="cashflow-metric__assistant" aria-label={`${id === 'consumption' ? '지출 계산 도우미' : '남는 돈 분배 도우미'} · 현재 ${formatDashboardWon(valueWon)}`} onClick={event => onAssistant(event.currentTarget)}>
           <strong className="cashflow-metric__value"><AnimatedMetricValue valueWon={valueWon} /></strong><WandSparkles size={18} aria-hidden="true" />
-          <span className="cashflow-metric__assistant-hint">항목별로 계산</span>
+          <span className="cashflow-metric__assistant-hint">{id === 'consumption' ? '항목별로 계산' : valueWon > 0 ? '저축·투자에 나누기' : '배분 상태 확인'}</span>
         </button>
         {context ? <small id={contextId} className="cashflow-metric__context">{context}</small> : null}
       </> : null}

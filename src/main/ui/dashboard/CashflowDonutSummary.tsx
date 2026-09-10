@@ -22,9 +22,10 @@ import { hitTestDonutAllocation } from './donutHitTest';
 export interface CashflowDonutSummaryProps {
   data: MainData;
   onExpense?(opener: HTMLElement): void;
+  onRemaining?(opener: HTMLElement): void;
 }
 
-export function CashflowDonutSummary({ data, onExpense }: CashflowDonutSummaryProps) {
+export function CashflowDonutSummary({ data, onExpense, onRemaining }: CashflowDonutSummaryProps) {
   const [hoveredId, setHoveredId] = useState<DonutAllocation['id']>();
   const [focusedId, setFocusedId] = useState<DonutAllocation['id']>();
   const [tappedId, setTappedId] = useState<DonutAllocation['id']>();
@@ -281,6 +282,7 @@ export function CashflowDonutSummary({ data, onExpense }: CashflowDonutSummaryPr
       <CashflowSummary
         summary={calculateCashflow(data)}
         onExpense={onExpense}
+        onRemaining={onRemaining}
         selection={{
           activeId: activeAllocation?.id,
           selectedId: tappedId,

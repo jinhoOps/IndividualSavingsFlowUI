@@ -253,9 +253,24 @@
   .expense-assistant__review button { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border: 0; border-bottom: 1px solid var(--line); background: transparent; min-height: 48px; padding: .625rem 0; font-size: .875rem; text-align: left; }
   .expense-assistant__review button > span:last-child { color: var(--tone-accent); text-align: right; }
   .expense-assistant__error { color: var(--status-error); font-size: .875rem; line-height: 1.6; }
+  .remaining-allocation h2 { margin: .25rem 0 .5rem; font-size: 1.375rem; }
+  .remaining-allocation__available { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem .75rem; padding: .875rem 0; }
+  .remaining-allocation__available > span { color: var(--muted); font-size: .875rem; }
+  .remaining-allocation__available > strong { font-size: 1.5rem; font-family: var(--font-display); overflow-wrap: anywhere; }
+  .remaining-allocation__presets { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+  .remaining-allocation__presets button { padding-inline: .75rem; font-size: .875rem; }
+  .remaining-allocation__fields { display: grid; gap: 1rem; margin-top: .75rem; }
+  .remaining-allocation__fields label { display: block; margin-bottom: .375rem; font-size: .875rem; font-weight: 700; }
+  .remaining-allocation__input { display: flex; gap: .5rem; align-items: center; border: 1px solid var(--line); border-radius: .75rem; padding-right: .875rem; }
+  .remaining-allocation__input:focus-within { outline: 2px solid var(--tone-accent); outline-offset: 2px; }
+  .remaining-allocation__input input { width: 100%; min-width: 0; min-height: 48px; padding: .625rem .25rem .625rem .875rem; border: 0; background: transparent; outline: none; font-size: 1.25rem; text-align: right; font-family: var(--font-display); }
+  .remaining-allocation__input > span { color: var(--muted); }
+  .remaining-allocation__preview { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; margin: .5rem 0 0; color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
+  .remaining-allocation__preview strong { color: var(--ink); }
   @keyframes expense-assistant-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 767px) {
     .expense-assistant { top: auto; max-height: 92dvh; height: min(42rem, 92dvh); border-radius: 1.5rem 1.5rem 0 0; }
+    .remaining-allocation { height: min(46rem, 92dvh); }
     .expense-assistant__body { padding-inline: 1.25rem; }
     .expense-assistant__footer { padding-inline: 1.25rem; }
   }

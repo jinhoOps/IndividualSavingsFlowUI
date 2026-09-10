@@ -6,7 +6,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도·계좌 흐름·Main overlay 표현은 [Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)을 따릅니다. 과거 레거시 화면과 superseded Account Map design의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
 
-현재 delivery boundary는 명확히 나눕니다. 현재 코드의 schema v5 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. v4/v3는 read-only migration/rollback source이며 v5 운영 DB 적용·배포는 아직 진행하지 않았습니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
+현재 delivery boundary는 명확히 나눕니다. 현재 코드의 schema v5 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. v4/v3는 read-only migration/rollback source이며 v5 운영 DB 적용·배포와 실제 계정 검증을 완료했습니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
 
 ## Experience Principles
 
@@ -46,7 +46,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - `취소`와 `적용`은 현재 draft와 적용된 계획의 차이를 명확히 처리합니다.
 - 요약과 월 자금 구성은 적용된 데이터만 반영합니다.
 - 2026-09-10 선택된 목록형 시안을 기준으로, 월 자금 구성은 도넛·저축과 투자 비중·네 금액 행을 하나의 요약 표면에 모읍니다. 도넛 옆 요약에 비율을 한 번 표시하고, 별도 범례 카드와 2×2 금액 카드는 사용하지 않습니다.
-- 금액 행은 `월 지출`, `남는 돈`, `월 저축`, `월 투자` 순서로 색상·명칭·금액·비율을 함께 보여줍니다. 주거·생활비 상세와 음수·초과 문구도 해당 행에서 읽습니다. 지출 명칭·비율과 나머지 행은 도넛을 탐색하고, 지출 금액은 지팡이 아이콘과 `항목별로 계산` 안내로 도우미를 엽니다. 지출 행의 접근성 설명에 주거·생활비 상세를 연결합니다. 다섯 금액 편집은 단일 `월 금액 편집`으로 열고 행마다 수정 아이콘을 반복하지 않습니다. 767px 이하는 화면 아래 고정된 접힌 바, 768px 이상은 요약 카드 하단 버튼으로 배치합니다. 바는 탭·키보드 진입점이며 드래그 동작은 제공하지 않습니다. 모든 조작 영역은 44px 이상을 유지합니다.
+- 금액 행은 `월 지출`, `남는 돈`, `월 저축`, `월 투자` 순서로 색상·명칭·금액·비율을 함께 보여줍니다. 주거·생활비 상세와 음수·초과 문구도 해당 행에서 읽습니다. 명칭·비율과 저축·투자 행은 도넛을 탐색합니다. 지출 금액은 지팡이 아이콘과 `항목별로 계산` 안내로 도우미를 열고, 남는 돈 금액은 `저축·투자에 나누기` 안내로 분배 도우미를 엽니다. 지출 행의 접근성 설명에 주거·생활비 상세를 연결합니다. 다섯 금액 편집은 단일 `월 금액 편집`으로 열고 행마다 수정 아이콘을 반복하지 않습니다. 767px 이하는 화면 아래 고정된 접힌 바, 768px 이상은 요약 카드 하단 버튼으로 배치합니다. 바는 탭·키보드 진입점이며 드래그 동작은 제공하지 않습니다. 모든 조작 영역은 44px 이상을 유지합니다.
 - 도넛의 의미·원호 순서는 `지출`, `저축`, `투자`, `여윳돈`을 유지합니다. 도넛 조각의 pointer·touch 선택과 keyboard 행 선택은 같은 조각을 확장하고, 도넛 옆 요약을 해당 명칭·금액·비율로 바꿉니다. 음수 잔액은 금액 행에 남기되 도넛 조각으로 만들지 않습니다. 별도 tooltip은 사용하지 않습니다.
 - Main 소유 편집기는 제목·닫기·설명 뒤에 다섯 금액을 label–input 행으로 표시합니다. 단위는 입력 오른쪽에 두고, 빠른 금액 조정은 focus된 행에서만 펼칩니다. 오류는 해당 행 아래에 연결합니다. 모바일은 bottom sheet, 768px 이상은 읽을 수 있는 너비의 side panel을 유지합니다.
 - 편집 footer는 상태 문구 아래 `취소`·`적용`을 한 줄로 배치합니다. 변경 전 적용 비활성, 저장 중 잠금, 실패 재시도와 draft 보존 동작은 유지합니다. Main과 Account Map에서 여는 Main 소유 편집기에 같은 규칙을 적용합니다.
@@ -57,6 +57,13 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 완료 전에는 항목 내역과 주거·생활·월 지출 합계를 보여줍니다. 내역의 금액에서 단일 답변으로 바로 이동하며 재방문에도 내역과 질문 단계를 기억합니다.
 - `이 금액으로 반영`은 직접 입력했던 주거비·생활비를 항목 합계로 대체합니다. 중간 답변 저장은 적용 금액을 바꾸지 않습니다. 의미와 저장 계약은 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)를 따릅니다.
 - 모바일 bottom sheet와 768px 이상 우측 modal panel은 배경 비활성화·focus trap·Escape·진입 금액으로 focus 복원을 제공합니다. footer 합계와 행동은 고정하고 질문/13개 내역만 내부 스크롤합니다. 저장 결과 불명과 충돌은 패널 내부에서 재시도할 수 있습니다.
+
+### 남는 돈 분배 도우미
+
+- 남는 돈 금액을 누르면 저축·투자에 더 넣을지 묻습니다. 전부 저축·전부 투자·반씩 나누기와 직접 원 단위 입력을 제공하고, 처음에는 추가 금액을 0원으로 둡니다.
+- 현재 금액·반영 후 금액·나눈 뒤 남는 돈을 표시하며 일부를 남겨둘 수 있습니다. 남는 돈을 초과한 입력은 적용하지 않습니다. `이렇게 나누기`는 기존 월 저축·투자에 추가하고 다른 값과 지출 답변을 보존합니다.
+- 0원·적자는 현재 배분 상태만 설명하며 추가 금액을 받지 않습니다. 모바일 sheet와 desktop panel은 지출 도우미의 overlay·키보드·focus 계약을 따릅니다.
+- 상세 저장·오류·취소 계약은 [남는 돈 분배 설계](docs/superpowers/specs/2026-09-10-main-remaining-allocation-design.md)를 따릅니다.
 
 ### Current Journey
 
