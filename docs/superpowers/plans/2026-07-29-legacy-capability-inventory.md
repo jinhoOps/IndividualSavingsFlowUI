@@ -245,7 +245,7 @@ git commit -m "docs: map legacy data consumers"
 
 **Interfaces:**
 - Consumes: approved Bedrock Main specs and observed runtime.
-- Produces: reviewed classifications that do not depend on stale GSD status or outdated PRD feature claims.
+- Produces: reviewed classifications that do not depend on stale planning status or outdated PRD feature claims.
 
 - [x] **Step 1: Verify current Main capabilities**
 

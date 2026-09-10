@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Preserve the existing uncommitted `package.json` description change.
-- Do not restore or reference retired `.planning` GSD artifacts.
+- Do not restore or reference retired `.planning` artifacts.
 - Keep component paths, CSS implementation, and internal architecture out of the Product PRD.
 - Do not rewrite historical Superpowers specs or plans.
 
