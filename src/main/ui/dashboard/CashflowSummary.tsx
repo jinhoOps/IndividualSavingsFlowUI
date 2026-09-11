@@ -23,10 +23,10 @@ export function CashflowSummary({ summary, selection, onExpense, onRemaining, on
   const rows = [
     { id: 'consumption' as const, label: '월 지출', chartLabel: '지출', valueWon: summary.consumptionWon,
       context: `주거 ${formatDashboardWon(summary.housingWon)} · 생활 ${formatDashboardWon(summary.livingWon)}` },
-    { id: 'remaining' as const, label: '남는 돈', chartLabel: '여윳돈', valueWon: summary.remainingWon,
-      context: summary.deficitWon > 0 ? `수입보다 ${formatDashboardWon(summary.deficitWon)} 초과` : undefined },
     { id: 'saving' as const, label: '월 저축', chartLabel: '저축', valueWon: summary.savingWon },
     { id: 'investment' as const, label: '월 투자', chartLabel: '투자', valueWon: summary.investmentWon },
+    { id: 'remaining' as const, label: '남는 돈', chartLabel: '여윳돈', valueWon: summary.remainingWon,
+      context: summary.deficitWon > 0 ? `수입보다 ${formatDashboardWon(summary.deficitWon)} 초과` : undefined },
   ];
 
   return (
@@ -67,11 +67,11 @@ function MetricRow({ id, label, chartLabel, valueWon, incomeWon, context, select
   );
 
   return (
-    <div className={`cashflow-metric cashflow-donut__segment--${id}${onValueAction ? ' cashflow-metric--assistant' : ''}`} data-active={selection?.activeId === id || undefined} data-deficit={valueWon < 0 || undefined}>
+    <div className={`cashflow-metric cashflow-allocation--${id}${onValueAction ? ' cashflow-metric--assistant' : ''}`} data-active={selection?.activeId === id || undefined} data-deficit={valueWon < 0 || undefined}>
       {selectable ? (
         <button
           type="button"
-          className="cashflow-metric__inspect cashflow-donut__legend-button"
+          className="cashflow-metric__inspect"
           aria-label={`${chartLabel} · ${formatDashboardWon(valueWon)} · ${percentage}`}
           aria-describedby={context ? contextId : undefined}
           aria-pressed={selection.selectedId === id}

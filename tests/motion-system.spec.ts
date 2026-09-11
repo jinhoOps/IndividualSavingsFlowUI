@@ -80,30 +80,17 @@ const VIEWPORTS = [
   { width: 1280, height: 900, label: 'desktop' },
 ] as const;
 
-const MAIN_DONUT_INITIAL = {
+const MAIN_ALLOCATION_INITIAL = {
   activeAnimations: 0,
-  semanticName: '지출 56.3%, 저축 9.4%, 투자 6.3%, 여윳돈 28.1%',
-  centerSemantic: '15.6%',
-  centerVisual: '15.6%',
-  segments: [
-    { id: 'consumption', dasharray: '56.25 43.75', dashoffset: '0' },
-    { id: 'saving', dasharray: '9.375 90.625', dashoffset: '-56.25' },
-    { id: 'investment', dasharray: '6.25 93.75', dashoffset: '-65.625' },
-    { id: 'remaining', dasharray: '28.125 71.875', dashoffset: '-71.875' },
-  ],
+  semanticName: '월수입 대비. 지출 56.3%, 저축 9.4%, 투자 6.3%, 여윳돈 28.1%',
+  ratio: '15.6%',
+  segments: [56.25, 9.375, 6.25, 28.125],
 };
-
-const MAIN_DONUT_AFTER_EDIT = {
+const MAIN_ALLOCATION_AFTER_EDIT = {
   activeAnimations: 0,
-  semanticName: '지출 59.4%, 저축 9.4%, 투자 6.3%, 여윳돈 25.0%',
-  centerSemantic: '15.6%',
-  centerVisual: '15.6%',
-  segments: [
-    { id: 'consumption', dasharray: '59.375 40.625', dashoffset: '0' },
-    { id: 'saving', dasharray: '9.375 90.625', dashoffset: '-59.375' },
-    { id: 'investment', dasharray: '6.25 93.75', dashoffset: '-68.75' },
-    { id: 'remaining', dasharray: '25 75', dashoffset: '-75' },
-  ],
+  semanticName: '월수입 대비. 지출 59.4%, 저축 9.4%, 투자 6.3%, 여윳돈 25.0%',
+  ratio: '15.6%',
+  segments: [59.375, 9.375, 6.25, 25],
 };
 
 const SIMULATION_24_SUMMARY = '명목 기준 24년, 현재 계획 3억 2,539만 원, 전부 저축 1억 9,993만 원, 차이 1억 2,546만 원';
@@ -153,7 +140,7 @@ for (const viewport of VIEWPORTS) {
 
     await openWithWorkspace(page, 'apps/main/', WORKSPACE);
     const mainEditTrigger = page.getByRole('button', { name: '월 금액 편집' });
-    await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_INITIAL);
+    await expectFinalMainAllocation(page.locator('.cashflow-allocation'), MAIN_ALLOCATION_INITIAL);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `main-${viewport.width}-edit-before.png`);
     await mainEditTrigger.click();
     const livingInput = page.getByLabel('월평균 생활비');
@@ -161,18 +148,17 @@ for (const viewport of VIEWPORTS) {
     await expect(livingInput).toBeFocused();
     await livingInput.fill('1100000');
     await page.getByRole('button', { name: '적용' }).click();
-    await expect.poll(async () => (await readMainDonut(page.locator('.cashflow-donut'))).semanticName)
-      .toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
-    await expect.poll(async () => (await readMainDonut(page.locator('.cashflow-donut'))).centerSemantic)
-      .toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
-    const mainTransitionStart = await readMainDonut(page.locator('.cashflow-donut'));
-    expect(mainTransitionStart.semanticName).toBe(MAIN_DONUT_AFTER_EDIT.semanticName);
-    expect(mainTransitionStart.centerSemantic).toBe(MAIN_DONUT_AFTER_EDIT.centerSemantic);
-    expect(mainTransitionStart.segments).not.toEqual(MAIN_DONUT_AFTER_EDIT.segments);
+    await expect.poll(async () => (await readMainAllocation(page.locator('.cashflow-allocation'))).semanticName)
+      .toBe(MAIN_ALLOCATION_AFTER_EDIT.semanticName);
+    await expect.poll(async () => (await readMainAllocation(page.locator('.cashflow-allocation'))).ratio)
+      .toBe(MAIN_ALLOCATION_AFTER_EDIT.ratio);
+    const mainTransitionStart = await readMainAllocation(page.locator('.cashflow-allocation'));
+    expect(mainTransitionStart.semanticName).toBe(MAIN_ALLOCATION_AFTER_EDIT.semanticName);
+    expect(mainTransitionStart.ratio).toBe(MAIN_ALLOCATION_AFTER_EDIT.ratio);
     await expect.poll(() => page.evaluate(() => (
       JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
-    await expectFinalMainDonut(page.locator('.cashflow-donut'), MAIN_DONUT_AFTER_EDIT);
+    await expectFinalMainAllocation(page.locator('.cashflow-allocation'), MAIN_ALLOCATION_AFTER_EDIT);
     await page.getByRole('button', { name: '편집기 닫기' }).click();
     await expect(mainEditTrigger).toBeFocused();
     await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
@@ -272,7 +258,7 @@ test('PWA offline revisit keeps all app routes and final motion state available'
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
 
   const routes = [
-    { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-donut' },
+    { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-allocation' },
     { path: 'apps/simulation/', heading: /1억 원을 모으려면/, motion: '.growth-chart' },
     { path: 'apps/portfolio/', heading: '안정 50%', motion: '.portfolio-summary' },
     { path: 'apps/account-map/', heading: '월 자금 기준 확인', motion: '.account-map-setup' },
@@ -295,7 +281,7 @@ test('PWA offline revisit keeps all app routes and final motion state available'
       await expect(page.locator(route.motion)).toBeVisible();
       await expectNoDocumentOverflow(page);
       if (route.path === 'apps/main/') {
-        expect(await readMainDonut(page.locator('.cashflow-donut'))).toEqual(MAIN_DONUT_INITIAL);
+        await expectFinalMainAllocation(page.locator('.cashflow-allocation'), MAIN_ALLOCATION_INITIAL);
       }
       if (route.path === 'apps/simulation/') {
         await expectFinalSimulationPaths(page.locator('.growth-chart'));
@@ -483,30 +469,29 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
   ))).toBe(true);
 }
 
-async function readMainDonut(donut: Locator) {
-  return donut.evaluate((element) => ({
-    activeAnimations: element.getAnimations({ subtree: true })
-      .filter((animation) => (
+async function readMainAllocation(chart: Locator) {
+  return chart.evaluate(element => {
+    const track = element.querySelector('.cashflow-allocation__track')!.getBoundingClientRect();
+    return {
+      activeAnimations: element.getAnimations({ subtree: true }).filter(animation =>
         (animation.playState === 'running' || animation.playState === 'pending')
-        && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
-      ))
-      .length,
-    semanticName: element.querySelector('svg')?.getAttribute('aria-label'),
-    centerSemantic: element.querySelector('.cashflow-donut__center strong .sr-only')?.textContent,
-    centerVisual: element.querySelector('.cashflow-donut__center strong > [aria-hidden="true"]')?.textContent,
-    segments: ['consumption', 'saving', 'investment', 'remaining'].map((id) => {
-      const circle = element.querySelector(`.cashflow-donut__segment--${id}`);
-      return {
-        id,
-        dasharray: circle?.getAttribute('stroke-dasharray'),
-        dashoffset: circle?.getAttribute('stroke-dashoffset'),
-      };
-    }),
-  }));
+        && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1).length,
+      semanticName: element.querySelector('[role="img"]')?.getAttribute('aria-label'),
+      ratio: element.querySelector('.cashflow-allocation__ratio strong')?.textContent,
+      segments: [...element.querySelectorAll('.cashflow-allocation__segment')].map(segment =>
+        segment.getBoundingClientRect().width / track.width * 100),
+    };
+  });
 }
-
-async function expectFinalMainDonut(donut: Locator, expected: typeof MAIN_DONUT_INITIAL): Promise<void> {
-  await expect.poll(() => readMainDonut(donut)).toEqual(expected);
+async function expectFinalMainAllocation(chart: Locator, expected: typeof MAIN_ALLOCATION_INITIAL): Promise<void> {
+  await expect.poll(async () => {
+    const actual = await readMainAllocation(chart);
+    return {
+      activeAnimations: actual.activeAnimations, semanticName: actual.semanticName, ratio: actual.ratio,
+      // Layout rounds widths to fractional CSS pixels; semantic values remain exact.
+      proportional: actual.segments.every((value, index) => Math.abs(value - expected.segments[index]) < 0.02),
+    };
+  }).toEqual({ activeAnimations: 0, semanticName: expected.semanticName, ratio: expected.ratio, proportional: true });
 }
 
 async function readSimulationState(graph: Locator) {

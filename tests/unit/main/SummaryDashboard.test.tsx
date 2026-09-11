@@ -188,7 +188,7 @@ describe('SummaryDashboard', () => {
   });
 
   it('groups the donut and amount rows before the journey and collapsed allocation details', () => {
-    const journeyEntry: ReactNode = <button type="button">Simulation으로 이어가기</button>;
+    const journeyEntry: ReactNode = <button type="button">미래 성장 보기</button>;
     render(
       <SummaryDashboard
         applied={appliedData}
@@ -215,20 +215,16 @@ describe('SummaryDashboard', () => {
     expect(remaining).toBeVisible();
     expect(saving).toBeVisible();
     expect(investment).toBeVisible();
-    const details = screen.getByText('자세히 보기').closest('details');
-    expect(details).not.toHaveAttribute('open');
-    expect(screen.queryByRole('table', { name: '월 자금 항목' })).not.toBeVisible();
+    expect(screen.queryByText('자세히 보기')).toBeNull();
+    expect(screen.queryByRole('table', { name: '월 자금 항목' })).toBeNull();
 
-    const journey = screen.getByRole('button', { name: 'Simulation으로 이어가기' });
+    const journey = screen.getByRole('button', { name: '미래 성장 보기' });
     expect(journey).toBeVisible();
     expect(donut.compareDocumentPosition(consumption) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     for (const card of [consumption, remaining, saving, investment]) {
       expect(card.compareDocumentPosition(journey) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     }
-    expect(journey.compareDocumentPosition(details!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 
-    fireEvent.click(screen.getByText('자세히 보기'));
-    expect(screen.getByRole('table', { name: '월 자금 항목' })).toBeVisible();
   });
 
   it('uses the shared surface and button variants across the dashboard editor', () => {
@@ -253,7 +249,7 @@ describe('SummaryDashboard', () => {
     expect(within(screen.getByRole('region', { name: '월간 핵심 수치' })).getByText('남는 돈')).toBeVisible();
     expect(screen.getByText('월 저축')).toBeVisible();
     expect(screen.getByText('월 투자')).toBeVisible();
-    expect(screen.getByText('자세히 보기').closest('details')).not.toHaveAttribute('open');
+    expect(screen.queryByText('자세히 보기')).toBeNull();
     expect(screen.queryByText(/계좌|Sankey/)).not.toBeInTheDocument();
   });
 

@@ -246,7 +246,8 @@ test('connects Main directly to the detailed Simulation', async ({ page }) => {
     localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
   }, workspaceWithSimulationDraft);
   await page.goto('apps/main/');
-  await page.getByRole('button', { name: 'Simulation으로 이어가기' }).click();
+  await page.getByRole('button', { name: '미래 성장 보기' }).focus();
+  await page.getByRole('button', { name: '미래 성장 보기' }).click();
   await expect(page).toHaveURL(/\/apps\/simulation\/$/);
   await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
     .toBeVisible();
@@ -788,7 +789,8 @@ test('primary action labels meet text contrast in resting and hover states acros
   for (const app of ['main', 'simulation', 'portfolio', 'account-map']) {
     await page.goto(`apps/${app}/`);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
-    const actions = page.locator('.ui-button--primary, .simulation-controls button[aria-pressed="true"], .simulation-amount-mode button[aria-pressed="true"]');
+    if (app === 'main') await page.getByRole('button', { name: '미래 성장 보기' }).focus();
+    const actions = page.locator(app === 'main' ? '.main-dashboard__edit, .journey-action' : '.ui-button--primary, .simulation-controls button[aria-pressed="true"], .simulation-amount-mode button[aria-pressed="true"]');
     expect(await actions.count()).toBeGreaterThan(0);
     for (const action of await actions.all()) {
       await expect(action).toBeVisible();

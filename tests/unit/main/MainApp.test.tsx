@@ -333,7 +333,7 @@ describe('MainApp', () => {
     />);
     await screen.findByRole('heading', { name: 'dashboard' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Simulation으로 이어가기' }));
+    fireEvent.click(screen.getByRole('button', { name: '미래 성장 보기' }));
 
     expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/apps/simulation/'));
     expect(localStorage.getItem('isf-journey-snapshot-v1')).toBeNull();
@@ -350,7 +350,7 @@ describe('MainApp', () => {
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '미래 성장 보기' })).not.toBeInTheDocument();
   });
 
   it('shows loading until bootstrap finishes and then starts setup at welcome', async () => {
@@ -705,7 +705,7 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Simulation으로 이어가기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '미래 성장 보기' })).not.toBeInTheDocument();
     const cancel = screen.getByRole('button', { name: '설정 취소' });
     expect(cancel.closest('.setup-flow-surface')).not.toBeNull();
     expect(screen.getByText('3000000')).toBeVisible();
@@ -718,7 +718,7 @@ describe('MainApp', () => {
     expect(await screen.findByRole('heading', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByLabelText('applied-income')).toHaveTextContent('3000000');
     expect(screen.getByRole('navigation', { name: 'ISF 앱' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Simulation으로 이어가기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '미래 성장 보기' })).toBeEnabled();
   });
 
   it('keeps dashboard editing out of the setup assembly journey', async () => {

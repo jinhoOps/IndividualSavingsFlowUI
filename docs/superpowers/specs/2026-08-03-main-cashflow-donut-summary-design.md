@@ -1,5 +1,8 @@
 # Main Cashflow Donut Summary Design
 
+> 현재 Main 시각화·상호작용은 [2026-09-11 가로 배분 요약과 하단 탐색](2026-09-11-main-allocation-discovery-design.md)으로 대체되었습니다. 아래 내용은 과거 설계 기록입니다.
+
+
 ## 목적
 
 Main 첫 화면에서 월 실수령액 자체보다 월소득 대비 소비·저축·투자 비율을 먼저 이해하게 한다. 도넛은 관계 요약을 담당하고, 기존 핵심 카드는 정확한 금액 확인과 Financial Detail Modal 진입을 담당한다.

@@ -10,8 +10,7 @@ import type { ValidationResult } from '../../domain/validation';
 import { Surface } from '../common/Surface';
 import { Button } from '../common/Button';
 import { ApplyBar } from '../editor/ApplyBar';
-import { AllocationBar } from '../setup/AllocationBar';
-import { CashflowDonutSummary } from './CashflowDonutSummary';
+import { CashflowAllocationSummary } from './CashflowAllocationSummary';
 import { MainPlanEditor } from './MainPlanEditor';
 import { ExpenseAssistantDialog } from './ExpenseAssistantDialog';
 import { RemainingAllocationDialog } from './RemainingAllocationDialog';
@@ -157,6 +156,7 @@ export function SummaryDashboard({
         className="main-dashboard__content"
         aria-hidden={mobileModalOpen || expenseOpen || remainingOpen ? 'true' : undefined}
         data-testid="dashboard-controls"
+        data-exploration-blocked={editorOpen || expenseOpen || remainingOpen || undefined}
         inert={mobileModalOpen || expenseOpen || remainingOpen || undefined}
       >
         <header className="main-dashboard__header">
@@ -175,7 +175,7 @@ export function SummaryDashboard({
         )}
 
         <Surface as="section" className="main-dashboard__summary" aria-label="월 자금 구성 요약">
-          <CashflowDonutSummary data={applied} onEditAmount={(field, opener) => openEditor(opener, field)} onExpense={expenseRepository && !editorOpen && !dirty ? (opener) => {
+          <CashflowAllocationSummary data={applied} onEditAmount={(field, opener) => openEditor(opener, field)} onExpense={expenseRepository && !editorOpen && !dirty ? (opener) => {
             if (saving) return;
             openerRef.current = opener;
             setExpenseOpen(true);
@@ -190,16 +190,6 @@ export function SummaryDashboard({
         </Surface>
 
         {journeyEntry === undefined ? null : journeyEntry}
-
-        <details className="allocation-details">
-          <summary className="allocation-details__summary">자세히 보기</summary>
-          <Surface as="section" className="mt-4 min-w-0 p-5 sm:p-6" aria-labelledby="cashflow-allocation-title">
-            <h2 className="m-0 text-2xl font-bold text-slate-950" id="cashflow-allocation-title">월 자금 구성</h2>
-            <div className="mt-5">
-              <AllocationBar data={applied} />
-            </div>
-          </Surface>
-        </details>
       </div>
 
       {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
