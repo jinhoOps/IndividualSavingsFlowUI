@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AccountManagementContext } from '../../../src/auth/AccountManagementContext';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import { AppManagementMenu, type AppManagementItem } from '../../../src/journey/ui/AppManagementMenu';
 
@@ -39,13 +40,11 @@ afterEach(() => {
 });
 
 function buildItems(overrides: {
-  onExport?: () => void;
-  onFile?: (file: File) => void;
+  onAction?: () => void;
   onReset?: () => void | boolean | Promise<void | boolean>;
 } = {}): AppManagementItem[] {
   return [
-    { kind: 'action', id: 'export', label: '백업 내보내기', onSelect: overrides.onExport ?? vi.fn() },
-    { kind: 'file', id: 'import', label: '백업 가져오기', accept: 'application/json,.json', onFile: overrides.onFile ?? vi.fn() },
+    { kind: 'action', id: 'settings', label: '설정 적용', onSelect: overrides.onAction ?? vi.fn() },
     { kind: 'separator', id: 'split' },
     {
       kind: 'action', id: 'reset', label: '처음부터 다시', tone: 'danger', onSelect: overrides.onReset ?? vi.fn(),
@@ -60,7 +59,7 @@ function buildItems(overrides: {
 }
 
 describe('AppManagementMenu', () => {
-  it('reveals the popover and icon disclosure with normal shared motion while state stays immediate', async () => {
+  it('reveals the popover with normal shared motion while state stays immediate', async () => {
     render(<><AppManagementMenu items={buildItems()} /><button type="button">바깥</button></>);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -76,22 +75,6 @@ describe('AppManagementMenu', () => {
       ease: MOTION_EASE.enter,
     });
 
-    const help = screen.getByRole('menuitem', { name: '앱 아이콘 안내' });
-    fireEvent.click(help);
-    const guide = screen.getByRole('region', { name: '앱 아이콘 안내' });
-    expect(help).toHaveAttribute('aria-expanded', 'true');
-    expect(animationOptionsFor(guide)).toMatchObject({
-      opacity: [0, 1],
-      y: [-MOTION_DISTANCE_PX.subtle, 0],
-      duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
-    });
-
-    fireEvent.click(help);
-    expect(help).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('region', { name: '앱 아이콘 안내' })).not.toBeInTheDocument();
-    await waitFor(() => expect(help).toHaveFocus());
-
     const outside = screen.getByRole('button', { name: '바깥' });
     fireTouchPointerEvent(outside, 'pointerdown');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -99,64 +82,55 @@ describe('AppManagementMenu', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it('commits popover and icon disclosure final state before paint under reduced motion', () => {
+  it('commits popover final state before paint under reduced motion', () => {
     animeMocks.state.reducedMotion = true;
     render(<AppManagementMenu items={buildItems()} />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     const popover = document.querySelector<HTMLElement>('.journey-management__popover');
     expect(popover).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
-    fireEvent.click(screen.getByRole('menuitem', { name: '앱 아이콘 안내' }));
-    const guide = screen.getByRole('region', { name: '앱 아이콘 안내' });
-    expect(guide).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
     expect(animeMocks.animate).not.toHaveBeenCalled();
   });
 
-  it('shows app icon guidance inside the popover but outside the action menu', async () => {
-    render(<AppManagementMenu items={buildItems()} />);
-
+  it('omits obsolete help, empty groups, and edge separators', () => {
+    render(<AppManagementMenu items={[
+      { kind: 'separator', id: 'leading' }, ...buildItems(),
+      { kind: 'separator', id: 'trailing' },
+    ]} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    const menu = screen.getByRole('menu', { name: '관리 메뉴' });
-    const help = within(menu).getByRole('menuitem', { name: '앱 아이콘 안내' });
-    expect(help).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(help);
-    expect(help).toHaveAttribute('aria-expanded', 'true');
-    const guide = screen.getByRole('region', { name: '앱 아이콘 안내' });
-    expect(menu).not.toContainElement(guide);
-    expect(within(guide).getByText('자금 흐름 (Main)')).toBeVisible();
-    expect(within(guide).getByText('미래 성장 (Simulation)')).toBeVisible();
-    expect(within(guide).getByText('투자 배분 (Portfolio)')).toBeVisible();
-    expect(within(guide).getByText('계좌 연결 (Account Map)')).toBeVisible();
-    expect(within(guide).queryByText('준비 중')).not.toBeInTheDocument();
-
-    fireEvent.click(help);
-    expect(screen.queryByRole('region', { name: '앱 아이콘 안내' })).not.toBeInTheDocument();
-    await waitFor(() => expect(help).toHaveFocus());
+    expect(screen.queryByText('앱 아이콘 안내')).not.toBeInTheDocument();
+    expect(screen.queryByText(/백업/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('menu')).toHaveLength(1);
+    expect(screen.getAllByRole('separator')).toHaveLength(1);
   });
 
-  it('opens actions, executes a row, and handles file selection and cancellation', async () => {
-    const onExport = vi.fn();
-    const onFile = vi.fn();
-    const file = new File(['{}'], 'backup.json', { type: 'application/json' });
-    render(<AppManagementMenu items={buildItems({ onExport, onFile })} />);
+  it('shows account-only actions without an empty product menu or leading divider', () => {
+    const logout = vi.fn();
+    render(<AccountManagementContext.Provider value={{ readOnly: true, items: [
+      { kind: 'action', id: 'logout', label: '이 브라우저에서 로그아웃', onSelect: logout },
+    ] }}><AppManagementMenu items={[]} /></AccountManagementContext.Provider>);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    const action = screen.getByRole('menuitem', { name: '이 브라우저에서 로그아웃' });
+    expect(action).toBeEnabled();
+    fireEvent.click(action);
+    expect(logout).toHaveBeenCalledOnce();
+  });
 
+  it('omits the gear when there are no settings or account actions', () => {
+    render(<AppManagementMenu items={[]} />);
+    expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
+  });
+
+  it('executes an action, closes the popover, and restores trigger focus', async () => {
+    const onAction = vi.fn();
+    render(<AppManagementMenu items={buildItems({ onAction })} />);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);
-    const menu = screen.getByRole('menu', { name: '관리 메뉴' });
-    expect(menu).toBeVisible();
-    fireEvent.click(within(menu).getByRole('menuitem', { name: '백업 내보내기' }));
-    expect(onExport).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('menuitem', { name: '설정 적용' }));
+    expect(onAction).toHaveBeenCalledOnce();
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-
-    fireEvent.click(trigger);
-    const input = screen.getByLabelText('백업 가져오기');
-    fireEvent.change(input, { target: { files: [] } });
-    expect(onFile).not.toHaveBeenCalled();
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(onFile).toHaveBeenCalledWith(file);
-    expect(input).toHaveValue('');
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
@@ -275,8 +249,7 @@ describe('AppManagementMenu', () => {
     render(<AppManagementMenu items={[{ kind: 'message', id: 'empty', text: '아직 관리할 설정이 없습니다' }]} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByText('아직 관리할 설정이 없습니다')).toBeVisible();
-    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
-    expect(screen.getByRole('menuitem', { name: '앱 아이콘 안내' })).toBeVisible();
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
 
   it('keeps the popover open while interacting with a control group', () => {
@@ -299,9 +272,7 @@ describe('AppManagementMenu', () => {
     fireEvent.click(screen.getByRole('switch', { name: '금액 보기' }));
 
     expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
-    expect(screen.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
-    expect(screen.getByRole('menu', { name: '관리 메뉴' }))
-      .not.toContainElement(screen.getByRole('group', { name: '보기 설정' }));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
   });
 });

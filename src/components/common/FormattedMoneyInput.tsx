@@ -12,19 +12,8 @@ import {
   normalizeMoneyEdit,
   type ZeroDisplay,
 } from "../../core/domain/moneyInput";
-import { Button } from "./Button";
-
-export interface MoneyAdjustment {
-  label: string;
-  deltaWon: number;
-}
-
-export const DEFAULT_MONEY_ADJUSTMENTS: readonly MoneyAdjustment[] = [
-  { label: "-50만", deltaWon: -500_000 },
-  { label: "-10만", deltaWon: -100_000 },
-  { label: "+10만", deltaWon: 100_000 },
-  { label: "+50만", deltaWon: 500_000 },
-];
+import { DEFAULT_MONEY_ADJUSTMENTS, MoneyAdjustments, type MoneyAdjustment } from './MoneyAdjustments';
+export { DEFAULT_MONEY_ADJUSTMENTS, type MoneyAdjustment } from './MoneyAdjustments';
 
 export interface FormattedMoneyInputProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -132,26 +121,13 @@ export const FormattedMoneyInput = forwardRef<
           );
         }}
       />
-      {adjustmentButtons.length === 0 ? null : (
-        <div className="formatted-money-input__adjustments">
-          {adjustmentButtons.map(({ label, deltaWon }) => (
-            <Button
-              key={label}
-              type="button"
-              variant="quiet"
-              disabled={disabled}
-              onClick={() => {
-                const nextValueWon = adjustWon(valueWon, deltaWon);
-                lastEmittedValueWonRef.current = nextValueWon;
-                setDisplayValue(formatWonInput(nextValueWon, { zeroDisplay }));
-                onValueWonChange(nextValueWon);
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-      )}
+      <MoneyAdjustments className="formatted-money-input__adjustments" adjustments={adjustmentButtons} disabled={disabled}
+        onAdjust={(deltaWon) => {
+          const nextValueWon = adjustWon(valueWon, deltaWon);
+          lastEmittedValueWonRef.current = nextValueWon;
+          setDisplayValue(formatWonInput(nextValueWon, { zeroDisplay }));
+          onValueWonChange(nextValueWon);
+        }} />
     </div>
   );
 });

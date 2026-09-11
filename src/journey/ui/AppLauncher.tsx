@@ -16,6 +16,8 @@ export interface AppLauncherProps {
 const LONG_PRESS_MS = 450;
 const TOOLTIP_CLOSE_MS = 80;
 const SUPPRESSION_TTL_MS = 1_500;
+// Keep in step with the 44px links and 4px gap used by the overflow partition and CSS.
+const APP_LINK_PITCH_PX = 48;
 
 interface TouchSuppression {
   app: JourneyApp;
@@ -44,6 +46,9 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
     currentApp,
     availableWidth,
   );
+  const currentIndex = Math.max(0, visible.findIndex(({ id }) => id === currentApp));
+  const previewIndex = visible.findIndex(({ id }) => id === activeTooltip);
+  const selectionIndex = previewIndex < 0 ? currentIndex : previewIndex;
   const currentLineMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     const currentLine = root.querySelector<HTMLElement>(
       '[aria-current="page"] .journey-launcher__current-line',
@@ -254,146 +259,156 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
 
   return (
     <div ref={currentLineMotionRef} className="journey-launcher">
-      <nav
-        ref={navigationRef}
-        className="journey-launcher__navigation"
-        aria-label="ISF 앱"
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') return;
-          if (overflowOpen) {
-            event.preventDefault();
-            setOverflowOpen(false);
-            overflowTriggerRef.current?.focus();
-          } else {
-            if (activeTooltip !== null) event.preventDefault();
-            closeAll();
-          }
-        }}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            setOverflowOpen(false);
-          }
-        }}
-      >
-        <ul className="journey-launcher__list">
-          {visible.map((item) => {
-            const isCurrent = item.id === currentApp;
-            const tooltipId = `journey-app-tooltip-${item.id}`;
-            const accessibleName = [
-              item.accessibleLabel,
-              isCurrent ? '현재 위치' : null,
-              item.availability === 'readiness' ? '준비 중' : null,
-            ].filter(Boolean).join(', ');
+      <div className="journey-launcher__dock">
+        <nav
+          ref={navigationRef}
+          className="journey-launcher__navigation"
+          // Reserve the full list's preferred width so overflow can expand after a resize.
+          style={{ width: APP_NAV_ITEMS.length * APP_LINK_PITCH_PX - 4 }}
+          aria-label="ISF 앱"
+          data-previewing={selectionIndex !== currentIndex || undefined}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            if (overflowOpen) {
+              event.preventDefault();
+              setOverflowOpen(false);
+              overflowTriggerRef.current?.focus();
+            } else {
+              if (activeTooltip !== null) event.preventDefault();
+              closeAll();
+            }
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setOverflowOpen(false);
+            }
+          }}
+        >
+          <span
+            className="journey-launcher__selection"
+            aria-hidden="true"
+            style={{ transform: `translateX(${selectionIndex * APP_LINK_PITCH_PX}px)` }}
+          />
+          <ul className="journey-launcher__list">
+            {visible.map((item) => {
+              const isCurrent = item.id === currentApp;
+              const tooltipId = `journey-app-tooltip-${item.id}`;
+              const accessibleName = [
+                item.accessibleLabel,
+                isCurrent ? '현재 위치' : null,
+                item.availability === 'readiness' ? '준비 중' : null,
+              ].filter(Boolean).join(', ');
 
-            return (
-              <li key={item.id} className="journey-launcher__item">
-                <a
-                  className="journey-launcher__app-link"
-                  data-journey-app={item.id}
-                  href={appPath(item.id)}
-                  aria-label={accessibleName}
-                  aria-current={isCurrent ? 'page' : undefined}
-                  aria-describedby={activeTooltip === item.id ? tooltipId : undefined}
-                  onMouseEnter={() => {
-                    setOverflowOpen(false);
-                    openTooltip(item.id);
-                  }}
-                  onMouseLeave={() => scheduleTooltipClose(item.id)}
-                  onFocus={() => {
-                    setOverflowOpen(false);
-                    openTooltip(item.id);
-                  }}
-                  onBlur={() => scheduleTooltipClose(item.id)}
-                  onPointerDown={(event) => startLongPress(event, item.id)}
-                  onPointerUp={finishTouch}
-                  onPointerMove={cancelTouchGesture}
-                  onPointerCancel={cancelTouchGesture}
-                  onClick={(event) => {
-                    if (!consumeSuppression(item.id, 'click')) return;
-                    event.preventDefault();
-                  }}
-                  onContextMenu={(event) => {
-                    if (!consumeSuppression(item.id, 'contextMenu')) return;
-                    event.preventDefault();
+              return (
+                <li key={item.id} className="journey-launcher__item">
+                  <a
+                    className="journey-launcher__app-link"
+                    data-journey-app={item.id}
+                    href={appPath(item.id)}
+                    aria-label={accessibleName}
+                    aria-current={isCurrent ? 'page' : undefined}
+                    aria-describedby={activeTooltip === item.id ? tooltipId : undefined}
+                    onMouseEnter={() => {
+                      setOverflowOpen(false);
+                      openTooltip(item.id);
+                    }}
+                    onMouseLeave={() => scheduleTooltipClose(item.id)}
+                    onFocus={() => {
+                      setOverflowOpen(false);
+                      openTooltip(item.id);
+                    }}
+                    onBlur={() => scheduleTooltipClose(item.id)}
+                    onPointerDown={(event) => startLongPress(event, item.id)}
+                    onPointerUp={finishTouch}
+                    onPointerMove={cancelTouchGesture}
+                    onPointerCancel={cancelTouchGesture}
+                    onClick={(event) => {
+                      if (!consumeSuppression(item.id, 'click')) return;
+                      event.preventDefault();
+                    }}
+                    onContextMenu={(event) => {
+                      if (!consumeSuppression(item.id, 'contextMenu')) return;
+                      event.preventDefault();
+                    }}
+                  >
+                    <AppNavigationIcon app={item.id} />
+                    {item.availability === 'readiness' ? (
+                      <span className="journey-launcher__readiness-dot" aria-hidden="true" />
+                    ) : null}
+                    <span className="journey-launcher__current-line" aria-hidden="true" />
+                  </a>
+                  {activeTooltip === item.id ? (
+                    <span id={tooltipId} role="tooltip" className="journey-launcher__tooltip">
+                      {item.accessibleLabel}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+            {overflow.length === 0 ? null : (
+              <li ref={overflowRootRef} className="journey-launcher__overflow-item">
+                <button
+                  ref={overflowTriggerRef}
+                  type="button"
+                  className="journey-launcher__overflow-trigger"
+                  aria-label="앱 더보기"
+                  aria-expanded={overflowOpen}
+                  aria-controls={overflowId}
+                  onClick={() => {
+                    setActiveTooltip(null);
+                    setOverflowOpen((open) => !open);
                   }}
                 >
-                  <AppNavigationIcon app={item.id} />
-                  {item.availability === 'readiness' ? (
-                    <span className="journey-launcher__readiness-dot" aria-hidden="true" />
-                  ) : null}
-                  <span className="journey-launcher__current-line" aria-hidden="true" />
-                </a>
-                {activeTooltip === item.id ? (
-                  <span id={tooltipId} role="tooltip" className="journey-launcher__tooltip">
-                    {item.accessibleLabel}
-                  </span>
+                  <MoreIcon />
+                </button>
+                {overflowOpen ? (
+                  <div
+                    ref={overflowMotionRef}
+                    id={overflowId}
+                    className="journey-launcher__overflow-menu"
+                    role="region"
+                    aria-label="추가 앱"
+                  >
+                    {overflow.map((item) => {
+                      const accessibleName = [
+                        item.accessibleLabel,
+                        item.availability === 'readiness' ? '준비 중' : null,
+                      ].filter(Boolean).join(', ');
+                      return (
+                        <a
+                          key={item.id}
+                          className="journey-launcher__overflow-link"
+                          data-journey-app={item.id}
+                          href={appPath(item.id)}
+                          aria-label={accessibleName}
+                        >
+                          <AppNavigationIcon app={item.id} />
+                          <span>{item.accessibleLabel}</span>
+                          {item.availability === 'readiness' ? <small>준비 중</small> : null}
+                        </a>
+                      );
+                    })}
+                  </div>
                 ) : null}
               </li>
-            );
-          })}
-          {overflow.length === 0 ? null : (
-            <li ref={overflowRootRef} className="journey-launcher__overflow-item">
-              <button
-                ref={overflowTriggerRef}
-                type="button"
-                className="journey-launcher__overflow-trigger"
-                aria-label="앱 더보기"
-                aria-expanded={overflowOpen}
-                aria-controls={overflowId}
-                onClick={() => {
-                  setActiveTooltip(null);
-                  setOverflowOpen((open) => !open);
-                }}
-              >
-                <MoreIcon />
-              </button>
-              {overflowOpen ? (
-                <div
-                  ref={overflowMotionRef}
-                  id={overflowId}
-                  className="journey-launcher__overflow-menu"
-                  role="region"
-                  aria-label="추가 앱"
-                >
-                  {overflow.map((item) => {
-                    const accessibleName = [
-                      item.accessibleLabel,
-                      item.availability === 'readiness' ? '준비 중' : null,
-                    ].filter(Boolean).join(', ');
-                    return (
-                      <a
-                        key={item.id}
-                        className="journey-launcher__overflow-link"
-                        data-journey-app={item.id}
-                        href={appPath(item.id)}
-                        aria-label={accessibleName}
-                      >
-                        <AppNavigationIcon app={item.id} />
-                        <span>{item.accessibleLabel}</span>
-                        {item.availability === 'readiness' ? <small>준비 중</small> : null}
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </li>
-          )}
-        </ul>
-      </nav>
-      <div
-        ref={toolsRef}
-        className="journey-launcher__tools"
-        role="group"
-        aria-label="앱 도구"
-        onPointerDown={closeAll}
-        onFocusCapture={() => {
-          if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
-          tooltipCloseTimerRef.current = null;
-          setActiveTooltip(null);
-          setOverflowOpen(false);
-        }}
-      >
-        {managementMenu}
+            )}
+          </ul>
+        </nav>
+        <div
+          ref={toolsRef}
+          className="journey-launcher__tools"
+          role="group"
+          aria-label="앱 도구"
+          onPointerDown={closeAll}
+          onFocusCapture={() => {
+            if (tooltipCloseTimerRef.current !== null) clearTimeout(tooltipCloseTimerRef.current);
+            tooltipCloseTimerRef.current = null;
+            setActiveTooltip(null);
+            setOverflowOpen(false);
+          }}
+        >
+          {managementMenu}
+        </div>
       </div>
     </div>
   );

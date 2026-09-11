@@ -169,6 +169,67 @@ body,
     background-color: transparent;
   }
 
+  /* Utility adjustments and persistent choices have distinct shared surfaces. */
+  .ui-money-adjustments,
+  .ui-segmented-control {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    align-items: center;
+    min-width: 0;
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: var(--ui-control-radius);
+    background: color-mix(in srgb, var(--tone-accent) 3%, var(--panel));
+  }
+
+  .ui-segmented-control { display: inline-grid; }
+
+  .ui-money-adjustments > .ui-button,
+  .ui-segmented-control > .ui-button {
+    min-width: 44px;
+    min-height: var(--ui-control-min-height);
+    padding: .375rem .5rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: .875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    box-shadow: none;
+    transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  }
+
+  .ui-money-adjustments > [data-direction="decrease"] { color: var(--muted); }
+  .ui-segmented-control > .ui-button { padding-inline: .875rem; color: var(--muted); }
+  .ui-segmented-control > [aria-pressed="true"] {
+    color: var(--tone-accent);
+    background: var(--panel);
+    border-color: var(--line);
+    box-shadow: 0 1px 3px rgb(16 34 32 / 7%);
+  }
+
+  .ui-money-adjustments > .ui-button:enabled:hover,
+  .ui-segmented-control > .ui-button:enabled:hover {
+    color: var(--tone-accent);
+    background: color-mix(in srgb, var(--tone-accent) 7%, var(--panel));
+  }
+
+  .ui-money-adjustments > .ui-button:enabled:active,
+  .ui-segmented-control > .ui-button:enabled:active {
+    background: color-mix(in srgb, var(--tone-accent) 13%, var(--panel));
+    box-shadow: inset 0 1px 2px rgb(16 34 32 / 8%);
+  }
+
+  .ui-money-adjustments > .ui-button:focus-visible,
+  .ui-segmented-control > .ui-button:focus-visible {
+    position: relative;
+    z-index: 1;
+    box-shadow: var(--ui-focus-ring);
+    outline: 0;
+  }
+
   .ui-surface {
     @apply border border-line bg-panel;
     border-radius: var(--ui-surface-radius);
@@ -190,4 +251,9 @@ body,
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-money-adjustments > .ui-button,
+  .ui-segmented-control > .ui-button { transition: none; }
 }

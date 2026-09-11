@@ -1,5 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, WandSparkles, X } from 'lucide-react';
+import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
+import { SegmentedControl } from '../../../components/common/SegmentedControl';
 import { AccountDraftContext, AccountWriteRecoveryContext, useAccountRecovery, useInitialRecovery } from '../../../auth/AccountDraftContext';
 import { createExpenseDraft, expenseAnswersComplete, expenseTotals, EXPENSE_ITEMS, parseExpenseDraft, type ExpenseAssistantDraft } from '../../domain/expenseAssistant';
 import type { MainData } from '../../domain/model';
@@ -105,11 +107,12 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
           </div>
           <h2 id="expense-assistant-title" tabIndex={-1} ref={headingRef}>{item.question}</h2>
           <p className="expense-assistant__hint" id="expense-question-hint">{item.hint}</p>
-          <div className="expense-assistant__period" role="group" aria-label="금액 기준">
-            {(['month', 'year'] as const).map(option => <Button key={option} type="button" variant="quiet" aria-pressed={period === option} disabled={busy} onClick={() => {
-              setError(''); setPeriod(option); if (answer) setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers, [item.id]: { ...answer, period: option } } });
-            }}>{option === 'month' ? '한 달 평균' : '1년 총액'}</Button>)}
-          </div>
+          <SegmentedControl className="expense-assistant__period" label="금액 기준" value={period} disabled={busy}
+            options={[{ value: 'month', label: '한 달 평균' }, { value: 'year', label: '1년 총액' }]}
+            onChange={(option) => {
+              setError(''); setPeriod(option);
+              if (answer) setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers, [item.id]: { ...answer, period: option } } });
+            }} />
           <label className="sr-only" htmlFor="expense-answer">{item.label} 금액</label>
           <div className="expense-assistant__amount">
             <input id="expense-answer" type="text" inputMode="numeric" autoComplete="off" placeholder="0" disabled={busy || !!initial.error}
@@ -122,6 +125,15 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
             <span aria-hidden="true">원</span>
           </div>
           <p className="expense-assistant__hint" id="expense-input-note">{answer?.period === 'year' ? `월평균 약 ${formatDashboardWon(Math.round(answer.amountWon / 12))}으로 계산해요.` : '최근 몇 달의 평균을 떠올려보세요.'}</p>
+          <MoneyAdjustments className="expense-assistant__adjustments" disabled={busy || !!initial.error}
+            isAdjustmentDisabled={(deltaWon) => (deltaWon < 0 && !answer?.amountWon)
+              || !Number.isSafeInteger((answer?.amountWon ?? 0) + deltaWon)}
+            onAdjust={(deltaWon) => {
+              setError('');
+              setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers,
+                [item.id]: { amountWon: Math.max(0, (answer?.amountWon ?? 0) + deltaWon), period },
+              } });
+            }} />
         </> : <>
           <p className="main-eyebrow">답변 {answered}개 / {EXPENSE_ITEMS.length}개</p>
           <h2 id="expense-assistant-title" tabIndex={-1} ref={headingRef}>{expenseAnswersComplete(draft.answers) ? '한 달 지출을 확인해보세요' : '남은 항목도 채워볼까요?'}</h2>

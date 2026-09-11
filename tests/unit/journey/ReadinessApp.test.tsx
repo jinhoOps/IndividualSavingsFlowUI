@@ -56,8 +56,8 @@ describe('ReadinessApp', () => {
       .not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByText('아직 관리할 설정이 없습니다')).toBeVisible();
-    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
-    expect(screen.getByRole('menuitem', { name: '앱 아이콘 안내' })).toBeVisible();
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+    expect(screen.queryByRole('menuitem', { name: '앱 아이콘 안내' })).not.toBeInTheDocument();
     expect(getItem).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
     expect(removeItem).not.toHaveBeenCalled();

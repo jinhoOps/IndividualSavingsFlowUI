@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button } from '../../components/common/Button';
+import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
+import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
 import {
@@ -8,10 +9,10 @@ import {
 import { formatPercent } from './format';
 
 const initialInvestmentAdjustments = [
-  { label: '-1억', deltaWon: -100_000_000 },
   { label: '-5천만', deltaWon: -50_000_000 },
+  { label: '-1천만', deltaWon: -10_000_000 },
+  { label: '+1천만', deltaWon: 10_000_000 },
   { label: '+5천만', deltaWon: 50_000_000 },
-  { label: '+1억', deltaWon: 100_000_000 },
 ] as const;
 
 export function AdvancedSettings({
@@ -60,17 +61,9 @@ export function AdvancedSettings({
     <Surface as="section" className="simulation-calculation-settings" aria-label="금액과 계산 기준">
       <fieldset className="simulation-amount-mode">
         <legend>금액 기준</legend>
-        {(['nominal', 'real'] as const).map((mode) => (
-          <Button
-            type="button"
-            variant="secondary"
-            key={mode}
-            aria-pressed={draft.amountMode === mode}
-            onClick={() => update({ amountMode: mode })}
-          >
-            {mode === 'nominal' ? '명목' : '실질'}
-          </Button>
-        ))}
+        <SegmentedControl label="표시 금액 기준" value={draft.amountMode}
+          options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
+          onChange={(amountMode) => update({ amountMode })} />
       </fieldset>
 
       <details className="simulation-advanced">
@@ -103,21 +96,9 @@ export function AdvancedSettings({
               <span aria-hidden="true">원</span>
             </div>
           </label>
-          <div className="simulation-principal-adjustments">
-            {initialInvestmentAdjustments.map(({ label, deltaWon }) => (
-              <Button
-                key={label}
-                type="button"
-                variant="secondary"
-                onClick={() => commitInitialInvestment(adjustInitialInvestment(
-                  draft.initialInvestmentWon,
-                  deltaWon,
-                ))}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
+          <MoneyAdjustments className="simulation-principal-adjustments" label="현재 모아둔 돈 빠른 조정"
+            adjustments={initialInvestmentAdjustments}
+            onAdjust={(deltaWon) => commitInitialInvestment(adjustInitialInvestment(draft.initialInvestmentWon, deltaWon))} />
           {initialError ? (
             <p id="simulation-initial-investment-error" role="alert">
               0원 이상 안전한 정수로 입력해주세요.
