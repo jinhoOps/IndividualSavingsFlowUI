@@ -13,7 +13,7 @@ interface BrandVisualElements {
 }
 
 /** Shared brand visual; the caller owns its lifetime and navigation. */
-export function AccountLoadingScreen({ animate = false, message = '계정의 계획을 불러오고 있어요.' }: { animate?: boolean; message?: string }) {
+export function BrandVisual({ animate = false, message = '한 달 돈의 흐름을 한눈에.' }: { animate?: boolean; message?: string }) {
   const rootRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     const elements = findBrandVisualElements(root);
     if (!elements) return;
@@ -43,10 +43,10 @@ export function AccountLoadingScreen({ animate = false, message = '계정의 계
     }
   }, [animate]);
 
-  return <main ref={rootRef} className="account-loading" data-testid="account-workspace-gate" aria-busy="true">
-    <div className="account-loading__content" data-testid="account-loading" data-animated={animate}>
-      <div className="account-loading__visual" aria-hidden="true"><MainBrandIcon /></div>
-      <p role="status">{message}</p>
+  return <main ref={rootRef} className="brand-visual">
+    <div className="brand-visual__content" data-testid="brand-visual" data-animated={animate}>
+      <div className="brand-visual__visual" aria-hidden="true"><MainBrandIcon /></div>
+      <p>{message}</p>
     </div>
   </main>;
 }

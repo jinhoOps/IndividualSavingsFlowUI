@@ -1,11 +1,11 @@
 import React from 'react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {AccountWorkspaceGate} from '../../../src/auth/AccountWorkspaceGate';
 
 const config = {url: 'https://example.supabase.co', publishableKey: 'sb_publishable_public', projectRef: 'example'};
-afterEach(() => {cleanup(); window.localStorage.clear();});
+afterEach(() => {cleanup(); window.localStorage.clear(); vi.useRealTimers();});
 function client(user: boolean, read: () => Promise<{data: unknown; error: unknown}>): SupabaseClient {
   return {auth: {
     getSession: async () => ({data: {session: user ? {user: {id: 'user-a', email: 'a@example.com'}, access_token: 'token-a'} : null}, error: null}),
@@ -62,5 +62,32 @@ describe('account workspace gate', () => {
     await waitFor(() => expect(reads).toBe(2));
     expect(screen.queryByRole('button', {name: '새로 시작'})).toBeNull();
     expect(screen.queryByText('Financial data')).toBeNull();
+  });
+});
+
+describe('quiet account transition', () => {
+  it('delays feedback during short reads and shows it for a slow read', async () => {
+    vi.useFakeTimers();
+    const supplied = client(false, async () => ({data: null, error: null}));
+    supplied.auth.getSession = () => new Promise(() => {});
+    await act(async () => {
+      render(<AccountWorkspaceGate config={config} client={supplied}>{() => <p>Financial data</p>}</AccountWorkspaceGate>);
+    });
+    await act(async () => {await vi.advanceTimersByTimeAsync(399);});
+    expect(screen.queryByText('계정의 계획을 불러오고 있어요.')).toBeNull();
+    expect(screen.queryByTestId('brand-visual')).toBeNull();
+    expect(screen.queryByText('Financial data')).toBeNull();
+    await act(async () => {await vi.advanceTimersByTimeAsync(1);});
+    expect(screen.getByRole('status').textContent).toBe('계정의 계획을 불러오고 있어요.');
+  });
+  it('never inserts loading feedback when authentication resolves promptly', async () => {
+    vi.useFakeTimers();
+    await act(async () => {
+      render(<AccountWorkspaceGate config={config} client={client(false, async () => ({data: null, error: null}))}>{() => <p>Financial data</p>}</AccountWorkspaceGate>);
+    });
+    expect(screen.getByRole('heading', {name: '로그인'})).toBeTruthy();
+    await act(async () => {await vi.advanceTimersByTimeAsync(500);});
+    expect(screen.queryByText('계정의 계획을 불러오고 있어요.')).toBeNull();
+    expect(screen.queryByTestId('brand-visual')).toBeNull();
   });
 });

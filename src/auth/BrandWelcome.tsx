@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {useReducedMotion} from '../components/motion/useReducedMotion';
-import {AccountLoadingScreen} from './AccountLoadingScreen';
+import {BrandVisual} from './BrandVisual';
 import './account.css';
 
 /** A short landing shared by a new app session and an explicit Main restart. */
@@ -26,7 +26,7 @@ export function BrandWelcome({onComplete, message}: {onComplete(): void; message
   return <div className="brand-welcome" data-testid="brand-welcome" onClick={finish} onKeyDown={event => {
     if (event.key === 'Escape') {event.preventDefault(); finish();}
   }}>
-    <AccountLoadingScreen animate={!complete} message={message} />
+    <BrandVisual animate={!complete} message={message} />
     {!complete && <button ref={skip} className="brand-welcome__skip" type="button" onClick={finish}>화면을 눌러 건너뛰기</button>}
   </div>;
 }

@@ -1,6 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {consumeLoginLoading, markLoginLoading, shouldShowAppEntry} from '../../../src/auth/loginLoadingIntent';
-afterEach(() => {sessionStorage.clear(); vi.restoreAllMocks();});
+afterEach(() => {sessionStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 describe('OAuth loading intent', () => {
   it('is consumed once without storing an account or financial value', () => {
     markLoginLoading();
@@ -39,5 +39,17 @@ describe('application entry policy', () => {
     markLoginLoading();
     expect(shouldShowAppEntry('oauth-return-tab')).toBe(false);
     expect(sessionStorage.getItem('isf-login-loading-once')).toBeNull();
+  });
+});
+
+describe('document navigation overrides cache identity', () => {
+  it.each(['reload', 'back_forward'])('never replays on %s even without a marker', type => {
+    vi.stubGlobal('performance', {getEntriesByType: () => [{type}]});
+    expect(shouldShowAppEntry(type + '-rotated-id')).toBe(false);
+  });
+  it('does not replay on internal navigation when a cache ID changes', () => {
+    vi.spyOn(document, 'referrer', 'get').mockReturnValue(location.origin + '/apps/main/');
+    vi.spyOn(history, 'length', 'get').mockReturnValue(2);
+    expect(shouldShowAppEntry('internal-rotated-id')).toBe(false);
   });
 });

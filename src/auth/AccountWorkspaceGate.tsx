@@ -35,7 +35,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   const [startup, setStartup] = useState(0);
   const active = useRef<AccountRuntime | null>(null);
   const explicitLogout = useRef(false);
-  const [entryState, setEntryState] = useState<'inactive' | 'playing' | 'waiting'>('inactive');
+  const [entryState, setEntryState] = useState<'inactive' | 'playing'>('inactive');
   const [tabId, setTabId] = useState<string | null>(null);
   useEffect(() => {
     let disposed = false;
@@ -45,9 +45,6 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
       .catch(() => {if (!disposed) setAuthState('error');});
     return () => {disposed = true;};
   }, []);
-  useEffect(() => {
-    if (entryState === 'waiting' && authState !== 'loading') setEntryState('inactive');
-  }, [authState, entryState]);
   const [local] = useState(() => new BrowserWorkspaceRepository().load());
   const localCandidate = local.status === 'found' ? local.workspace : null;
 
@@ -224,8 +221,8 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     }
   }
   if (!configured) return <GatePage title="계정 저장 연결 설정이 필요합니다."><p>배포 관리자에게 연결 설정을 요청해주세요.</p></GatePage>;
-  if (entryState !== 'inactive' && authState !== 'error') return <BrandWelcome onComplete={() => setEntryState(authState === 'loading' ? 'waiting' : 'inactive')} message="나의 계획을 준비하고 있어요." />;
-  if (authState === 'loading') return <main className="account-gate" data-testid="account-workspace-gate" aria-busy="true"><p className="account-transition-status" role="status">계정의 계획을 불러오고 있어요.</p></main>;
+  if (entryState !== 'inactive' && authState !== 'error') return <BrandWelcome onComplete={() => setEntryState('inactive')} message="한 달 돈의 흐름을 한눈에." />;
+  if (authState === 'loading') return <AccountPending />;
   if (authState === 'error') return <GatePage title="로그인 상태를 확인하지 못했습니다."><button onClick={() => setStartup(value => value + 1)}>다시 시도</button></GatePage>;
   if (authState === 'signed-out' || !runtime) return <GatePage title="로그인">
     <p>Google 계정 또는 이메일로 로그인하세요.</p>
@@ -308,5 +305,17 @@ function GatePage({title, busy = false, children}: {title: string; busy?: boolea
   useEffect(() => {heading.current?.focus();}, [title]);
   return <main className="account-gate" data-testid="account-workspace-gate" aria-busy={busy}>
     <section className="account-panel"><p className="account-brand">Individual Savings Flow</p><h1 ref={heading} tabIndex={-1}>{title}</h1>{children}</section>
+  </main>;
+}
+
+/** Brief document transitions stay quiet; a slow request still has accessible feedback. */
+function AccountPending() {
+  const [showStatus, setShowStatus] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowStatus(true), 400);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return <main className="account-gate" data-testid="account-workspace-gate" aria-busy="true">
+    {showStatus && <p className="account-transition-status" role="status">계정의 계획을 불러오고 있어요.</p>}
   </main>;
 }

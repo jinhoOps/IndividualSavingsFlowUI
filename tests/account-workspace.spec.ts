@@ -1272,39 +1272,47 @@ for (const width of [390, 768, 1280]) {
     await expect(skip).toBeFocused();
     expect((await skip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await expect(landing.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
-    // Finish one playback while the actual request is still held.
-    await expect(skip).toHaveCount(0);
-    await expect(landing).toBeVisible();
-    await expect(page.getByTestId('app-shell')).toHaveCount(0);
-    const bounds = await page.getByTestId('account-loading').boundingBox();
+    const bounds = await page.getByTestId('brand-visual').boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({path: testInfo.outputPath(`launch-${width}.png`)});
+    // The scene ends on its own, even while the request remains held.
+    await expect(landing).toHaveCount(0);
+    await expect(page.getByTestId('app-shell')).toHaveCount(0);
+    await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
     release();
     await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
-    await expect(landing).toHaveCount(0);
 
     await context.addInitScript(() => {
       (window as typeof window & {brandFlashed?: boolean}).brandFlashed = false;
       new MutationObserver(() => {
-        if (document.querySelector('[data-testid="account-loading"]'))
+        if (document.querySelector('[data-testid="brand-visual"]'))
           (window as typeof window & {brandFlashed?: boolean}).brandFlashed = true;
       }).observe(document, {childList: true, subtree: true});
     });
     for (const name of ['미래 성장 (Simulation)', '투자 배분 (Portfolio)', '계좌 연결 (Account Map)', '자금 흐름 (Main)']) {
+      // Simulate cache lock ID rotation; it must not become a new visual launch.
+      await page.evaluate(() => sessionStorage.setItem('isf-account-tab-id', crypto.randomUUID()));
       const releaseNext = server.holdReads();
       await page.getByRole('link', {name, exact: true}).click();
       await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
-      await expect(page.getByTestId('account-loading')).toHaveCount(0);
+      await expect(page.getByTestId('brand-visual')).toHaveCount(0);
       releaseNext();
       await expect(page.getByTestId('app-shell')).toBeVisible();
       expect(await page.evaluate(() => (window as typeof window & {brandFlashed?: boolean}).brandFlashed)).toBe(false);
     }
+    await page.evaluate(() => {
+      sessionStorage.removeItem('isf-brand-entry-tab');
+      sessionStorage.setItem('isf-account-tab-id', crypto.randomUUID());
+    });
     await page.reload();
     await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+    expect(await page.evaluate(() => (window as typeof window & {brandFlashed?: boolean}).brandFlashed)).toBe(false);
+    await page.goBack();
+    await expect(page.getByTestId('app-shell')).toBeVisible();
     expect(await page.evaluate(() => (window as typeof window & {brandFlashed?: boolean}).brandFlashed)).toBe(false);
   });
 }
@@ -1322,7 +1330,7 @@ test('signed-out launch leads to login without replaying the landing after passw
   await page.getByLabel('비밀번호', {exact: true}).fill('fixture-login');
   await page.getByRole('button', {name: '이메일로 로그인'}).click();
   await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
-  await expect(page.getByTestId('account-loading')).toHaveCount(0);
+  await expect(page.getByTestId('brand-visual')).toHaveCount(0);
   release();
   await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
 });
@@ -1334,7 +1342,7 @@ test('OAuth return continues the launch without another brand screen', async ({p
   await context.addInitScript(() => sessionStorage.setItem('isf-login-loading-once', String(Date.now())));
   await page.goto('apps/main/');
   await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
-  await expect(page.getByTestId('account-loading')).toHaveCount(0);
+  await expect(page.getByTestId('brand-visual')).toHaveCount(0);
   release();
   await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('isf-login-loading-once'))).toBeNull();

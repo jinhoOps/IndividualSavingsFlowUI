@@ -30,6 +30,13 @@ export function shouldShowAppEntry(tabId: string): boolean {
     // When storage is blocked, an internal same-origin referrer avoids repeated branding.
     try { show = new URL(document.referrer).origin !== location.origin; } catch { /* External entry. */ }
   }
+  // Cache lock ownership may change across documents. A reload/history traversal
+  // or an internal navigation is still a continuation, regardless of that ID.
+  const navigation = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined;
+  if (navigation?.type === 'reload' || navigation?.type === 'back_forward') show = false;
+  try {
+    if (history.length > 1 && new URL(document.referrer).origin === location.origin) show = false;
+  } catch { /* No referrer on a direct launch. */ }
   // The OAuth callback continues the existing launch; it is not a second landing.
   if (consumeLoginLoading()) show = false;
   entryDecisions.set(tabId, show);
