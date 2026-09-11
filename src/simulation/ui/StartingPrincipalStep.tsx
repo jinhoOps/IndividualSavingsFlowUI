@@ -4,6 +4,7 @@ import {
   useAccountRecovery,
   useInitialRecovery,
 } from '../../auth/AccountDraftContext';
+import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
@@ -122,21 +123,11 @@ export function StartingPrincipalStep({
               setDirty(true);
             }}
           />
-          <div className="simulation-principal-adjustments">
-            {principalAdjustments.map(({ label, deltaWon }) => (
-              <Button
-                key={label}
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setRawAmount((value) => adjustPrincipal(value, deltaWon));
-                  setDirty(true);
-                }}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
+          <MoneyAdjustments className="simulation-principal-adjustments" label="현재 모아둔 투자금 빠른 조정"
+            adjustments={principalAdjustments} onAdjust={(deltaWon) => {
+              setRawAmount((value) => adjustPrincipal(value, deltaWon));
+              setDirty(true);
+            }} />
           <Button type="submit" variant="primary" disabled={!validAmount}>
             다음
           </Button>

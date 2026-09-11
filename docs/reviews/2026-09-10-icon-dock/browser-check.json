@@ -1,0 +1,53 @@
+[
+  {
+    "width": 390,
+    "dock": {
+      "x": 63.5,
+      "y": 20,
+      "width": 263,
+      "height": 58
+    },
+    "popover": {
+      "x": 47.5,
+      "y": 78,
+      "width": 272,
+      "height": 289.125
+    },
+    "overflow": false,
+    "consoleErrors": []
+  },
+  {
+    "width": 768,
+    "dock": {
+      "x": 252.5,
+      "y": 20,
+      "width": 263,
+      "height": 58
+    },
+    "popover": {
+      "x": 236.5,
+      "y": 78,
+      "width": 272,
+      "height": 289.125
+    },
+    "overflow": false,
+    "consoleErrors": []
+  },
+  {
+    "width": 1280,
+    "dock": {
+      "x": 508.5,
+      "y": 20,
+      "width": 263,
+      "height": 58
+    },
+    "popover": {
+      "x": 492.5,
+      "y": 78,
+      "width": 272,
+      "height": 289.125
+    },
+    "overflow": false,
+    "consoleErrors": []
+  }
+]

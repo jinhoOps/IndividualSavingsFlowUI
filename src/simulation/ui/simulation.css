@@ -65,19 +65,7 @@
   grid-column: 1 / -1;
 }
 
-.simulation-principal-adjustments {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: .375rem;
-}
-
-.simulation-principal-adjustments .ui-button {
-  min-width: 0;
-  min-height: 44px;
-  padding-inline: .25rem;
-  white-space: nowrap;
-}
+.simulation-principal-adjustments { grid-column: 1 / -1; }
 
 .simulation-onboarding-step > .ui-button {
   margin-top: 1.5rem;
@@ -515,8 +503,7 @@
 }
 
 .simulation-controls button[aria-pressed="true"],
-.simulation-onboarding-step .simulation-preset-row button[aria-pressed="true"],
-.simulation-amount-mode button[aria-pressed="true"] {
+.simulation-onboarding-step .simulation-preset-row button[aria-pressed="true"] {
   border-color: var(--tone-action);
   background: var(--tone-action);
   color: white;

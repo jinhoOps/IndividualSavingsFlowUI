@@ -339,11 +339,12 @@ test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({
   });
 });
 
-test('separates app navigation and the right-aligned management tool across viewports', async ({ page }) => {
+test('groups icon navigation and management in a compact dock across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
   }, appliedWorkspace);
   for (const viewport of [
+    { width: 320, height: 740 },
     { width: 390, height: 844 },
     { width: 768, height: 900 },
     { width: 1280, height: 900 },
@@ -351,7 +352,7 @@ test('separates app navigation and the right-aligned management tool across view
     await page.setViewportSize(viewport);
     await page.goto('apps/simulation/');
     const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
-    const launcherRoot = page.locator('.journey-launcher');
+    const launcherRoot = page.locator('.journey-launcher__dock');
     const tools = page.getByRole('group', { name: '앱 도구' });
     await expect(launcher).toBeVisible();
     await expect(page.getByRole('link', { name: /미래 성장 \(Simulation\).*현재 위치/ }))
@@ -391,7 +392,11 @@ test('separates app navigation and the right-aligned management tool across view
       };
     }, [await launcherRoot.elementHandle(), await tools.elementHandle(), await management.elementHandle()] as const);
     expect(geometry.trigger).toEqual({ width: 44, height: 44, top: appTargets[0].top });
-    expect(geometry.rightDelta).toBeLessThanOrEqual(1);
+    // The management tool sits inside the dock's 6px padding and 1px border.
+    expect(geometry.rightDelta).toBe(7);
+    const dockBox = await launcherRoot.boundingBox();
+    expect(dockBox!.width).toBeLessThanOrEqual(280);
+    expect(dockBox!.x + dockBox!.width / 2).toBeCloseTo(viewport.width / 2, 0);
     expect(geometry.borderWidth).toBe(1);
     expect(geometry.borderColor).not.toBe('rgba(0, 0, 0, 0)');
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
@@ -431,12 +436,85 @@ test('keeps all app icons visible while launcher geometry is unresolved', async 
     .toBe(44);
 });
 
+test('dock preview follows pointer and keyboard without changing the current app or target geometry', async ({ page }) => {
+  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspace);
+  await page.goto('apps/main/');
+  const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
+  const main = navigation.getByRole('link', { name: /자금 흐름/ });
+  const simulation = navigation.getByRole('link', { name: /미래 성장/ });
+  const portfolio = navigation.getByRole('link', { name: /투자 배분/ });
+  const selection = navigation.locator('.journey-launcher__selection');
+  const targetBefore = await simulation.boundingBox();
+  const tracks = async (link: typeof main) => {
+    await expect.poll(async () => {
+      const [background, target] = await Promise.all([selection.boundingBox(), link.boundingBox()]);
+      return Math.abs(background!.x - target!.x);
+    }).toBeLessThan(1);
+  };
+
+  await tracks(main);
+  await simulation.hover();
+  await tracks(simulation);
+  await expect(main).toHaveAttribute('aria-current', 'page');
+  await expect(simulation).not.toHaveAttribute('aria-current');
+  await expect(page).toHaveURL(/\/apps\/main\/$/);
+  expect(await simulation.boundingBox()).toEqual(targetBefore);
+  await page.mouse.move(0, 0);
+  await tracks(main);
+
+  await portfolio.focus();
+  await tracks(portfolio);
+  await page.keyboard.press('Tab');
+  await tracks(navigation.getByRole('link', { name: /계좌 연결/ }));
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '관리 메뉴', exact: true })).toBeFocused();
+  await tracks(main);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await simulation.hover();
+  await tracks(simulation);
+  // The foundation sets a tiny global duration; transition-property:none disables motion entirely.
+  await expect(selection).toHaveCSS('transition-property', 'none');
+  await expect(simulation.locator('svg')).toHaveCSS('transform', 'none');
+  await simulation.click();
+  await expect(page).toHaveURL(/\/apps\/simulation\/$/);
+  await expect(page.getByRole('link', { name: /미래 성장.*현재 위치/ })).toHaveAttribute('aria-current', 'page');
+});
+
+test('mobile dock supports direct taps and history while preserving Main amounts', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({
+    baseURL, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block',
+  });
+  try {
+    await context.addInitScript((fixture) => {
+      if (localStorage.getItem('isf-workspace-v5') === null) {
+        localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+      }
+    }, appliedWorkspace);
+    const page = await context.newPage();
+    await page.goto('apps/main/');
+    await page.getByRole('link', { name: /미래 성장/ }).tap();
+    await expect(page).toHaveURL(/\/apps\/simulation\/$/);
+    await expect(page.getByRole('link', { name: /미래 성장.*현재 위치/ })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole('link', { name: /자금 흐름.*현재 위치/ })).toBeVisible();
+    await page.getByRole('button', { name: '관리 메뉴', exact: true }).tap();
+    await expect(page.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied))
+      .toEqual(appliedMain);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally {
+    await context.close();
+  }
+});
+
 test('keeps each app management menu reachable and contained across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
   }, appliedWorkspace);
   const apps = [
-    { path: 'apps/main/', text: '백업 가져오기' },
+    { path: 'apps/main/', text: '처음부터 다시' },
     { path: 'apps/simulation/', text: '시뮬레이션 다시 설정' },
     { path: 'apps/portfolio/', text: '투자 배분 처음부터 다시' },
     { path: 'apps/account-map/', text: '아직 만든 연결 지도가 없습니다' },
@@ -463,22 +541,8 @@ test('keeps each app management menu reachable and contained across viewports', 
       const menu = page.getByRole('menu', { name: '관리 메뉴', exact: true });
       await expect(popover).toBeVisible();
       await expect(menu).toBeVisible();
-      const help = menu.getByRole('menuitem', { name: '앱 아이콘 안내' });
-      await expect(help).toHaveAttribute('aria-expanded', 'false');
-      await help.click();
-      const guide = page.getByRole('region', { name: '앱 아이콘 안내' });
-      await expect(guide).toContainText('자금 흐름 (Main)');
-      await expect(guide).toContainText('미래 성장 (Simulation)');
-      await expect(guide).toContainText('투자 배분 (Portfolio)');
-      await expect(guide).toContainText('계좌 연결 (Account Map)');
-      await expect(guide).not.toContainText('준비 중');
-      expect(await menu.evaluate((node) => node.querySelector('[role="region"]'))).toBeNull();
-      const guideBox = await guide.boundingBox();
-      expect(guideBox).not.toBeNull();
-      expect(guideBox!.x).toBeGreaterThanOrEqual(16);
-      expect(guideBox!.x + guideBox!.width).toBeLessThanOrEqual(viewport.width - 16);
-      await help.click();
-      await expect(guide).toHaveCount(0);
+      await expect(popover.getByText('앱 아이콘 안내')).toHaveCount(0);
+      await expect(popover.getByText(/백업/)).toHaveCount(0);
       await expect(popover.getByText(app.text)).toBeVisible();
       const popoverBox = await popover.boundingBox();
       expect(popoverBox).not.toBeNull();
@@ -546,7 +610,7 @@ test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ 
   }
 });
 
-test('explains app icons with pointer, keyboard, touch and integrated management help', async ({ page }) => {
+test('explains app icons with pointer, keyboard and touch without duplicate management help', async ({ page }) => {
   await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/simulation/');
@@ -562,22 +626,8 @@ test('explains app icons with pointer, keyboard, touch and integrated management
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  const help = page.getByRole('menuitem', { name: '앱 아이콘 안내' });
-  await help.click();
-  const panel = page.getByRole('region', { name: '앱 아이콘 안내' });
-  await expect(panel).toContainText('계좌 연결 (Account Map)');
-  await expect(panel).not.toContainText('준비 중');
-  const panelBox = await panel.boundingBox();
-  expect(panelBox).not.toBeNull();
-  expect(panelBox!.x).toBeGreaterThanOrEqual(16);
-  expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(374);
-
-  await help.click();
-  await expect(panel).toHaveCount(0);
-
-  await help.click();
+  await expect(page.getByText('앱 아이콘 안내')).toHaveCount(0);
   await page.locator('main').click({ position: { x: 1, y: 1 } });
-  await expect(page.getByRole('region', { name: '앱 아이콘 안내' })).toHaveCount(0);
 
   const portfolioLink = page.getByRole('link', { name: '투자 배분 (Portfolio)' });
   const before = page.url();
@@ -604,7 +654,7 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('apps/account-map/');
-  await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+  const narrowLauncher = await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
 
   const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
   await expect(navigation.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ })).toBeVisible();
@@ -640,6 +690,11 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await expect(overflow).toHaveCount(0);
   await expect(more).toBeFocused();
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+
+  await narrowLauncher.evaluate((style) => style.remove());
+  await expect(navigation.getByRole('link')).toHaveCount(4);
+  await expect(more).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: /계좌 연결.*현재 위치/ })).toBeFocused();
 });
 
 test('commits launcher reveals before paint on the supported Account Map under reduced motion', async ({ page }) => {
@@ -740,7 +795,17 @@ test('primary action labels meet text contrast in resting and hover states acros
       for (const state of ['resting', 'hover']) {
         if (state === 'hover') await action.hover();
         const contrast = await action.evaluate((element) => {
-          const rgba = (value: string) => value.match(/[\d.]+/g)!.map(Number);
+          // Computed color-mix() values may use color(srgb ...), not rgb(0..255).
+          const canvas = document.createElement('canvas');
+          canvas.width = 1; canvas.height = 1;
+          const context = canvas.getContext('2d', { willReadFrequently: true })!;
+          const rgba = (value: string) => {
+            context.clearRect(0, 0, 1, 1);
+            context.fillStyle = value;
+            context.fillRect(0, 0, 1, 1);
+            const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+            return [red, green, blue, alpha / 255];
+          };
           const composite = (front: number[], back: number[]) => {
             const alpha = front[3] ?? 1;
             return front.slice(0, 3).map((channel, index) => channel * alpha + back[index] * (1 - alpha));
