@@ -3,7 +3,6 @@ import {withExpenseDraft} from '../src/main/infrastructure/expenseAssistantRepos
 import {expect, test, type BrowserContext} from '@playwright/test';
 import {createEmptyWorkspace, type WorkspaceDocument} from '../src/workspace/domain/model';
 import {workspacePayload} from '../src/workspace/infrastructure/workspaceRemote';
-import {exportWorkspaceBackup} from '../src/workspace/infrastructure/workspaceBackup';
 
 const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -202,18 +201,17 @@ test('lost save response retries once without applying the same edit twice', asy
   expect(server.rows.get(userA)?.revision).toBe(1);
 });
 
-test('lost restore response reports uncertainty without falsely promising unchanged server data', async ({page, context}) => {
+test('lost browser migration response stays uncertain and retries idempotently', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+  await page.addInitScript(workspace => localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace)), plan(4800000));
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
-  await page.getByLabel('백업 가져오기').setInputFiles({name: 'restore.json', mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify({format: 'isf-workspace-backup', formatVersion: 4, exportedAt: Date.now(), workspace: plan(4800000)}))});
   server.loseNextResponse();
-  await page.getByRole('button', {name: '백업으로 바꾸기', exact: true}).click();
-  await expect(page.getByRole('dialog')).toContainText('복원 결과를 확인하지 못했습니다. 최신 저장 상태와 복구 안내를 확인해 주세요.');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('menuitem', {name: '브라우저 계획으로 전체 교체'}).click();
+  await expect(page.getByRole('button', {name: '저장 결과 다시 확인', exact: true})).toBeVisible();
   expect(server.rows.get(userA)?.main.applied?.monthlyNetIncomeWon).toBe(4800000);
   expect(server.rows.get(userA)?.revision).toBe(1);
-  await page.getByRole('dialog').getByRole('button', {name: '취소', exact: true}).click();
   await page.getByRole('button', {name: '저장 결과 다시 확인', exact: true}).click();
   await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   expect(server.rows.get(userA)?.revision).toBe(1);
@@ -237,8 +235,20 @@ test('a concurrent edit retains input and requires explicit reapply', async ({pa
   expect(server.rows.get(userA)?.revision).toBe(3);
 });
 
-test('all four authenticated product entries fit mobile and use the account workspace', async ({page, context}) => {
-  const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+for (const configured of [false, true]) {
+  test(`all four authenticated product entries fit mobile with ${configured ? 'configured' : 'initial'} app menus`, async ({page, context}) => {
+  const workspace = configured ? mappedPlan() : plan();
+  if (configured) {
+    workspace.simulation.draft = {
+      schemaVersion: 3, source: {monthlySavingsWon: 300000, monthlyInvestmentWon: 200000, mainUpdatedAt: 1000},
+      initialInvestmentWon: 2000000, years: 20, expectedAnnualReturnPercent: 8, baseRatePercent: 2.5,
+      inflationOffsetPercentPoints: -0.5, amountMode: 'nominal', targetAmountWon: 100000000, updatedAt: 1000,
+    };
+    workspace.portfolio.plans = [{schemaVersion: 2, scope: {type: 'aggregate'},
+      items: [{id: 'index', name: '인덱스', shareUnits: 700000, order: 0, classification: 'growth', classificationOrigin: 'automatic'}],
+      cashShareUnits: 300000, cashMode: 'automatic', syncedInvestmentWon: 200000, appliedAt: 1000, updatedAt: 1000}];
+  }
+  const server = fakeServer(); server.rows.set(userA, workspace); await server.attach(context, userA);
   for (const width of [390, 768, 1280]) {
     await page.setViewportSize({width, height: 900});
     for (const app of ['main', 'simulation', 'portfolio', 'account-map']) {
@@ -249,6 +259,21 @@ test('all four authenticated product entries fit mobile and use the account work
       await settings.click();
       await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
       const popover = page.locator('.journey-management__popover');
+      await expect(popover.getByText(/백업|앱 아이콘 안내/)).toHaveCount(0);
+      await expect(popover.locator('input[type="file"]')).toHaveCount(0);
+      const expectedItems: Record<string, string[]> = {
+        main: ['처음부터 다시', '이 브라우저에서 로그아웃'],
+        simulation: ['시뮬레이션 다시 설정', '이 브라우저에서 로그아웃'],
+        portfolio: ['투자 배분 처음부터 다시', '이 브라우저에서 로그아웃'],
+        'account-map': [...(configured ? ['월 연결 다시 만들기'] : []), '이 브라우저에서 로그아웃'],
+      };
+      await expect(popover.getByRole('menuitem')).toHaveText(expectedItems[app]);
+      if (app === 'portfolio') {
+        await expect(popover.getByRole('switch', {name: '금액 보기'})).toBeVisible();
+        await expect(popover.getByRole('radio')).toHaveCount(2);
+      }
+
+      await expect(popover).toHaveCSS('opacity', '1');
       const bounds = await popover.boundingBox();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
@@ -256,15 +281,17 @@ test('all four authenticated product entries fit mobile and use the account work
       for (const control of await popover.getByRole('menuitem').all()) {
         expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       }
-      await page.screenshot({path: `test-results/account-settings-${app}-${width}.png`, fullPage: true});
+      await page.screenshot({path: `test-results/account-settings-${configured ? 'configured' : 'initial'}-${app}-${width}.png`, fullPage: true});
       await page.keyboard.press('Escape');
       await expect(settings).toBeFocused();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({path: `test-results/cloud-${app}-${width}.png`, fullPage: true});
+      await page.screenshot({path: `test-results/cloud-${configured ? 'configured' : 'initial'}-${app}-${width}.png`, fullPage: true});
     }
   }
   expect(server.operations.every(op => ['save_portfolio', 'save_simulation', 'save_account_map'].includes(op))).toBe(true);
 });
+
+}
 
 test('account actions stay inside settings and remain usable offline while edits are locked', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
@@ -279,12 +306,9 @@ test('account actions stay inside settings and remain usable offline while edits
   const settings = page.getByRole('button', {name: '관리 메뉴', exact: true});
   await expect(settings).toBeEnabled(); await settings.click();
   await expect(page.getByRole('menuitem', {name: '처음부터 다시', exact: true})).toBeDisabled();
-  await expect(page.getByLabel('백업 가져오기', {exact: true})).toBeDisabled();
+  await expect(page.getByLabel('백업 가져오기', {exact: true})).toHaveCount(0);
   await expect(page.getByRole('group', {name: '계정', exact: true})).toContainText('a@example.com');
-  const download = page.waitForEvent('download');
-  await page.getByRole('menuitem', {name: '현재 계정 계획 백업'}).click();
-  expect((await download).suggestedFilename()).toContain('.json');
-  await settings.click();
+  await expect(page.getByRole('menuitem', {name: '현재 계정 계획 백업'})).toHaveCount(0);
   await page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'}).click();
   await expect(page.getByRole('button', {name: '이메일로 로그인'})).toBeVisible();
   expect(server.operations).toEqual([]);
@@ -297,12 +321,12 @@ test('settings remain available in authenticated Main setup', async ({page, cont
   await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
 });
 
-test('open backup import confirmation becomes read-only offline', async ({page, context}) => {
+test('open restart confirmation becomes read-only offline', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
-  await page.getByLabel('백업 가져오기', {exact: true}).setInputFiles({name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(exportWorkspaceBackup(plan(4000000)))});
-  const confirm = page.getByRole('button', {name: '백업으로 바꾸기', exact: true});
+  await page.getByRole('menuitem', {name: '처음부터 다시', exact: true}).click();
+  const confirm = page.getByRole('button', {name: '다시 시작', exact: true});
   await expect(confirm).toBeEnabled();
   server.setFailRead(true);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
@@ -788,8 +812,45 @@ for (const width of [390, 768, 1280]) {
     await expect(dialog.getByRole('button', {name: '없어요', exact: true})).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(dialog.getByRole('button', {name: '도우미 닫기'})).toBeFocused();
+    const adjustments = dialog.getByRole('group', {name: '금액 빠른 조정'});
+    const amount = dialog.getByLabel('월세 금액');
+    await expect(adjustments.getByRole('button')).toHaveText(['-50만', '-10만', '+10만', '+50만']);
+    await expect(adjustments.getByRole('button', {name: '-10만', exact: true})).toBeDisabled();
+    for (const button of await adjustments.getByRole('button').all()) {
+      const target = (await button.boundingBox())!;
+      expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44);
+      expect(target.x).toBeGreaterThanOrEqual(box.x); expect(target.x + target.width).toBeLessThanOrEqual(box.x + box.width);
+    }
+    const addSmall = adjustments.getByRole('button', {name: '+10만', exact: true});
+    await addSmall.focus(); await page.keyboard.press('Enter');
+    await expect(amount).toHaveValue('100,000');
+    await expect(dialog.locator('.expense-assistant__total')).toContainText('10만 원');
+    await adjustments.getByRole('button', {name: '-50만', exact: true}).click();
+    await expect(amount).toHaveValue('0');
+    await amount.fill('');
     await dialog.getByRole('button', {name: '1년 총액'}).click();
     await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeDisabled();
+    await adjustments.getByRole('button', {name: '+50만', exact: true}).click();
+    await addSmall.click();
+    await expect(amount).toHaveValue('600,000');
+    await expect(dialog.locator('#expense-input-note')).toContainText('월평균 약 5만 원');
+    await adjustments.getByRole('button', {name: '-10만', exact: true}).click();
+    await expect(amount).toHaveValue('500,000');
+    await addSmall.click();
+    expect(server.operations).toEqual([]);
+    await page.mouse.move(0, 0);
+    await page.screenshot({path: `test-results/expense-adjustments-${width}.png`, fullPage: true});
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.rent).toEqual({amountWon: 600000, period: 'year'});
+    expect(server.rows.get(userA)?.main.applied).toEqual(plan().main.applied);
+    await expense.click();
+    await expect(amount).toHaveValue('600,000');
+    await expect(dialog.getByRole('button', {name: '1년 총액'})).toHaveAttribute('aria-pressed', 'true');
+    await amount.fill(String(Number.MAX_SAFE_INTEGER));
+    await expect(addSmall).toBeDisabled();
+    await expect(adjustments.getByRole('button', {name: '+50만', exact: true})).toBeDisabled();
+    await amount.fill('600000');
     await page.keyboard.press('Escape');
     await expect(expense).toBeFocused();
     await edit.click(); await expect(page.getByRole('button', {name: '편집기 닫기'})).toBeFocused();

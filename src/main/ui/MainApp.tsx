@@ -108,19 +108,9 @@ export function MainApp({
     <MainManagementMenu
       saving={view.management.saving}
       dirty={view.management.dirty}
-      canExport={view.management.canExport}
-      canImport={view.management.canImport}
       canRestart={view.management.canRestart}
-      importConfirmationOpen={view.management.importConfirmationOpen}
-      importFailureMessage={backup.pendingImport === null || backup.backupStatus?.kind !== 'error'
-        ? undefined
-        : backup.backupStatus.message}
       onCancel={plan.cancelDraft}
       onRestart={plan.restartSetup}
-      onExport={backup.exportCurrentWorkspace}
-      onImportFile={backup.prepareWorkspaceImport}
-      onCancelImport={backup.cancelWorkspaceImport}
-      onConfirmImport={backup.restorePendingImport}
     />
   );
 

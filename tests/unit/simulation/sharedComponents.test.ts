@@ -33,11 +33,11 @@ describe('Simulation shared component architecture', () => {
     expect(portfolioSource).not.toContain('portfolio-launcher');
   });
 
-  it.each(buttonFiles)('uses Button instead of direct ui-button markup in %s', (file) => {
+  it.each(buttonFiles)('uses shared button controls instead of direct ui-button markup in %s', (file) => {
     const contents = source(file);
 
     expect(contents).not.toMatch(/<button[^>]+className="ui-button/);
-    expect(contents).toMatch(/components\/common\/Button/);
+    expect(contents).toMatch(/components\/common\/(?:Button|MoneyAdjustments|SegmentedControl)/);
   });
 
   it.each(surfaceFiles)('uses Surface instead of direct ui-surface sections in %s', (file) => {

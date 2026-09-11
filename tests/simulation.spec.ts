@@ -84,7 +84,7 @@ for (const viewport of [
     await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-workspace-v5')))
       .toBe(committedWorkspace);
 
-    const adjustments = ['-1억', '-5천만', '+5천만', '+1억']
+    const adjustments = ['-5천만', '-1천만', '+1천만', '+5천만']
       .map((name) => page.getByRole('button', { name }));
     const adjustmentControl = page.locator('.simulation-principal-adjustments');
     const inputControl = initialAmount.locator('xpath=..');
@@ -161,7 +161,7 @@ for (const viewport of [
     });
 
     await adjustments[2].click();
-    await expect(initialAmount).toHaveValue('50,000,000');
+    await expect(initialAmount).toHaveValue('10,000,000');
     await expect.poll(() => page.evaluate(() => {
       const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
@@ -169,7 +169,7 @@ for (const viewport of [
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
       };
     })).toEqual({
-      initialInvestmentWon: 50_000_000,
+      initialInvestmentWon: 10_000_000,
       targetAmountWon: 100_000_000,
     });
 
@@ -187,7 +187,7 @@ for (const viewport of [
     });
 
     await adjustments[3].click();
-    await expect(initialAmount).toHaveValue('100,000,000');
+    await expect(initialAmount).toHaveValue('50,000,000');
     await expect.poll(() => page.evaluate(() => {
       const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
       return {
@@ -195,9 +195,16 @@ for (const viewport of [
         targetAmountWon: workspace.simulation.draft?.targetAmountWon,
       };
     })).toEqual({
-      initialInvestmentWon: 100_000_000,
-      targetAmountWon: 200_000_000,
+      initialInvestmentWon: 50_000_000,
+      targetAmountWon: 100_000_000,
     });
+
+    const mode = page.getByRole('group', { name: '표시 금액 기준' });
+    await mode.getByRole('button', { name: '실질', exact: true }).click();
+    await expect(mode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(mode.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await page.mouse.move(0, 0);
+    await page.locator('.simulation-calculation-settings').screenshot({path: `test-results/shared-controls-simulation-${viewport.width}.png`});
 
     const box = await initialAmount.boundingBox();
     expect(box).not.toBeNull();

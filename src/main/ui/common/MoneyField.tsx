@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { adjustWon, formatWonInput, normalizeMoneyEdit } from '../../domain/money';
-import { Button } from './Button';
+import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
 
 export interface MoneyFieldProps {
   id: string;
@@ -43,13 +43,6 @@ export function MoneyField({
     }
   });
 
-  const adjustmentButtons = [
-    { label: '-50만', deltaWon: -500_000 },
-    { label: '-10만', deltaWon: -100_000 },
-    { label: '+10만', deltaWon: 100_000 },
-    { label: '+50만', deltaWon: 500_000 },
-  ] as const;
-
   return (
     <div className={adjustmentsVisibility === 'focused'
       ? 'money-field money-field--focused-adjustments'
@@ -81,13 +74,8 @@ export function MoneyField({
         />
         <span className="money-field__unit" aria-hidden="true">원</span>
       </div>
-      <div className="money-field__adjustments">
-        {adjustmentButtons.map(({ label: adjustmentLabel, deltaWon }) => (
-          <Button key={adjustmentLabel} type="button" variant="quiet" disabled={disabled} onClick={() => onChange(adjustWon(valueWon, deltaWon))}>
-            {adjustmentLabel}
-          </Button>
-        ))}
-      </div>
+      <MoneyAdjustments className="money-field__adjustments" disabled={disabled}
+        onAdjust={(deltaWon) => onChange(adjustWon(valueWon, deltaWon))} />
       {error ? <p className="m-0 text-sm font-bold text-red-700" id={errorId} role="alert">{error}</p> : null}
     </div>
   );

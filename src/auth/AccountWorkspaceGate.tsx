@@ -266,9 +266,8 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   const accountItems: AppManagementItem[] = [
     {kind: 'message', id: 'account-email', text: runtime.user.email ?? '내 계정'},
     {kind: 'message', id: 'account-saved', text: `마지막 저장: ${new Date(workspace.snapshot.updatedAt).toLocaleString('ko-KR')}`},
-    {kind: 'action', id: 'account-backup', label: '현재 계정 계획 백업', onSelect: () => downloadWorkspace(workspace.snapshot!)},
   ];
-  if (workspace.pending || workspace.localEdits) accountItems.push({kind: 'message', id: 'account-unsent', text: '계정 백업에는 미전송 입력이 포함되지 않습니다. 필요한 입력은 복구 파일로 보관해주세요.'});
+  if (workspace.pending || workspace.localEdits) accountItems.push({kind: 'message', id: 'account-unsent', text: '아직 계정에 저장되지 않은 입력이 있습니다. 필요한 입력은 복구 파일로 보관해주세요.'});
   if (localCandidate) accountItems.push({kind: 'action', id: 'account-replace', label: '브라우저 계획으로 전체 교체', disabled: status !== 'ready', onSelect: () => restoreLocal()});
   if (workspace.pending || workspace.localEdits || hasAccountRecovery(accountStorage(), accountCachePrefix(configured.config, runtime.user.id))) accountItems.push({kind: 'action', id: 'account-recovery', label: '미전송 입력 복구 파일', onSelect: downloadRecovery});
   accountItems.push({kind: 'action', id: 'account-logout', label: '이 브라우저에서 로그아웃', onSelect: () => logout()});

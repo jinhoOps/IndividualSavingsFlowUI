@@ -1,4 +1,80 @@
-# Main 지출 도우미·하단 전체 편집 — Design QA
+# 2026-09-11 공통 컨트롤 스타일과 Simulation 증감 단위
+
+금액 증감 그룹과 월/연·명목/실질 선택을 공통화했다. Simulation 계산 기준은 ±1천만·±5천만 원으로 바꿨다. [변경·검증 기록](docs/superpowers/evidence/2026-09-11-shared-control-polish.md)을 따른다. 이전 검증은 아래에 보존한다.
+
+# 2026-09-10 지출 도우미 빠른 금액 조정
+
+- [ExpenseAssistantDialog](src/main/ui/dashboard/ExpenseAssistantDialog.tsx)에 공통 증감 단위의 `-50만`, `-10만`, `+10만`, `+50만` 버튼을 추가했다. [main.css](src/main/ui/main.css)는 4열·44px 조작 영역을 유지한다.
+- 월/연 원금액 조정, 월평균 소계, 0원 하한, 안전 정수 상한, 저장 중 잠금과 기존 다음/이전/닫기 저장 경로를 유지한다. DB·저장 계약 변경은 없다.
+- `npm run check` 통과. `NODE_OPTIONS=--no-experimental-webstorage npx vitest run tests/unit/main/expenseAssistant.test.ts tests/unit/main/MoneyField.test.tsx tests/unit/main/SummaryDashboard.test.tsx` 34개 통과.
+- `npx playwright test tests/account-workspace.spec.ts --project cloud -g expense --output test-results/expense-adjustments` 6개 통과. 키보드 증감, 월/연 금액·합계, 닫기 저장·재방문, 원래 Main 금액 보존, 초과 입력, 390·768·1280px containment·focus·touch target을 검증했다.
+- [390px](docs/reviews/2026-09-10-expense-adjustments/expense-adjustments-390.png), [768px](docs/reviews/2026-09-10-expense-adjustments/expense-adjustments-768.png), [1280px](docs/reviews/2026-09-10-expense-adjustments/expense-adjustments-1280.png) 캡처 직접 검토 완료. 새로운 잘림·겹침은 없다. 로컬 테스트 계정 검증이며 운영 배포는 하지 않았다.
+
+# 2026-09-10 관리 메뉴 정리
+
+일반 백업과 중복 아이콘 안내를 제거하고 앱 설정·계정 메뉴를 정리했다. 이전 아이콘 도크 결과는 아래에 보존한다. 이번 메뉴의 변경 범위·호환성 테스트 처리·화면별 증거는 [메뉴 정리 검증](docs/superpowers/evidence/2026-09-10-management-menu-cleanup.md)을 따른다.
+
+# 아이콘 앱 도크 — Design QA
+
+검토일: 2026-09-10. 이번 최신 검토는 공통 앱 런처의 시각·상호작용 갱신이다. 아래 Main 기록은 당시 검증 증거로 보존한다.
+
+사용자가 승인한 방향은 앱 이름을 기본으로 숨기고 기존 네 아이콘의 의미를 유지하는 작은 도크다. [Aceternity Floating Dock](https://ui.aceternity.com/components/floating-dock)의 모인 형태, [Magic UI Dock](https://magicui.design/docs/components/dock)의 가벼운 반응, [Direction Aware Tabs](https://www.cult-ui.com/docs/components/direction-aware-tabs)의 이어지는 배경을 ISF Pearl에 적용했다. 원본 사이트를 복제하는 작업은 아니다. 현재 위치는 짧은 선과 `aria-current`로 유지하고, 배경은 hover·focus·long-press 미리보기에만 반응한다. 앱 이동은 즉시 URL 탐색이며 페이지를 건너는 연출은 추가하지 않았다.
+
+## 비교와 화면 증거
+
+- source visual truth: [레퍼런스 원본 캡처](docs/reviews/2026-09-10-icon-dock/isf-aceternity-dock.png), [도크 영역](docs/reviews/2026-09-10-icon-dock/reference-dock-region.png).
+- [전체 비교](docs/reviews/2026-09-10-icon-dock/reference-comparison.png): 원본과 구현 모두 1280×900, DPR 1이며 같은 비교 이미지에서 50%로 표시했다. 두 화면의 본문은 다른 제품이므로 도크의 형태·시각적 무게만 비교했다.
+- [도크 집중 비교](docs/reviews/2026-09-10-icon-dock/focused-comparison.png): 원본 420×80 영역과 ISF 263×58 영역을 1×로 나란히 확인했다. 아이콘 수·색·현재 위치·관리 구분은 승인된 제품별 차이다.
+- 구현은 [390×900](docs/reviews/2026-09-10-icon-dock/isf-dock-390.png), [768×900](docs/reviews/2026-09-10-icon-dock/isf-dock-768.png), [1280×900](docs/reviews/2026-09-10-icon-dock/isf-dock-1280.png), 모두 DPR 1의 Main 적용 결과다. [390px 관리 메뉴](docs/reviews/2026-09-10-icon-dock/isf-dock-menu-390.png)와 [320px 관리 메뉴](docs/reviews/2026-09-10-icon-dock/isf-dock-menu-320.png)도 확인했다.
+- [hover](docs/reviews/2026-09-10-icon-dock/dock-hover-full-1280.png)는 Escape로 복귀한 톱니 focus와 마우스 hover가 함께 있는 상태다. [키보드 focus](docs/reviews/2026-09-10-icon-dock/dock-keyboard-full-1280.png)는 Portfolio 미리보기와 실제 Main 현재 위치를 구분한다.
+- [측정 기록](docs/reviews/2026-09-10-icon-dock/browser-check.json): 세 주요 폭에서 도크 263×58, 문서 가로 overflow 없음, 관리 popover containment 통과, 수집한 console/page error 0건. 링크와 톱니 target은 44×44를 유지한다.
+
+Orca에서 로컬 미리보기를 열고 hover·접근성 이름·현재 위치를 확인했다. Orca 캡처의 시간 초과 때문에 사용자가 허용한 Playwright로 반응형·시각 캡처를 수행했다. 로컬 미리보기는 기존 테스트 전용 호환성 harness에서 현재 제품 컴포넌트와 샘플 데이터를 렌더링한다. 운영 계정 데이터로 편집하지 않았다.
+
+## Findings와 fidelity 표면
+
+최종 캡처와 상호작용에서 남은 actionable P0/P1/P2 차이는 없다.
+
+| 표면 | 확인 결과 |
+| --- | --- |
+| 서체·텍스트 | 상시 앱 이름을 추가하지 않았다. 기존 브랜드 서체·금액 위계·tooltip 한글/영문 이름과 접근성 이름 유지. |
+| 간격·배치 | 전체 폭 구분선을 작은 중앙 도크로 대체. 6px 내부 여백, 22px 외곽/16px 내부 모서리, 4px 앱 간격. 네 앱과 관리가 한 줄에 들어가며 본문 도넛과 하단 편집 진입점을 가리지 않는다. |
+| 색상·토큰 | 기존 Pearl·panel·ink·teal 사용. 현재 위치선은 미리보기 이동과 독립적이다. hover 배경은 현재 앱 배경보다 옅다. |
+| 이미지·아이콘 | 기존 집·성장·분할 도넛·통장 아이콘을 그대로 사용. 새 래스터 자산이나 아이콘 재설계 없음. SVG만 작게 움직여 터치 영역은 고정한다. |
+| 제품 내용 | 네 앱 순서·URL·관리 행동·도우미·금액·저장 경계 유지. 새 앱 이름·설명·상태 문구 없음. |
+
+## 비교·수정 이력
+
+1. 초기 390/768/1280 기본 화면과 320px 관리 메뉴를 확인했다. 모바일 popover는 도크 정렬에 맞춘 최대 폭으로 좌우 안전 여백을 유지했다.
+2. 반응형 코드 검토에서 보이는 항목만으로 도크 폭을 결정하면 overflow 해제 시 폭이 복구되지 않을 가능성을 발견했다. 전체 앱 수의 선호 폭을 주고 실제 좁힘→복원과 focus 복귀를 E2E에 추가했다.
+3. 수정 뒤 세 주요 폭의 전체 화면·popover·hover·focus를 다시 캡처하고 전체/집중 비교 이미지를 열어 확인했다. 추가 P0/P1/P2 시각 수정은 필요하지 않았다.
+
+## 최종 검증
+
+- `npm run check`: source·unit TypeScript 통과.
+- `npx vitest run tests/unit/journey/AppLauncher.test.tsx tests/unit/journey/AppManagementMenu.test.tsx tests/unit/journey/appNavigationOverflow.test.ts`: **3개 파일, 40개 통과**.
+- `npm run test:e2e`: **178개 통과, 1개 skip, 실패 없음**. 네 앱·인증 entry·관리·저장·도우미·모바일/태블릿/웹 회귀 포함. 새 검증은 hover/focus 배경 추적, 고정 hit target, 현재 위치 보존, 실제 touch 탭과 뒤로 가기, 모션 감소, overflow 복원이다.
+- 최초 전체 E2E는 177개 통과·1개 실패·1개 skip이었다. 실패는 공통 CSS가 reduced-motion duration을 `0.00001s`로 두는 상태에서 `0s` 문자열을 기대한 새 테스트였다. 실제 `transition-property: none`과 아이콘 최종 상태를 검증하도록 수정했고, 이후 전체 실행이 위 결과로 통과했다.
+- `VITE_SUPABASE_URL=https://isf-test.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_test_fixture npx vite build`: 번들·PWA 생성 통과. 환경값 없는 첫 빌드는 기존 계정 설정 gate에서 차단됐고 공개 테스트 환경값으로 검증했다. 버전 변경 없음.
+- `git diff --check`, 변경한 DESIGN·spec의 상대 링크 7개: 통과.
+
+PWA offline 전용 테스트 1개는 일반 E2E가 service worker를 막으므로 skip이다. 이번 UI 변경에서 별도 offline/운영 OAuth/실기기 Safari 검증은 수행하지 않았다. 모바일은 Chromium touch emulation이며 Orca도 Chromium 엔진이다. 배포 전 사용자의 실제 기기에서 누름 반응을 확인하는 것은 후속 UX 검토 범위다.
+
+## 변경 파일과 인계
+
+- `src/journey/ui/AppLauncher.tsx`: 도크 wrapper·미리보기 배경·전체 목록의 선호 폭.
+- `src/journey/ui/journey.css`: 도크 밀도·색·고정 target과 아이콘 반응·좁은 화면 popover containment.
+- `tests/app-journey.spec.ts`: 도크 배치·pointer/keyboard/touch·history·reduced-motion·overflow 복원 회귀.
+- `DESIGN.md`, 기존 런처 분리 spec: 승인된 시각 배치와 유지되는 의미적 경계 명시.
+- 이 문서와 `docs/reviews/2026-09-10-icon-dock/`: 비교·반응형 증거.
+
+현재는 로컬 변경이며 미리보기는 `http://127.0.0.1:5180/IndividualSavingsFlowUI/apps/main/`에서 실행 중이다. 후속 디자인/프론트엔드 검토는 [DESIGN의 App Launcher](DESIGN.md#app-launcher)에서 시작한다.
+
+final result: passed
+
+---
+
+# 이전 기록: Main 지출 도우미·하단 전체 편집 — Design QA
 
 검토일: 2026-09-10. 이 절이 현재 구현의 검증 기록이다. 뒤의 두 QA는 단계별 과거 증거다.
 

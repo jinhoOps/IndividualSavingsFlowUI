@@ -55,11 +55,11 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 
 ### 모바일 사용자
 
-390px급 화면에서도 입력, 검토, 적용, 백업과 앱 연결을 완료하려는 사용자다.
+390px급 화면에서도 입력, 검토, 적용과 앱 연결을 완료하려는 사용자다.
 
 ### Workspace 백업 보유 사용자
 
-현재 whole-workspace 형식으로 내보낸 백업을 전체 검증한 뒤 한 번에 복원하려는 사용자다.
+계정 저장 오류 복구가 필요할 때 기존 whole-workspace 백업을 전체 검증한 뒤 한 번에 복원하려는 사용자다. 일반 톱니 메뉴에는 수동 백업 진입점을 제공하지 않는다.
 
 ### 프로젝트 유지관리자
 
@@ -92,7 +92,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 지출·저축·투자·남는 돈의 금액과 비율
 - 적자 상태
 - 현재 다섯 값 수정
-- Main·Simulation·Portfolio·공유 위치를 함께 다루는 whole-workspace JSON 내보내기와 가져오기
+- Supabase 계정에 월간 계획 저장과 저장 실패 안내
 - Simulation으로 이어지는 명시적 행동
 
 ### Simulation, Portfolio와 Account Map journey
@@ -119,7 +119,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 실제 비밀번호는 사용자 입력으로만 전달하고 소스·문서·브라우저 저장소·공개 빌드 변수에 저장하지 않는다. 실패하면 금융 화면을 열지 않고 오류와 재시도를 제공한다.
 - Google 전환 때 같은 확인된 이메일로 로그인해 전환 전후 UID와 기존 workspace 유지 여부를 실제로 확인한다. 임시 계정을 삭제·재생성하지 않는다.
 
-### Shared workspace와 backup
+### Shared workspace와 복구 호환성
 
 - Main, Simulation, Portfolio, 공유 금융 위치와 Account Map applied/draft를 schema v5의 계정별 Supabase workspace 한 행에 저장한다.
 - write ownership은 각 앱이 소유한 slice로 한정한다. Simulation과 Portfolio는 최신 Main slice를 읽기 전용으로 읽고 Portfolio는 자기 plan과 draft만 갱신한다. 모든 성공한 write는 workspace revision을 한 번 증가시킨다.
@@ -128,7 +128,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - stale revision을 기준으로 시작한 writer는 더 최신 workspace를 덮어쓰지 못한다.
 - 브라우저 현재 키는 `isf-workspace-v5`다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본을 읽기 전용 변환한다. 읽기만으로 원본을 쓰거나 삭제하지 않고 명시 저장만 source/destination lock 안에서 v5를 만든다. 존재하지만 invalid인 최신 원본에서 이전 버전으로 fallback하지 않는다.
 - `isf-main-v2`, `isf-simulation-compound-v1`, `isf-portfolio-allocation-v1`, `isf-account-map-v1`, `isf-rebuild-v1`과 retired journey snapshot은 현재 workspace 제품이 읽거나 변경하지 않는 foreign record다.
-- 현재 백업 export는 format 4/workspace v5이며 Main의 도우미 답변을 포함한다. format 3/v4, format 2/v3와 format 1/retired input은 역사적 strict parser와 읽기 전용 converter를 거쳐 검증한다. 모든 slice와 참조를 먼저 검증하고 한 번의 v5 replacement로 복원하며 invalid 입력은 아무것도 바꾸지 않는다.
+- 초기 이전·오류 복구에 사용하는 백업 형식은 format 4/workspace v5이며 Main의 도우미 답변을 포함한다. format 3/v4, format 2/v3와 format 1/retired input은 역사적 strict parser와 읽기 전용 converter를 거쳐 검증한다. 모든 slice와 참조를 먼저 검증하고 한 번의 v5 replacement로 복원하며 invalid 입력은 아무것도 바꾸지 않는다.
 
 ### Main
 
@@ -140,9 +140,13 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 유효하지 않은 적용은 차단하되 불완전한 setup draft는 재개할 수 있다.
 - 현재 값과 적용 값의 관계를 사용자에게 명확히 보여준다.
 - 현재 v5가 없을 때만 v4 → v3 → 유효한 retired workspace v1/v2 순으로 read-only conversion 후보를 읽는다. standalone 구 저장 키와 retired journey snapshot은 fallback으로 읽지 않고 foreign record로 그대로 둔다.
-- whole-workspace JSON import는 envelope, 모든 slice와 참조 검증을 통과해야 한다.
+- 복구용 whole-workspace JSON import는 envelope, 모든 slice와 참조 검증을 통과해야 한다. 정상 Main 관리 메뉴에는 백업 내보내기·가져오기를 노출하지 않는다.
 
 ### Journey
+
+- 2026-09-10 사용자 승인: 일반 톱니 메뉴에서 Main 백업 내보내기·가져오기와 공통 계정 백업을 제거한다. Supabase 저장을 기본으로 하며 초기 브라우저 이전·유효하지 않은 저장 상태 복구·미전송 입력 복구 경로와 백업 형식 호환성은 유지한다.
+- 중복된 `앱 아이콘 안내`는 제거하고 개별 아이콘의 hover·focus·long-press 설명을 유지한다. Main 다시 시작, Simulation 다시 설정, Portfolio 보기 설정·배분 초기화, Account Map 보관 항목 복원·월 연결 다시 만들기 및 공통 계정 정보·로그아웃을 앱 상태에 맞게 제공한다.
+- 390px·768px·desktop에서 메뉴의 빈 구역·불필요한 구분선·overflow가 없어야 하며 기존 44px touch target, Escape·바깥 클릭과 확인 dialog focus 계약을 유지한다.
 
 - 앱 간 이동은 사용자의 런처 링크 또는 CTA 행동으로 시작한다.
 - 앱 이동은 URL 탐색만 수행하고 Simulation과 Portfolio는 workspace의 최신 Main slice를 각자의 읽기 전용 adapter로 직접 읽는다.

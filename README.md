@@ -4,7 +4,7 @@
 
 현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
 
-- **Main**: 월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 보여주고 whole-workspace 백업을 관리하는 현재 제품 기준선입니다.
+- **Main**: 월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 보여주고 월간 계획을 계정에 저장하는 현재 제품 기준선입니다.
 - **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
 - **Portfolio**: 최신 Main 투자금을 첫 설정 흐름에서 전체 기준으로 배분하고, 이후 안정 비중 중심 결과와 집중 편집 화면을 제공합니다.
 - **Account Map**: Main의 다섯 월 금액을 읽어 목적 배정과 계좌 간 월 계획 흐름을 만들고 노드 지도로 관리합니다.
@@ -47,7 +47,7 @@ Main에서 다루는 주요 내용:
 - 월 실수령액과 월간 계획 수치 편집
 - 지출 금액을 눌러 고정비·변동비 13개 항목을 계산하고, 기억한 답변의 합계로 주거비·생활비 대체
 - 남는 돈 금액을 눌러 저축·투자에 전부 또는 일부를 나누고, 반영 전후와 남겨둘 돈 확인
-- 모든 현재 앱 slice와 공유 위치를 한 번에 다루는 whole-workspace JSON 백업
+- Supabase 계정 저장과 미전송 입력 복구
 
 ### Simulation
 
@@ -55,7 +55,7 @@ Main에 적용된 계획이 있으면 `Simulation으로 이어가기`가 URL로�
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
-런처는 Main, Simulation, Portfolio와 Account Map을 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분합니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기 또는 `?` 도움말로 확인할 수 있습니다.
+런처는 Main, Simulation, Portfolio와 Account Map을 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분합니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기로 확인할 수 있습니다.
 
 ## Portfolio와 Account Map
 
@@ -76,7 +76,7 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 - 네 목적지 앱 런처와 현재 위치 표시
 - 계정당 하나의 Supabase JSONB workspace(schema v5)와 앱별 typed slice adapter
 - RLS 계정 격리, 서버 revision 검사와 mutation receipt를 사용한 동시 저장·중복 재시도 보호
-- Main·Simulation·Portfolio·공유 금융 위치와 Account Map 상태를 포함하는 whole-workspace 백업
+- 기존 whole-workspace 백업의 검증·복원 호환성과 미전송 입력 복구
 - 모든 slice와 참조를 먼저 검증한 뒤 한 번에 교체하는 atomic restore
 - URL 기반 앱 탐색과 workspace Main slice를 읽는 앱별 read-only adapter
 - Vite PWA가 소유하는 PWA 매니페스트와 배포 서비스워커
@@ -86,7 +86,9 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 
 현재 코드는 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)의 workspace v5를 사용합니다. 기존 [v4 통합](docs/superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md) 위에 Main 항목별 답변을 추가하고 모든 RPC에 protocol 5를 요구합니다. 계정 캐시는 `isf-account-workspace-v3`이며 구 v2/v1 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 보관합니다.
 
-브라우저 현재 키는 `isf-workspace-v5`이며 명시적 가져오기 후보입니다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본 `isf-workspace-v1` 순으로 읽기 전용 변환합니다. invalid 최신 원본에서는 과거 버전으로 fallback하지 않고 원본·foreign record를 변경하거나 삭제하지 않습니다. 정상 export는 서버 확정 데이터의 backup format 4/workspace v5이며 format 3/2/1은 역사적 parser와 converter를 거칩니다. 미전송 입력은 별도의 복구 파일로 제공합니다.
+브라우저 현재 키는 `isf-workspace-v5`이며 명시적 가져오기 후보입니다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본 `isf-workspace-v1` 순으로 읽기 전용 변환합니다. invalid 최신 원본에서는 과거 버전으로 fallback하지 않고 원본·foreign record를 변경하거나 삭제하지 않습니다. 일반 톱니 메뉴의 백업 내보내기·가져오기는 제거했습니다. 초기 브라우저 이전·저장 오류 복구용 backup format 4/workspace v5와 기존 format 3/2/1 parser·converter는 유지합니다. 미전송 입력은 별도의 복구 파일로 제공합니다.
+
+톱니 메뉴는 앱별 보기 설정·다시 설정과 계정 정보·로그아웃을 제공합니다. 중복된 `앱 아이콘 안내`는 제거하고 개별 아이콘 툴팁은 유지합니다. 브라우저 계획 이전과 미전송 입력 복구는 해당 데이터가 있을 때만 표시합니다. [메뉴 정리 검증](docs/superpowers/evidence/2026-09-10-management-menu-cleanup.md)을 참고하세요.
 
 ## 제품 원칙
 
