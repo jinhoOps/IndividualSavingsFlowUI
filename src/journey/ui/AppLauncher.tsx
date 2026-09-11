@@ -58,7 +58,7 @@ export function AppLauncher({ currentApp, managementMenu }: AppLauncherProps) {
       currentLine,
       MOTION_DISTANCE_PX.subtle,
       MOTION_DURATION.fast,
-      reducedMotion || window.matchMedia('(pointer: coarse)').matches,
+      reducedMotion || (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches),
     );
   }, [currentApp]);
   const overflowMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
