@@ -525,6 +525,16 @@
   }
 }
 
+/* Touch navigation can unload the page mid-transition: keep feedback immediate. */
+@media (pointer: coarse) {
+  .journey-launcher__selection,
+  .journey-launcher__app-link,
+  .journey-launcher__app-link svg,
+  .journey-launcher__current-line {
+    transition: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .journey-launcher__selection,
   .journey-launcher__app-link svg,

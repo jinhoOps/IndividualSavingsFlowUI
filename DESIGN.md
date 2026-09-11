@@ -187,6 +187,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 관리 popover는 viewport 좌우 16px 안에 머물고, Escape 또는 바깥 pointer 입력으로 닫힌 뒤 톱니 버튼으로 focus를 돌려보냅니다. 파괴적 행동은 별도 확인 dialog와 내부 focus 관리를 거칩니다.
 - 툴팁, `더보기`, 관리 메뉴는 Escape 또는 바깥 pointer 입력으로 닫히고 소유 trigger로 focus를 돌려보냅니다. 두 popover는 동시에 열리지 않으며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
 - 런처 링크는 URL 탐색만 수행하며 앱 간 데이터 연결 상태를 소유하거나 표시하지 않습니다.
+- 주 입력이 touch인 기기(`pointer: coarse`)에서는 앱 아이콘의 선택 배경·색상·눌림 효과와 현재 위치 선을 애니메이션 없이 즉시 표시합니다. 길게 누르기 설명과 fine pointer의 기존 전환 효과는 유지합니다.
 - 앱 이동은 애니메이션을 기다리지 않는 원래 링크 탐색입니다. 페이지를 건너는 모션이나 별도 탐색 저장소는 추가하지 않습니다. reduced-motion에서는 배경 이동과 아이콘 변형을 제거하고 최종 상태를 즉시 표시합니다.
 
 ### Recovery and Empty States
