@@ -3,7 +3,7 @@ import type { WorkspaceDocument } from '../domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
 
 export type WorkspacePayload = Pick<WorkspaceDocument, 'main' | 'simulation' | 'portfolio' | 'locations' | 'accountMap'>;
-export type WorkspaceOperation = 'initialize_workspace' | 'save_main' | 'save_simulation' | 'save_portfolio' | 'save_account_map' | 'restore_workspace' | 'save_expense_draft' | 'apply_expense';
+export type WorkspaceOperation = 'initialize_workspace' | 'save_main' | 'save_simulation' | 'save_portfolio' | 'save_account_map' | 'restore_workspace' | 'save_expense_draft' | 'apply_expense' | 'reset_main_setup';
 export interface RemoteCommit {
   status: 'saved' | 'exists' | 'conflict' | 'invalid';
   workspace?: unknown;

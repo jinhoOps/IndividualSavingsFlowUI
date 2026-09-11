@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -50,7 +50,7 @@ describe('AdvancedSettings', () => {
       onChange={onChange}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
 
     const input = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
     expect(input).toHaveValue('12,000,000');
@@ -76,7 +76,7 @@ describe('AdvancedSettings', () => {
       onChange={onChange}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
     fireEvent.change(screen.getByRole('textbox', { name: '현재 모아둔 돈' }), {
       target: { value: '80,000,000' },
     });
@@ -95,7 +95,7 @@ describe('AdvancedSettings', () => {
       onChange={onChange}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
     fireEvent.change(screen.getByRole('textbox', { name: '현재 모아둔 돈' }), {
       target: { value: '300,000,000' },
     });
@@ -114,7 +114,7 @@ describe('AdvancedSettings', () => {
       onChange={onChange}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
     const input = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.blur(input);
@@ -140,15 +140,15 @@ describe('AdvancedSettings', () => {
       onCommitted={onCommitted}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
     for (const name of ['-5천만', '-1천만', '+1천만', '+5천만']) {
-      expect(screen.getByRole('button', { name })).toBeVisible();
+      expect(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name })).toBeVisible();
     }
 
-    fireEvent.click(screen.getByRole('button', { name: '-5천만' }));
-    fireEvent.click(screen.getByRole('button', { name: '-1천만' }));
-    fireEvent.click(screen.getByRole('button', { name: '+1천만' }));
-    fireEvent.click(screen.getByRole('button', { name: '+5천만' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name: '-5천만' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name: '-1천만' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name: '+1천만' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name: '+5천만' }));
 
     expect(onCommitted).toHaveBeenNthCalledWith(1, expect.objectContaining({
       initialInvestmentWon: 150_000_000,
@@ -175,8 +175,8 @@ describe('AdvancedSettings', () => {
       onCommitted={onCommitted}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
-    fireEvent.click(screen.getByRole('button', { name: '-5천만' }));
+    fireEvent.click(screen.getByText('목표와 가정'));
+    fireEvent.click(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name: '-5천만' }));
     expect(onCommitted).toHaveBeenLastCalledWith(expect.objectContaining({ initialInvestmentWon: 0 }));
 
     rerender(<ControlledAdvancedSettings
@@ -184,7 +184,7 @@ describe('AdvancedSettings', () => {
       initialDraft={draftWithInitial(Number.MAX_SAFE_INTEGER - 1_000_000, null)}
       onCommitted={onCommitted}
     />);
-    fireEvent.click(screen.getByRole('button', { name: '+5천만' }));
+    fireEvent.click(within(screen.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' })).getByRole('button', { name: '+5천만' }));
     expect(onCommitted).toHaveBeenLastCalledWith(expect.objectContaining({
       initialInvestmentWon: Number.MAX_SAFE_INTEGER,
       targetAmountWon: null,
@@ -194,9 +194,7 @@ describe('AdvancedSettings', () => {
   it('does not persist blank, nonfinite, or over-precise rates', () => {
     const onChange = vi.fn();
     render(<AdvancedSettings draft={draft} onChange={onChange} />);
-    expect(screen.getByRole('button', { name: '명목' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '실질' })).toBeVisible();
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
 
     fireEvent.change(screen.getByRole('spinbutton', { name: '기준금리' }), {
       target: { value: '' },

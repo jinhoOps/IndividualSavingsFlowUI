@@ -1,3 +1,4 @@
+import { withMainSetupReset } from '../../main/infrastructure/mainSetupReset';
 import { withExpenseDraft } from '../../main/infrastructure/expenseAssistantRepository';
 import type { WorkspaceDocument } from '../domain/model';
 import { parseWorkspaceDocument } from '../domain/validation';
@@ -155,7 +156,11 @@ export class AccountWorkspaceSession {
     const existing = this.scopes.get(scope);
     if (existing) return existing;
     const port: WorkspaceRepository = {
-      ...(scope === 'main' ? { saveExpense: (revision: number, draft: import('../../main/domain/expenseAssistant').ExpenseAssistantDraft, complete: boolean) => {
+      ...(scope === 'main' ? { resetMainSetup: (revision: number) => {
+        if (!this.snapshot) return Promise.resolve({status: 'unavailable'} as const);
+        try { return this.save(scope, revision, withMainSetupReset(this.snapshot, Date.now()), 'reset_main_setup'); }
+        catch { return Promise.resolve({status: 'invalid'} as const); }
+      }, saveExpense: (revision: number, draft: import('../../main/domain/expenseAssistant').ExpenseAssistantDraft, complete: boolean) => {
         if (!this.snapshot) return Promise.resolve({status: 'unavailable'} as const);
         try {
           return this.save(scope, revision, withExpenseDraft(this.snapshot, draft, complete, Date.now()), complete ? 'apply_expense' : 'save_expense_draft');
@@ -193,7 +198,7 @@ export class AccountWorkspaceSession {
     }
     const payload = Object.fromEntries(keys[scope].map(key => [key, validated[key]]));
     this.pending = {operation, expectedRevision: revision, payload, mutationId: this.id(),
-      ...(this.accountMapScopeUsed && scope === 'main' ? {context: 'account-map' as const} : {})};
+      ...(this.accountMapScopeUsed && operation === 'save_main' ? {context: 'account-map' as const} : {})};
     return this.sendPending();
   }
   async initialize(candidate: WorkspaceDocument): Promise<WorkspaceWriteResult> {
@@ -240,11 +245,11 @@ export class AccountWorkspaceSession {
     if (expense && this.snapshot.main.applied === null) return Promise.resolve({status: 'invalid'});
     let candidate: WorkspaceDocument;
     try {
-      candidate = expense ? withExpenseDraft(this.snapshot, this.pending.payload.main!.expenseAssistant!.draft, this.pending.operation === 'apply_expense', Date.now())
+      candidate = this.pending.operation === 'reset_main_setup' ? withMainSetupReset(this.snapshot, Date.now()) : expense ? withExpenseDraft(this.snapshot, this.pending.payload.main!.expenseAssistant!.draft, this.pending.operation === 'apply_expense', Date.now())
         : {...this.snapshot, ...this.pending.payload};
     } catch { return Promise.resolve({status: 'invalid'}); }
     if (this.pending.operation === 'save_main') candidate.main = {...candidate.main, expenseAssistant: structuredClone(this.snapshot.main.expenseAssistant)};
-    if (expense || this.pending.operation === 'save_main') this.pending = {...this.pending, payload: {main: candidate.main}};
+    if (expense || this.pending.operation === 'save_main' || this.pending.operation === 'reset_main_setup') this.pending = {...this.pending, payload: {main: candidate.main}};
     if (!parseWorkspaceDocument(candidate)) return Promise.resolve({status: 'invalid'});
     this.pending = {...this.pending, expectedRevision: this.snapshot.revision, mutationId: this.id()};
     return this.sendPending();
@@ -315,6 +320,10 @@ export class AccountWorkspaceSession {
   }
 
   private clearCoveredRecoveryDrafts(pending: PendingWorkspaceWrite): void {
+    if (pending.operation === 'reset_main_setup') {
+      delete this.recoveryDrafts.main;
+      delete this.recoveryDrafts['main-expense'];
+    }
     if ((pending.operation === 'save_expense_draft' || pending.operation === 'apply_expense')
       && sameJson((this.recoveryDrafts['main-expense']?.value as {answers?: unknown} | undefined)?.answers, pending.payload.main?.expenseAssistant?.draft.answers)) {
       delete this.recoveryDrafts['main-expense'];

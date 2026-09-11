@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { MainBootstrapIntroEntryReason } from '../../../src/main/application/bootstrap';
 import {
   buildMainViewModel,
-  type MainIntroEntryReason,
 } from '../../../src/main/application/mainViewModel';
 import { type MainState } from '../../../src/main/application/mainReducer';
 import { createEmptyMainData, type MainData, type SetupStep } from '../../../src/main/domain/model';
@@ -76,35 +74,19 @@ function dashboardState(overrides: Partial<MainState> = {}): MainState {
 
 describe('mainViewModel', () => {
   it.each([
-    [null, 'none', false, 'loading'],
-    [setupState('welcome'), 'fresh', false, 'intro'],
-    [setupState('welcome'), 'fresh', true, 'setup'],
-    [setupState('income'), 'resume', false, 'setup'],
-    [recoveryState(), 'none', false, 'recovery'],
-    [dashboardState(), 'none', false, 'dashboard'],
-  ] as const)('selects %s/%s/reduced=%s as %s', (
-    state,
-    introReason,
-    reducedMotion,
-    screen,
-  ) => {
-    expect(buildMainViewModel({
-      state,
-      introReason,
-      reducedMotion,
-      validationIssueCount: 0,
-      hasProgressWarning: false,
-      backupStatusKind: null,
-      hasPendingImport: false,
-      restorePending: false,
-    }).screen).toBe(screen);
+    [null, 'loading'],
+    [setupState('welcome'), 'setup'],
+    [setupState('income'), 'setup'],
+    [recoveryState(), 'recovery'],
+    [dashboardState(), 'dashboard'],
+  ] as const)('selects %s as %s without a Main intro', (state, screen) => {
+    expect(buildMainViewModel({state, validationIssueCount: 0, hasProgressWarning: false,
+      backupStatusKind: null, hasPendingImport: false, restorePending: false}).screen).toBe(screen);
   });
 
   it('derives management and visible status without receiving UI messages', () => {
     const view = buildMainViewModel({
       state: dashboardState({ dirty: true, saveStatus: 'saving' }),
-      introReason: 'none',
-      reducedMotion: false,
       validationIssueCount: 0,
       hasProgressWarning: true,
       backupStatusKind: 'error',
@@ -124,36 +106,9 @@ describe('mainViewModel', () => {
     expect(view.showSetupSaveError).toBe(false);
   });
 
-  it.each([
-    ['fresh', false, true],
-    ['restart', false, true],
-    ['fresh', true, false],
-    ['resume', false, false],
-    ['none', false, false],
-  ] as const)('selects welcome intro for %s/reduced=%s as %s', (
-    introReason: MainIntroEntryReason,
-    reducedMotion,
-    expected,
-  ) => {
-    const view = buildMainViewModel({
-      state: setupState('welcome'),
-      introReason,
-      reducedMotion,
-      validationIssueCount: 0,
-      hasProgressWarning: false,
-      backupStatusKind: null,
-      hasPendingImport: false,
-      restorePending: false,
-    });
-
-    expect(view.showIntro).toBe(expected);
-  });
-
   it('exposes setup save errors only when validation has no issues', () => {
     const input = {
       state: setupState('income', { saveStatus: 'error' }),
-      introReason: 'resume' as MainBootstrapIntroEntryReason,
-      reducedMotion: false,
       validationIssueCount: 0,
       hasProgressWarning: false,
       backupStatusKind: null,

@@ -2,6 +2,8 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
+import { Surface } from '../../components/common/Surface';
+import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { appPath } from '../../journey/routes';
 import { bootstrapSimulation } from '../application/bootstrap';
 import type { CompoundSimulationDraft } from '../domain/model';
@@ -280,21 +282,28 @@ export function SimulationApp({
                 <a href={appPath('main')}>Main 확인하기</a>
               </aside>
             ) : null}
-            {resultIsFinite ? (
-              <>
-                <SimulationHero draft={resultDraft} result={result} />
-                <GrowthChart result={result} amountMode={resultDraft.amountMode} />
-                <SimulationComparison result={result} />
-              </>
-            ) : (
-              <p role="alert" className="simulation-calculation-error">
-                계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.
-              </p>
-            )}
-            <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
-              ...next,
-              updatedAt: now(),
-            })} />
+            {resultIsFinite ? <SimulationHero draft={resultDraft} result={result} /> : null}
+            <Surface as="section" className="simulation-projection" aria-labelledby="simulation-projection-title">
+              <header className="simulation-projection__heading">
+                <h2 id="simulation-projection-title">{resultDraft.years === 0 ? '현재 자산' : `${resultDraft.years}년 동안의 자산 변화`}</h2>
+                <SegmentedControl label="표시 금액 기준" value={resultDraft.amountMode}
+                  options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
+                  onChange={(amountMode) => saveDraft({ ...resultDraft, amountMode, updatedAt: now() })} />
+              </header>
+              <p className="simulation-projection__basis">{resultDraft.amountMode === 'nominal'
+                ? '미래에 모일 금액 그대로 보여줘요.'
+                : '물가 상승을 반영해 오늘의 가치로 보여줘요.'}</p>
+              {resultIsFinite ? <GrowthChart result={result} amountMode={resultDraft.amountMode} embedded /> : (
+                <p role="alert" className="simulation-calculation-error">
+                  계산 결과를 표시할 수 없어요. 목표와 가정에서 입력값을 조정해주세요.
+                </p>
+              )}
+              <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
+                ...next,
+                updatedAt: now(),
+              })} />
+              {resultIsFinite ? <SimulationComparison result={result} /> : null}
+            </Surface>
             <AdvancedSettings draft={resultDraft} onChange={(next) => saveDraft({
               ...next,
               updatedAt: now(),

@@ -42,13 +42,120 @@ for (const viewport of [
   { name: '768px', width: 768, height: 900 },
   { name: 'desktop', width: 1280, height: 900 },
 ]) {
-  test(`${viewport.name} 계산 기준에서 기존 모아둔 돈을 수정해도 화면을 벗어나지 않는다`, async ({ page }) => {
+  test(`${viewport.name} 목표 금액을 직접 조정하고 재방문해도 기간과 Main을 보존한다`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await seedMain(page);
+    await openFirstResult(page);
+    const projection = page.locator('.simulation-projection');
+    await expect(projection.getByRole('heading', { name: '5년 동안의 자산 변화' })).toBeVisible();
+    await expect(projection.getByRole('img', { name: '기간별 복리 성장 그래프' })).toBeVisible();
+    await expect(projection.getByRole('button', { name: '연 기대수익률 9%' })).toBeVisible();
+    await expect(projection.getByText('넣은 돈 대비')).toBeVisible();
+    const initialGoalCopy = await page.locator('#simulation-result-title').textContent();
+    await projection.getByRole('spinbutton', { name: '기간 숫자' }).fill('8');
+    await expect(projection.getByRole('heading', { name: '8년 동안의 자산 변화' })).toBeVisible();
+    await expect(page.locator('#simulation-result-title')).toHaveText(initialGoalCopy!);
+    await projection.getByRole('spinbutton', { name: '기간 숫자' }).fill('5');
+    const settings = page.getByRole('region', { name: '목표와 가정', exact: true });
+    const summary = settings.locator('summary');
+    await expect(page.getByRole('textbox', { name: '목표 금액' })).toBeHidden();
+    await expect(summary).toContainText('목표 1억 원 · 시작 0원');
+    await expect(page.getByRole('button', { name: '명목', exact: true })).toBeVisible();
+    await summary.focus();
+    await summary.press('Enter');
+    const target = page.getByRole('textbox', { name: '목표 금액' });
+    const goalAdjustments = page.getByRole('group', { name: '목표 금액 빠른 조정' });
+    const headline = page.locator('#simulation-result-title');
+    const originalHeadline = await headline.textContent();
+    const originalGraph = await page.locator('.growth-chart__semantic-path').evaluateAll(paths => paths.map(path => path.getAttribute('d')));
+    const originalSlices = await page.evaluate(() => {
+      const { simulation: _simulation, revision: _revision, updatedAt: _updatedAt, ...slices } = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
+      return slices;
+    });
+    await expect(target).toHaveValue('100,000,000');
+    await target.fill('150000000');
+    await expect(headline).toHaveText(originalHeadline!);
+    await target.press('Enter');
+    await expect(target).toHaveValue('150,000,000');
+    await expect(headline).toContainText('1억 5,000만 원');
+    await goalAdjustments.getByRole('button', { name: '+5천만' }).click();
+    await expect(target).toHaveValue('200,000,000');
+    await goalAdjustments.getByRole('button', { name: '-5천만' }).click();
+    await expect(target).toHaveValue('150,000,000');
+    const reset = settings.getByRole('button', { name: '기본 목표로' });
+    await expect(reset).toHaveAttribute('title', '기본 목표로 초기화');
+    await expect(reset.locator('svg')).toHaveCount(1);
+    const statusBox = await settings.getByText('직접 설정', { exact: true }).boundingBox();
+    const resetBox = await reset.boundingBox();
+    expect(resetBox!.x).toBeGreaterThanOrEqual(statusBox!.x + statusBox!.width);
+    expect(resetBox!.height).toBeGreaterThanOrEqual(44);
+    await goalAdjustments.getByRole('button', { name: '+1천만' }).click();
+    await expect(headline).toContainText('1억 6,000만 원');
+    const localEstimate = page.getByRole('status', { name: '목표까지 예상 기간' });
+    const estimatedDuration = (await localEstimate.textContent())!.replace('예상 ', '');
+    await expect(headline).toContainText(estimatedDuration);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft.targetAmountWon)).toBe(160_000_000);
+    await page.reload();
+    await expect(target).toBeHidden();
+    await expect(summary).toContainText('목표 1억 6,000만 원');
+    await summary.click();
+    await expect(target).toHaveValue('160,000,000');
+    await expect(page.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('5');
+    await expect(headline).toContainText('1억 6,000만 원');
+    expect(await page.locator('.growth-chart__semantic-path').evaluateAll(paths => paths.map(path => path.getAttribute('d')))).toEqual(originalGraph);
+    expect(await page.evaluate(() => {
+      const { simulation: _simulation, revision: _revision, updatedAt: _updatedAt, ...slices } = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
+      return slices;
+    })).toEqual(originalSlices);
+    await settings.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-custom-${viewport.width}.png`) });
+    await target.fill('123456789');
+    await target.press('Tab');
+    await expect(target).toHaveAttribute('aria-invalid', 'true');
+    await expect(headline).toContainText('1억 6,000만 원');
+    await target.focus();
+    await target.press('Escape');
+    await expect(target).toHaveValue('160,000,000');
+    await target.press('Tab');
+    await expect(goalAdjustments.getByRole('button', { name: '-5천만' })).toBeFocused();
+    await page.getByRole('button', { name: '기본 목표로' }).click();
+    await expect(headline).toHaveText(originalHeadline!);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft.targetAmountWon)).toBe(100_000_000);
+    await expect(page.getByRole('spinbutton', { name: '기준금리', exact: true })).toHaveValue('3');
+    await summary.focus();
+    await summary.press('Enter');
+    await expect(page.getByRole('spinbutton', { name: '기준금리', exact: true })).toBeHidden();
+    await expect(page.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: '실질', exact: true }).click();
+    await expect(page.getByText('물가 상승을 반영해 오늘의 가치로 보여줘요.')).toBeVisible();
+    await page.getByRole('button', { name: '명목', exact: true }).click();
+    await page.evaluate(() => document.fonts.ready);
+    await expect.poll(() => projection.locator('.simulation-comparison dd').evaluateAll(values => values.every(value => (
+      value.querySelector('.simulation-comparison__semantic-value')?.textContent
+        === value.querySelector('.simulation-comparison__visual-value')?.textContent
+    )))).toBe(true);
+    await summary.click();
+    const controls = page.locator('.simulation-projection, .simulation-calculation-settings').locator('input, button, summary');
+    for (const control of await controls.all()) {
+      if (!await control.isVisible()) continue;
+      const box = await control.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await settings.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-expanded-${viewport.width}.png`) });
+    await summary.click();
+    await settings.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-${viewport.width}.png`) });
+    await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-full-${viewport.width}.png`), fullPage: true });
+  });
+
+  test(`${viewport.name} 목표와 가정에서 기존 모아둔 돈을 수정해도 화면을 벗어나지 않는다`, async ({ page }) => {
     const viewportEdgeTolerance = 1;
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await seedMain(page);
     await openFirstResult(page);
 
-    await page.getByText('계산 기준').click();
+    await page.getByText('목표와 가정').click();
     const initialAmount = page.getByRole('textbox', { name: '현재 모아둔 돈' });
     await expect(initialAmount).toHaveValue('0');
     const headline = page.getByRole('heading', {
@@ -85,7 +192,7 @@ for (const viewport of [
       .toBe(committedWorkspace);
 
     const adjustments = ['-5천만', '-1천만', '+1천만', '+5천만']
-      .map((name) => page.getByRole('button', { name }));
+      .map((name) => page.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' }).getByRole('button', { name }));
     const adjustmentControl = page.locator('.simulation-principal-adjustments');
     const inputControl = initialAmount.locator('xpath=..');
     // Measure the final typography before scrolling a control to the viewport edge.
@@ -246,7 +353,7 @@ test('guides automatic-goal first run, supports boundary years and keeps Main re
   await page.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }).fill('8.75');
   await expect(page.getByText(/연 8.75%/)).toBeVisible();
   await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeHidden();
-  await page.getByText('계산 기준').click();
+  await page.getByText('목표와 가정').click();
   await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
   expect(await page.evaluate(() => ({
     workspace: JSON.parse(localStorage.getItem('isf-workspace-v5')!),
@@ -294,7 +401,7 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   await openFirstResult(page);
   await expect.poll(() => page.evaluate(() => (
     JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft?.years
-  ))).toBe(20);
+  ))).toBe(5);
   await page.reload();
   await expect(page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ }))
     .toBeVisible();
@@ -481,7 +588,7 @@ for (const viewport of [
     expect(heroBox.y).toBeLessThan(viewport.height);
     expect(heroBox.y + heroBox.height).toBeGreaterThan(0);
     const years = page.getByRole('spinbutton', { name: '기간 숫자' });
-    await expect(years).toHaveValue('20');
+    await expect(years).toHaveValue('5');
     await years.fill('0');
     await expect(hero).toHaveText(headline ?? '');
     await years.fill('3');
@@ -497,7 +604,7 @@ for (const viewport of [
     expect(Math.abs(frameBox.x - (viewport.width - expectedWidth) / 2)).toBeLessThan(1);
     await expect(graph).toBeVisible();
     await expect(page.getByText('전부 저축보다')).toBeVisible();
-    await expect(page.getByText('납입원금 대비')).toBeVisible();
+    await expect(page.getByText('넣은 돈 대비')).toBeVisible();
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
     const immediateMotionState = await page.locator('.growth-chart').evaluate((chart) => ({
@@ -520,8 +627,7 @@ for (const viewport of [
     expect(comparisonState.every(({ semantic, visual }) => semantic === visual)).toBe(true);
 
     const surfaceStyles = await page.locator([
-      '.growth-chart',
-      '.simulation-controls',
+      '.simulation-projection',
       '.simulation-calculation-settings',
     ].join(',')).evaluateAll((surfaces) => surfaces.map((surface) => {
       const style = getComputedStyle(surface);
@@ -533,7 +639,7 @@ for (const viewport of [
         boxShadow: style.boxShadow,
       };
     }));
-    expect(surfaceStyles).toHaveLength(3);
+    expect(surfaceStyles).toHaveLength(2);
     for (const style of surfaceStyles) {
       expect(style.backgroundColor).toBe('rgb(255, 255, 255)');
       expect(style.borderStyle).toBe('solid');
@@ -542,6 +648,10 @@ for (const viewport of [
       expect(style.boxShadow).toBe('none');
     }
 
+    for (const child of await page.locator('.simulation-projection > .growth-chart, .simulation-projection > .simulation-controls').all()) {
+      await expect(child).toHaveCSS('border-left-width', '0px');
+      await expect(child).toHaveCSS('border-radius', '0px');
+    }
     const box = await graph.boundingBox();
     if (box === null) throw new Error('graph has no bounding box');
     await graph.dispatchEvent('pointerdown', {

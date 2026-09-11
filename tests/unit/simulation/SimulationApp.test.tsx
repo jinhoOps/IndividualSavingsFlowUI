@@ -137,7 +137,7 @@ describe('SimulationApp', () => {
 
     const headline = screen.getByRole('heading', { name: /1억 원을 모으려면/ });
     const committedHeadline = headline.textContent;
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
     const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
     fireEvent.change(initialAmount, { target: { value: '20000000' } });
 
@@ -163,7 +163,7 @@ describe('SimulationApp', () => {
       now={() => 999}
     />);
 
-    fireEvent.click(screen.getByText('계산 기준'));
+    fireEvent.click(screen.getByText('목표와 가정'));
     const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
     expect(initialAmount).toHaveValue('200,000,000');
     fireEvent.change(initialAmount, { target: { value: '300,000,000' } });
@@ -350,7 +350,7 @@ describe('SimulationApp', () => {
       source: latest,
       initialInvestmentWon: 10_000_000,
       targetAmountWon: 100_000_000,
-      years: 20,
+      years: 5,
     })));
     expect(repository.save).toHaveBeenCalledTimes(1);
   });
@@ -404,12 +404,12 @@ describe('SimulationApp', () => {
     />);
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      '계산 결과를 표시할 수 없어요. 계산 기준을 조정해주세요.',
+      '계산 결과를 표시할 수 없어요. 목표와 가정에서 입력값을 조정해주세요.',
     );
     expect(screen.queryByRole('img', { name: '기간별 복리 성장 그래프' }))
       .not.toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: '기간 숫자' })).toBeVisible();
-    expect(screen.getByText('계산 기준')).toBeVisible();
+    expect(screen.getByText('목표와 가정')).toBeVisible();
   });
 
   it('explains a migrated duration once while preserving the result', () => {

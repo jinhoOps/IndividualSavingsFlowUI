@@ -2,11 +2,9 @@ import { useContext, useMemo, useRef, useState } from 'react';
 import { AccountManagementContext } from '../../auth/AccountManagementContext';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
-import { useReducedMotion } from '../../components/motion/useReducedMotion';
 import type { MainState } from '../application/mainReducer';
 import {
   buildMainViewModel,
-  shouldShowMainIntro,
 } from '../application/mainViewModel';
 import { calculateCashflow } from '../domain/cashflow';
 import type { MainData } from '../domain/model';
@@ -22,7 +20,6 @@ import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
 import { SummaryDashboard } from './dashboard/SummaryDashboard';
 import { MainManagementMenu } from './MainManagementMenu';
-import { MainWelcomeIntro } from './MainWelcomeIntro';
 import { createMainOperationGate } from './mainOperationGate';
 import { createMainPlanActionNotifications } from './mainPlanActionNotifications';
 import { SetupFlow } from './setup/SetupFlow';
@@ -46,32 +43,22 @@ export function MainApp({
   const repository = useMemo(() => providedRepository ?? new BrowserMainRepository(localWorkspace!), [providedRepository, localWorkspace]);
   const operationGate = useRef(createMainOperationGate()).current;
   const planActionNotifications = useRef(createMainPlanActionNotifications()).current;
-  const reducedMotion = useReducedMotion();
   const plan = useMainPlanController({
     repository,
     operationGate,
     planActionNotifications,
-    reducedMotion,
   });
-  const showIntro = shouldShowMainIntro(
-    plan.state,
-    plan.introEntry.reason,
-    reducedMotion,
-  );
   const backup = useMainBackupController({
     state: plan.state,
     mainRepository: repository,
     workspaceRepository,
     operationGate,
     planActionNotifications,
-    showIntro,
     onBootstrapAccepted: plan.acceptBootstrapResult,
     onValidImportCandidateSelected: plan.clearValidationIssues,
   });
   const view = buildMainViewModel({
     state: plan.state,
-    introReason: plan.introEntry.reason,
-    reducedMotion,
     validationIssueCount: plan.issues.length,
     hasProgressWarning: plan.progressWarning !== null,
     backupStatusKind: backup.backupStatus?.kind ?? null,
@@ -111,6 +98,7 @@ export function MainApp({
       canRestart={view.management.canRestart}
       onCancel={plan.cancelDraft}
       onRestart={plan.restartSetup}
+      onReset={plan.resetPlan}
     />
   );
 
@@ -123,11 +111,6 @@ export function MainApp({
         <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
       </AppContentFrame>
     );
-  }
-
-  if (view.screen === 'intro') {
-    const intro = <MainWelcomeIntro key={plan.introEntry.id} onComplete={() => plan.completeWelcomeIntro(plan.introEntry.id)} />;
-    return account === null ? intro : <AppShell currentApp="main" managementMenu={managementMenu}>{intro}</AppShell>;
   }
 
   if (view.screen === 'recovery' && plan.state.mode === 'recovery') {

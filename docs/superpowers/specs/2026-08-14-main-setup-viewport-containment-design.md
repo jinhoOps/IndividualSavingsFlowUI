@@ -1,5 +1,7 @@
 # Main setup 모션 복구와 조용한 인트로 건너뛰기 설계
 
+> 2026-09-11 변경: 아래 Main 인트로 노출·건너뛰기·완료 계약은 [계정 로딩 모션 설계](2026-09-11-account-loading-brand-motion-design.md)로 대체된 과거 기록이다. 브랜드 geometry와 setup/review 모션 계약은 유지한다.
+
 **상태:** 대화 승인
 **작성일:** 2026-08-14
 **대상:** Main 웰컴 인트로의 하단 skip control과 기존 Main setup 1/6·6/6 reveal

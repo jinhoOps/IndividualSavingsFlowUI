@@ -52,11 +52,11 @@ afterEach(() => {
   cleanup();
 });
 
-const result = projectCompoundGrowth(createDefaultSimulationDraft({
+const result = projectCompoundGrowth({...createDefaultSimulationDraft({
   monthlySavingsWon: 300_000,
   monthlyInvestmentWon: 200_000,
   mainUpdatedAt: 123,
-}, 456));
+}, 456), years: 20});
 const shortResult = projectCompoundGrowth({
   ...createDefaultSimulationDraft({
     monthlySavingsWon: 300_000,
@@ -591,7 +591,7 @@ describe('SimulationComparison', () => {
 
     expect(comparisonSemanticValues(container)).toEqual([
       formatWon(123_456_000),
-      '188%',
+      '1.88배',
     ]);
     expect(comparisonVisualValues(container)).toEqual(initialVisualValues);
     expect(anime.animate).toHaveBeenCalledTimes(2);

@@ -36,9 +36,11 @@ import { GrowthChartTooltip } from './GrowthChartTooltip';
 export function GrowthChart({
   result,
   amountMode,
+  embedded = false,
 }: {
   result: ProjectionResult;
   amountMode: CompoundSimulationDraft['amountMode'];
+  embedded?: boolean;
 }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -202,14 +204,14 @@ export function GrowthChart({
 
   return (
     <Surface
-      as="section"
+      as={embedded ? 'div' : 'section'}
       ref={chartRef}
       className="growth-chart"
-      aria-labelledby="growth-chart-title"
+      aria-labelledby={embedded ? undefined : 'growth-chart-title'}
       aria-label="복리 성장 그래프"
     >
       <div className="growth-chart__header">
-        <h2 id="growth-chart-title">시간이 만든 차이</h2>
+        {!embedded ? <h2 id="growth-chart-title">시간이 만든 차이</h2> : null}
         <div className="growth-chart__legend" aria-label="그래프 범례">
           <span><i className="growth-chart__legend-current" />현재 계획</span>
           <span><i className="growth-chart__legend-savings" />전부 저축</span>

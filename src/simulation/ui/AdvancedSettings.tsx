@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
-import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
+import { findTargetReachMonth } from '../domain/projection';
 import {
   targetForEditedInitialInvestment,
 } from '../domain/validation';
-import { formatPercent } from './format';
+import { formatPercent, formatWon } from './format';
+import { TargetAmountControl } from './TargetAmountControl';
 
 const initialInvestmentAdjustments = [
   { label: '-5천만', deltaWon: -50_000_000 },
@@ -58,94 +60,124 @@ export function AdvancedSettings({
   };
 
   return (
-    <Surface as="section" className="simulation-calculation-settings" aria-label="금액과 계산 기준">
-      <fieldset className="simulation-amount-mode">
-        <legend>금액 기준</legend>
-        <SegmentedControl label="표시 금액 기준" value={draft.amountMode}
-          options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
-          onChange={(amountMode) => update({ amountMode })} />
-      </fieldset>
-
-      <details className="simulation-advanced">
-        <summary>계산 기준</summary>
-        <div className="simulation-advanced__content">
-          <label className="simulation-advanced__money-field">
-            현재 모아둔 돈
-            <div className="simulation-advanced__money-input">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={initialRaw}
-                aria-invalid={initialError}
-                aria-describedby={initialError ? 'simulation-initial-investment-error' : undefined}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  setInitialRaw(raw);
-                  setInitialError(parseMoneyInput(raw) === null);
-                }}
-                onBlur={() => {
-                  const value = parseMoneyInput(initialRaw);
-                  if (value === null) {
-                    setInitialRaw(formatMoneyInput(draft.initialInvestmentWon));
-                    setInitialError(false);
-                    return;
-                  }
-                  commitInitialInvestment(value);
-                }}
-              />
-              <span aria-hidden="true">원</span>
+    <Surface as="section" className="simulation-calculation-settings" aria-labelledby="simulation-settings-title">
+      <details className="simulation-settings-disclosure">
+        <summary className="simulation-settings-heading">
+          <span className="simulation-settings-heading__icon" aria-hidden="true"><SlidersHorizontal size={20} /></span>
+          <span className="simulation-settings-heading__copy">
+            <span id="simulation-settings-title">목표와 가정</span>
+            <span className="simulation-settings-heading__summary">
+              목표 {draft.targetAmountWon === null ? '미설정' : formatWon(draft.targetAmountWon)} · 시작 {formatWon(draft.initialInvestmentWon)}
+            </span>
+          </span>
+          <ChevronDown size={18} aria-hidden="true" />
+        </summary>
+        <div className="simulation-settings-disclosure__content">
+          <div className="simulation-settings-amounts">
+            <TargetAmountControl initialInvestmentWon={draft.initialInvestmentWon}
+              targetAmountWon={draft.targetAmountWon}
+              targetReachMonth={findTargetReachMonth(draft)}
+              onChange={(targetAmountWon) => update({ targetAmountWon })} />
+            <section className="simulation-setting-block" aria-label="시작 자산">
+              <label className="simulation-advanced__money-field">
+                현재 모아둔 돈
+                <div className="simulation-advanced__money-input">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={initialRaw}
+                    aria-invalid={initialError}
+                    aria-describedby={initialError ? 'simulation-initial-investment-error' : undefined}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      setInitialRaw(raw);
+                      setInitialError(parseMoneyInput(raw) === null);
+                    }}
+                    onBlur={() => {
+                      const value = parseMoneyInput(initialRaw);
+                      if (value === null) {
+                        setInitialRaw(formatMoneyInput(draft.initialInvestmentWon));
+                        setInitialError(false);
+                        return;
+                      }
+                      commitInitialInvestment(value);
+                    }}
+                  />
+                  <span aria-hidden="true">원</span>
+                </div>
+              </label>
+              <MoneyAdjustments className="simulation-principal-adjustments" label="현재 모아둔 돈 빠른 조정"
+                adjustments={initialInvestmentAdjustments}
+                onAdjust={(deltaWon) => commitInitialInvestment(adjustInitialInvestment(draft.initialInvestmentWon, deltaWon))} />
+              {initialError ? (
+                <p id="simulation-initial-investment-error" role="alert">
+                  0원 이상 안전한 정수로 입력해주세요.
+                </p>
+              ) : null}
+              <p className="simulation-advanced__help">
+                지금까지 모은 자산이에요. 매달 넣는 저축·투자액과 별도로 계산해요.
+              </p>
+            </section>
+          </div>
+          <section className="simulation-advanced" aria-labelledby="simulation-assumptions-title">
+            <div className="simulation-advanced__summary-copy">
+              <h3 id="simulation-assumptions-title">금리와 물가 가정</h3>
+              <span>기준금리 {formatPercent(draft.baseRatePercent)}% · 물가상승률 {formatPercent(inflation)}%</span>
             </div>
-          </label>
-          <MoneyAdjustments className="simulation-principal-adjustments" label="현재 모아둔 돈 빠른 조정"
-            adjustments={initialInvestmentAdjustments}
-            onAdjust={(deltaWon) => commitInitialInvestment(adjustInitialInvestment(draft.initialInvestmentWon, deltaWon))} />
-          {initialError ? (
-            <p id="simulation-initial-investment-error" role="alert">
-              0원 이상 안전한 정수로 입력해주세요.
-            </p>
-          ) : null}
-          <p className="simulation-advanced__help">
-            시뮬레이션 시작 시점에 이미 모아둔 금액입니다. Main의 월 저축·투자액과는 별도로 계산해요.
-          </p>
-          <label>
-            기준금리
-            <input
-              type="number"
-              step="0.01"
-              value={baseRaw}
-              aria-invalid={baseError}
-              onChange={(event) => {
-                const raw = event.target.value;
-                const value = Number(raw);
-                const valid = validRate(raw, value)
-                  && value + draft.inflationOffsetPercentPoints > -100;
-                setBaseRaw(raw);
-                setBaseError(!valid);
-                if (valid) update({ baseRatePercent: value });
-              }}
-            />
-          </label>
-          {baseError ? <p role="alert">−100%보다 크고 소수점 둘째 자리까지 입력해주세요.</p> : null}
-          <label>
-            물가상승률 차이
-            <input
-              type="number"
-              step="0.01"
-              value={offsetRaw}
-              aria-invalid={offsetError}
-              onChange={(event) => {
-                const raw = event.target.value;
-                const value = Number(raw);
-                const valid = validRate(raw, value) && draft.baseRatePercent + value > -100;
-                setOffsetRaw(raw);
-                setOffsetError(!valid);
-                if (valid) update({ inflationOffsetPercentPoints: value });
-              }}
-            />
-          </label>
-          {offsetError ? <p role="alert">−100%보다 크고 소수점 둘째 자리까지 입력해주세요.</p> : null}
-          <p>물가상승률 {formatPercent(inflation)}%</p>
-          <p>수익을 계속 재투자한다고 가정한 계산이며, 백테스트나 금융 자문이 아닙니다.</p>
+            <div className="simulation-advanced__content">
+              <div>
+                <label>
+                  기준금리
+                  <div className="simulation-advanced__money-input">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={baseRaw}
+                      aria-invalid={baseError}
+                      aria-describedby={baseError ? 'simulation-base-rate-error' : undefined}
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        const value = Number(raw);
+                        const valid = validRate(raw, value)
+                          && value + draft.inflationOffsetPercentPoints > -100;
+                        setBaseRaw(raw);
+                        setBaseError(!valid);
+                        if (valid) update({ baseRatePercent: value });
+                      }}
+                    />
+                    <span aria-hidden="true">%</span>
+                  </div>
+                </label>
+                {baseError ? <p id="simulation-base-rate-error" role="alert">−100%보다 크고 소수점 둘째 자리까지 입력해주세요.</p> : null}
+              </div>
+              <div>
+                <label>
+                  물가상승률 차이
+                  <div className="simulation-advanced__money-input">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={offsetRaw}
+                      aria-invalid={offsetError}
+                      aria-describedby={offsetError ? 'simulation-inflation-offset-error' : undefined}
+                      onChange={(event) => {
+                        const raw = event.target.value;
+                        const value = Number(raw);
+                        const valid = validRate(raw, value) && draft.baseRatePercent + value > -100;
+                        setOffsetRaw(raw);
+                        setOffsetError(!valid);
+                        if (valid) update({ inflationOffsetPercentPoints: value });
+                      }}
+                    />
+                    <span aria-hidden="true">%p</span>
+                  </div>
+                </label>
+                {offsetError ? <p id="simulation-inflation-offset-error" role="alert">−100%보다 크고 소수점 둘째 자리까지 입력해주세요.</p> : null}
+              </div>
+              <p className="simulation-assumptions-note">전부 저축했을 때는 기준금리를, 오늘의 가치는 물가상승률을 사용해요. 물가상승률은 기준금리와 입력한 차이를 더한 값이에요.</p>
+              <p className="simulation-assumptions-note">수익을 계속 재투자한다고 가정한 계산이며, 백테스트나 금융 자문이 아닙니다.</p>
+            </div>
+          </section>
         </div>
       </details>
     </Surface>

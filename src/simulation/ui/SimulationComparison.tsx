@@ -6,7 +6,7 @@ import { formatWon } from './format';
 
 export function SimulationComparison({ result }: { result: ProjectionResult }) {
   return (
-    <dl className="simulation-comparison ui-surface" aria-label="핵심 비교">
+    <dl className="simulation-comparison" aria-label="핵심 비교">
       <div>
         <dt>전부 저축보다</dt>
         <dd>
@@ -17,11 +17,11 @@ export function SimulationComparison({ result }: { result: ProjectionResult }) {
         </dd>
       </div>
       <div>
-        <dt>납입원금 대비</dt>
+        <dt>넣은 돈 대비</dt>
         <dd>
           <AnimatedComparisonValue
             value={result.principalRatioPercent}
-            format={formatRoundedPercent}
+            format={formatPrincipalMultiple}
           />
         </dd>
       </div>
@@ -72,6 +72,6 @@ function AnimatedComparisonValue({
   );
 }
 
-function formatRoundedPercent(value: number): string {
-  return `${Math.round(value)}%`;
+function formatPrincipalMultiple(value: number): string {
+  return `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 }).format(value / 100)}배`;
 }

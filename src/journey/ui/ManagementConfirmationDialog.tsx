@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { Button } from '../../components/common/Button';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { setMotionFinalState } from '../../components/motion/setMotionFinalState';
@@ -13,6 +13,7 @@ export function ManagementConfirmationDialog({
   returnFocusRef,
   onCancel,
   onConfirm,
+  onAlternate,
 }: {
   confirmation: ManagementConfirmation;
   pending: boolean;
@@ -20,7 +21,16 @@ export function ManagementConfirmationDialog({
   returnFocusRef: RefObject<HTMLElement | null>;
   onCancel(): void;
   onConfirm(): void;
+  onAlternate?(): void;
 }) {
+  const delayMs = confirmation.alternateAction?.delayMs ?? 0;
+  const [delayElapsed, setDelayElapsed] = useState(delayMs === 0);
+  useEffect(() => {
+    setDelayElapsed(delayMs === 0);
+    if (delayMs === 0) return;
+    const timer = window.setTimeout(() => setDelayElapsed(true), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs]);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const focusEffectGenerationRef = useRef(0);
   const titleId = `journey-management-dialog-${confirmation.title.replace(/\s+/g, '-')}`;
@@ -94,6 +104,7 @@ export function ManagementConfirmationDialog({
       className="journey-management__dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={`${titleId}-description`}
       aria-busy={pending}
       tabIndex={-1}
       onCancel={(event) => {
@@ -107,11 +118,18 @@ export function ManagementConfirmationDialog({
     >
       <div ref={motionRef} data-dialog-motion>
         <h2 id={titleId}>{confirmation.title}</h2>
-        <p>{confirmation.description}</p>
+        <p id={`${titleId}-description`}>{confirmation.description}</p>
         {errorMessage === undefined ? null : (
           <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
         )}
         <div className="journey-management__dialog-actions">
+          {confirmation.alternateAction && onAlternate ? (
+            <Button variant="bare" className="journey-management__danger journey-management__dialog-alternate"
+              type="button" disabled={pending || !delayElapsed}
+              onClick={() => { if (!pending && delayElapsed) onAlternate(); }}>
+              {confirmation.alternateAction.label}
+            </Button>
+          ) : null}
           <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</Button>
           <Button variant="bare" className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
         </div>

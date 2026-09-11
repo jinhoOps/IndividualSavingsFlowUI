@@ -10,6 +10,7 @@ export interface ManagementConfirmation {
   description: string;
   confirmLabel: string;
   failureMessage?: string;
+  alternateAction?: { label: string; delayMs: number; onSelect(): void | boolean | Promise<void | boolean> };
 }
 
 export type AppManagementItem =
@@ -70,6 +71,24 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
     }
     item.onSelect();
     window.setTimeout(() => triggerRef.current?.focus(), 0);
+  }
+
+  function confirmAction(action: () => void | boolean | Promise<void | boolean>): void {
+    if (confirmationPendingRef.current) return;
+    confirmationPendingRef.current = true;
+    setConfirmationPending(true);
+    setConfirmationFailed(false);
+    const settle = (result: void | boolean) => {
+      confirmationPendingRef.current = false;
+      setConfirmationPending(false);
+      if (result !== false) setPending(null);
+      else setConfirmationFailed(true);
+    };
+    try {
+      const result = action();
+      if (result instanceof Promise) void result.then(settle, () => settle(false));
+      else settle(result);
+    } catch { settle(false); }
   }
 
   function renderMenuItem(item: Exclude<AppManagementItem, { kind: 'control' }>, readOnly = false): ReactNode {
@@ -144,31 +163,9 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
             confirmationPendingRef.current = false;
             setPending(null);
           }}
-          onConfirm={() => {
-            if (confirmationPendingRef.current) return;
-            confirmationPendingRef.current = true;
-            setConfirmationPending(true);
-            setConfirmationFailed(false);
-
-            const settle = (result: void | boolean) => {
-              confirmationPendingRef.current = false;
-              setConfirmationPending(false);
-              if (result !== false) {
-                setPending(null);
-                return;
-              }
-              setConfirmationFailed(true);
-            };
-            try {
-              const result = pending.onSelect();
-              if (result instanceof Promise) {
-                void result.then(settle, () => settle(false));
-              } else {
-                settle(result);
-              }
-            } catch {
-              settle(false);
-            }
+          onConfirm={() => confirmAction(pending.onSelect)}
+          onAlternate={() => {
+            if (pending.confirmation?.alternateAction) confirmAction(pending.confirmation.alternateAction.onSelect);
           }}
         />
         </AccountProductBoundary>

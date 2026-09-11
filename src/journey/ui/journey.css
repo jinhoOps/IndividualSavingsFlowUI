@@ -253,6 +253,10 @@
   margin-top: 1.5rem;
 }
 
+.journey-management__dialog-alternate {
+  margin-inline-end: auto;
+}
+
 .main-plan-overlay {
   position: fixed;
   z-index: 90;

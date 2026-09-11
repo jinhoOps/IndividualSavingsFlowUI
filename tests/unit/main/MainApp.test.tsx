@@ -24,7 +24,6 @@ import { MemoryStorage } from '../simulation/MemoryStorage';
 
 const mainAppMocks = vi.hoisted(() => ({
   reducedMotion: false,
-  introCompletionCount: 1,
 }));
 
 vi.mock('../../../src/components/motion/useReducedMotion', () => ({
@@ -71,23 +70,6 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
       {onCancel ? <button type="button" aria-label="설정 취소" onClick={onCancel}>취소</button> : null}
     </section>
   ),
-}));
-
-vi.mock('../../../src/main/ui/MainWelcomeIntro', () => ({
-  MainWelcomeIntro: ({ onComplete }: { onComplete(): void }) => {
-    return (
-      <section data-testid="main-welcome-intro">
-        <button
-          type="button"
-          onClick={() => {
-            for (let attempt = 0; attempt < mainAppMocks.introCompletionCount; attempt += 1) onComplete();
-          }}
-        >
-          화면을 눌러 건너뛰기
-        </button>
-      </section>
-    );
-  },
 }));
 
 vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
@@ -138,7 +120,6 @@ vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
 
 beforeEach(() => {
   mainAppMocks.reducedMotion = false;
-  mainAppMocks.introCompletionCount = 1;
   const storage = new MemoryStorage();
   Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
@@ -184,13 +165,13 @@ function repository(result: MainLoadResult): MainRepository {
   };
 }
 
-async function completeBrandIntro(): Promise<void> {
-  fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
-  await waitFor(() => expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument());
+async function expectSetupWelcome(): Promise<void> {
+  expect(await screen.findByRole('heading', {name: 'setup:welcome'})).toBeVisible();
+  expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
 }
 
 describe('MainApp', () => {
-  it('saves fresh welcome progress once before the brand intro completes', async () => {
+  it('opens setup immediately and saves fresh welcome progress once', async () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn(async () => undefined);
 
@@ -200,7 +181,7 @@ describe('MainApp', () => {
       </StrictMode>,
     );
 
-    expect(await screen.findByTestId('main-welcome-intro')).toBeInTheDocument();
+    await expectSetupWelcome();
     expect(screen.queryByTestId('app-shell-launcher')).not.toBeInTheDocument();
     await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
     expect(storage.saveSetupProgress).toHaveBeenCalledWith(
@@ -208,10 +189,10 @@ describe('MainApp', () => {
       expect.objectContaining({ schemaVersion: 2 }),
       'initial',
     );
-    expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
   });
 
-  it('keeps the fresh intro when StrictMode replays bootstrap after welcome persistence', async () => {
+  it('keeps setup stable when StrictMode replays bootstrap after welcome persistence', async () => {
     let progress: ReturnType<MainRepository['loadSetupProgress']> = null;
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.load = vi.fn(storage.load);
@@ -227,8 +208,8 @@ describe('MainApp', () => {
     );
 
     await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
-    expect(screen.getAllByTestId('main-welcome-intro')).toHaveLength(1);
-    expect(screen.queryByRole('heading', { name: 'setup:welcome' })).not.toBeInTheDocument();
+    await expectSetupWelcome();
+    expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(storage.load).toHaveBeenCalledOnce();
   });
 
@@ -283,11 +264,11 @@ describe('MainApp', () => {
     expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
   });
 
-  it('consumes the fresh intro entry after completion so a rerender cannot replay it', async () => {
+  it('keeps setup open without an intro on rerender', async () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     const view = render(<MainApp repository={storage} />);
 
-    await completeBrandIntro();
+    await expectSetupWelcome();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
 
     view.rerender(<MainApp repository={storage} />);
@@ -296,24 +277,14 @@ describe('MainApp', () => {
     expect(screen.getByRole('heading', { name: 'setup:welcome' })).toBeVisible();
   });
 
-  it('consumes a duplicate intro completion callback without rendering welcome twice', async () => {
-    mainAppMocks.introCompletionCount = 2;
-    render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
-
-    fireEvent.click(await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' }));
-
-    expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'setup:welcome' })).toHaveLength(1);
-  });
-
-  it('shows a fresh-progress warning after the brand intro completes when saving fails', async () => {
+  it('shows a fresh-progress warning in setup when saving fails', async () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn(async () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
 
-    await completeBrandIntro();
+    await expectSetupWelcome();
 
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(await screen.findByText(
@@ -333,8 +304,8 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
-    expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
-    await completeBrandIntro();
+    await expectSetupWelcome();
+    await expectSetupWelcome();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
@@ -365,7 +336,7 @@ describe('MainApp', () => {
   it('hides navigation and journey actions during first setup', async () => {
     render(<MainApp repository={repository({ status: 'empty', data: null, original: null })} />);
 
-    await completeBrandIntro();
+    await expectSetupWelcome();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
@@ -394,7 +365,7 @@ describe('MainApp', () => {
     expect(screen.queryByLabelText('백업 가져오기')).not.toBeInTheDocument();
     resolveLoad?.({ status: 'empty', data: null, original: null });
 
-    await completeBrandIntro();
+    await expectSetupWelcome();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
   });
 
@@ -402,7 +373,7 @@ describe('MainApp', () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
-    await completeBrandIntro();
+    await expectSetupWelcome();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'next-housing' }));
@@ -419,7 +390,7 @@ describe('MainApp', () => {
     const storage = repository({ status: 'empty', data: null, original: null });
     storage.saveSetupProgress = vi.fn();
     render(<MainApp repository={storage} />);
-    await completeBrandIntro();
+    await expectSetupWelcome();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'apply-setup' }));
@@ -662,7 +633,7 @@ describe('MainApp', () => {
       .mockRejectedValueOnce(new Error('quota'))
       .mockImplementationOnce(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
     render(<MainApp repository={storage} />);
-    await completeBrandIntro();
+    await expectSetupWelcome();
     await screen.findByRole('heading', { name: 'setup:welcome' });
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
 
@@ -687,7 +658,7 @@ describe('MainApp', () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
-    await completeBrandIntro();
+    await expectSetupWelcome();
     await screen.findByRole('heading', { name: 'setup:welcome' });
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
 
@@ -723,8 +694,8 @@ describe('MainApp', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
 
-    expect(await screen.findByTestId('main-welcome-intro')).toBeVisible();
-    await completeBrandIntro();
+    await expectSetupWelcome();
+    await expectSetupWelcome();
     expect(await screen.findByRole('heading', { name: 'setup:welcome' })).toBeVisible();
     expect(screen.getByLabelText('setup-flow')).toHaveAttribute('data-motion-preset', 'initial-assembly');
     expect(screen.queryByRole('navigation', { name: 'ISF 앱' })).not.toBeInTheDocument();
@@ -829,7 +800,7 @@ describe('MainApp', () => {
       throw new Error('quota');
     });
     render(<MainApp repository={storage} />);
-    await completeBrandIntro();
+    await expectSetupWelcome();
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     fireEvent.click(screen.getByRole('button', { name: 'change-income' }));
@@ -855,9 +826,8 @@ describe('MainApp', () => {
       .mockImplementationOnce(() => latestProgressGate);
     storage.save = vi.fn(async (draft: MainData) => ({ ...draft, updatedAt: 30 }));
     render(<MainApp repository={storage} />);
-    const complete = await screen.findByRole('button', { name: '화면을 눌러 건너뛰기' });
+    await expectSetupWelcome();
     await waitFor(() => expect(storage.saveSetupProgress).toHaveBeenCalledOnce());
-    fireEvent.click(complete);
     await screen.findByRole('heading', { name: 'setup:welcome' });
 
     releaseInitialProgress?.();

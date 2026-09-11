@@ -1,3 +1,4 @@
+import { createExpenseDraft } from '../../../src/main/domain/expenseAssistant';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MainData } from '../../../src/main/domain/model';
 import {
@@ -163,6 +164,40 @@ function seedWorkspace(storage: MemoryStorage, workspace: WorkspaceDocument): vo
 describe('BrowserMainRepository workspace adapter', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('atomically resets setup and all expense history while preserving the applied plan and other slices', async () => {
+    const storage = new MemoryStorage(new Map(oldRecords));
+    const initial = populatedWorkspace();
+    const draft = createExpenseDraft(100);
+    for (const id of Object.keys(draft.answers) as (keyof typeof draft.answers)[]) draft.answers[id] = {amountWon: 100, period: 'month'};
+    initial.main.expenseAssistant = {schemaVersion: 1, draft, lastApplied: {answers: draft.answers, appliedAt: 100}};
+    seedWorkspace(storage, initial);
+    const {mainRepository, workspaceRepository} = browserRepositories(storage);
+    await mainRepository.load(); mainRepository.loadSetupProgress();
+    const reset = await mainRepository.resetSetup();
+    expect(reset.monthlyNetIncomeWon).toBe(0);
+    expect(reset.updatedAt).toBe(initial.main.applied!.updatedAt);
+    const loaded = workspaceRepository.load();
+    if (loaded.status !== 'found') throw new Error('Expected workspace');
+    expect(loaded.workspace.main.expenseAssistant).toBeNull();
+    expect(loaded.workspace.main.applied).toEqual(initial.main.applied);
+    expect(loaded.workspace.main.setupProgress).toMatchObject({kind: 'restart', step: 'welcome', draft: reset});
+    expect(loaded.workspace.revision).toBe(initial.revision + 1);
+    for (const key of ['simulation', 'portfolio', 'locations', 'accountMap'] as const) expect(loaded.workspace[key]).toEqual(initial[key]);
+    for (const [key, value] of oldRecords) expect(storage.getItem(key)).toBe(value);
+    await mainRepository.clearSetupProgress();
+    expect(mainRepository.expenseAssistant.load()).toBeNull();
+  });
+
+  it('rejects a stale reset without clearing newer amounts or assistant history', async () => {
+    const storage = new MemoryStorage(); seedWorkspace(storage, populatedWorkspace());
+    const first = browserRepositories(storage).mainRepository;
+    const second = browserRepositories(storage).mainRepository;
+    await first.load(); first.loadSetupProgress(); await second.load(); second.loadSetupProgress();
+    const winner = await second.save(mainData({monthlyNetIncomeWon: 5000000}));
+    await expect(first.resetSetup()).rejects.toThrow('changed');
+    expect((await second.load()).data).toEqual(winner);
   });
 
   it('starts empty when the workspace is absent and never consumes populated old records', async () => {

@@ -25,6 +25,7 @@ export const INVALID_CACHE_RECOVERY_KEY = '__invalid-current-cache__';
 const operationPayloadKeys: Record<WorkspaceOperation, readonly (keyof WorkspacePayload)[]> = {
   initialize_workspace: ['main', 'simulation', 'portfolio', 'locations', 'accountMap'],
   save_main: ['main'],
+  reset_main_setup: ['main'],
   save_expense_draft: ['main'],
   apply_expense: ['main'],
   save_simulation: ['simulation'],

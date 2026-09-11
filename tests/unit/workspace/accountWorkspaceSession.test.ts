@@ -41,6 +41,36 @@ function fixture() {
 }
 
 describe('account workspace session', () => {
+  it('reset clears only Main recovery drafts after server success and survives a cached pending retry', async () => {
+    localStorage.clear();
+    const {session, remote, setCurrent} = fixture();
+    const initial = createEmptyWorkspace(1000);
+    initial.main.applied = {schemaVersion: 2, updatedAt: 1000, monthlyNetIncomeWon: 3000000,
+      monthlyHousingWon: 500000, monthlyLivingWon: 500000, monthlySavingWon: 500000, monthlyInvestmentWon: 500000};
+    initial.main.expenseAssistant = {schemaVersion: 1, draft: createExpenseDraft(1000), lastApplied: null};
+    setCurrent(initial); await session.refresh();
+    session.recordRecoveryDraft('main', initial.main.applied);
+    session.recordRecoveryDraft('main-expense', initial.main.expenseAssistant.draft);
+    session.recordRecoveryDraft('simulation', {preserve: true});
+    const write = remote.write;
+    remote.write = async () => {throw new Error('offline');};
+    expect((await session.scope('main').resetMainSetup!(0)).status).toBe('unavailable');
+    expect(session.readRecoveryDraft('main-expense')).not.toBeNull();
+    const pendingId = session.pending!.mutationId;
+    session.dispose();
+    remote.write = write;
+    const restored = new AccountWorkspaceSession(remote, 'project:user-a', {userId: 'user-a', storage: localStorage});
+    await restored.refresh();
+    expect(restored.pending?.operation).toBe('reset_main_setup');
+    expect(restored.pending?.mutationId).toBe(pendingId);
+    expect((await restored.retry()).status).toBe('saved');
+    expect(restored.snapshot!.main.expenseAssistant).toBeNull();
+    expect(restored.readRecoveryDraft('main')).toBeNull();
+    expect(restored.readRecoveryDraft('main-expense')).toBeNull();
+    expect(restored.readRecoveryDraft('simulation')).toEqual({preserve: true});
+    expect(restored.scope('simulation').resetMainSetup).toBeUndefined();
+  });
+
   it('locks without losing recovery and ignores a pending write response after automatic sign-out', async () => {
     localStorage.clear();
     const {session, remote} = fixture();

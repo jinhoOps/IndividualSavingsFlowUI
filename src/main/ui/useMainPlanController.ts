@@ -23,7 +23,6 @@ export interface UseMainPlanControllerOptions {
   repository: MainRepository;
   operationGate: MainOperationGate;
   planActionNotifications: Pick<MainPlanActionNotifications, 'notify'>;
-  reducedMotion: boolean;
 }
 
 export interface MainIntroEntry {
@@ -40,12 +39,12 @@ export interface MainPlanController {
   introEntry: MainIntroEntry;
   acceptBootstrapResult(result: MainBootstrapResult): void;
   clearValidationIssues(): void;
-  completeWelcomeIntro(entryId: number): void;
   changeDraft(draft: MainData): void;
   changeSetupStep(step: SetupStep): void;
   apply(): Promise<void>;
   cancelDraft(): Promise<void>;
   restartSetup(): void;
+  resetPlan(): Promise<boolean>;
   startEmptySetup(): Promise<void>;
   discardRecoveryCandidate(): Promise<void>;
   returnToCurrentPlan(): Promise<void>;
@@ -60,7 +59,6 @@ export function useMainPlanController({
   repository,
   operationGate,
   planActionNotifications,
-  reducedMotion,
 }: UseMainPlanControllerOptions): MainPlanController {
   const accountSession = useContext(AccountDraftContext);
   const [state, setState] = useState<MainState | null>(null);
@@ -114,12 +112,6 @@ export function useMainPlanController({
       setIntroEntry(nextIntroEntry(result.introEntryReason));
     }
   }, [nextIntroEntry, recovered]);
-
-  const completeWelcomeIntro = useCallback((entryId: number) => {
-    setIntroEntry((current) => current.id !== entryId
-      ? current
-      : { ...current, reason: 'none' });
-  }, []);
 
   const clearValidationIssues = useCallback(() => {
     setIssues([]);
@@ -187,17 +179,6 @@ export function useMainPlanController({
       void persistSetupProgress('welcome', state.draft, 'initial');
     }
   }, [introEntry, persistSetupProgress, state]);
-
-  useEffect(() => {
-    if (
-      reducedMotion
-      && state?.mode === 'setup'
-      && state.setupStep === 'welcome'
-      && (introEntry.reason === 'fresh' || introEntry.reason === 'restart')
-    ) {
-      completeWelcomeIntro(introEntry.id);
-    }
-  }, [completeWelcomeIntro, introEntry, reducedMotion, state]);
 
   const changeDraft = useCallback((draft: MainData) => {
     if (operationGate.busy) return;
@@ -291,6 +272,29 @@ export function useMainPlanController({
     dispatch({ type: 'restart-setup' });
   }, [dispatch, nextIntroEntry, operationGate, persistSetupProgress, state]);
 
+  const resetPlan = useCallback(async (): Promise<boolean> => {
+    if (state === null || state.applied === null || operationGate.busy) return false;
+    operationGate.busy = true;
+    try {
+      dispatch({ type: 'save-started' });
+      await progressQueue.waitForIdle();
+      if (!repository.resetSetup) throw new Error('Main reset is unavailable.');
+      const draft = await repository.resetSetup();
+      accountSession?.recordRecoveryDraft('main', null);
+      accountSession?.recordRecoveryDraft('main-expense', null);
+      setIssues([]);
+      setProgressWarning(null);
+      setState({ ...state, mode: 'setup', draft, setupStep: 'welcome', dirty: true, saveStatus: 'idle' });
+      setIntroEntry(nextIntroEntry('restart'));
+      return true;
+    } catch {
+      dispatch({ type: 'save-failed' });
+      return false;
+    } finally {
+      operationGate.busy = false;
+    }
+  }, [accountSession, dispatch, nextIntroEntry, operationGate, progressQueue, repository, state]);
+
   const startEmptySetup = useCallback(async () => {
     if (state === null || operationGate.busy) return;
     operationGate.busy = true;
@@ -350,12 +354,12 @@ export function useMainPlanController({
     introEntry,
     acceptBootstrapResult,
     clearValidationIssues,
-    completeWelcomeIntro,
     changeDraft,
     changeSetupStep,
     apply,
     cancelDraft,
     restartSetup,
+    resetPlan,
     startEmptySetup,
     discardRecoveryCandidate,
     returnToCurrentPlan,

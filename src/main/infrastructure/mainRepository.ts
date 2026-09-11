@@ -5,6 +5,7 @@ import {
   type WorkspaceWriteResult,
 } from '../../workspace/infrastructure/workspaceRepository';
 import type { MainData, SetupStep } from '../domain/model';
+import { withMainSetupReset } from './mainSetupReset';
 import { createExpenseAssistantRepository, type ExpenseAssistantRepository } from './expenseAssistantRepository';
 import { isMainDataShape, validateMainData, validateMainDraft } from '../domain/validation';
 
@@ -50,6 +51,7 @@ export interface MainRepository {
   loadSetupProgress(): SetupProgress | null;
   clearSetupProgress(): Promise<void>;
   resetInvalidWorkspace(expectedRaw: string): Promise<void>;
+  resetSetup?(): Promise<MainData>;
 }
 
 export type SetupProgressKind = 'initial' | 'restart';
@@ -203,6 +205,25 @@ export class BrowserMainRepository implements MainRepository {
     );
     assertSaved(result, 'clear Main setup progress');
     this.setupProgressBase = null;
+  }
+
+  async resetSetup(): Promise<MainData> {
+    if (this.appliedBase === untrackedBase || this.setupProgressBase === untrackedBase) {
+      throw new Error('Could not reset Main: workspace base was not loaded.');
+    }
+    const loaded = loadWritableWorkspace(this.workspaceRepository);
+    if (!sameMainData(loaded.workspace.main.applied, this.appliedBase)
+      || !sameSetupProgress(loaded.workspace.main.setupProgress, this.setupProgressBase)) {
+      throw new Error('Could not reset Main: workspace Main slice changed.');
+    }
+    const result = this.workspaceRepository.resetMainSetup
+      ? await this.workspaceRepository.resetMainSetup(loaded.workspace.revision)
+      : await this.workspaceRepository.update(loaded.workspace.revision, current => withMainSetupReset(current, this.now()));
+    assertSaved(result, 'reset Main setup');
+    const progress = result.workspace.main.setupProgress;
+    if (!progress) throw new Error('Could not reset Main: missing setup progress.');
+    this.setupProgressBase = cloneSetupProgress(progress);
+    return cloneMainData(progress.draft);
   }
 
   async resetInvalidWorkspace(expectedRaw: string): Promise<void> {

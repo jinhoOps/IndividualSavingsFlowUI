@@ -21,7 +21,6 @@ interface UseMainBackupControllerOptions {
   workspaceRepository: Pick<WorkspaceRepository, 'load' | 'replace'>;
   operationGate: MainOperationGate;
   planActionNotifications: Pick<MainPlanActionNotifications, 'subscribe'>;
-  showIntro: boolean;
   onBootstrapAccepted(result: MainBootstrapResult): void;
   onValidImportCandidateSelected(): void;
 }
@@ -51,7 +50,6 @@ export function useMainBackupController({
   workspaceRepository,
   operationGate,
   planActionNotifications,
-  showIntro,
   onBootstrapAccepted,
   onValidImportCandidateSelected,
 }: UseMainBackupControllerOptions) {
@@ -66,7 +64,7 @@ export function useMainBackupController({
   }, [planActionNotifications]);
 
   useEffect(() => {
-    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success' || showIntro) return;
+    if (!restoreFocusRequestedRef.current || backupStatus?.kind !== 'success') return;
     restoreFocusRequestedRef.current = false;
     const target = document.querySelector<HTMLElement>('[aria-label="관리 메뉴"]')
       ?? document.querySelector<HTMLElement>('[data-setup-heading]')
@@ -76,7 +74,7 @@ export function useMainBackupController({
         '[aria-label="설정 단계"] [tabindex]:not([tabindex="-1"])',
       ].join(', '));
     target?.focus();
-  }, [backupStatus, showIntro, state]);
+  }, [backupStatus, state]);
 
   const prepareWorkspaceImport = useCallback(async (file: File) => {
     if (state === null || state.mode !== 'dashboard' || operationGate.busy) return;

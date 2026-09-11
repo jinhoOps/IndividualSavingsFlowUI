@@ -145,3 +145,7 @@ select to_regprocedure('public.save_expense_draft(jsonb,uuid,bigint,integer)'),
 v5 쓰기가 시작된 이후 v4 before-image를 그대로 복원하면 새 답변과 이후 금액 편집이 사라질 수 있다. 운영 rollback은 현재 v5 데이터 보존 및 새 writes와의 차이 검토를 먼저 수행한다. 이 작업은 운영 rollback 쿼리를 자동 실행하지 않는다.
 
 로컬 증거: `node scripts/test-workspace-db.mjs`는 v5 before-image/rollback, 답변과 총액의 원자적 반영, 서버 합산·반올림, mutation 재시도·CAS·권한 격리를 검증한다. mock 인증 Playwright와 `node scripts/test-account-pwa.mjs`는 실제 운영 적용 증거를 대신하지 않는다.
+
+## 2026-09-11 Main 초기화 RPC
+
+`202609110001_main_setup_reset.sql`을 운영에 적용했다. schema v5를 유지하며 기존 행을 변경하지 않고 명시적 초기화만 별도 RPC로 허용한다. 일반 Main 저장은 계속 지출 도우미 내역을 보존한다. [통합 검증·원본 보관 기록](superpowers/evidence/2026-09-11-planning-release.md)을 따른다. 이미 적용된 운영 DB에 migration을 재실행하지 않는다.

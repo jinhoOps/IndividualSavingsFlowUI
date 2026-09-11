@@ -34,7 +34,7 @@ describe('ExpectedReturnStep', () => {
     fireEvent.click(screen.getByRole('button', { name: '직접 입력' }));
     fireEvent.click(screen.getByRole('button', { name: '기대수익률 0.25%p 올리기' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-      years: 20,
+      years: 5,
       expectedAnnualReturnPercent: 9.25,
     }));
 

@@ -68,7 +68,7 @@ describe('SimulationOnboarding', () => {
     expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({
       initialInvestmentWon: 200_000_000,
       targetAmountWon: 250_000_000,
-      years: 20,
+      years: 5,
       expectedAnnualReturnPercent: 13,
       updatedAt: 456,
     }));

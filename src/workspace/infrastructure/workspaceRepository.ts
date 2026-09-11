@@ -54,6 +54,7 @@ export type WorkspaceInvalidResetResult =
   | { status: 'changed' | 'unavailable' };
 
 export interface WorkspaceRepository {
+  resetMainSetup?(expectedRevision: number): Promise<WorkspaceWriteResult>;
   saveExpense?(expectedRevision: number, draft: ExpenseAssistantDraft, complete: boolean): Promise<WorkspaceWriteResult>;
   load(): WorkspaceLoadResult;
   migrate(expectedRevision: number): Promise<WorkspaceWriteResult>;

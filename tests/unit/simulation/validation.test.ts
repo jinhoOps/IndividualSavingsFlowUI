@@ -26,13 +26,19 @@ describe('Simulation draft validation', () => {
       source,
       initialInvestmentWon: 0,
       targetAmountWon: 100_000_000,
-      years: 20,
+      years: 5,
       expectedAnnualReturnPercent: 9,
-      baseRatePercent: 2.75,
+      baseRatePercent: 3,
       inflationOffsetPercentPoints: -0.25,
       amountMode: 'nominal',
       updatedAt: 456,
     });
+  });
+
+  it('preserves saved rates instead of applying new defaults to existing drafts', () => {
+    const saved = {...createDefaultSimulationDraft(source, 456), baseRatePercent: 2.75, years: 20};
+    expect(parseStoredSimulationDraft(saved)?.draft.baseRatePercent).toBe(2.75);
+    expect(parseStoredSimulationDraft(saved)?.draft.years).toBe(20);
   });
 
   it('accepts a complete valid draft', () => {

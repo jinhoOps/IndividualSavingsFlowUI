@@ -26,6 +26,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState(initial.error);
+  const [invalidAmount, setInvalidAmount] = useState(false);
   const [returnToReview, setReturnToReview] = useState(() => expenseAnswersComplete((recovered ?? initial.draft).answers));
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -39,7 +40,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   const totals = expenseTotals(draft.answers);
   const answered = EXPENSE_ITEMS.filter(({ id }) => draft.answers[id] !== null).length;
 
-  useEffect(() => { headingRef.current?.focus(); }, [draft.step]);
+  useEffect(() => { setInvalidAmount(false); headingRef.current?.focus(); }, [draft.step]);
   useEffect(() => {
     if (!dirty) return;
     const protect = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -69,10 +70,12 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     else onClose();
   }
   function next(none = false) {
-    if (!item || (!none && answer === null)) return;
+    if (!item || (!none && invalidAmount)) return;
+    setInvalidAmount(false);
     const step = returnToReview ? 'review' : EXPENSE_ITEMS[index + 1]?.id ?? 'review';
-    const nextDraft: ExpenseAssistantDraft = { ...draft, step, updatedAt: Date.now(), answers: none
-      ? { ...draft.answers, [item.id]: { amountWon: 0, period: 'month' as const } } : draft.answers };
+    const nextDraft: ExpenseAssistantDraft = { ...draft, step, updatedAt: Date.now(), answers: {
+      ...draft.answers, [item.id]: none ? { amountWon: 0, period: 'month' } : answer ?? { amountWon: 0, period },
+    } };
     // Preserve this answer locally even if the request fails.
     setDraft({ ...nextDraft, step: draft.step });
     void save(nextDraft);
@@ -91,7 +94,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
 
   return <>
     <div className="expense-assistant__backdrop" aria-hidden="true" onClick={close} />
-    <div className="expense-assistant" role="dialog" aria-modal="true" aria-labelledby="expense-assistant-title" aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
+    <div className={`expense-assistant${item && 'example' in item ? ' expense-assistant--explained' : ''}`} role="dialog" aria-modal="true" aria-labelledby="expense-assistant-title" aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
       <header className="expense-assistant__header">
         <span><WandSparkles size={18} aria-hidden="true" /> 지출 계산 도우미</span>
         <Button type="button" variant="quiet" aria-label="도우미 닫기" disabled={busy} onClick={close}><X size={22} aria-hidden="true" /></Button>
@@ -107,20 +110,21 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
           </div>
           <h2 id="expense-assistant-title" tabIndex={-1} ref={headingRef}>{item.question}</h2>
           <p className="expense-assistant__hint" id="expense-question-hint">{item.hint}</p>
+          {'example' in item ? <p className="expense-assistant__example" id="expense-question-example">{item.example}</p> : null}
           <SegmentedControl className="expense-assistant__period" label="금액 기준" value={period} disabled={busy}
             options={[{ value: 'month', label: '한 달 평균' }, { value: 'year', label: '1년 총액' }]}
             onChange={(option) => {
-              setError(''); setPeriod(option);
+              if (!invalidAmount) setError(''); setPeriod(option);
               if (answer) setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers, [item.id]: { ...answer, period: option } } });
             }} />
           <label className="sr-only" htmlFor="expense-answer">{item.label} 금액</label>
           <div className="expense-assistant__amount">
             <input id="expense-answer" type="text" inputMode="numeric" autoComplete="off" placeholder="0" disabled={busy || !!initial.error}
-              value={answer === null ? '' : answer.amountWon.toLocaleString('ko-KR')} aria-describedby="expense-question-hint expense-input-note" aria-invalid={!!error}
+              value={answer === null ? '' : answer.amountWon.toLocaleString('ko-KR')} aria-describedby={`expense-question-hint${'example' in item ? ' expense-question-example' : ''} expense-input-note`} aria-invalid={!!error}
               onChange={event => {
                 const raw = event.target.value.replaceAll(',', '');
-                if (!/^\d*$/.test(raw) || (raw && !Number.isSafeInteger(Number(raw)))) { setError('0 이상의 원 단위 금액을 입력해주세요.'); return; }
-                setError(''); setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers, [item.id]: raw === '' ? null : { amountWon: Number(raw), period } } });
+                if (!/^\d*$/.test(raw) || (raw && !Number.isSafeInteger(Number(raw)))) { setInvalidAmount(true); setError('0 이상의 원 단위 금액을 입력해주세요.'); return; }
+                setInvalidAmount(false); setError(''); setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers, [item.id]: raw === '' ? null : { amountWon: Number(raw), period } } });
               }} />
             <span aria-hidden="true">원</span>
           </div>
@@ -129,7 +133,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
             isAdjustmentDisabled={(deltaWon) => (deltaWon < 0 && !answer?.amountWon)
               || !Number.isSafeInteger((answer?.amountWon ?? 0) + deltaWon)}
             onAdjust={(deltaWon) => {
-              setError('');
+              setInvalidAmount(false); setError('');
               setDraft({ ...draft, updatedAt: Date.now(), answers: { ...draft.answers,
                 [item.id]: { amountWon: Math.max(0, (answer?.amountWon ?? 0) + deltaWon), period },
               } });
@@ -162,7 +166,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
         {!item && totals ? <p className="expense-assistant__hint">주거 {formatDashboardWon(totals.housingWon)} · 생활 {formatDashboardWon(totals.livingWon)}<br />직접 입력한 주거비와 생활비를 이 합계로 바꿔요.</p> : null}
         {item ? <div className="expense-assistant__actions">
           <Button type="button" variant="secondary" disabled={busy || !!initial.error} onClick={() => next(true)}>없어요</Button>
-          <Button type="button" variant="primary" disabled={busy || answer === null || !totals || !!initial.error} onClick={() => next()}>{busy ? '저장 중…' : returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
+          <Button type="button" variant="primary" disabled={busy || invalidAmount || !totals || !!initial.error} onClick={() => next()}>{busy ? '저장 중…' : returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
         </div> : <Button className="expense-assistant__apply" type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={() => void save(draft, true)}>{busy ? '반영 중…' : '이 금액으로 반영'}</Button>}
       </footer>
     </div>

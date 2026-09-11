@@ -86,7 +86,7 @@ export function SimulationControls({
       </fieldset>
 
       <fieldset className="simulation-control-group">
-        <legend>연 기대수익률</legend>
+        <legend>연 기대수익률 <span className="simulation-control-context">(투자)</span></legend>
         <div className="simulation-preset-row">
           {RETURN_PRESETS.map((rate) => (
             <Button

@@ -22,10 +22,19 @@ function mappedPlan(): WorkspaceDocument {
       links: [{id: 'living', purposeId: 'system:living', locationId: 'living', monthlyAmountWon: 1000000,
         remainder: true, status: 'active', createdAt: 1000, updatedAt: 1000}], setupCompletedAt: 1000, updatedAt: 1000}}};
 }
+function planWithExpenseHistory(): WorkspaceDocument {
+  const workspace = mappedPlan();
+  const draft = createExpenseDraft(1000);
+  for (const {id} of EXPENSE_ITEMS) draft.answers[id] = {amountWon: id === 'rent' ? 800000 : 0, period: 'month'};
+  workspace.main.expenseAssistant = {schemaVersion: 1, lastApplied: {answers: structuredClone(draft.answers), appliedAt: 1000},
+    draft: {...draft, step: 'food', answers: {...draft.answers, food: null}}};
+  return workspace;
+}
 function fakeServer() {
   const rows = new Map<string, WorkspaceDocument>();
   const receipts = new Map<string, unknown>();
   let failRead = false;
+  let readBarrier: Promise<void> | null = null;
   let failWrite = false;
   let loseResponse = false;
   const operations: string[] = [];
@@ -57,6 +66,7 @@ function fakeServer() {
       if (!user) {await route.fulfill({status: 401, body: '{}'}); return;}
       const current = rows.get(user);
       if (url.pathname === '/rest/v1/user_workspaces') {
+        await readBarrier;
         if (failRead) {await route.fulfill({status: 400, json: {message: 'fixture read unavailable'}}); return;}
         await route.fulfill({json: current ? [row(user, current)] : []}); return;
       }
@@ -81,7 +91,11 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, attach, setFailRead(value: boolean) {failRead = value;}, setFailWrite(value: boolean) {failWrite = value;}, loseNextResponse() {loseResponse = true;}};
+  return {rows, operations, attach, holdReads() {
+    let release!: () => void;
+    readBarrier = new Promise<void>(resolve => {release = resolve;});
+    return () => {readBarrier = null; release();};
+  }, setFailRead(value: boolean) {failRead = value;}, setFailWrite(value: boolean) {failWrite = value;}, loseNextResponse() {loseResponse = true;}};
 }
 
 for (const width of [390, 768, 1280]) {
@@ -233,6 +247,32 @@ test('a concurrent edit retains input and requires explicit reapply', async ({pa
   await page.getByRole('button', {name: '최신 상태에서 다시 적용'}).click();
   await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('220만 원');
   expect(server.rows.get(userA)?.revision).toBe(3);
+});
+
+test('simulation target edits persist through the account save path without changing other apps', async ({page, context}) => {
+  const workspace = mappedPlan();
+  workspace.simulation.draft = {
+    schemaVersion: 3, source: {monthlySavingsWon: 300000, monthlyInvestmentWon: 200000, mainUpdatedAt: 1000},
+    initialInvestmentWon: 2000000, years: 20, expectedAnnualReturnPercent: 8, baseRatePercent: 2.5,
+    inflationOffsetPercentPoints: -0.5, amountMode: 'nominal', targetAmountWon: 100000000, updatedAt: 1000,
+  };
+  const server = fakeServer(); server.rows.set(userA, workspace); await server.attach(context, userA);
+  await page.goto('apps/simulation/');
+  await page.getByText('목표와 가정', {exact: true}).click();
+  const target = page.getByRole('textbox', {name: '목표 금액'});
+  await target.fill('150000000');
+  await target.press('Enter');
+  await expect.poll(() => server.rows.get(userA)?.simulation.draft?.targetAmountWon).toBe(150000000);
+  await page.reload();
+  await page.getByText('목표와 가정', {exact: true}).click();
+  await expect(target).toHaveValue('150,000,000');
+  await expect(page.locator('#simulation-result-title')).toContainText('1억 5,000만 원');
+  await page.getByRole('group', {name: '목표 금액 빠른 조정'}).getByRole('button', {name: '+1천만'}).click();
+  await expect.poll(() => server.rows.get(userA)?.simulation.draft?.targetAmountWon).toBe(160000000);
+  const saved = server.rows.get(userA)!;
+  for (const key of ['main', 'portfolio', 'locations', 'accountMap'] as const) expect(saved[key]).toEqual(workspace[key]);
+  expect(saved.simulation.draft).toMatchObject({...workspace.simulation.draft, targetAmountWon: 160000000, updatedAt: expect.any(Number)});
+  expect(server.operations).toEqual(['save_simulation', 'save_simulation']);
 });
 
 for (const configured of [false, true]) {
@@ -696,7 +736,7 @@ test('a later tab can export closed-tab recovery without applying it to the acco
 const expenseQuestions = [
   {label: '월세', amount: '600000'},
   {label: '주거 대출 이자', amount: '100000'},
-  {label: '관리비', amount: '100000'},
+  {label: '공용관리비', amount: '100000'},
   {label: '보험료', amount: '120000', annual: true},
   {label: '통신비', amount: '50000'},
   {label: '정기 구독', amount: '0'},
@@ -709,6 +749,41 @@ const expenseQuestions = [
   {label: '그 밖의 생활비', amount: '30000'},
 ];
 
+test('expense assistant advances blank and explicit zero answers while preserving Main until completion', async ({page, context}) => {
+  const server = fakeServer(); const original = mappedPlan(); server.rows.set(userA, original);
+  await server.attach(context, userA);
+  await page.goto('apps/main/');
+  const open = () => page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+  await open();
+  const dialog = page.getByRole('dialog');
+  const next = dialog.getByRole('button', {name: '다음', exact: true});
+  await expect(dialog.getByLabel('월세 금액')).toHaveValue('');
+  expect(server.operations).toEqual([]);
+  // Malformed input must not become an implicit zero answer.
+  await dialog.getByLabel('월세 금액').fill('abc');
+  await expect(next).toBeDisabled();
+  await dialog.getByLabel('월세 금액').fill('0');
+  await dialog.getByLabel('월세 금액').fill('');
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(dialog.getByLabel('주거 대출 이자 금액')).toBeVisible();
+  expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.rent).toEqual({amountWon: 0, period: 'month'});
+  await dialog.getByLabel('주거 대출 이자 금액').fill('0');
+  await next.click();
+  await expect(dialog.getByLabel('공용관리비 금액')).toBeVisible();
+  await dialog.getByRole('button', {name: '1년 총액', exact: true}).click();
+  expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.maintenance).toBeNull();
+  await next.click();
+  await expect(dialog.getByLabel('보험료 금액')).toBeVisible();
+  expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.maintenance).toEqual({amountWon: 0, period: 'year'});
+  expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
+  await dialog.getByRole('button', {name: '도우미 닫기'}).click();
+  await page.reload(); await open();
+  await expect(dialog.getByLabel('보험료 금액')).toBeVisible();
+  expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.insurance).toBeNull();
+  expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.housingInterest).toEqual({amountWon: 0, period: 'month'});
+});
+
 test('expense assistant remembers each answer, replaces rough totals only on completion and survives manual edits', async ({page, context, browser, baseURL}) => {
   const server = fakeServer(); const original = mappedPlan(); server.rows.set(userA, original);
   await server.attach(context, userA, {id: userA, email: 'a@example.com', password: 'fixture-reauth-password'});
@@ -719,7 +794,7 @@ test('expense assistant remembers each answer, replaces rough totals only on com
   const dialog = page.getByRole('dialog');
   for (let index = 0; index < expenseQuestions.length; index++) {
     const question = expenseQuestions[index];
-    if (question.label === '관리비') await expect(page.getByRole('dialog')).toContainText('공용관리비(일반관리비), 수도세, 전기세, 가스비');
+    if (question.label === '공용관리비') await expect(page.getByRole('dialog')).toContainText('공용관리비(일반관리비)만 입력해주세요.');
     const input = dialog.getByLabel(`${question.label} 금액`, {exact: true});
     await expect(input).toBeVisible();
     if (question.annual) await dialog.getByRole('button', {name: '1년 총액', exact: true}).click();
@@ -736,8 +811,7 @@ test('expense assistant remembers each answer, replaces rough totals only on com
       await expect(input).toHaveValue('100,000');
       expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.housingInterest).toBeNull();
     }
-    if (question.amount === '0') await dialog.getByRole('button', {name: '없어요', exact: true}).click();
-    else await dialog.getByRole('button', {name: index === expenseQuestions.length - 1 ? '합계 확인' : '다음', exact: true}).click();
+    await dialog.getByRole('button', {name: index === expenseQuestions.length - 1 ? '합계 확인' : '다음', exact: true}).click();
     await expect.poll(() => server.operations.filter(op => op === 'save_expense_draft').length).toBe(index + 1);
     expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
     if (index === 0) {
@@ -809,7 +883,7 @@ for (const width of [390, 768, 1280]) {
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(844);
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.getByRole('button', {name: '없어요', exact: true})).toBeFocused();
+    await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(dialog.getByRole('button', {name: '도우미 닫기'})).toBeFocused();
     const adjustments = dialog.getByRole('group', {name: '금액 빠른 조정'});
@@ -829,7 +903,7 @@ for (const width of [390, 768, 1280]) {
     await expect(amount).toHaveValue('0');
     await amount.fill('');
     await dialog.getByRole('button', {name: '1년 총액'}).click();
-    await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeDisabled();
+    await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeEnabled();
     await adjustments.getByRole('button', {name: '+50만', exact: true}).click();
     await addSmall.click();
     await expect(amount).toHaveValue('600,000');
@@ -856,6 +930,33 @@ for (const width of [390, 768, 1280]) {
     await edit.click(); await expect(page.getByRole('button', {name: '편집기 닫기'})).toBeFocused();
     await page.keyboard.press('Escape'); await expect(edit).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expense.click();
+    for (let step = 1; step <= 6; step++) {
+      await dialog.getByRole('button', {name: '다음', exact: true}).click();
+      if (step !== 2 && step !== 6) continue;
+      await expect(dialog.getByRole('heading')).toBeFocused();
+      const hint = dialog.locator('#expense-question-hint');
+      await expect(hint).toContainText(step === 2 ? '공용관리비(일반관리비)만 입력해주세요.' : '전기·도시가스·상하수도요금과 소득세·재산세·자동차세');
+      await expect(hint).toContainText(step === 2 ? '고지서에 함께 나와도 빼고, 뒤의 공과금에서 따로 입력해요.' : '관리비 고지서에 포함된 사용요금도 여기에 입력해요.');
+      await expect(dialog.getByRole('heading')).toContainText('수도·전기·가스');
+      const example = dialog.locator('#expense-question-example');
+      await expect(example).toContainText(step === 2 ? '여기에는 12만 원만 입력해요.' : '공용관리비 12만 원은 다시 더하지 않아요.');
+      await expect(dialog.locator('#expense-answer')).toHaveAttribute('aria-describedby', /expense-question-example/);
+      const bounds = (await dialog.boundingBox())!;
+      const hintBounds = (await hint.boundingBox())!;
+      const nextBounds = (await dialog.getByRole('button', {name: '다음', exact: true}).boundingBox())!;
+      expect(hintBounds.x).toBeGreaterThanOrEqual(bounds.x);
+      expect(hintBounds.x + hintBounds.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+      expect(hintBounds.y + hintBounds.height).toBeLessThanOrEqual(nextBounds.y);
+      expect(nextBounds.y + nextBounds.height).toBeLessThanOrEqual(844);
+      expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+      const quickBounds = (await dialog.getByRole('group', {name: '금액 빠른 조정'}).boundingBox())!;
+      const footerBounds = (await dialog.locator('.expense-assistant__footer').boundingBox())!;
+      expect(quickBounds.y + quickBounds.height).toBeLessThanOrEqual(footerBounds.y);
+      await page.screenshot({path: `test-results/expense-${step === 2 ? 'maintenance' : 'utilities'}-${width}.png`});
+    }
+    await page.keyboard.press('Escape');
+    await expect(expense).toBeFocused();
     server.setFailRead(true); await page.evaluate(() => window.dispatchEvent(new Event('offline')));
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(edit).toBeDisabled(); await expect(expense).toBeDisabled();
@@ -1035,4 +1136,198 @@ test('canceling an initially invalid remaining allocation releases account edits
     await expect(opener).toContainText(index === 0 ? '170만 원' : '270만 원');
     expect(server.operations).toEqual([]);
   }
+});
+
+for (const width of [390, 768, 1280]) {
+  test(`Main reset waits 2.5 seconds without a countdown and preserves other data at ${width}px`, async ({page, context}, testInfo) => {
+    const server = fakeServer();
+    const initial = planWithExpenseHistory();
+    server.rows.set(userA, initial);
+    await server.attach(context, userA);
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.setViewportSize({width, height: 900});
+    await page.goto('apps/main/');
+    const trigger = page.getByRole('button', {name: '관리 메뉴'});
+    await trigger.click();
+    await expect(page.getByText('a@example.com', {exact: true})).toBeVisible();
+    await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
+    await page.clock.install();
+    await page.clock.pauseAt(new Date());
+    await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+    const dialog = page.getByRole('dialog', {name: '처음부터 다시 할까요?'});
+    const reset = dialog.getByRole('button', {name: '초기화', exact: true});
+    const cancel = dialog.getByRole('button', {name: '취소', exact: true});
+    const restart = dialog.getByRole('button', {name: '다시 시작', exact: true});
+    await expect(cancel).toBeFocused();
+    await expect(reset).toBeDisabled();
+    await page.clock.runFor(2499);
+    await expect(reset).toBeDisabled();
+    await page.clock.runFor(1);
+    await expect(reset).toBeEnabled();
+    await cancel.click();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+    await expect(reset).toBeDisabled();
+    await page.clock.runFor(2500);
+    await expect(reset).toBeEnabled();
+    await page.keyboard.press('Shift+Tab');
+    await expect(reset).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(restart).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(reset).toBeFocused();
+    const boxes = await Promise.all([dialog, reset, cancel, restart].map(item => item.boundingBox()));
+    const [modal, left, middle, right] = boxes;
+    expect(modal!.x).toBeGreaterThanOrEqual(16);
+    expect(modal!.x + modal!.width).toBeLessThanOrEqual(width - 16);
+    expect(left!.x + left!.width).toBeLessThanOrEqual(middle!.x);
+    expect(middle!.x + middle!.width).toBeLessThanOrEqual(right!.x);
+    for (const box of [left, middle, right]) expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path: testInfo.outputPath(`main-reset-${width}.png`)});
+    await page.clock.resume();
+    await reset.click();
+    await expect(dialog).not.toBeVisible();
+    expect(server.rows.get(userA)!.main.applied).toEqual(initial.main.applied);
+    expect(server.rows.get(userA)!.main.setupProgress).toMatchObject({kind: 'restart', step: 'welcome', draft: {
+      updatedAt: initial.main.applied!.updatedAt, monthlyNetIncomeWon: 0, monthlyHousingWon: 0,
+      monthlyLivingWon: 0, monthlySavingWon: 0, monthlyInvestmentWon: 0,
+    }});
+    expect(server.rows.get(userA)!.main.expenseAssistant).toBeNull();
+    for (const key of ['simulation', 'portfolio', 'locations', 'accountMap'] as const) {
+      expect(server.rows.get(userA)![key]).toEqual(initial[key]);
+    }
+    expect(server.operations).toContain('reset_main_setup');
+    await page.reload();
+    await expect(page.locator('.setup-flow-surface')).toBeVisible();
+    await expect(page.getByRole('button', {name: '월 금액 편집'})).not.toBeVisible();
+    await page.getByRole('button', {name: '설정 취소', exact: true}).click();
+    await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+    expect(server.rows.get(userA)!.main.applied).toEqual(initial.main.applied);
+    expect(server.rows.get(userA)!.main.setupProgress).toBeNull();
+    await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+    await expect(page.getByRole('dialog').getByLabel('월세 금액')).toHaveValue('');
+    await expect(page.getByRole('dialog')).toContainText('1 / 13');
+  });
+}
+
+test('Main reset keeps the dialog and existing plan when account save fails', async ({page, context}) => {
+  const server = fakeServer(); const initial = planWithExpenseHistory();
+  server.rows.set(userA, initial); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '관리 메뉴'}).click();
+  await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+  const dialog = page.getByRole('dialog', {name: '처음부터 다시 할까요?'});
+  const reset = dialog.getByRole('button', {name: '초기화', exact: true});
+  await expect(reset).toBeEnabled();
+  server.setFailWrite(true);
+  await reset.click();
+  await expect(dialog.getByRole('alert')).toContainText('초기화하지 못했습니다');
+  expect(server.rows.get(userA)).toEqual(initial);
+  await expect(dialog).toBeVisible();
+});
+
+for (const failure of ['response-lost', 'conflict'] as const) {
+  test(`Main reset clears all assistant history after ${failure} recovery`, async ({page, context}) => {
+    const server = fakeServer(); const initial = planWithExpenseHistory();
+    server.rows.set(userA, initial); await server.attach(context, userA);
+    await page.goto('apps/main/');
+    await page.getByRole('button', {name: '관리 메뉴'}).click();
+    await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+    const dialog = page.getByRole('dialog', {name: '처음부터 다시 할까요?'});
+    const reset = dialog.getByRole('button', {name: '초기화', exact: true});
+    await expect(reset).toBeEnabled();
+    if (failure === 'response-lost') server.loseNextResponse();
+    else server.rows.set(userA, {...initial, revision: 1, main: {...initial.main,
+      applied: {...initial.main.applied!, monthlySavingWon: 500000, updatedAt: 2000}}});
+    await reset.click();
+    await expect(dialog.getByRole('alert')).toBeVisible();
+    await dialog.getByRole('button', {name: '취소', exact: true}).click();
+    if (failure === 'conflict') page.once('dialog', prompt => prompt.accept());
+    await page.getByRole('button', {name: failure === 'response-lost' ? '저장 결과 다시 확인' : '최신 상태에서 다시 적용', exact: true}).click();
+    await expect.poll(() => server.rows.get(userA)!.main.expenseAssistant).toBeNull();
+    expect(server.rows.get(userA)!.revision).toBe(failure === 'response-lost' ? 1 : 2);
+    expect(server.rows.get(userA)!.main.applied!.monthlySavingWon).toBe(failure === 'response-lost' ? 300000 : 500000);
+    await page.reload();
+    await expect(page.locator('.setup-flow-surface')).toBeVisible();
+    await page.getByRole('button', {name: '설정 취소', exact: true}).click();
+    await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+    await expect(page.getByRole('dialog').getByLabel('월세 금액')).toHaveValue('');
+  });
+}
+
+for (const width of [390, 768, 1280]) {
+  test(`login loading holds the finished logo until data is ready at ${width}px`, async ({page, context}, testInfo) => {
+    const server = fakeServer(); server.rows.set(userA, plan());
+    const release = server.holdReads();
+    await server.attach(context, null, {id: userA, email: 'a@example.com', password: 'fixture-login'});
+    await page.setViewportSize({width, height: 844});
+    await page.emulateMedia({reducedMotion: 'no-preference'});
+    await page.goto('apps/main/');
+    await page.getByLabel('이메일', {exact: true}).fill('a@example.com');
+    await page.getByLabel('비밀번호', {exact: true}).fill('fixture-login');
+    await page.getByRole('button', {name: '이메일로 로그인'}).click();
+    const loading = page.getByTestId('account-loading');
+    await expect(loading).toHaveAttribute('data-animated', 'true');
+    await expect(page.getByTestId('app-shell')).toHaveCount(0);
+    await expect(loading.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
+    await expect(loading).toBeVisible();
+    await expect(page.getByRole('button')).toHaveCount(0);
+    const bounds = await loading.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path: testInfo.outputPath(`login-loading-${width}.png`)});
+    release();
+    await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+    await expect(loading).toHaveCount(0);
+    const releaseNext = server.holdReads();
+    await page.goto('apps/simulation/');
+    await expect(loading).toHaveAttribute('data-animated', 'false');
+    releaseNext();
+    await expect(loading).toHaveCount(0);
+  });
+}
+
+test('OAuth return consumes the loading intent once and fast data does not wait for animation', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan());
+  const release = server.holdReads();
+  await server.attach(context, userA);
+  await context.addInitScript(() => {
+    if (!sessionStorage.getItem('test-oauth-return')) {
+      sessionStorage.setItem('test-oauth-return', '1');
+      sessionStorage.setItem('isf-login-loading-once', String(Date.now()));
+    }
+  });
+  await page.goto('apps/main/');
+  await expect(page.getByTestId('account-loading')).toHaveAttribute('data-animated', 'true');
+  // Freeze animation and timers: only the network response can release the gate.
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  release();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+  await expect(page.getByTestId('account-loading')).toHaveCount(0);
+  expect(await page.evaluate(() => sessionStorage.getItem('isf-login-loading-once'))).toBeNull();
+});
+
+test('reduced motion uses a static loading logo and failed reads leave the loading screen', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan());
+  const release = server.holdReads(); server.setFailRead(true);
+  await server.attach(context, null, {id: userA, email: 'a@example.com', password: 'fixture-login'});
+  await page.emulateMedia({reducedMotion: 'reduce'});
+  await page.goto('apps/main/');
+  await page.getByLabel('이메일', {exact: true}).fill('a@example.com');
+  await page.getByLabel('비밀번호', {exact: true}).fill('fixture-login');
+  await page.getByRole('button', {name: '이메일로 로그인'}).click();
+  const loading = page.getByTestId('account-loading');
+  await expect(loading).toHaveAttribute('data-animated', 'true');
+  await expect(loading.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
+  await expect(loading.locator('[data-brand-trend]')).toHaveCSS('stroke-dashoffset', '0px');
+  release();
+  await expect(page.getByRole('button', {name: '다시 불러오기'})).toBeVisible();
+  await expect(loading).toHaveCount(0);
+  await expect(page.getByTestId('app-shell')).toHaveCount(0);
 });
