@@ -36,7 +36,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 ### Main
 
-- Main 새 시작·다시 시작·초기화는 별도 인트로 없이 setup으로 바로 진입한다. 브랜드 모션은 로그인 후 실제 계정 데이터 로딩에 사용하며, 데이터가 준비되면 즉시 종료하고 기존 세션의 앱 이동에서는 재생하지 않는다. [계정 로딩 브랜드 모션 설계](docs/superpowers/specs/2026-09-11-account-loading-brand-motion-design.md)를 따른다.
+- 브랜드 장면은 새로운 앱 실행 탭의 첫 진입과 Main `처음부터 다시` 확인 후 재시작·초기화 진입에서만 재생한다. 같은 실행 중 앱 이동·새로고침·로그인 완료·설정 재개에서는 큰 로고 화면 자체를 표시하지 않는다. 초기 인증/조회는 시작 장면과 병렬로 진행한다. [브랜드 진입 설계](docs/superpowers/specs/2026-09-11-account-loading-brand-motion-design.md)를 따른다.
 - setup reveal이 진행되지 않아도 1/6 진행 action과 6/6 조립 시각화는 final state로 복구된다. review 조립의 강조와 읽기 폭은 유지하며 [Main setup 모션 복구 설계](docs/superpowers/specs/2026-08-14-main-setup-viewport-containment-design.md)의 setup 계약을 따른다.
 - 정적 브랜드 아이콘과 계정 로딩 모션은 세 상승 막대와 다섯 꼭짓점의 비보장 추세선을 같은 geometry로 공유한다. 추세선은 화살표 대신 마지막 원형 점으로 끝난다.
 - 기본 화면은 월 수입, 생활비, 저축, 투자와 순현금흐름을 우선 보여줍니다.

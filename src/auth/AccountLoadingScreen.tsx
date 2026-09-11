@@ -12,8 +12,8 @@ interface BrandVisualElements {
   terminalDot: SVGElement;
 }
 
-/** The workspace request owns this screen's lifetime; animation never delays entry. */
-export function AccountLoadingScreen({ animate = false }: { animate?: boolean }) {
+/** Shared brand visual; the caller owns its lifetime and navigation. */
+export function AccountLoadingScreen({ animate = false, message = '계정의 계획을 불러오고 있어요.' }: { animate?: boolean; message?: string }) {
   const rootRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     const elements = findBrandVisualElements(root);
     if (!elements) return;
@@ -46,7 +46,7 @@ export function AccountLoadingScreen({ animate = false }: { animate?: boolean })
   return <main ref={rootRef} className="account-loading" data-testid="account-workspace-gate" aria-busy="true">
     <div className="account-loading__content" data-testid="account-loading" data-animated={animate}>
       <div className="account-loading__visual" aria-hidden="true"><MainBrandIcon /></div>
-      <p role="status">계정의 계획을 불러오고 있어요.</p>
+      <p role="status">{message}</p>
     </div>
   </main>;
 }

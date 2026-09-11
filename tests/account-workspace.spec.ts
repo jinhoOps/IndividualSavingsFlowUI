@@ -1257,77 +1257,132 @@ for (const failure of ['response-lost', 'conflict'] as const) {
   });
 }
 
+
 for (const width of [390, 768, 1280]) {
-  test(`login loading holds the finished logo until data is ready at ${width}px`, async ({page, context}, testInfo) => {
+  test(`app launch landing and internal navigation use distinct screens at ${width}px`, async ({page, context}, testInfo) => {
     const server = fakeServer(); server.rows.set(userA, plan());
     const release = server.holdReads();
-    await server.attach(context, null, {id: userA, email: 'a@example.com', password: 'fixture-login'});
+    await server.attach(context, userA);
     await page.setViewportSize({width, height: 844});
     await page.emulateMedia({reducedMotion: 'no-preference'});
     await page.goto('apps/main/');
-    await page.getByLabel('이메일', {exact: true}).fill('a@example.com');
-    await page.getByLabel('비밀번호', {exact: true}).fill('fixture-login');
-    await page.getByRole('button', {name: '이메일로 로그인'}).click();
-    const loading = page.getByTestId('account-loading');
-    await expect(loading).toHaveAttribute('data-animated', 'true');
+    const landing = page.getByTestId('brand-welcome');
+    await expect(landing).toBeVisible();
+    const skip = page.getByRole('button', {name: '화면을 눌러 건너뛰기'});
+    await expect(skip).toBeFocused();
+    expect((await skip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expect(landing.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
+    // Finish one playback while the actual request is still held.
+    await expect(skip).toHaveCount(0);
+    await expect(landing).toBeVisible();
     await expect(page.getByTestId('app-shell')).toHaveCount(0);
-    await expect(loading.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
-    await expect(loading).toBeVisible();
-    await expect(page.getByRole('button')).toHaveCount(0);
-    const bounds = await loading.boundingBox();
+    const bounds = await page.getByTestId('account-loading').boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({path: testInfo.outputPath(`login-loading-${width}.png`)});
+    await page.screenshot({path: testInfo.outputPath(`launch-${width}.png`)});
     release();
     await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
-    await expect(loading).toHaveCount(0);
-    const releaseNext = server.holdReads();
-    await page.goto('apps/simulation/');
-    await expect(loading).toHaveAttribute('data-animated', 'false');
-    releaseNext();
-    await expect(loading).toHaveCount(0);
+    await expect(landing).toHaveCount(0);
+
+    await context.addInitScript(() => {
+      (window as typeof window & {brandFlashed?: boolean}).brandFlashed = false;
+      new MutationObserver(() => {
+        if (document.querySelector('[data-testid="account-loading"]'))
+          (window as typeof window & {brandFlashed?: boolean}).brandFlashed = true;
+      }).observe(document, {childList: true, subtree: true});
+    });
+    for (const name of ['미래 성장 (Simulation)', '투자 배분 (Portfolio)', '계좌 연결 (Account Map)', '자금 흐름 (Main)']) {
+      const releaseNext = server.holdReads();
+      await page.getByRole('link', {name, exact: true}).click();
+      await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
+      await expect(page.getByTestId('account-loading')).toHaveCount(0);
+      releaseNext();
+      await expect(page.getByTestId('app-shell')).toBeVisible();
+      expect(await page.evaluate(() => (window as typeof window & {brandFlashed?: boolean}).brandFlashed)).toBe(false);
+    }
+    await page.reload();
+    await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+    expect(await page.evaluate(() => (window as typeof window & {brandFlashed?: boolean}).brandFlashed)).toBe(false);
   });
 }
 
-test('OAuth return consumes the loading intent once and fast data does not wait for animation', async ({page, context}) => {
+test('signed-out launch leads to login without replaying the landing after password success', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan());
   const release = server.holdReads();
-  await server.attach(context, userA);
-  await context.addInitScript(() => {
-    if (!sessionStorage.getItem('test-oauth-return')) {
-      sessionStorage.setItem('test-oauth-return', '1');
-      sessionStorage.setItem('isf-login-loading-once', String(Date.now()));
-    }
-  });
-  await page.goto('apps/main/');
-  await expect(page.getByTestId('account-loading')).toHaveAttribute('data-animated', 'true');
-  // Freeze animation and timers: only the network response can release the gate.
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
-  release();
-  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
-  await expect(page.getByTestId('account-loading')).toHaveCount(0);
-  expect(await page.evaluate(() => sessionStorage.getItem('isf-login-loading-once'))).toBeNull();
-});
-
-test('reduced motion uses a static loading logo and failed reads leave the loading screen', async ({page, context}) => {
-  const server = fakeServer(); server.rows.set(userA, plan());
-  const release = server.holdReads(); server.setFailRead(true);
   await server.attach(context, null, {id: userA, email: 'a@example.com', password: 'fixture-login'});
-  await page.emulateMedia({reducedMotion: 'reduce'});
+  await page.emulateMedia({reducedMotion: 'no-preference'});
   await page.goto('apps/main/');
+  await expect(page.getByTestId('brand-welcome')).toBeVisible();
+  await page.getByRole('button', {name: '화면을 눌러 건너뛰기'}).click();
+  await expect(page.getByRole('heading', {name: '로그인', exact: true})).toBeFocused();
   await page.getByLabel('이메일', {exact: true}).fill('a@example.com');
   await page.getByLabel('비밀번호', {exact: true}).fill('fixture-login');
   await page.getByRole('button', {name: '이메일로 로그인'}).click();
-  const loading = page.getByTestId('account-loading');
-  await expect(loading).toHaveAttribute('data-animated', 'true');
-  await expect(loading.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
-  await expect(loading.locator('[data-brand-trend]')).toHaveCSS('stroke-dashoffset', '0px');
+  await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
+  await expect(page.getByTestId('account-loading')).toHaveCount(0);
   release();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+});
+
+test('OAuth return continues the launch without another brand screen', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan());
+  const release = server.holdReads();
+  await server.attach(context, userA);
+  await context.addInitScript(() => sessionStorage.setItem('isf-login-loading-once', String(Date.now())));
+  await page.goto('apps/main/');
+  await expect(page.getByText('계정의 계획을 불러오고 있어요.', {exact: true})).toBeVisible();
+  await expect(page.getByTestId('account-loading')).toHaveCount(0);
+  release();
+  await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem('isf-login-loading-once'))).toBeNull();
+});
+
+test('Main restart replays only after confirmation and a resumed setup does not replay', async ({page, context}) => {
+  const server = fakeServer(); const initial = planWithExpenseHistory(); server.rows.set(userA, initial);
+  await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '월 금액 편집'}).waitFor();
+  await page.getByRole('button', {name: '관리 메뉴'}).click();
+  await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+  await expect(page.getByTestId('brand-welcome')).toHaveCount(0);
+  await page.getByRole('button', {name: '다시 시작', exact: true}).click();
+  await expect(page.getByTestId('brand-welcome')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', {name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.'})).toBeFocused();
+  await expect.poll(() => server.rows.get(userA)!.main.setupProgress?.step).toBe('welcome');
+  expect(server.rows.get(userA)!.main.applied).toEqual(initial.main.applied);
+  expect(server.rows.get(userA)!.main.expenseAssistant).toEqual(initial.main.expenseAssistant);
+  await page.reload();
+  await expect(page.locator('.setup-flow-surface')).toBeVisible();
+  await expect(page.getByTestId('brand-welcome')).toHaveCount(0);
+});
+
+test('reduced motion skips the landing and a failed initial read still exposes recovery', async ({page, context}) => {
+  const server = fakeServer(); server.setFailRead(true);
+  await server.attach(context, userA);
+  await page.emulateMedia({reducedMotion: 'reduce'});
+  await page.goto('apps/main/');
   await expect(page.getByRole('button', {name: '다시 불러오기'})).toBeVisible();
-  await expect(loading).toHaveCount(0);
+  await expect(page.getByTestId('brand-welcome')).toHaveCount(0);
   await expect(page.getByTestId('app-shell')).toHaveCount(0);
+});
+
+
+test('a newly opened tab gets its own launch landing even with cloned session storage', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan());
+  await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '월 금액 편집'}).waitFor();
+  const originalId = await page.evaluate(() => sessionStorage.getItem('isf-account-tab-id'));
+  const popupPromise = page.waitForEvent('popup');
+  await page.evaluate(() => window.open(window.location.href, '_blank'));
+  const popup = await popupPromise;
+  await expect(popup.getByTestId('brand-welcome')).toBeVisible();
+  expect(await popup.evaluate(() => sessionStorage.getItem('isf-account-tab-id'))).not.toBe(originalId);
+  await popup.getByRole('button', {name: '화면을 눌러 건너뛰기'}).click();
+  await expect(popup.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+  await popup.close();
 });

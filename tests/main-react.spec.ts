@@ -302,7 +302,7 @@ for (const viewport of mainBrandIntroViewports) {
   });
 }
 
-test('Main direct restart preserves the applied plan and writes restart welcome progress', async ({ page }) => {
+test('Main restart brand entry preserves the applied plan and writes restart welcome progress', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript((workspace) => {
     localStorage.clear();
@@ -314,8 +314,9 @@ test('Main direct restart preserves the applied plan and writes restart welcome 
   await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
   await page.getByRole('button', { name: '다시 시작' }).click();
 
-  const intro = page.getByTestId('main-welcome-intro');
-  await expect(intro).toHaveCount(0);
+  const intro = page.getByTestId('brand-welcome');
+  await expect(intro).toBeVisible();
+  await expect(page.getByRole('button', {name: '화면을 눌러 건너뛰기'})).toBeFocused();
   await expect.poll(() => page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return { applied: workspace.main.applied, progress: workspace.main.setupProgress };
@@ -329,6 +330,7 @@ test('Main direct restart preserves the applied plan and writes restart welcome 
     },
   });
 
+  await page.getByRole('button', {name: '화면을 눌러 건너뛰기'}).click();
   const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
   await expect(welcome).toBeVisible();
   await expect(welcome).toBeFocused();

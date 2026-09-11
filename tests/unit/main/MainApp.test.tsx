@@ -72,6 +72,10 @@ vi.mock('../../../src/main/ui/setup/SetupFlow', () => ({
   ),
 }));
 
+vi.mock('../../../src/auth/BrandWelcome', () => ({
+  BrandWelcome: ({onComplete}: {onComplete(): void}) => <button onClick={onComplete}>화면을 눌러 건너뛰기</button>,
+}));
+
 vi.mock('../../../src/main/ui/dashboard/SummaryDashboard', () => ({
   SummaryDashboard: ({
     applied,
@@ -166,6 +170,8 @@ function repository(result: MainLoadResult): MainRepository {
 }
 
 async function expectSetupWelcome(): Promise<void> {
+  const skip = screen.queryByRole('button', {name: '화면을 눌러 건너뛰기'});
+  if (skip) fireEvent.click(skip);
   expect(await screen.findByRole('heading', {name: 'setup:welcome'})).toBeVisible();
   expect(screen.queryByTestId('main-welcome-intro')).not.toBeInTheDocument();
 }

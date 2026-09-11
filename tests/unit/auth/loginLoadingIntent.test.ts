@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {consumeLoginLoading, markLoginLoading} from '../../../src/auth/loginLoadingIntent';
+import {consumeLoginLoading, markLoginLoading, shouldShowAppEntry} from '../../../src/auth/loginLoadingIntent';
 afterEach(() => {sessionStorage.clear(); vi.restoreAllMocks();});
 describe('OAuth loading intent', () => {
   it('is consumed once without storing an account or financial value', () => {
@@ -18,5 +18,26 @@ describe('OAuth loading intent', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {throw new Error('blocked');});
     expect(() => markLoginLoading()).not.toThrow();
     expect(consumeLoginLoading()).toBe(false);
+  });
+});
+
+describe('application entry policy', () => {
+  it('shows only on a new claimed tab and retains the decision across effect replay', () => {
+    expect(shouldShowAppEntry('first-tab')).toBe(true);
+    expect(shouldShowAppEntry('first-tab')).toBe(true);
+    expect(sessionStorage.getItem('isf-brand-entry-tab')).toBe('first-tab');
+  });
+  it('omits branding in an already entered tab, including reload and internal navigation', () => {
+    sessionStorage.setItem('isf-brand-entry-tab', 'entered-tab');
+    expect(shouldShowAppEntry('entered-tab')).toBe(false);
+  });
+  it('shows a landing in a new tab whose storage was cloned from another tab', () => {
+    sessionStorage.setItem('isf-brand-entry-tab', 'original-tab');
+    expect(shouldShowAppEntry('cloned-new-tab')).toBe(true);
+  });
+  it('does not treat an OAuth return as another launch', () => {
+    markLoginLoading();
+    expect(shouldShowAppEntry('oauth-return-tab')).toBe(false);
+    expect(sessionStorage.getItem('isf-login-loading-once')).toBeNull();
   });
 });

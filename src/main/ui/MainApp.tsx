@@ -1,4 +1,6 @@
 import { useContext, useMemo, useRef, useState } from 'react';
+import { BrandWelcome } from '../../auth/BrandWelcome';
+import { useReducedMotion } from '../../components/motion/useReducedMotion';
 import { AccountManagementContext } from '../../auth/AccountManagementContext';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
@@ -38,6 +40,8 @@ export function MainApp({
   navigate = navigateTo,
 }: MainAppProps) {
   const account = useContext(AccountManagementContext);
+  const reducedMotion = useReducedMotion();
+  const [completedRestart, setCompletedRestart] = useState<number | null>(null);
   const localWorkspace = useMemo(() => providedWorkspaceRepository ? null : new BrowserWorkspaceRepository(), [providedWorkspaceRepository]);
   const workspaceRepository = providedWorkspaceRepository ?? localWorkspace!;
   const repository = useMemo(() => providedRepository ?? new BrowserMainRepository(localWorkspace!), [providedRepository, localWorkspace]);
@@ -111,6 +115,12 @@ export function MainApp({
         <p className="text-sm font-bold text-slate-600" role="status">자금 계획을 불러오는 중입니다.</p>
       </AppContentFrame>
     );
+  }
+
+  if (view.screen === 'setup' && plan.state.setupStep === 'welcome'
+    && plan.introEntry.reason === 'restart' && plan.introEntry.id !== completedRestart && !reducedMotion) {
+    return <BrandWelcome key={plan.introEntry.id} message="한 달 돈의 흐름을 다시 정리해볼까요?"
+      onComplete={() => setCompletedRestart(plan.introEntry.id)} />;
   }
 
   if (view.screen === 'recovery' && plan.state.mode === 'recovery') {

@@ -7,8 +7,8 @@ import {createEmptyWorkspace} from '../workspace/domain/model';
 import {authCallbackUrl, getBrowserClient, readSupabaseConfig, RETURN_PATH_KEY, safeReturnPath, type SupabaseConfig} from './auth';
 import {downloadText, downloadWorkspace, workspaceSummary} from './accountFiles';
 import './account.css';
-import {AccountLoadingScreen} from './AccountLoadingScreen';
-import {consumeLoginLoading} from './loginLoadingIntent';
+import {shouldShowAppEntry} from './loginLoadingIntent';
+import {BrandWelcome} from './BrandWelcome';
 import {AccountDraftContext, AccountWriteRecoveryContext} from './AccountDraftContext';
 import {importWorkspaceBackup} from '../workspace/infrastructure/workspaceBackup';
 import {accountCacheKeys, accountCachePrefix, accountRecoveryRecords, getAccountTabId, hasAccountRecovery} from './accountTab';
@@ -35,15 +35,19 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   const [startup, setStartup] = useState(0);
   const active = useRef<AccountRuntime | null>(null);
   const explicitLogout = useRef(false);
-  const loginLoadingIntent = useRef(false);
-  const [animateLoading, setAnimateLoading] = useState(false);
+  const [entryState, setEntryState] = useState<'inactive' | 'playing' | 'waiting'>('inactive');
   const [tabId, setTabId] = useState<string | null>(null);
   useEffect(() => {
     let disposed = false;
-    void getAccountTabId().then(id => {if (!disposed) setTabId(id);})
+    void getAccountTabId().then(id => {
+      if (!disposed) {setEntryState(shouldShowAppEntry(id) ? 'playing' : 'inactive'); setTabId(id);}
+    })
       .catch(() => {if (!disposed) setAuthState('error');});
     return () => {disposed = true;};
   }, []);
+  useEffect(() => {
+    if (entryState === 'waiting' && authState !== 'loading') setEntryState('inactive');
+  }, [authState, entryState]);
   const [local] = useState(() => new BrowserWorkspaceRepository().load());
   const localCandidate = local.status === 'found' ? local.workspace : null;
 
@@ -67,9 +71,6 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
       active.current?.workspace.dispose();
       active.current = null; setRuntime(null);
       if (!session) {setAuthState('signed-out'); return;}
-      const callbackLogin = consumeLoginLoading();
-      setAnimateLoading(loginLoadingIntent.current || callbackLogin);
-      loginLoadingIntent.current = false;
       setAuthState('loading');
       const workspace = new AccountWorkspaceSession(createWorkspaceRemote(configured!.client, session.user.id),
         `${configured!.config.projectRef}:${session.user.id}:${tabId}`, {userId: session.user.id, storage: accountStorage()});
@@ -223,11 +224,12 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     }
   }
   if (!configured) return <GatePage title="계정 저장 연결 설정이 필요합니다."><p>배포 관리자에게 연결 설정을 요청해주세요.</p></GatePage>;
-  if (authState === 'loading') return <AccountLoadingScreen animate={animateLoading} />;
+  if (entryState !== 'inactive' && authState !== 'error') return <BrandWelcome onComplete={() => setEntryState(authState === 'loading' ? 'waiting' : 'inactive')} message="나의 계획을 준비하고 있어요." />;
+  if (authState === 'loading') return <main className="account-gate" data-testid="account-workspace-gate" aria-busy="true"><p className="account-transition-status" role="status">계정의 계획을 불러오고 있어요.</p></main>;
   if (authState === 'error') return <GatePage title="로그인 상태를 확인하지 못했습니다."><button onClick={() => setStartup(value => value + 1)}>다시 시도</button></GatePage>;
   if (authState === 'signed-out' || !runtime) return <GatePage title="로그인">
     <p>Google 계정 또는 이메일로 로그인하세요.</p>
-    <AccountSignIn client={configured.client} onStart={() => {explicitLogout.current = false; loginLoadingIntent.current = true; setNotice('');}} onGoogleLogin={login} />
+    <AccountSignIn client={configured.client} onStart={() => {explicitLogout.current = false; setNotice('');}} onGoogleLogin={login} />
     <p>로그인 후 기존 브라우저 데이터를 가져올 수 있습니다.</p>
     {notice && <p role="alert">{notice}</p>}
   </GatePage>;
@@ -237,7 +239,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     <p>{workspace.cacheFailed ? '이 브라우저에 복구 기록을 보관하지 못했습니다. 로그인 전에 복구 파일을 다운로드해주세요.' : '아직 보내지 못한 입력은 이 계정의 복구 기록으로 보관합니다.'}</p>
     <button onClick={downloadRecovery}>미전송 입력 복구 파일</button>
     <AccountSignIn client={configured.client} email={runtime.user.email} reauthenticate
-      onStart={() => {explicitLogout.current = false; loginLoadingIntent.current = true; setNotice('');}} onGoogleLogin={login} />
+      onStart={() => {explicitLogout.current = false; setNotice('');}} onGoogleLogin={login} />
     {notice && <p role="alert">{notice}</p>}
   </GatePage>;
   if (!workspace.snapshot && (status === 'empty' || status === 'saving' || status === 'uncertain')) return <GatePage title="계정에서 사용할 계획을 선택해주세요." busy={status === 'saving'}>
@@ -302,7 +304,9 @@ function accountStorage(): Storage | undefined {
   try {return window.localStorage;} catch {return undefined;}
 }
 function GatePage({title, busy = false, children}: {title: string; busy?: boolean; children?: ReactNode}) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {heading.current?.focus();}, [title]);
   return <main className="account-gate" data-testid="account-workspace-gate" aria-busy={busy}>
-    <section className="account-panel"><p className="account-brand">Individual Savings Flow</p><h1 tabIndex={-1}>{title}</h1>{children}</section>
+    <section className="account-panel"><p className="account-brand">Individual Savings Flow</p><h1 ref={heading} tabIndex={-1}>{title}</h1>{children}</section>
   </main>;
 }
