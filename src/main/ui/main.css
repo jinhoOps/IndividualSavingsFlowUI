@@ -209,6 +209,7 @@
     text-align: right;
   }
   .cashflow-metric__assistant .cashflow-metric__value { grid-column: 1; grid-row: 1; color: var(--ink); }
+  .cashflow-metric__assistant--edit { grid-template-columns: minmax(0, 1fr); }
   .cashflow-metric__assistant-hint { grid-column: 1 / -1; font-size: .75rem; }
   .cashflow-metric__assistant:hover { background: rgb(15 118 110 / 6%); }
   .cashflow-metric__assistant:focus-visible { outline: 2px solid var(--tone-accent); outline-offset: 2px; }

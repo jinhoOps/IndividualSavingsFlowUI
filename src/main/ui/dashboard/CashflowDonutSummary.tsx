@@ -23,9 +23,10 @@ export interface CashflowDonutSummaryProps {
   data: MainData;
   onExpense?(opener: HTMLElement): void;
   onRemaining?(opener: HTMLElement): void;
+  onEditAmount?(field: 'monthlySavingWon' | 'monthlyInvestmentWon', opener: HTMLElement): void;
 }
 
-export function CashflowDonutSummary({ data, onExpense, onRemaining }: CashflowDonutSummaryProps) {
+export function CashflowDonutSummary({ data, onExpense, onRemaining, onEditAmount }: CashflowDonutSummaryProps) {
   const [hoveredId, setHoveredId] = useState<DonutAllocation['id']>();
   const [focusedId, setFocusedId] = useState<DonutAllocation['id']>();
   const [tappedId, setTappedId] = useState<DonutAllocation['id']>();
@@ -283,6 +284,7 @@ export function CashflowDonutSummary({ data, onExpense, onRemaining }: CashflowD
         summary={calculateCashflow(data)}
         onExpense={onExpense}
         onRemaining={onRemaining}
+        onEditAmount={onEditAmount}
         selection={{
           activeId: activeAllocation?.id,
           selectedId: tappedId,

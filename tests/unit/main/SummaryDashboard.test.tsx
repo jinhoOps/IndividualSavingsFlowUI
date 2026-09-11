@@ -160,7 +160,7 @@ describe('SummaryDashboard', () => {
     expect(allocation).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByLabelText('월 실수령액')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '적용' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /편집/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /편집/ })).toHaveLength(3);
 
     fireEvent.click(screen.getByRole('button', { name: '월 금액 편집' }));
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
@@ -509,3 +509,26 @@ function animationOptionsFor(target: Element): Record<string, unknown> | undefin
     | Record<string, unknown>
     | undefined;
 }
+
+describe('amount editing shortcuts', () => {
+  it.each([false, true])('opens the selected field and returns focus without changing the draft (mobile=%s)', mobile => {
+    render(<DashboardHarness mobile={mobile} />);
+    for (const label of ['월 저축액', '월 투자액']) {
+      const opener = screen.getByRole('button', {name: new RegExp('^' + label.replace('액', '') + ' 금액 편집')});
+      fireEvent.click(opener);
+      expect(screen.getByLabelText(label)).toHaveFocus();
+      expect(screen.getByRole('button', {name: '적용'})).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', {name: '편집기 닫기'}));
+      expect(opener).toHaveFocus();
+    }
+  });
+  it('can edit zero savings and investment amounts', () => {
+    const zero = {...appliedData, monthlySavingWon: 0, monthlyInvestmentWon: 0};
+    render(<SummaryDashboard applied={zero} draft={zero} dirty={false} issues={[]} saveStatus="saved"
+      onDraftChange={vi.fn()} onApply={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', {name: '월 저축 금액 편집 · 현재 0원'}));
+    expect(screen.getByLabelText('월 저축액')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', {name: '월 투자 금액 편집 · 현재 0원'}));
+    expect(screen.getByLabelText('월 투자액')).toHaveFocus();
+  });
+});

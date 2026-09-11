@@ -51,6 +51,7 @@ export function SummaryDashboard({
   onExpenseApplied,
 }: SummaryDashboardProps) {
   const [editorOpen, setEditorOpen] = useState(false);
+  const [requestedFocusPath, setRequestedFocusPath] = useState(initialFocusPath);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [remainingOpen, setRemainingOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -65,7 +66,7 @@ export function SummaryDashboard({
   }, [editorOpen, isMobile]);
   const saving = saveStatus === 'saving';
   const firstIssuePath = issues[0]?.path;
-  const editorFocusPath = (firstIssuePath as keyof MainData | undefined) ?? initialFocusPath;
+  const editorFocusPath = (firstIssuePath as keyof MainData | undefined) ?? requestedFocusPath;
   const initialFocusConsumed = useRef(false);
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export function SummaryDashboard({
   useEffect(() => {
     if (initialFocusPath === undefined || initialFocusConsumed.current) return;
     initialFocusConsumed.current = true;
+    setRequestedFocusPath(initialFocusPath);
     setEditorOpen(true);
   }, [initialFocusPath]);
 
@@ -118,10 +120,16 @@ export function SummaryDashboard({
     setEditorOpen(false);
   }
 
-  function openEditor(opener: HTMLElement) {
+  function openEditor(opener: HTMLElement, focusPath?: keyof MainData) {
     if (saving) return;
     openerRef.current = opener;
+    setRequestedFocusPath(focusPath);
     setEditorOpen(true);
+    // The desktop panel can already be open on this field; focus again without
+    // remounting it or discarding any other draft input.
+    if (editorOpen && focusPath) {
+      desktopEditorRef.current?.querySelector<HTMLElement>(`[data-validation-path="${focusPath}"]`)?.focus();
+    }
   }
 
   function trapModalFocus(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -167,7 +175,7 @@ export function SummaryDashboard({
         )}
 
         <Surface as="section" className="main-dashboard__summary" aria-label="월 자금 구성 요약">
-          <CashflowDonutSummary data={applied} onExpense={expenseRepository && !editorOpen && !dirty ? (opener) => {
+          <CashflowDonutSummary data={applied} onEditAmount={(field, opener) => openEditor(opener, field)} onExpense={expenseRepository && !editorOpen && !dirty ? (opener) => {
             if (saving) return;
             openerRef.current = opener;
             setExpenseOpen(true);

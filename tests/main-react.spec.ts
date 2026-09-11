@@ -1327,3 +1327,49 @@ test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표�
   await expect(fields.nth(0).locator('.money-field__adjustments')).toBeHidden();
   await expect(fields.nth(1).locator('.money-field__adjustments')).toBeVisible();
 });
+
+for (const width of [390, 768, 1280]) {
+  test(`saving and investment amounts open their editor field at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 844});
+    await page.addInitScript(fixture => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspaceV5);
+    await page.goto('apps/main/');
+    const original = await page.evaluate(() => localStorage.getItem('isf-workspace-v5'));
+    for (const label of ['월 저축액', '월 투자액']) {
+      const opener = page.getByRole('button', {name: new RegExp('^' + label.replace('액', '') + ' 금액 편집')});
+      expect((await opener.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await opener.focus();
+      await page.keyboard.press('Enter');
+      const input = page.getByLabel(label, {exact: true});
+      await expect(input).toBeFocused();
+      const field = page.locator('.money-field').filter({has: input});
+      await expect(field.getByRole('button', {name: '+10만', exact: true})).toBeVisible();
+      const bounds = await input.boundingBox();
+      expect(bounds!.y).toBeGreaterThanOrEqual(0);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(original);
+      if (width >= 768) {
+        await page.getByLabel('월 실수령액', {exact: true}).focus();
+        await opener.focus();
+        await page.keyboard.press('Enter');
+        await expect(input).toBeFocused();
+      }
+      await page.keyboard.press('Escape');
+      await expect(opener).toBeFocused();
+    }
+    // General editing still starts at the usual close control, not the last shortcut.
+    await page.getByRole('button', {name: '월 금액 편집', exact: true}).click();
+    await expect(page.getByRole('button', {name: '편집기 닫기'})).toBeFocused();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', {name: /^월 저축 금액 편집/}).click();
+    await page.getByLabel('월 저축액', {exact: true}).fill('400000');
+    if (width >= 768) {
+      await page.getByRole('button', {name: /^월 투자 금액 편집/}).focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByLabel('월 투자액', {exact: true})).toBeFocused();
+      await expect(page.getByLabel('월 저축액', {exact: true})).toHaveValue('400,000');
+    }
+    await page.getByRole('button', {name: '적용', exact: true}).click();
+    await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlySavingWon)).toBe(400000);
+  });
+}
