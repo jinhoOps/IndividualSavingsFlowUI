@@ -21,11 +21,15 @@ import { customPurposeTargetCapacity, recalculateRemainder, reconcilePurpose } f
 import { BrowserAccountMapRepository, type AccountMapRepository, type AccountMapWriteResult } from '../infrastructure/accountMapRepository';
 import { BrowserAccountMapMainSourceRepository, type AccountMapMainSourceRepository } from '../infrastructure/mainSourceRepository';
 import { AccountMapManagementMenu } from './AccountMapManagementMenu';
+import { createPortal } from 'react-dom';
+import { useAccountMapDialog } from './useAccountMapDialog';
+import { AccountMapEditHub } from './AccountMapEditHub';
 import { AccountMapCanvas } from './AccountMapCanvas';
 import { AccountTransferEditor } from './AccountTransferEditor';
 import { AccountMapModal, type AccountMapModalRelatedItem, type AccountMapNodeEditInput } from './AccountMapModal';
 import { AccountMapSetup, CustomPurposeDialog, RecoveryControls, type AccountMapDraftSaveResult } from './AccountMapSetup';
 import './account-map.css';
+import './account-map-input.css';
 
 export interface AccountMapRepositories { accountMap: AccountMapRepository; main: AccountMapMainSourceRepository }
 export interface AccountMapAppProps {
@@ -181,7 +185,6 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
     const editingTransfer = flowTransferEditor?.mode === 'edit'
       ? flowApplied.transfers.find(({ id }) => id === flowTransferEditor.transferId) ?? {}
       : {};
-    const managedPurposeIds: PurposeId[] = [...SYSTEM_PURPOSE_IDS, ...flowApplied.customPurposes.filter(({ archivedAt }) => archivedAt === undefined).map(({ id }) => id)];
     const editingPurpose = purposeEditorId === null ? null : {
       id: purposeEditorId, label: purposeLabel(purposeEditorId, flowApplied),
       target: reconcilePurpose(purposeEditorId, flowApplied, state.workspace.locations, state.main).targetWon,
@@ -206,19 +209,8 @@ export function AccountMapApp({ repositories, onRequestMainEdit, refreshSignal }
       onSave={(value) => saveFlowTransfer(flowTransferEditor, value)}
       onRemove={flowTransferEditor.mode === 'edit' ? () => removeTransfer(flowTransferEditor.transferId) : undefined}
     />}
-    <section className="account-map-purpose-management" aria-label="목적·계좌 배정 관리">
-      <h2>목적·계좌 배정 관리</h2>
-      <p>목적별 월 배정을 조정하거나 새 계좌·보관처를 연결합니다. Main 금액은 바뀌지 않습니다.</p>
-      <div className="account-map-actions">{managedPurposeIds.map((id) => <Button key={id} type="button" variant="secondary" disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onClick={(event) => { restoreFocusElementRef.current = event.currentTarget; setPurposeError(null); setPurposeEditorId(id); }}>{purposeLabel(id, flowApplied)} 배정 관리</Button>)}
-      <Button type="button" variant="secondary" disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onClick={() => setAddingPurpose(true)}>세부 목적 추가</Button></div>
-    </section>
-    <section className="account-map-purpose-management" aria-label="전체 계좌 흐름 관리">
-      <h2>전체 계좌 흐름 관리</h2>
-      <div className="account-map-actions">{flowApplied.transfers.map((transfer) => {
-        const label = `${state.workspace.locations.find(({ id }) => id === transfer.sourceLocationId)?.shortName ?? '계좌'} → ${state.workspace.locations.find(({ id }) => id === transfer.targetLocationId)?.shortName ?? '계좌'}`;
-        return <Button key={transfer.id} type="button" variant="secondary" aria-label={`${label} 흐름 관리`} disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onClick={() => setFlowTransferEditor({ mode: 'edit', transferId: transfer.id })}>{label} · {transfer.status === 'active' ? '연결됨' : '중지'}</Button>;
-      })}</div>
-    </section>
+    <AccountMapEditHub main={state.main} applied={flowApplied} locations={state.workspace.locations} disabled={state.recovery.status !== 'none' || state.save.status === 'pending'} onEditPurpose={(id, trigger) => { restoreFocusElementRef.current = trigger; setPurposeError(null); setPurposeEditorId(id); }} onEditLocation={(id, trigger) => { flowLocationTriggerRef.current = trigger; flowLocationFallbackRef.current = trigger; setFlowLocationEditorId(id); }} onAddPurpose={() => setAddingPurpose(true)} onAddTransfer={() => setFlowTransferEditor({ mode: 'add', sourceLocationId: '' })} onEditTransfer={(transferId) => setFlowTransferEditor({ mode: 'edit', transferId })} />
+    <div className="account-map-edit-bar"><Button type="button" variant="primary" disabled={hasMapModal} onClick={() => { document.getElementById('account-map-edit-title')?.focus(); document.getElementById('account-map-edit-hub')?.scrollIntoView({ block: 'start' }); }}>계좌 맵 편집</Button></div>
     {editingPurpose === null ? null : <AccountMapModal
       key={editingPurpose.id} initialMode="edit"
       node={{ id: editingPurpose.id, kind: 'purpose', label: editingPurpose.label, amountWon: editingPurpose.target, status: 'resolved' }}
@@ -659,10 +651,20 @@ function FlowTransferDialog({
   const recoveryKey = `account-map-transfer:${recoveryScope}`;
   const [feedback, setFeedback] = useState<string | null>(null);
   const feedbackId = useId();
+  const [dirty, setDirty] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   const dialogRef = useRef<HTMLElement>(null);
+  useAccountMapDialog(dialogRef);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  function requestClose(): boolean {
+    if (pendingRef.current) return false;
+    if (dirty) { setConfirmDiscard(true); return false; }
+    discardAndClose();
+    return true;
+  }
+  useEffect(() => { if (confirmDiscard) dialogRef.current?.querySelector<HTMLElement>('.account-map-discard button')?.focus(); }, [confirmDiscard]);
   function discardAndClose(): void {
     session?.recordRecoveryDraft(recoveryKey, null);
     onClose();
@@ -702,7 +704,7 @@ function FlowTransferDialog({
     }
   }
   const trapFocus = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape') { event.preventDefault(); if (!pendingRef.current) discardAndClose(); return; }
+    if (event.key === 'Escape') { event.preventDefault(); if (!pendingRef.current) requestClose(); return; }
     if (event.key !== 'Tab') return;
     const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
     if (focusable.length === 0) { event.preventDefault(); dialogRef.current?.focus(); return; }
@@ -711,15 +713,16 @@ function FlowTransferDialog({
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   };
-  return <div className="account-map-modal-backdrop"><section ref={dialogRef} tabIndex={-1} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" aria-busy={pending || undefined} onKeyDown={trapFocus}>
-    <header><div><p>월 계획 흐름</p><h2>계좌 흐름 편집</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" disabled={pending} onClick={discardAndClose}>×</button></header>
+  return createPortal(<div className="account-map-modal-backdrop"><section ref={dialogRef} tabIndex={-1} className="account-map-modal account-flow-editor-modal" role="dialog" aria-modal="true" aria-label="계좌 흐름 편집" aria-busy={pending || undefined} onKeyDown={trapFocus}>
+    <header><div><p>월 계획 흐름</p><h2>계좌 흐름 편집</h2></div><button type="button" className="account-map-modal__close" aria-label="닫기" disabled={pending} onClick={requestClose}>×</button></header>
     <div className="account-map-modal__body">
-      <AccountTransferEditor recoveryScope={recoveryScope} locations={locations} initialValue={initialValue} disabled={pending || recovery.status !== 'none'} errorDescriptionId={feedback === null ? undefined : feedbackId} onCancel={discardAndClose} onSave={(value) => submit(() => onSave(value))} />
+      {confirmDiscard ? <div className="account-map-discard" role="alert"><strong>저장하지 않은 변경이 있어요</strong><div><Button type="button" variant="secondary" onClick={() => setConfirmDiscard(false)}>계속 편집</Button><Button type="button" variant="primary" onClick={discardAndClose}>변경 버리고 닫기</Button></div></div> : null}
+      <AccountTransferEditor onDirtyChange={setDirty} recoveryScope={recoveryScope} locations={locations} initialValue={initialValue} disabled={pending || recovery.status !== 'none'} errorDescriptionId={feedback === null ? undefined : feedbackId} onCancel={requestClose} onSave={(value) => submit(() => onSave(value))} />
       {onRemove === undefined ? null : <Button type="button" variant="secondary" disabled={pending || recovery.status !== 'none'} onClick={() => void submit(onRemove)}>흐름 삭제</Button>}
       {feedback === null ? null : <p id={feedbackId} role="alert" className="account-map-modal__error">{feedback}</p>}
       {recovery.status === 'none' ? null : <RecoveryControls recovery={recovery} pending={pending} onReapply={onReviewLatest} onKeepLatest={() => { session?.recordRecoveryDraft(recoveryKey, null); onKeepLatest(); }} />}
     </div>
-  </section></div>;
+  </section></div>, document.body);
 }
 
 function MessagePage({ title, children }: { title: string; children: React.ReactNode }) { return <AppContentFrame className="account-map-page"><section className="account-map-message"><h1>{title}</h1>{children}</section></AppContentFrame>; }

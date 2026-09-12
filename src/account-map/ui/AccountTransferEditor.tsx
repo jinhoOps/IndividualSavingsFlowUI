@@ -1,9 +1,10 @@
-import { useContext, useId, useState, type JSX } from "react";
+import { useContext, useEffect, useId, useRef, useState, type JSX } from "react";
 import {
   AccountDraftContext,
   useAccountRecovery,
   useInitialRecovery,
 } from "../../auth/AccountDraftContext";
+import { ArrowRight } from "lucide-react";
 import { Button } from "../../components/common/Button";
 import { FormattedMoneyInput } from "../../components/common/FormattedMoneyInput";
 import type { AccountTransferAllocation } from "../domain/model";
@@ -21,9 +22,11 @@ export interface AccountTransferEditorProps {
   onSave(value: AccountTransferEditorValue): boolean | void | Promise<boolean | void>;
   disabled?: boolean;
   initialValue?: Partial<AccountTransferEditorValue>;
-  onCancel?(): void;
+  /** Return false while a parent-owned discard confirmation is pending. */
+  onCancel?(): boolean | void;
   errorDescriptionId?: string;
   recoveryScope?: string;
+  onDirtyChange?(dirty: boolean): void;
 }
 
 /** A local transfer form. It emits a complete UI-valid value but never saves it. */
@@ -35,7 +38,14 @@ export function AccountTransferEditor({
   onCancel,
   errorDescriptionId,
   recoveryScope,
+  onDirtyChange,
 }: AccountTransferEditorProps): JSX.Element {
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const [failed, setFailed] = useState(false);
+  const [localError, setLocalError] = useState(false);
+  const radioName = useId();
+  disabled = disabled || pending;
   const activeLocations = locations.filter(
     ({ archivedAt }) => archivedAt === undefined,
   );
@@ -92,6 +102,7 @@ export function AccountTransferEditor({
     || allocationKind !== initialAllocationKind
     || monthlyAmountWon !== initialMonthlyAmountWon
     || status !== initialStatus;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
   useAccountRecovery(recoveryKey, {
     sourceLocationId,
     targetLocationId,
@@ -101,18 +112,27 @@ export function AccountTransferEditor({
   }, dirty, recoveryScope !== undefined);
 
   function cancel(): void {
-    session?.recordRecoveryDraft(recoveryKey, null);
-    onCancel?.();
+    if (onCancel?.() !== false) session?.recordRecoveryDraft(recoveryKey, null);
   }
 
   async function save(): Promise<void> {
-    const saved = await onSave({ sourceLocationId, targetLocationId, allocation, status });
-    if (saved === true) session?.recordRecoveryDraft(recoveryKey, null);
+    if (!canSave || pendingRef.current) return;
+    pendingRef.current = true;
+    setPending(true);
+    setFailed(false);
+    setLocalError(false);
+    try {
+      const saved = await onSave({ sourceLocationId, targetLocationId, allocation, status });
+      if (saved === true) session?.recordRecoveryDraft(recoveryKey, null);
+      else if (saved === false) setFailed(true);
+    } catch { setFailed(true); setLocalError(true); }
+    finally { pendingRef.current = false; setPending(false); }
   }
 
   return (
     <section className="account-transfer-editor" aria-label="계좌 흐름 편집">
-      <label>
+      <p className="account-map-hint">어디서 어디로, 매달 얼마를 보낼지 정해 주세요. 실제 이체는 실행되지 않습니다.</p>
+      <div className="account-transfer-editor__route"><label>
         보내는 계좌
         <select
           value={sourceLocationId}
@@ -128,7 +148,7 @@ export function AccountTransferEditor({
           ))}
         </select>
       </label>
-      <label>
+      <ArrowRight size={20} aria-hidden="true" /><label>
         받는 계좌
         <select
           value={targetLocationId}
@@ -144,12 +164,12 @@ export function AccountTransferEditor({
           ))}
         </select>
       </label>
-      <fieldset>
+      </div><fieldset>
         <legend>금액 규칙</legend>
         <label>
           <input
             type="radio"
-            name="account-transfer-allocation"
+            name={radioName}
             checked={allocationKind === "fixed"}
             disabled={disabled}
             onChange={() => setAllocationKind("fixed")}
@@ -159,7 +179,7 @@ export function AccountTransferEditor({
         <label>
           <input
             type="radio"
-            name="account-transfer-allocation"
+            name={radioName}
             checked={allocationKind === "sweep"}
             disabled={disabled}
             onChange={() => setAllocationKind("sweep")}
@@ -171,6 +191,7 @@ export function AccountTransferEditor({
         <label>
           월 이체 금액
           <FormattedMoneyInput
+            adjustments
             valueWon={monthlyAmountWon}
             onValueWonChange={setMonthlyAmountWon}
             zeroDisplay="zero"
@@ -193,9 +214,8 @@ export function AccountTransferEditor({
           <option value="suspended">중지</option>
         </select>
       </label>
-      <p role="status" aria-live="polite">
-        연결 상태: {status === "active" ? "연결됨" : "중지"}
-      </p>
+      <div className="account-transfer-editor__summary" role="status" aria-live="polite"><strong>{activeLocations.find(({id}) => id === sourceLocationId)?.shortName ?? '보내는 계좌'} → {activeLocations.find(({id}) => id === targetLocationId)?.shortName ?? '받는 계좌'}</strong><p>{allocationKind === 'fixed' ? `매달 ${new Intl.NumberFormat('ko-KR').format(monthlyAmountWon)}원` : '목적 배정과 고정 이체 후 남은 금액 전부'}</p><p>연결 상태: {status === "active" ? "연결됨" : "중지"}</p></div>
+      {localError ? <p className="account-map-error" role="alert">저장하지 못했어요. 입력과 안내를 확인한 뒤 다시 시도해 주세요.</p> : null}
       {sameEndpoint ? (
         <p className="account-map-modal__error" role="alert">
           같은 계좌로 보낼 수 없어요.
@@ -215,7 +235,7 @@ export function AccountTransferEditor({
         <Button
           type="button"
           variant="primary"
-          disabled={!canSave}
+          disabled={!canSave || (!dirty && initialValue?.targetLocationId !== undefined && !failed)}
           onClick={() => { void save(); }}
         >
           저장

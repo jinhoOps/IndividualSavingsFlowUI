@@ -120,7 +120,7 @@
 .account-flow-edge:focus-visible { outline: none; stroke-width: 4; }
 .account-flow-node--external-income { border-style: double; }
 .account-flow-node--warning { border-style: dashed; }
-.account-flow-edge-amount { max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
+.account-flow-edge-amount { position: absolute; z-index: 3; transform: translate(-50%, -50%); max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px; background: var(--panel); color: var(--ink); font-size: .75rem; pointer-events: none; }
 .account-flow-detail { position: absolute; z-index: 6; top: 16px; right: 16px; display: grid; width: min(332px, calc(100% - 32px)); max-height: calc(100% - 32px); gap: 12px; overflow: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow-float); padding: 14px; color: var(--ink); }
 .account-flow-detail.is-transient { pointer-events: none; }
 .account-flow-detail header, .account-flow-detail header > div, .account-flow-detail footer, .account-flow-detail section, .account-flow-detail li > div { display: grid; min-width: 0; gap: 5px; }

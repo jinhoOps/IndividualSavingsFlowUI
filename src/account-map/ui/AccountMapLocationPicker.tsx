@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState, type JSX } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import {
   AccountDraftContext,
   useAccountRecovery,
@@ -25,6 +25,7 @@ export interface LocationPickerProps {
   onCancel?(): void;
   onDirtyChange?(dirty: boolean): void;
   recoveryScope?: string;
+  draftCache?: Map<string, PickerRecovery>;
 }
 
 export function AccountMapLocationPicker({
@@ -38,11 +39,16 @@ export function AccountMapLocationPicker({
   onCancel,
   onDirtyChange,
   recoveryScope,
+  draftCache,
 }: LocationPickerProps): JSX.Element {
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  disabled = disabled || pending;
   const recoveryKey = recoveryScope === undefined
     ? ""
     : `account-map-picker:${recoveryScope}`;
-  const recovered = useInitialRecovery(recoveryKey, parsePickerRecovery);
+  const recovered = useInitialRecovery(recoveryKey, parsePickerRecovery) ?? draftCache?.get(recoveryKey) ?? null;
   const session = useContext(AccountDraftContext);
   const recoveredSelectedLocationId = recovered?.selectedLocationId ?? null;
   const recoveredSelection = recoveredSelectedLocationId !== null
@@ -87,29 +93,37 @@ export function AccountMapLocationPicker({
     recoveryScope !== undefined,
   );
 
-  async function submitExisting(locationId: string): Promise<void> {
-    if (disabled || !amountValid) return;
-    const saved = await onSelect(locationId, amount);
-    if (saved === true) session?.recordRecoveryDraft(recoveryKey, null);
-  }
+  useEffect(() => { draftCache?.set(recoveryKey, { mode, selectedLocationId, locationFields, amountWon }); }, [draftCache, recoveryKey, mode, selectedLocationId, locationFields, amountWon]);
 
-  async function submitNew(location: FinancialLocation): Promise<void> {
-    const saved = await onCreate(location, amount);
-    if (saved === true) session?.recordRecoveryDraft(recoveryKey, null);
+  async function submit(action: () => ReturnType<LocationPickerProps['onSelect']>): Promise<void> {
+    if (disabled || pendingRef.current || !amountValid) return;
+    pendingRef.current = true;
+    setPending(true);
+    setSaveError(null);
+    try {
+      const saved = await action();
+      if (saved === true) { session?.recordRecoveryDraft(recoveryKey, null); draftCache?.delete(recoveryKey); }
+      else if (saved === false) setSaveError('연결하지 못했어요. 입력을 유지했습니다. 금액과 최신 상태를 확인해 주세요.');
+    } catch { setSaveError('연결하지 못했어요. 입력을 유지했습니다. 금액과 최신 상태를 확인해 주세요.'); }
+    finally { pendingRef.current = false; setPending(false); }
   }
+  async function submitExisting(locationId: string): Promise<void> { await submit(() => onSelect(locationId, amount)); }
+  async function submitNew(location: FinancialLocation): Promise<void> { await submit(() => onCreate(location, amount)); }
 
   function cancel(): void {
+    draftCache?.delete(recoveryKey);
     session?.recordRecoveryDraft(recoveryKey, null);
     onCancel?.();
   }
 
   return (
-    <div className="account-map-location-picker">
+    <div className="account-map-location-picker" aria-busy={pending || undefined}>
+      {mode === 'create' ? <button type="button" className="account-map-text-action" disabled={disabled} onClick={() => { setMode('choose'); setSelectedLocationId(null); }}>기존 계좌에서 고르기</button> : null}
       {mode === "choose" ? (
         <>
           {available.length === 0 ? (
             <p className="account-map-empty-copy">
-              바로 고를 수 있는 기존 항목이 없습니다.
+              처음 연결할 계좌를 추가해 주세요. 한 번 추가하면 다른 목적에서도 고를 수 있어요.
             </p>
           ) : (
             <div className="account-map-location-list">
@@ -121,10 +135,11 @@ export function AccountMapLocationPicker({
                     selectedLocationId === location.id ? "is-selected" : ""
                   }
                   disabled={disabled}
+                  aria-pressed={selectedLocationId === location.id}
                   onClick={() => setSelectedLocationId(location.id)}
                 >
                   <strong>{location.shortName}</strong>
-                  <span>{location.institution?.name ?? "기관 없음"}</span>
+                  <span>{location.institution?.name ?? (location.kind === "cash" ? "현금·보관처" : "기관 미입력")}</span>
                 </button>
               ))}
             </div>
@@ -180,6 +195,7 @@ export function AccountMapLocationPicker({
             id="account-map-location-amount"
             valueWon={amountWon}
             onValueWonChange={setAmountWon}
+            adjustments
             zeroDisplay="zero"
             disabled={disabled}
             aria-describedby="account-map-location-amount-help"
@@ -189,12 +205,13 @@ export function AccountMapLocationPicker({
           </span>
         </div>
       ) : null}
+      {saveError === null ? null : <p className="account-map-error" role="alert">{saveError}</p>}
       <div className="account-map-location-picker__actions">
         {onCancel === undefined ? null : (
           <Button
             variant="secondary"
             type="button"
-            disabled={cancelDisabled}
+            disabled={cancelDisabled || pending}
             onClick={cancel}
           >
             취소
@@ -210,7 +227,7 @@ export function AccountMapLocationPicker({
                 void submitExisting(selectedLocationId);
             }}
           >
-            완료
+            {pending ? "연결 중…" : "이 계좌 연결"}
           </Button>
         ) : (
           <Button
@@ -226,7 +243,7 @@ export function AccountMapLocationPicker({
               if (preview !== null) void submitNew(preview);
             }}
           >
-            완료
+            {pending ? "연결 중…" : "이 계좌 연결"}
           </Button>
         )}
       </div>
@@ -234,7 +251,7 @@ export function AccountMapLocationPicker({
   );
 }
 
-interface PickerRecovery {
+export interface PickerRecovery {
   mode: "choose" | "create";
   selectedLocationId: string | null;
   locationFields: FinancialLocationFieldsValue;

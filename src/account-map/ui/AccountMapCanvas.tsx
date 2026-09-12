@@ -139,7 +139,7 @@ export function AccountMapCanvas({
         onTransient={(id) => { if (dismissedPreviewId.current !== id) { dismissedPreviewId.current = null; onTransient(id); } }}
         onBlur={(id) => { if (dismissedPreviewId.current === id) dismissedPreviewId.current = null; onBlur(id); }}
         onInvoke={(id) => { dismissedPreviewId.current = null; onInvoke(id); }} />
-      {activeId === null ? null : <AccountFlowDetail className={pinned ? 'is-pinned' : 'is-transient'} accountLabel={accountLabel} groups={viewModel.detailGroups} interactive={pinned} onEditLocation={selectedAccountId === null ? undefined : (trigger) => onEditLocation?.(selectedAccountId, trigger)} onAddTransfer={selectedAccountId === null ? undefined : () => onAddTransfer?.(selectedAccountId)} onEditTransfer={onEditTransfer} />}
+      {activeId === null ? null : <AccountFlowDetail className={pinned ? 'is-pinned' : 'is-transient'} accountLabel={accountLabel} groups={viewModel.detailGroups} interactive={pinned} onEditLocation={selectedAccountId === null || onEditLocation === undefined ? undefined : (trigger) => onEditLocation(selectedAccountId, trigger)} onAddTransfer={selectedAccountId === null || onAddTransfer === undefined ? undefined : () => onAddTransfer(selectedAccountId)} onEditTransfer={onEditTransfer} />}
     </div>
     <FlowLinearTable rows={viewModel.tableRows} />
   </section>;

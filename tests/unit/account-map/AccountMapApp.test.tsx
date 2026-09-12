@@ -57,6 +57,7 @@ describe('AccountMapApp completed flow map', () => {
     if (action === 'Escape') fireEvent.keyDown(dialog, { key: 'Escape' });
     else fireEvent.click(within(dialog).getByRole('button', { name: '닫기' }));
 
+    fireEvent.click(screen.getByRole('button', { name: '변경 버리고 닫기' }));
     await waitFor(() => expect(recordRecoveryDraft).toHaveBeenCalledWith('account-map-transfer:map:edit:salary-living', null));
   });
 
@@ -87,7 +88,7 @@ describe('AccountMapApp completed flow map', () => {
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: '급여 통장 편집' });
     if (action === 'save') {
-      fireEvent.click(within(dialog).getByRole('button', { name: 'KB국민은행' }));
+      fireEvent.change(within(dialog).getByRole('combobox', { name: '은행 선택' }), { target: { value: 'kb-kookmin' } });
       fireEvent.change(within(dialog).getByRole('textbox', { name: '표시 이름' }), { target: { value: '주 수입 통장' } });
       fireEvent.click(within(dialog).getByRole('button', { name: '저장' }));
     } else if (action === 'escape') {
@@ -216,7 +217,7 @@ describe('AccountMapApp completed flow map', () => {
     const dialog = screen.getByRole('dialog', { name: '급여 통장 편집' });
     expect(within(dialog).getByRole('textbox', { name: '표시 이름' })).toHaveValue('급여 통장');
     expect(within(dialog).queryByText('월 기준')).not.toBeInTheDocument();
-    expect(within(dialog).getByText('계좌·보관처의 이름, 종류와 기관을 수정합니다.')).toBeVisible();
+    expect(within(dialog).getByText('지도에 표시할 이름과 기관을 수정해 주세요.')).toBeVisible();
     fireEvent.click(within(dialog).getByRole('button', { name: '보관' }));
     expect(screen.getByRole('dialog', { name: '급여 통장 보관' })).toBeVisible();
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '취소' }));
@@ -357,7 +358,7 @@ describe('AccountMapApp completed flow map', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /새 계좌·보관처 추가/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: '현금' }));
     fireEvent.change(within(dialog).getByRole('textbox', { name: '표시 이름' }), { target: { value: '교통 지갑' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: '완료' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '이 계좌 연결' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(setup.current().locations).toEqual(expect.arrayContaining([expect.objectContaining({ shortName: '교통 지갑', kind: 'cash' })]));
     const purpose = setup.current().accountMap.applied!.customPurposes.find(({ name }) => name === '교통비');

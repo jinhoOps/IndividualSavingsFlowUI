@@ -58,6 +58,8 @@ describe("AccountMapModal", () => {
     expect(onSaveEdit).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(screen.getByText("저장하지 않은 변경이 있어요")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "변경 버리고 닫기" }));
     await waitFor(() => expect(recordRecoveryDraft).toHaveBeenCalledWith("account-map-node:location:checking", null));
   });
 
@@ -80,6 +82,7 @@ describe("AccountMapModal", () => {
     await waitFor(() => expect(recordRecoveryDraft).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    fireEvent.click(screen.getByRole("button", { name: "변경 버리고 닫기" }));
 
     await waitFor(() => expect(recordRecoveryDraft.mock.calls.at(-1)).toEqual([
       "account-map-node:custom:living-extra",
@@ -93,9 +96,9 @@ describe("AccountMapModal", () => {
     const dialog = screen.getByRole("dialog", { name: "생활비 편집" });
 
     const connect = screen.getByRole("button", { name: "연결 추가" });
-    expect(connect).toHaveClass("account-map-modal__secondary-action");
+    expect(connect).toHaveClass("account-map-modal__add-connection");
     expect(
-      document.querySelectorAll(".account-map-modal__secondary-action"),
+      document.querySelectorAll(".account-map-modal__add-connection"),
     ).toHaveLength(1);
 
     fireEvent.click(connect);
@@ -293,7 +296,7 @@ describe("AccountMapModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps nine quick institutions and direct institution input in connect mode", () => {
+  it("keeps the bank choices and explicit custom institution input in connect mode", () => {
     renderModal();
     fireEvent.click(screen.getByRole("button", { name: "편집" }));
     fireEvent.click(screen.getByRole("button", { name: "연결 추가" }));
@@ -312,9 +315,9 @@ describe("AccountMapModal", () => {
       "토스뱅크",
       "카카오뱅크",
     ]) {
-      expect(screen.getByRole("button", { name })).toBeVisible();
+      expect(screen.getByRole("option", { name })).toBeInTheDocument();
     }
-    fireEvent.click(screen.getByRole("button", { name: "직접 입력" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "은행 선택" }), { target: { value: "custom" } });
     expect(screen.getByRole("textbox", { name: "기관 이름" })).toBeVisible();
   });
 
@@ -340,7 +343,7 @@ describe("AccountMapModal", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "표시 이름" }), {
       target: { value: "ISA" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "완료" }));
+    fireEvent.click(screen.getByRole("button", { name: "이 계좌 연결" }));
 
     expect(onCreateAndConnectLocation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -371,7 +374,7 @@ describe("AccountMapModal", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "표시 이름" }), {
       target: { value: "금현물" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "완료" }));
+    fireEvent.click(screen.getByRole("button", { name: "이 계좌 연결" }));
 
     expect(onCreateAndConnectLocation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -890,7 +893,7 @@ describe("AccountMapModal", () => {
     expect(nameInput).toHaveAccessibleDescription(
       /최신 상태에서도 변경.*표시 이름을 입력해 주세요/,
     );
-    expect(nameInput.getAttribute("aria-describedby")?.split(" ")).toHaveLength(2);
+    expect(nameInput.getAttribute("aria-describedby")?.split(" ")).toHaveLength(3);
   });
 
   it("describes and focuses only the colliding link input", () => {

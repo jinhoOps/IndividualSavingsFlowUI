@@ -1,5 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
+import { createPortal } from 'react-dom';
+import { useAccountMapDialog } from './useAccountMapDialog';
 import { Button } from '../../components/common/Button';
 import { FormattedMoneyInput } from '../../components/common/FormattedMoneyInput';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
@@ -73,6 +75,7 @@ const STEPS: readonly AccountMapSetupStep[] = ['basis', 'locations', 'transfers'
  */
 export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
   const session = useContext(AccountDraftContext);
+  const [stepEditing, setStepEditing] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const renderedStepRef = useRef<AccountMapSetupStep>(props.step);
   const draft = useMemo(() => props.draft === null
@@ -119,13 +122,19 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
     }
     if (currentStep === 'locations') {
       return <AccountMapLocationsStep
-        key={draft.updatedAt}
         main={props.main}
         locations={props.workspace.locations}
         draft={draft}
         disabled={mutationsDisabled}
         onCommitConnection={props.onCommitConnection}
         onAddCustomPurpose={() => setCustomOpen(true)}
+        onSaveDraft={props.onSaveDraft}
+        pending={props.recoveryPending}
+        onContinue={() => void persistStep('transfers')}
+        onBack={() => void persistStep('basis')}
+        recovery={props.recovery}
+        onReapply={props.onReapply}
+        onKeepLatest={props.onKeepLatest}
       />;
     }
     if (currentStep === 'transfers') {
@@ -138,12 +147,17 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
         onAddTransfer={props.onAddTransfer}
         onEditTransfer={props.onEditTransfer}
         onRemoveTransfer={props.onRemoveTransfer}
+        onEditingChange={setStepEditing}
       />;
     }
     return <AccountMapReviewStep
       locations={props.workspace.locations}
       review={props.review}
       canApply={props.canApply}
+      main={props.main}
+      draft={draft}
+      onEditLocations={() => void persistStep('locations')}
+      onEditTransfers={() => void persistStep('transfers')}
     />;
   }
 
@@ -152,18 +166,19 @@ export function AccountMapSetup(props: AccountMapSetupProps): JSX.Element {
       <div className="account-map-setup__progress" aria-label={`설정 ${currentIndex + 1} / ${STEPS.length}`}>
         <span style={{ width: `${((currentIndex + 1) / STEPS.length) * 100}%` }} />
       </div>
+      <ol className="account-map-setup__steps" aria-label="설정 순서">{['월 계획', '계좌 연결', '이체 계획', '최종 확인'].map((label, index) => <li key={label} aria-current={index === currentIndex ? 'step' : undefined}><span>{index + 1}</span>{label}</li>)}</ol>
       {props.mainChanged ? <p className="account-map-alert" role="status"><strong>Main의 월 금액이 바뀌었어요</strong><span>최신 기준으로 흐름을 다시 확인해 주세요.</span></p> : null}
       <div data-account-map-setup-step>{renderStep()}</div>
       {props.saveFailed ? <p className="account-map-error" role="alert">저장하지 못했어요. 입력은 그대로 두었습니다.</p> : null}
       {props.recovery.status === 'none' ? null : <RecoveryControls recovery={props.recovery} pending={props.recoveryPending} onReapply={props.onReapply} onKeepLatest={() => { session?.recordRecoveryDraft('account-map-custom-purpose', null); props.onKeepLatest(); setCustomOpen(false); }} />}
-      <footer className="account-map-setup__footer">
+      <footer className="account-map-setup__footer" data-step={currentStep}>
         <div>
           <Button variant="quiet" type="button" disabled={mutationsDisabled} onClick={props.onExit}>나가기</Button>
           {props.draft === null ? null : <Button variant="secondary" type="button" disabled={mutationsDisabled} onClick={props.onCancelSetup}>설정 취소</Button>}
         </div>
-        <div>
-          {previousStep === undefined ? null : <Button variant="secondary" type="button" disabled={mutationsDisabled} onClick={goBack}>이전</Button>}
-          {nextStep === undefined ? <Button variant="primary" type="button" disabled={mutationsDisabled || !props.canApply} onClick={props.onApply}>지도 만들기</Button> : currentStep === 'basis' ? null : <Button variant="primary" type="button" disabled={mutationsDisabled} onClick={() => void persistStep(nextStep)}>다음</Button>}
+        <div hidden={currentStep === 'locations'}>
+          {previousStep === undefined ? null : <Button variant="secondary" type="button" disabled={mutationsDisabled || stepEditing} onClick={goBack}>이전</Button>}
+          {nextStep === undefined ? <Button variant="primary" type="button" disabled={mutationsDisabled || !props.canApply} onClick={props.onApply}>지도 만들기</Button> : currentStep === 'basis' ? null : <Button variant="primary" type="button" disabled={mutationsDisabled || stepEditing} onClick={() => void persistStep(nextStep)}>다음</Button>}
         </div>
       </footer>
       {!customOpen ? null : <CustomPurposeDialog
@@ -225,6 +240,7 @@ export function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave, r
   const recovered = useInitialRecovery(recoveryKey, parseCustomPurposeRecovery);
   const session = useContext(AccountDraftContext);
   const panelRef = useRef<HTMLElement>(null);
+  useAccountMapDialog(panelRef);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const onCancelRef = useRef(onCancel);
   const pendingRef = useRef(false);
@@ -304,7 +320,7 @@ export function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave, r
     }
   }
 
-  return <div className="account-map-sheet-backdrop" onPointerDown={(event) => {
+  return createPortal(<div className="account-map-sheet-backdrop" onPointerDown={(event) => {
     if (event.target === event.currentTarget && !pending) discard();
   }}>
     <section ref={panelRef} className="account-map-sheet account-map-sheet--compact" role="dialog" aria-modal="true" aria-label="세부 목적 추가" aria-busy={pending || undefined} tabIndex={pending ? -1 : undefined}>
@@ -320,7 +336,7 @@ export function CustomPurposeDialog({ main, draft, disabled, onCancel, onSave, r
       </div>
       <footer><Button variant="secondary" type="button" disabled={pending} onClick={discard}>취소</Button><Button variant="primary" type="button" disabled={!valid || disabled || pending} onClick={() => void submit()}>추가</Button></footer>
     </section>
-  </div>;
+  </div>, document.body);
 
   function discard(): void {
     session?.recordRecoveryDraft(recoveryKey, null);

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useId, useRef, useState, type JSX } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import {
   AccountDraftContext,
   useAccountRecovery,
@@ -18,6 +18,7 @@ import {
 } from "./motion";
 import type { RecoveryState } from "../application/reducer";
 import type { FinancialLocation } from "../../workspace/domain/financialLocation";
+import { useAccountMapDialog } from "./useAccountMapDialog";
 import { AccountMapLocationPicker } from "./AccountMapLocationPicker";
 import {
   FinancialLocationFields,
@@ -145,6 +146,7 @@ export function AccountMapModal({
   const titleId = useId();
   const recoveryDescriptionId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
+  useAccountMapDialog(modalRef);
   const replayRef = useRef<HTMLButtonElement>(null);
   const previousModeRef = useRef<AccountMapModalMode>(initialMode);
   const animationRef = useRef<AnimationHandle | null>(null);
@@ -162,6 +164,9 @@ export function AccountMapModal({
   const recovered = useInitialRecovery(recoveryKey, parseNodeRecovery);
   const session = useContext(AccountDraftContext);
   const [mode, setMode] = useState<AccountMapModalMode>(initialMode);
+  const [activeAmountId, setActiveAmountId] = useState<string | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [pickerDirty, setPickerDirty] = useState(false);
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
   const [editLabel, setEditLabel] = useState(recovered?.editLabel ?? node.label);
   const locationRecord =
@@ -236,6 +241,8 @@ export function AccountMapModal({
     editReplacementByPurpose,
   }, editDirty, mode === "edit" && !closingRef.current);
 
+  useEffect(() => { if (confirmDiscard) modalRef.current?.querySelector<HTMLElement>(".account-map-discard button")?.focus(); }, [confirmDiscard]);
+
   useEffect(() => {
     const modal = modalRef.current;
     if (modal === null) return;
@@ -269,6 +276,7 @@ export function AccountMapModal({
         return;
       }
       if (event.key !== "Tab") return;
+      if (actionPending || recoveryPending) { event.preventDefault(); modalRef.current?.focus(); return; }
       const focusable = [
         ...(modalRef.current?.querySelectorAll<HTMLElement>(
           "button:not(:disabled), input:not(:disabled), select:not(:disabled)",
@@ -318,6 +326,7 @@ export function AccountMapModal({
   }, [mode]);
 
   function finishClose() {
+    if (mode === "connect") session?.recordRecoveryDraft(`account-map-picker:${node.id}`, null);
     if (adoptLatestAfterCloseRef.current) {
       restoreFocus();
       adoptLatestAfterCloseRef.current = false;
@@ -345,7 +354,9 @@ export function AccountMapModal({
     }
   }
 
-  function requestClose(force = false) {
+  function requestClose(force = false, discard = false) {
+    if (!force && (actionPending || recoveryPending)) return;
+    if (!force && !discard && ((mode === "edit" && editDirty) || (mode === "connect" && pickerDirty))) { setConfirmDiscard(true); return; }
     if (closingRef.current || (!force && (actionPending || recoveryPending)))
       return;
     session?.recordRecoveryDraft(recoveryKey, null);
@@ -532,7 +543,12 @@ export function AccountMapModal({
   }) || Object.values(editReplacementByPurpose).some((linkId) => linkId !== null);
   const requiresSeparateLocationAndLinkSave = changedLocationInstitution && editLinksChanged;
 
-  return (
+  const allocationTarget = node.kind === 'purpose' && node.id.startsWith('custom:') ? parseWonInput(editTarget) : node.amountWon ?? 0;
+  const fixedTotal = editLinks.filter((item) => item.status === 'active' && !item.remainder).reduce((sum, item) => sum + parseWonInput(item.monthlyAmountWon), 0);
+  const hasAutomaticAllocation = editLinks.some((item) => item.status === 'active' && item.remainder);
+  const previewAssigned = fixedTotal + (hasAutomaticAllocation ? Math.max(0, allocationTarget - fixedTotal) : 0);
+
+  return createPortal(
     <div
       className="account-map-modal-backdrop"
       onPointerDown={(event) => {
@@ -543,6 +559,7 @@ export function AccountMapModal({
         ref={modalRef}
         className="account-map-modal"
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby={titleId}
         aria-busy={animating || undefined}
@@ -601,6 +618,7 @@ export function AccountMapModal({
           </div>
         </header>
         <div className="account-map-modal__body">
+          {confirmDiscard ? <div className="account-map-discard" role="alert"><strong>저장하지 않은 변경이 있어요</strong><p>닫으면 이번 입력은 반영되지 않습니다.</p><div><Button type="button" variant="secondary" onClick={() => setConfirmDiscard(false)}>계속 편집</Button><Button type="button" variant="primary" onClick={() => requestClose(false, true)}>변경 버리고 닫기</Button></div></div> : null}
           {locationOnly || node.amountWon === undefined ? null : (
             <div className="account-map-modal__amount">
               <span>월 기준</span>
@@ -624,17 +642,17 @@ export function AccountMapModal({
             </div>
           ) : null}
           {mode === "edit" ? (
-            <div className="account-map-modal__edit">
-              <p>{locationOnly ? '계좌·보관처의 이름, 종류와 기관을 수정합니다.' : '이름, 금액과 연결 상태를 한 번에 저장합니다.'}</p>
+            <fieldset className="account-map-modal__edit" disabled={actionPending || recoveryPending}>
+              <p>{locationOnly ? '지도에 표시할 이름과 기관을 수정해 주세요.' : '이 목적에 쓸 월 금액을 계좌별로 나눠 주세요. 저장하면 지도에 반영됩니다.'}</p>
               {node.kind === "purpose" ? (
                 <button
                   type="button"
-                  className="account-map-modal__secondary-action"
+                  className="account-map-modal__add-connection"
                   aria-label="연결 추가"
-                  disabled={recovery.status !== "none"}
+                  disabled={recovery.status !== "none" || editDirty}
                   onClick={() => setMode("connect")}
                 >
-                  <ConnectionIcon />
+                  <ConnectionIcon /> 다른 계좌 연결
                 </button>
               ) : null}
               {node.kind === "location" && locationRecord !== undefined ? (
@@ -691,11 +709,14 @@ export function AccountMapModal({
                   />
                 </label>
               ) : null}
+              {node.kind === 'purpose' && editLinks.length > 0 ? <div className="account-map-allocation-preview" role="status"><span>배정 합계 <strong>{formatWon(previewAssigned)}</strong></span><span>{previewAssigned > allocationTarget ? `${formatWon(previewAssigned - allocationTarget)} 초과` : `남은 배정 ${formatWon(allocationTarget - previewAssigned)}`}</span></div> : null}
               {requiresSeparateLocationAndLinkSave ? (
                 <p className="account-map-modal__error" role="status">
                   계좌 정보와 연결은 따로 저장해 주세요.
                 </p>
               ) : null}
+              {node.kind === 'purpose' && editLinks.length === 0 ? <p className="account-map-hint">아직 연결한 계좌가 없어요. 위에서 계좌를 연결해 주세요.</p> : null}
+              {editDirty && node.kind === 'purpose' ? <p className="account-map-hint">다른 계좌를 추가하려면 현재 변경부터 저장해 주세요.</p> : null}
               {editLinks.map((item, index) => {
                 const collides =
                   recovery.status === "collision" &&
@@ -704,12 +725,16 @@ export function AccountMapModal({
                 return (
                   <fieldset
                     key={item.id}
-                    className="account-map-modal__edit-link"
+                    className={`account-map-modal__edit-link${activeAmountId === item.id ? " is-active" : ""}`}
                   >
                     <legend>{item.label}</legend>
                     <label>
                       월 금액
                       <FormattedMoneyInput
+                        onFocus={() => setActiveAmountId(item.id)}
+                        adjustments={!item.remainder}
+                        readOnly={item.remainder}
+                        disabled={actionPending || recoveryPending || item.status !== "active"}
                         data-recovery-field="monthlyAmountWon"
                         data-recovery-link-id={item.id}
                         aria-describedby={
@@ -717,7 +742,7 @@ export function AccountMapModal({
                             ? recoveryDescriptionId
                             : undefined
                         }
-                        valueWon={parseWonInput(item.monthlyAmountWon)}
+                        valueWon={node.kind === 'purpose' && item.remainder && item.status === 'active' ? Math.max(0, allocationTarget - fixedTotal) : parseWonInput(item.monthlyAmountWon)}
                         zeroDisplay="zero"
                         aria-label={`${item.label} 월 금액`}
                         onValueWonChange={(valueWon) =>
@@ -780,6 +805,7 @@ export function AccountMapModal({
                               : undefined
                           }
                           type="checkbox"
+                          disabled={node.kind === "purpose" && item.remainder && editLinks.filter((link) => link.status === "active").length === 1}
                           checked={item.remainder}
                           onChange={(event) =>
                             setEditLinks((current) =>
@@ -791,7 +817,7 @@ export function AccountMapModal({
                                         event.target.checked &&
                                         row.id === item.id,
                                     }
-                                  : row,
+                                  : event.target.checked && row.purposeId === item.purposeId ? { ...row, remainder: false } : row,
                               ),
                             )
                           }
@@ -799,6 +825,7 @@ export function AccountMapModal({
                         나머지 금액 자동 계산
                       </label>
                     ) : null}
+                    {node.kind === 'purpose' && item.remainder ? <p className="account-map-hint">{editLinks.filter((link) => link.status === 'active').length === 1 ? '이 계좌에 월 기준 전액을 배정합니다. 나눠 두려면 다른 계좌를 연결해 주세요.' : '다른 계좌에 배정하고 남은 금액을 자동으로 계산합니다.'}</p> : null}
                   </fieldset>
                 );
               })}
@@ -858,11 +885,12 @@ export function AccountMapModal({
                     </label>
                   );
                 })}
-            </div>
+            </fieldset>
           ) : null}
           {mode === "connect" ? (
             <div className="account-map-modal__connect">
               <AccountMapLocationPicker
+              onDirtyChange={setPickerDirty}
                 recoveryScope={node.id}
                 locations={locations}
                 linkedLocationIds={
@@ -1158,11 +1186,8 @@ export function AccountMapModal({
                 type="button"
                 disabled={actionPending || recoveryPending}
                 onClick={() => {
-                  if (recovery.status === "none" && !directLocationEdit) {
-                    session?.recordRecoveryDraft(recoveryKey, null);
-                    setMode("read");
-                  }
-                  else requestClose();
+                  if (initialMode === 'edit' || editDirty || recovery.status !== 'none') requestClose();
+                  else setMode('read');
                 }}
               >
                 취소
@@ -1173,6 +1198,7 @@ export function AccountMapModal({
                 disabled={
                   recovery.status !== "none" ||
                   actionPending ||
+                  (!editDirty && !actionError && !saveFailed && !originalLocationNeedsRepair) ||
                   editReplacementMissing ||
                   !locationEditComplete ||
                   requiresSeparateLocationAndLinkSave ||
@@ -1429,7 +1455,7 @@ export function AccountMapModal({
           ) : null}
         </footer>
       </div>
-    </div>
+    </div>, document.body
   );
 }
 

@@ -200,6 +200,8 @@ Financial shortfall, overall Main deficit, or an unassigned amount is a visible 
 
 ## 8. Guided Setup
 
+The current question-by-question setup and direct editing UI are refined by the [Account Map input redesign](../../design/account-map-input-redesign.md). Domain and ownership rules in this document remain unchanged.
+
 Replace the five-card auto-fit setup with one centered, responsive, step-based surface.
 
 1. **Confirm Main basis**

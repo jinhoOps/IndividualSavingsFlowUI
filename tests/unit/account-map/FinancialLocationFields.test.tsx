@@ -37,8 +37,8 @@ describe("FinancialLocationFields", () => {
     expect(screen.getByRole("button", { name: "은행" })).toBeVisible();
     expect(screen.getByRole("button", { name: "증권" })).toBeVisible();
     expect(screen.getByRole("button", { name: "현금" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "KB국민은행" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "직접 입력" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "KB국민은행" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "직접 입력" })).toBeVisible();
     expect(screen.getByRole("textbox", { name: "표시 이름" })).toHaveValue(
       "급여통장",
     );
@@ -52,8 +52,8 @@ describe("FinancialLocationFields", () => {
     expect(screen.getByRole("button", { name: "은행" })).toBeVisible();
     expect(screen.getByRole("button", { name: "증권" })).toBeVisible();
     expect(screen.getByRole("button", { name: "현금" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "KB국민은행" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "직접 입력" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "KB국민은행" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "직접 입력" })).toBeVisible();
     expect(screen.getByRole("textbox", { name: "표시 이름" })).toHaveValue(
       "급여통장",
     );
@@ -66,16 +66,15 @@ describe("FinancialLocationFields", () => {
         mode="edit"
       />,
     );
-    const institutionInput = screen.getByRole("textbox", { name: "기관 이름" });
+    const institutionInput = screen.getByRole("combobox", { name: "은행 선택" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    fireEvent.blur(institutionInput);
     expect(institutionInput).toHaveAccessibleDescription(
       "은행·증권 계좌는 기관을 선택하거나 입력해 주세요.",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "하나은행" }));
-    expect(screen.getByRole("button", { name: "하나은행" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    fireEvent.change(institutionInput, { target: { value: "hana" } });
+    expect(institutionInput).toHaveValue("hana");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

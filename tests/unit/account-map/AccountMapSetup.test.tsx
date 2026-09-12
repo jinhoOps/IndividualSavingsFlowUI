@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountMapApp } from '../../../src/account-map/ui/AccountMapApp';
@@ -107,7 +107,8 @@ describe('AccountMapSetup', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '다른 계좌 연결' })[0]!);
     expect(screen.getByRole('textbox', { name: '표시 이름' })).toHaveValue('수입복구');
 
-    fireEvent.click(screen.getAllByRole('button', { name: '다른 계좌 연결' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: '생활비' }));
+    fireEvent.click(screen.getByRole('button', { name: '다른 계좌 연결' }));
 
     expect(screen.getByRole('textbox', { name: '표시 이름' })).toHaveValue('생활복구');
     expect(session.recordRecoveryDraft).not.toHaveBeenCalledWith(
@@ -155,7 +156,7 @@ describe('AccountMapSetup', () => {
     expect(await screen.findByRole('heading', { name: '돈이 머무는 곳을 연결해요' })).toBeVisible();
     expect(setup.current().accountMap.draft).toMatchObject({ schemaVersion: 2, step: 'locations' });
 
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    await finishLocationQuestions();
     expect(await screen.findByRole('heading', { name: '계좌 사이 흐름을 정해요' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
     expect(await screen.findByRole('heading', { name: '월 흐름을 검토해요' })).toBeVisible();
@@ -181,7 +182,7 @@ describe('AccountMapSetup', () => {
     expect(cancel).not.toHaveBeenCalled();
     expectSetupSurfaceFinalState(surface);
 
-    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+    await finishLocationQuestions();
     await screen.findByRole('heading', { name: '계좌 사이 흐름을 정해요' });
     fireEvent.click(screen.getByRole('button', { name: '이전' }));
     await screen.findByRole('heading', { name: '돈이 머무는 곳을 연결해요' });
@@ -231,7 +232,7 @@ describe('AccountMapSetup', () => {
     trigger.focus();
     fireEvent.click(trigger);
     const parent = screen.getByRole('combobox', { name: '큰 목적' });
-    const cancel = screen.getByRole('button', { name: '취소' });
+    const cancel = within(screen.getByRole('dialog', { name: '세부 목적 추가' })).getByRole('button', { name: '취소' });
     expect(parent).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
@@ -360,8 +361,20 @@ describe('AccountMapSetup', () => {
 
     expect(screen.getByRole('heading', { name: '월 흐름을 검토해요' })).toBeVisible();
     expect(screen.getByText('배정되지 않은 금액 2,000,000원')).toBeVisible();
-    expect(screen.getByText('남은 금액 전부 · 계획상 0원')).toBeVisible();
+    expect(screen.getAllByText('남은 금액 전부 · 계획상 0원')[0]).toBeVisible();
   });
+});
+
+it('keeps the unaccepted suggestions while applying them one by one', async () => {
+  const setup = repositories('transfers');
+  render(<AccountMapApp repositories={setup.repositories} />);
+  expect(screen.getAllByRole('button', { name: '제안 적용' })).toHaveLength(2);
+  fireEvent.click(screen.getAllByRole('button', { name: '제안 적용' })[0]!);
+  await waitFor(() => expect(screen.getAllByRole('button', { name: '제안 적용' })).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: '제안 적용' }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: '제안 적용' })).not.toBeInTheDocument());
+  const appliedDraft = setup.current().accountMap.draft!;
+  expect(appliedDraft.schemaVersion === 2 && appliedDraft.transfers).toHaveLength(2);
 });
 
 function repositories(
@@ -471,4 +484,14 @@ function setupAnimationCalls(surface: HTMLElement): unknown[][] {
 
 function activeLink(id: string, purposeId: 'system:income' | 'system:living' | 'system:saving' | 'system:investing', locationId: string, monthlyAmountWon: number) {
   return { id, purposeId, locationId, monthlyAmountWon, remainder: true, status: 'active' as const, createdAt: 1, updatedAt: 1 };
+}
+
+async function finishLocationQuestions(): Promise<void> {
+  fireEvent.click(screen.getByRole('button', { name: '새 계좌·보관처 추가' }));
+  fireEvent.click(screen.getByRole('button', { name: '현금' }));
+  fireEvent.change(screen.getByRole('textbox', { name: '표시 이름' }), { target: { value: '급여통장' } });
+  fireEvent.click(screen.getByRole('button', { name: '이 계좌 연결' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '다음 목적' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: '투자' }));
+  fireEvent.click(screen.getByRole('button', { name: '계좌 연결 마치기' }));
 }

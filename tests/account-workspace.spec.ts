@@ -642,6 +642,10 @@ test('cloud v5 fixed and sweep input recover without replay and save only Accoun
   await editor.getByRole('textbox', {name: '월 이체 금액'}).fill('1200000');
   await page.reload(); await openTransfer();
   await expect(editor.getByRole('textbox', {name: '월 이체 금액'})).toHaveValue('1,200,000');
+  await editor.getByRole('button', {name: '취소', exact: true}).click();
+  await editor.getByRole('button', {name: '계속 편집', exact: true}).click();
+  await page.reload(); await openTransfer();
+  await expect(editor.getByRole('textbox', {name: '월 이체 금액'})).toHaveValue('1,200,000');
   await editor.getByRole('radio', {name: '남은 금액 전부'}).check();
   await page.reload(); await openTransfer();
   await expect(editor.getByRole('radio', {name: '남은 금액 전부'})).toBeChecked();
@@ -661,14 +665,14 @@ test('cloud v5 setup keeps new location and custom-purpose input through reload 
   initial.accountMap = {applied: null, draft: {...applied, schemaVersion: 2, step: 'locations'}};
   const server = fakeServer(); server.rows.set(userA, initial); await server.attach(context, userA);
   await page.goto('apps/account-map/');
-  const openIncome = async () => page.locator('article').filter({has: page.getByRole('heading', {name: '수입', exact: true})}).getByRole('button', {name: '연결', exact: true}).click();
+  const openIncome = async () => page.getByRole('navigation', {name: '연결할 목적'}).getByRole('button', {name: '수입', exact: true}).click();
   await openIncome();
-  const location = page.getByRole('dialog', {name: '수입 연결', exact: true});
+  const location = page.getByRole('region', {name: '수입 연결', exact: true});
   await location.getByRole('button', {name: '새 계좌·보관처 추가'}).click();
   await location.getByRole('button', {name: '현금', exact: true}).click();
   await location.getByRole('textbox', {name: '표시 이름'}).fill('임시 급여');
-  await page.locator('article').filter({has: page.getByRole('heading', {name: '주거', exact: true})}).getByRole('button', {name: '연결', exact: true}).click();
-  await expect(page.getByRole('dialog', {name: '주거 연결', exact: true}).getByRole('textbox', {name: '표시 이름'})).toHaveCount(0);
+  await page.getByRole('navigation', {name: '연결할 목적'}).getByRole('button', {name: '주거', exact: true}).click();
+  await expect(page.getByRole('region', {name: '주거 연결', exact: true}).getByRole('textbox', {name: '표시 이름'})).toHaveCount(0);
   await openIncome();
   await expect(location.getByRole('textbox', {name: '표시 이름'})).toHaveValue('임시 급여');
   await page.reload(); await openIncome();
@@ -706,6 +710,7 @@ test('cloud v5 location edit recovers its fields on reload without changing the 
   expect(server.operations).toEqual([]);
   expect(server.rows.get(userA)).toEqual(initial);
   await page.getByRole('dialog').getByRole('button', {name: '닫기', exact: true}).click();
+  await page.getByRole('button', {name: '변경 버리고 닫기'}).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await openLocation();
   await expect(page.getByRole('textbox', {name: '표시 이름'})).toHaveValue('생활비통장');
