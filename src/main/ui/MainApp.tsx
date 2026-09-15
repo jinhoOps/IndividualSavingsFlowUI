@@ -18,6 +18,7 @@ import {
   type WorkspaceRepository,
 } from '../../workspace/infrastructure/workspaceRepository';
 import { Button } from './common/Button';
+import { SavingOverlay } from './common/SavingOverlay';
 import { Surface } from './common/Surface';
 import { formatDashboardWon } from './dashboard/CashflowSummary';
 import { SummaryDashboard } from './dashboard/SummaryDashboard';
@@ -265,7 +266,8 @@ function RecoveryView({
             저장 대기 중 · {formatDashboardWon(pendingIncome)}
           </p>
         </div>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <div className="relative mt-8 flex flex-col gap-3 sm:flex-row">
+          <SavingOverlay saving={saving} />
           <Button type="button" onClick={onDownload}>
             기존 원본 JSON 다운로드
           </Button>
@@ -277,7 +279,7 @@ function RecoveryView({
                 disabled={saving}
                 onClick={onRetry}
               >
-                {saving ? '저장 중' : '저장 다시 시도'}
+                저장 다시 시도
               </Button>
               <Button
                 className="border-rose-200 text-rose-700"

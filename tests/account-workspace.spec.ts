@@ -35,6 +35,7 @@ function fakeServer() {
   const receipts = new Map<string, unknown>();
   let failRead = false;
   let readBarrier: Promise<void> | null = null;
+  let writeBarrier: Promise<void> | null = null;
   let failWrite = false;
   let loseResponse = false;
   const operations: string[] = [];
@@ -72,6 +73,7 @@ function fakeServer() {
       }
       const operation = url.pathname.split('/').at(-1)!;
       operations.push(operation);
+      await writeBarrier;
       if (failWrite) {await route.abort('failed'); return;}
       const request = route.request().postDataJSON();
       if (request.p_schema_version !== 5) {await route.fulfill({json: {status: 'invalid'}}); return;}
@@ -91,7 +93,11 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, attach, holdReads() {
+  return {rows, operations, attach, holdWrites() {
+    let release!: () => void;
+    writeBarrier = new Promise<void>(resolve => {release = resolve;});
+    return () => {writeBarrier = null; release();};
+  }, holdReads() {
     let release!: () => void;
     readBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {readBarrier = null; release();};
@@ -1399,3 +1405,46 @@ test('a newly opened tab gets its own launch landing even with cloned session st
   await expect(popup.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   await popup.close();
 });
+
+for (const width of [390, 768, 1280]) {
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    test(`Main saving overlay preserves layout at ${width}px with ${reducedMotion}`, async ({page, context}, testInfo) => {
+      await page.setViewportSize({width, height: 900});
+      await page.emulateMedia({reducedMotion});
+      const server = fakeServer(); server.rows.set(userA, plan());
+      await server.attach(context, userA);
+      await page.goto('apps/main/');
+      await page.getByRole('button', {name: '월 금액 편집'}).click();
+      await page.getByLabel('월평균 생활비').fill('1100000');
+      const apply = page.getByRole('button', {name: '적용', exact: true});
+      await apply.focus();
+      await expect(page.locator('.main-editor-sheet, .main-editor-panel')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      const before = await apply.boundingBox();
+      const footer = page.locator('.main-apply-bar');
+      const footerBefore = await footer.boundingBox();
+      const release = server.holdWrites();
+      try {
+        await apply.click();
+        await expect(apply).toBeDisabled();
+        const overlay = footer.getByRole('status');
+        await expect(overlay).toHaveText('저장 중');
+        await expect(overlay).toHaveCSS('opacity', '1');
+        expect(await apply.boundingBox()).toEqual(before);
+        expect(await footer.boundingBox()).toEqual(footerBefore);
+        const box = (await overlay.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.y).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+        expect(box.y + box.height).toBeLessThanOrEqual(900);
+        expect(before!.height).toBeGreaterThanOrEqual(44);
+        await expect(page.locator('.cashflow-allocation__chart')).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        expect(await overlay.evaluate(element => element.contains(document.activeElement))).toBe(false);
+        await page.screenshot({path: testInfo.outputPath('main-saving-overlay.png'), fullPage: true});
+      } finally { release(); }
+      await expect(page.locator('.main-saving-overlay')).toHaveCount(0);
+      await expect(page.locator('.cashflow-metric').filter({hasText: '월 지출'})).toContainText('190만 원');
+      expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
+    });
+  }
+}

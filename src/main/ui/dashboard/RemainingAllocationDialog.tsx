@@ -1,10 +1,11 @@
 import { useContext, useEffect, useRef, useState } from 'react';
-import { WandSparkles, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { AccountDraftContext, AccountWriteRecoveryContext } from '../../../auth/AccountDraftContext';
 import type { MainState } from '../../application/mainReducer';
 import type { MainData } from '../../domain/model';
 import { allocateRemaining, availableRemainingWon } from '../../domain/remainingAllocation';
 import { Button } from '../common/Button';
+import { SavingOverlay } from '../common/SavingOverlay';
 
 const won = (value: number) => `${value.toLocaleString('ko-KR')}원`;
 
@@ -78,7 +79,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
     <div className="expense-assistant remaining-allocation" role="dialog" aria-modal="true" aria-labelledby="remaining-allocation-title"
       aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
       <header className="expense-assistant__header">
-        <span><WandSparkles size={18} aria-hidden="true" /> 남는 돈 분배 도우미</span>
+        <span>남는 돈 분배 도우미</span>
         <Button type="button" variant="quiet" aria-label="분배 도우미 닫기" disabled={busy} onClick={close}><X size={22} aria-hidden="true" /></Button>
       </header>
       <div className="expense-assistant__body">
@@ -127,6 +128,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
         </div>}
       </div>
       <footer className="expense-assistant__footer">
+        <SavingOverlay saving={busy} />
         {available > 0 ? <>
           <div className="expense-assistant__total" aria-live="polite"><span>나눈 뒤 남는 돈</span><strong>{proposal ? won(available - total) : '금액 확인 필요'}</strong></div>
           <p className="expense-assistant__hint">기존 월 저축·투자 금액에 더해요.</p>
@@ -135,7 +137,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
             <Button type="button" variant="primary" disabled={busy || pending || !!error || total <= 0} onClick={() => {
               if (submitting.current || !proposal) return;
               submitting.current = true; submitted.current = true; onApply();
-            }}>{busy ? '반영 중…' : '이렇게 나누기'}</Button>
+            }}>이렇게 나누기</Button>
           </div>
         </> : <Button type="button" className="expense-assistant__apply" variant="primary" onClick={close}>확인</Button>}
       </footer>

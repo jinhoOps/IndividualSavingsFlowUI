@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, WandSparkles, X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
 import { SegmentedControl } from '../../../components/common/SegmentedControl';
 import { AccountDraftContext, AccountWriteRecoveryContext, useAccountRecovery, useInitialRecovery } from '../../../auth/AccountDraftContext';
@@ -7,6 +7,7 @@ import { createExpenseDraft, expenseAnswersComplete, expenseTotals, EXPENSE_ITEM
 import type { MainData } from '../../domain/model';
 import type { ExpenseAssistantRepository } from '../../infrastructure/expenseAssistantRepository';
 import { Button } from '../common/Button';
+import { SavingOverlay } from '../common/SavingOverlay';
 import { formatDashboardWon } from './CashflowSummary';
 
 export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
@@ -96,7 +97,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     <div className="expense-assistant__backdrop" aria-hidden="true" onClick={close} />
     <div className={`expense-assistant${item && 'example' in item ? ' expense-assistant--explained' : ''}`} role="dialog" aria-modal="true" aria-labelledby="expense-assistant-title" aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
       <header className="expense-assistant__header">
-        <span><WandSparkles size={18} aria-hidden="true" /> 지출 계산 도우미</span>
+        <span>지출 계산 도우미</span>
         <Button type="button" variant="quiet" aria-label="도우미 닫기" disabled={busy} onClick={close}><X size={22} aria-hidden="true" /></Button>
       </header>
       <div className="expense-assistant__body">
@@ -162,12 +163,13 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
         </div> : null}
       </div>
       <footer className="expense-assistant__footer">
+        <SavingOverlay saving={busy} />
         <div className="expense-assistant__total"><span>{item ? '지금까지 월평균' : '월 지출 합계'}</span><strong>{totals ? formatDashboardWon(totals.totalWon) : '금액 범위 초과'}</strong></div>
         {!item && totals ? <p className="expense-assistant__hint">주거 {formatDashboardWon(totals.housingWon)} · 생활 {formatDashboardWon(totals.livingWon)}<br />직접 입력한 주거비와 생활비를 이 합계로 바꿔요.</p> : null}
         {item ? <div className="expense-assistant__actions">
           <Button type="button" variant="secondary" disabled={busy || !!initial.error} onClick={() => next(true)}>없어요</Button>
-          <Button type="button" variant="primary" disabled={busy || invalidAmount || !totals || !!initial.error} onClick={() => next()}>{busy ? '저장 중…' : returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
-        </div> : <Button className="expense-assistant__apply" type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={() => void save(draft, true)}>{busy ? '반영 중…' : '이 금액으로 반영'}</Button>}
+          <Button type="button" variant="primary" disabled={busy || invalidAmount || !totals || !!initial.error} onClick={() => next()}>{returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
+        </div> : <Button className="expense-assistant__apply" type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={() => void save(draft, true)}>이 금액으로 반영</Button>}
       </footer>
     </div>
   </>;

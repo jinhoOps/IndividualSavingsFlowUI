@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { StrictMode, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -578,7 +578,8 @@ describe('SetupFlow', () => {
     act(() => vi.advanceTimersByTime(599));
     expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1));
-    expect(screen.getByRole('button', { name: '저장 중' })).toBeDisabled();
+    expect(within(screen.getByRole('navigation', { name: '설정 이동' })).getByRole('status')).toHaveTextContent('저장 중');
+    expect(screen.getByRole('button', { name: '계획 적용' })).toBeDisabled();
 
     rerender(<SetupFlow {...props} />);
     expect(screen.queryByText('저장 중')).not.toBeInTheDocument();

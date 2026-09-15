@@ -1,6 +1,6 @@
 import { animate, createTimeline, stagger } from 'animejs';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
-import { useDelayedPending } from '../../../components/feedback/useDelayedPending';
+import { SavingOverlay } from '../common/SavingOverlay';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
@@ -76,7 +76,6 @@ export function SetupFlow({
   motionPreset,
 }: SetupFlowProps) {
   const [incomeSubmittedEmpty, setIncomeSubmittedEmpty] = useState(false);
-  const delayedSaving = useDelayedPending(saving, 600);
   const assemblyPlayedRef = useRef(false);
   const assemblyRootRef = useRef<HTMLElement | null>(null);
   const welcomePlayedRef = useRef(false);
@@ -274,7 +273,8 @@ export function SetupFlow({
             {step === 'review' ? <ReviewStep draft={draft} reviewRef={reviewMotionRef} /> : null}
           </div>
 
-          <nav className="mt-auto flex justify-end gap-3 pt-6" aria-label="설정 이동">
+          <nav className="relative mt-auto flex justify-end gap-3 pt-6" aria-label="설정 이동">
+            <SavingOverlay saving={saving} />
             {previousStep ? (
               <Button
                 className="px-5 py-3"
@@ -290,7 +290,7 @@ export function SetupFlow({
               type="submit"
               variant="primary"
             >
-              {step === 'review' ? delayedSaving ? '저장 중' : '계획 적용' : '다음'}
+              {step === 'review' ? '계획 적용' : '다음'}
             </Button>
           </nav>
         </fieldset>

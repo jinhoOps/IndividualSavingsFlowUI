@@ -317,7 +317,9 @@ describe('SummaryDashboard', () => {
     expect(screen.queryByText(/저장 중/)).not.toBeInTheDocument();
 
     act(() => vi.advanceTimersByTime(1));
-    expect(screen.getAllByText(/저장 중/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('status')).toHaveTextContent('저장 중');
+    expect(screen.getByRole('button', { name: '적용' })).toBeDisabled();
+    expect(screen.getByText('저장하지 않은 변경사항이 있습니다.')).toBeVisible();
 
     await act(async () => resolvePersist?.());
     expect(within(screen.getByRole('region', { name: '월간 핵심 수치' })).getByText('남는 돈').closest('.cashflow-metric')).toHaveTextContent('170만 원');

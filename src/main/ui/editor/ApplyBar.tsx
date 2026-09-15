@@ -1,5 +1,5 @@
 import type { MainState } from '../../application/mainReducer';
-import { useDelayedPending } from '../../../components/feedback/useDelayedPending';
+import { SavingOverlay } from '../common/SavingOverlay';
 import { Button } from '../common/Button';
 
 export interface ApplyBarProps {
@@ -11,7 +11,6 @@ export interface ApplyBarProps {
 
 export function ApplyBar({ dirty, saveStatus, onApply, onCancel }: ApplyBarProps) {
   const saving = saveStatus === 'saving';
-  const delayedSaving = useDelayedPending(saving, 600);
   const failed = saveStatus === 'error';
   return (
     <footer
@@ -19,14 +18,13 @@ export function ApplyBar({ dirty, saveStatus, onApply, onCancel }: ApplyBarProps
       aria-busy={saving ? 'true' : undefined}
       aria-label="변경 적용"
     >
+      <SavingOverlay saving={saving} />
       <p
         className={`main-apply-bar__status${failed ? ' main-apply-bar__status--error' : ''}`}
         aria-live={failed ? undefined : 'polite'}
         role={failed ? 'alert' : undefined}
       >
-        {delayedSaving
-          ? '저장 중입니다.'
-          : failed
+        {failed
             ? '저장하지 못했습니다. 초안은 그대로 보존되어 있습니다.'
             : dirty
               ? '저장하지 않은 변경사항이 있습니다.'
@@ -34,7 +32,7 @@ export function ApplyBar({ dirty, saveStatus, onApply, onCancel }: ApplyBarProps
       </p>
       <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>취소</Button>
       <Button type="button" variant="primary" disabled={!dirty || saving} onClick={onApply}>
-        {delayedSaving ? '저장 중' : failed ? '다시 시도' : '적용'}
+        {failed ? '다시 시도' : '적용'}
       </Button>
     </footer>
   );
