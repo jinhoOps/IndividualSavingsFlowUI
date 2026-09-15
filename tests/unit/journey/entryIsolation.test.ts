@@ -17,12 +17,6 @@ it.each([
     title: '투자 배분 Portfolio | ISF',
     description: 'Main의 투자금을 대상별 금액과 비율로 배분하는 Portfolio',
   },
-  {
-    app: 'account-map',
-    entry: '../../src/journey/accountMap.tsx',
-    title: '계좌 연결 Account Map | ISF',
-    description: 'Main의 월 자금을 목적 중심 계좌 연결 지도로 확인하고 관리하는 Account Map',
-  },
 ])('$app retains route metadata and loads only its new React entry', async ({ app, entry, title, description }) => {
   const html = await readFile(resolve(process.cwd(), 'apps', app, 'index.html'), 'utf8');
 

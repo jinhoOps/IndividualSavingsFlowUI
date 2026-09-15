@@ -8,7 +8,7 @@ export function authCallbackUrl(origin: string, base: string): string {
   return `${origin}${appPath('main', base).replace('apps/main/', 'apps/auth/callback/')}`;
 }
 export function safeReturnPath(path: string | null, base: string): string {
-  const paths = (['main', 'simulation', 'portfolio', 'account-map'] as JourneyApp[]).map(app => appPath(app, base));
+  const paths = (['main', 'simulation', 'portfolio'] as JourneyApp[]).map(app => appPath(app, base));
   const normalized = path?.replace(/index\.html$/, '');
   return normalized && paths.includes(normalized) ? normalized : paths[0];
 }

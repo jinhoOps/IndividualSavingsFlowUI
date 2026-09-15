@@ -105,6 +105,48 @@ function fakeServer() {
 }
 
 for (const width of [390, 768, 1280]) {
+  test(`retired Account Map URLs redirect without writes and preserve stored data after Main editing at ${width}px`, async ({page, context}) => {
+    const initial = mappedPlan();
+    const server = fakeServer();
+    server.rows.set(userA, initial);
+    await server.attach(context, userA);
+    await page.setViewportSize({width, height: 900});
+    await page.emulateMedia({reducedMotion: 'reduce'});
+
+    for (const path of ['apps/account-map/', 'apps/account-map/index.html']) {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/apps\/main\/$/);
+      const launcher = page.getByRole('navigation', {name: 'ISF 앱'});
+      await expect(launcher.getByRole('link')).toHaveCount(3);
+      await expect(launcher.getByRole('link', {name: /자금 흐름 \(Main\).*현재 위치/})).toHaveAttribute('aria-current', 'page');
+      await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
+      expect(server.operations).toEqual([]);
+      expect(server.rows.get(userA)).toEqual(initial);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      for (const link of await launcher.getByRole('link').all()) {
+        const bounds = await link.boundingBox();
+        expect(bounds!.width).toBeGreaterThanOrEqual(44);
+        expect(bounds!.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+
+    await page.getByRole('button', {name: '월 금액 편집'}).click();
+    await page.getByLabel('월평균 생활비').fill('1100000');
+    await page.getByRole('button', {name: '적용', exact: true}).click();
+    await expect.poll(() => server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
+    expect(server.operations).toEqual(['save_main']);
+    expect(server.rows.get(userA)?.accountMap).toEqual(initial.accountMap);
+    expect(server.rows.get(userA)?.locations).toEqual(initial.locations);
+    await page.reload();
+    await page.getByRole('button', {name: '월 금액 편집'}).click();
+    await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,100,000');
+    expect(server.operations).toEqual(['save_main']);
+    expect(server.rows.get(userA)?.accountMap).toEqual(initial.accountMap);
+    expect(server.rows.get(userA)?.locations).toEqual(initial.locations);
+  });
+}
+
+for (const width of [390, 768, 1280]) {
   test(`password and Google sign-in remain usable at ${width}px`, async ({page, context}) => {
     const server = fakeServer();
     await server.attach(context, null);
@@ -282,7 +324,7 @@ test('simulation target edits persist through the account save path without chan
 });
 
 for (const configured of [false, true]) {
-  test(`all four authenticated product entries fit mobile with ${configured ? 'configured' : 'initial'} app menus`, async ({page, context}) => {
+  test(`all three authenticated product entries fit mobile with ${configured ? 'configured' : 'initial'} app menus`, async ({page, context}) => {
   const workspace = configured ? mappedPlan() : plan();
   if (configured) {
     workspace.simulation.draft = {
@@ -297,7 +339,7 @@ for (const configured of [false, true]) {
   const server = fakeServer(); server.rows.set(userA, workspace); await server.attach(context, userA);
   for (const width of [390, 768, 1280]) {
     await page.setViewportSize({width, height: 900});
-    for (const app of ['main', 'simulation', 'portfolio', 'account-map']) {
+    for (const app of ['main', 'simulation', 'portfolio']) {
       await page.goto(`apps/${app}/`);
       await expect(page.getByTestId('app-shell')).toBeVisible();
       await expect(page.getByRole('button', {name: '내 계정', exact: true})).toHaveCount(0);
@@ -311,7 +353,6 @@ for (const configured of [false, true]) {
         main: ['처음부터 다시', '이 브라우저에서 로그아웃'],
         simulation: ['시뮬레이션 다시 설정', '이 브라우저에서 로그아웃'],
         portfolio: ['투자 배분 처음부터 다시', '이 브라우저에서 로그아웃'],
-        'account-map': [...(configured ? ['월 연결 다시 만들기'] : []), '이 브라우저에서 로그아웃'],
       };
       await expect(popover.getByRole('menuitem')).toHaveText(expectedItems[app]);
       if (app === 'portfolio') {
@@ -334,7 +375,7 @@ for (const configured of [false, true]) {
       await page.screenshot({path: `test-results/cloud-${configured ? 'configured' : 'initial'}-${app}-${width}.png`, fullPage: true});
     }
   }
-  expect(server.operations.every(op => ['save_portfolio', 'save_simulation', 'save_account_map'].includes(op))).toBe(true);
+  expect(server.operations.every(op => ['save_portfolio', 'save_simulation'].includes(op))).toBe(true);
 });
 
 }
@@ -485,242 +526,6 @@ test('automatic sign-out preserves an in-memory recovery download when cache is 
   const chunks = [];
   for await (const chunk of stream!) chunks.push(chunk);
   expect(JSON.parse(Buffer.concat(chunks).toString()).drafts.main.value.monthlyLivingWon).toBe(1700000);
-});
-
-test('Account Map reviews latest state on a cloud location conflict and preserves Main', async ({page, context}) => {
-  const server = fakeServer(); server.rows.set(userA, mappedPlan()); await server.attach(context, userA);
-  await page.emulateMedia({reducedMotion: 'reduce'});
-  await page.goto('apps/account-map/');
-  const node = page.getByRole('button', {name: /계좌 생활비통장/});
-  await node.click();
-  await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).click();
-  await page.getByRole('textbox', {name: '표시 이름'}).fill('생활통장');
-  const newer = mappedPlan(); newer.revision = 1; newer.main.applied!.monthlyNetIncomeWon = 4000000;
-  server.rows.set(userA, newer);
-  await page.getByRole('button', {name: '저장', exact: true}).click();
-  await expect(page.getByRole('button', {name: '최신 상태에서 다시 검토'})).toHaveCount(1);
-  await page.getByRole('button', {name: '최신 상태에서 다시 검토'}).click();
-  await expect(page.getByRole('textbox', {name: '표시 이름'})).toHaveValue('생활통장');
-  expect(server.operations).toEqual(['save_account_map']);
-  await page.getByRole('button', {name: '다시 시도', exact: true}).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  expect(server.rows.get(userA)?.locations[0].shortName).toBe('생활통장');
-  expect(server.rows.get(userA)?.main.applied?.monthlyNetIncomeWon).toBe(4000000);
-  expect(server.operations).toEqual(['save_account_map', 'save_account_map']);
-});
-
-test('keeping latest Account Map conflict retires the rejected write before Main edits and reload', async ({page, context}) => {
-  const server = fakeServer(); server.rows.set(userA, mappedPlan()); await server.attach(context, userA);
-  await page.emulateMedia({reducedMotion: 'reduce'});
-  await page.goto('apps/account-map/');
-  await page.getByRole('button', {name: /계좌 급여통장/}).click();
-  await page.getByRole('button', {name: '흐름 편집', exact: true}).first().click();
-  const editor = page.getByRole('dialog', {name: '계좌 흐름 편집'});
-  await editor.getByRole('textbox', {name: '월 이체 금액'}).fill('1200000');
-  const newer = mappedPlan(); newer.revision = 1; newer.updatedAt = 2000;
-  newer.main.applied!.updatedAt = 2000; newer.main.applied!.monthlyNetIncomeWon = 4000000;
-  server.rows.set(userA, newer);
-  await editor.getByRole('button', {name: '저장', exact: true}).click();
-  await editor.getByRole('button', {name: '최신 값 유지', exact: true}).click();
-  await expect(editor).toHaveCount(0);
-  await page.getByRole('button', {name: 'Main 금액 수정', exact: true}).click();
-  const overlay = page.getByRole('dialog', {name: '월 자금 계획 편집'});
-  await overlay.getByLabel('월평균 생활비').fill('1100000');
-  await overlay.getByRole('button', {name: '적용', exact: true}).click();
-  await expect(overlay).toHaveCount(0);
-  expect(server.operations).toEqual(['save_account_map', 'save_main']);
-  expect(server.rows.get(userA)?.accountMap).toEqual(newer.accountMap);
-  expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
-  await page.reload();
-  await expect(page.getByRole('button', {name: '저장 결과 다시 확인'})).toHaveCount(0);
-  await page.getByRole('button', {name: /계좌 급여통장/}).click();
-  await page.getByRole('button', {name: '흐름 편집', exact: true}).first().click();
-  await expect(editor.getByRole('textbox', {name: '월 이체 금액'})).toHaveValue('1,000,000');
-  await editor.getByRole('textbox', {name: '월 이체 금액'}).fill('1300000');
-  await editor.getByRole('button', {name: '저장', exact: true}).click();
-  await expect(editor).toHaveCount(0);
-  expect(server.operations).toEqual(['save_account_map', 'save_main', 'save_account_map']);
-  expect(server.rows.get(userA)?.accountMap.applied?.transfers?.[0].allocation).toEqual({kind: 'fixed', monthlyAmountWon: 1300000});
-});
-
-test('Account Map immediately drops replay on a refreshed Main-null cloud snapshot', async ({page, context}) => {
-  const server = fakeServer(); server.rows.set(userA, mappedPlan()); await server.attach(context, userA);
-  await page.emulateMedia({reducedMotion: 'reduce'});
-  await page.goto('apps/account-map/');
-  const node = page.getByRole('button', {name: /계좌 생활비통장/});
-  await node.click();
-  await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).click();
-  await page.getByRole('textbox', {name: '표시 이름'}).fill('생활통장');
-  server.rows.set(userA, {...createEmptyWorkspace(), revision: 2});
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(page.getByRole('heading', {name: '월 자금 계획이 먼저 필요해요'})).toBeVisible();
-  await expect(page.getByRole('button', {name: '최신 상태에서 다시 적용'})).toHaveCount(0);
-  expect(server.operations).toEqual([]);
-});
-
-for (const width of [390, 768, 1280]) {
-  test(`cloud v5 Journey overlay owns Main only and preserves local data at ${width}px`, async ({page, context}) => {
-    const server = fakeServer(); const initial = mappedPlan(); initial.main.applied!.updatedAt = 2000;
-    initial.updatedAt = 2000; server.rows.set(userA, initial);
-    await server.attach(context, userA);
-    const localRaw = JSON.stringify(plan(9000000));
-    await page.addInitScript(raw => localStorage.setItem('isf-workspace-v5', raw), localRaw);
-    await page.setViewportSize({width, height: 900});
-    await page.emulateMedia({reducedMotion: 'reduce'});
-    await page.goto('apps/account-map/');
-    await expect(page.getByRole('button', {name: /계좌 급여통장/})).toBeVisible();
-    const trigger = page.getByRole('button', {name: 'Main 금액 수정', exact: true});
-    await trigger.click();
-    const overlay = page.getByRole('dialog', {name: '월 자금 계획 편집'});
-    await expect(overlay.getByLabel('월 실수령액')).toHaveValue('3,200,000');
-    await expect(overlay.getByLabel('월 실수령액')).toBeFocused();
-    await expect(page.getByTestId('account-map-journey-background')).toHaveAttribute('inert', '');
-    await expect(page.locator('.account-flow-canvas')).toBeVisible();
-    const bounds = await overlay.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
-    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(901);
-    for (const control of await overlay.locator('input:visible,button:visible').all()) {
-      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    }
-    for (let i = 0; i < 10; i++) {
-      await page.keyboard.press('Tab');
-      expect(await overlay.evaluate(element => element.contains(document.activeElement))).toBe(true);
-    }
-    await overlay.getByLabel('월평균 생활비').fill('1100000');
-    await page.screenshot({path: `test-results/cloud-v4-overlay-${width}.png`, fullPage: true});
-    await overlay.getByRole('button', {name: '적용', exact: true}).click();
-    await expect(overlay).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-    await expect(page.getByRole('button', {name: '현재 Main 기준으로 확인'})).toBeVisible();
-    expect(server.operations).toEqual(['save_main']);
-    expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1100000);
-    expect(server.rows.get(userA)?.accountMap).toEqual(initial.accountMap);
-    expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(localRaw);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.reload();
-    await expect(page.getByRole('button', {name: /계좌 급여통장/})).toBeVisible();
-    expect(server.rows.get(userA)?.accountMap.applied?.transfers).toEqual(initial.accountMap.applied?.transfers);
-  });
-}
-
-test('cloud overlay recovery survives reload and reauthentication without auto-saving', async ({page, context}) => {
-  const server = fakeServer(); const initial = mappedPlan(); initial.main.applied!.updatedAt = 2000;
-  initial.updatedAt = 2000; server.rows.set(userA, initial);
-  await server.attach(context, userA, {id: userA, email: 'a@example.com', password: 'fixture-reauth-password'});
-  await page.goto('apps/account-map/');
-  await page.getByRole('button', {name: 'Main 금액 수정', exact: true}).click();
-  const overlay = page.getByRole('dialog', {name: '월 자금 계획 편집'});
-  await overlay.getByLabel('월평균 생활비').fill('1700000');
-  server.setFailRead(true);
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(overlay.getByLabel('월평균 생활비')).toBeDisabled();
-  server.setFailRead(false);
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(overlay.getByLabel('월평균 생활비')).toBeEnabled();
-  await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
-  await page.reload();
-  await page.getByRole('button', {name: 'Main 금액 수정', exact: true}).click();
-  await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
-  await page.evaluate(() => {
-    const channel = new BroadcastChannel('sb-isf-test-auth-token');
-    channel.postMessage({event: 'SIGNED_OUT', session: null}); channel.close();
-  });
-  await expect(page.getByRole('heading', {name: '계획을 계속 보려면 다시 로그인해주세요.'})).toBeVisible();
-  await page.getByLabel('비밀번호', {exact: true}).fill('fixture-reauth-password');
-  await page.getByRole('button', {name: '이메일로 로그인'}).click();
-  await page.getByRole('button', {name: 'Main 금액 수정', exact: true}).click();
-  await expect(overlay.getByLabel('월평균 생활비')).toHaveValue('1,700,000');
-  expect(server.operations).toEqual([]);
-  expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);
-});
-
-test('cloud v5 fixed and sweep input recover without replay and save only Account Map', async ({page, context}) => {
-  const server = fakeServer(); const initial = mappedPlan(); server.rows.set(userA, initial);
-  await server.attach(context, userA);
-  await page.emulateMedia({reducedMotion: 'reduce'});
-  const openTransfer = async () => {
-    await page.getByRole('button', {name: /계좌 급여통장/}).click();
-    await page.getByRole('button', {name: '흐름 편집', exact: true}).first().click();
-  };
-  await page.goto('apps/account-map/'); await openTransfer();
-  const editor = page.getByRole('dialog', {name: '계좌 흐름 편집'});
-  await editor.getByRole('textbox', {name: '월 이체 금액'}).fill('1200000');
-  await page.reload(); await openTransfer();
-  await expect(editor.getByRole('textbox', {name: '월 이체 금액'})).toHaveValue('1,200,000');
-  await editor.getByRole('button', {name: '취소', exact: true}).click();
-  await editor.getByRole('button', {name: '계속 편집', exact: true}).click();
-  await page.reload(); await openTransfer();
-  await expect(editor.getByRole('textbox', {name: '월 이체 금액'})).toHaveValue('1,200,000');
-  await editor.getByRole('radio', {name: '남은 금액 전부'}).check();
-  await page.reload(); await openTransfer();
-  await expect(editor.getByRole('radio', {name: '남은 금액 전부'})).toBeChecked();
-  expect(server.operations).toEqual([]);
-  await editor.getByRole('button', {name: '저장', exact: true}).click();
-  await expect(editor).toHaveCount(0);
-  expect(server.operations).toEqual(['save_account_map']);
-  expect(server.rows.get(userA)?.main).toEqual(initial.main);
-  expect(server.rows.get(userA)?.accountMap.applied?.transfers?.[0].allocation).toEqual({kind: 'sweep'});
-  await page.reload(); await openTransfer();
-  await expect(editor.getByRole('radio', {name: '남은 금액 전부'})).toBeChecked();
-});
-
-test('cloud v5 setup keeps new location and custom-purpose input through reload without a write', async ({page, context}) => {
-  const initial = mappedPlan();
-  const {setupCompletedAt: _completed, ...applied} = initial.accountMap.applied!;
-  initial.accountMap = {applied: null, draft: {...applied, schemaVersion: 2, step: 'locations'}};
-  const server = fakeServer(); server.rows.set(userA, initial); await server.attach(context, userA);
-  await page.goto('apps/account-map/');
-  const openIncome = async () => page.getByRole('navigation', {name: '연결할 목적'}).getByRole('button', {name: '수입', exact: true}).click();
-  await openIncome();
-  const location = page.getByRole('region', {name: '수입 연결', exact: true});
-  await location.getByRole('button', {name: '새 계좌·보관처 추가'}).click();
-  await location.getByRole('button', {name: '현금', exact: true}).click();
-  await location.getByRole('textbox', {name: '표시 이름'}).fill('임시 급여');
-  await page.getByRole('navigation', {name: '연결할 목적'}).getByRole('button', {name: '주거', exact: true}).click();
-  await expect(page.getByRole('region', {name: '주거 연결', exact: true}).getByRole('textbox', {name: '표시 이름'})).toHaveCount(0);
-  await openIncome();
-  await expect(location.getByRole('textbox', {name: '표시 이름'})).toHaveValue('임시 급여');
-  await page.reload(); await openIncome();
-  await expect(location.getByRole('textbox', {name: '표시 이름'})).toHaveValue('임시 급여');
-  await expect(location.getByRole('button', {name: '현금', exact: true})).toHaveAttribute('aria-pressed', 'true');
-  await location.getByRole('button', {name: '취소', exact: true}).click();
-  await page.getByRole('button', {name: '세부 목적 추가'}).click();
-  const purpose = page.getByRole('dialog', {name: '세부 목적 추가'});
-  await purpose.getByLabel('큰 목적').selectOption('system:saving');
-  await purpose.getByLabel('목적 이름').fill('여행 적립');
-  await purpose.getByRole('textbox', {name: '월 금액'}).fill('100000');
-  await page.reload();
-  await page.getByRole('button', {name: '세부 목적 추가'}).click();
-  await expect(purpose.getByLabel('목적 이름')).toHaveValue('여행 적립');
-  await expect(purpose.getByRole('textbox', {name: '월 금액'})).toHaveValue('100,000');
-  expect(server.operations).toEqual([]);
-  expect(server.rows.get(userA)).toEqual(initial);
-});
-
-test('cloud v5 location edit recovers its fields on reload without changing the map', async ({page, context}) => {
-  const server = fakeServer(); const initial = mappedPlan(); server.rows.set(userA, initial);
-  await server.attach(context, userA); await page.emulateMedia({reducedMotion: 'no-preference'});
-  const openLocation = async () => {
-    if (!await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).isVisible()) {
-      await page.getByRole('button', {name: /계좌 생활비통장/}).click();
-    }
-    await page.getByRole('button', {name: '계좌 정보 편집', exact: true}).click();
-  };
-  await page.goto('apps/account-map/'); await openLocation();
-  await page.getByRole('textbox', {name: '표시 이름'}).fill('수정 중 계좌');
-  await page.getByRole('button', {name: '현금', exact: true}).click();
-  await page.reload(); await openLocation();
-  await expect(page.getByRole('textbox', {name: '표시 이름'})).toHaveValue('수정 중 계좌');
-  await expect(page.getByRole('button', {name: '현금', exact: true})).toHaveAttribute('aria-pressed', 'true');
-  expect(server.operations).toEqual([]);
-  expect(server.rows.get(userA)).toEqual(initial);
-  await page.getByRole('dialog').getByRole('button', {name: '닫기', exact: true}).click();
-  await page.getByRole('button', {name: '변경 버리고 닫기'}).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await openLocation();
-  await expect(page.getByRole('textbox', {name: '표시 이름'})).toHaveValue('생활비통장');
-  expect(server.operations).toEqual([]);
 });
 
 test('a later tab can export closed-tab recovery without applying it to the account', async ({page, context}) => {
@@ -1282,7 +1087,12 @@ for (const width of [390, 768, 1280]) {
     const skip = page.getByRole('button', {name: '화면을 눌러 건너뛰기'});
     await expect(skip).toBeFocused();
     expect((await skip.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await expect(landing.locator('[data-brand-terminal-dot]')).toHaveCSS('opacity', '1');
+    // The completed frame is brief before automatic dismissal; observe each
+    // browser frame instead of the assertion's increasingly spaced retries.
+    await page.waitForFunction(() => {
+      const dot = document.querySelector('[data-testid="brand-welcome"] [data-brand-terminal-dot]');
+      return dot !== null && getComputedStyle(dot).opacity === '1';
+    });
     const bounds = await page.getByTestId('brand-visual').boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.y).toBeGreaterThanOrEqual(0);
@@ -1304,7 +1114,7 @@ for (const width of [390, 768, 1280]) {
           (window as typeof window & {brandFlashed?: boolean}).brandFlashed = true;
       }).observe(document, {childList: true, subtree: true});
     });
-    for (const name of ['미래 성장 (Simulation)', '투자 배분 (Portfolio)', '계좌 연결 (Account Map)', '자금 흐름 (Main)']) {
+    for (const name of ['미래 성장 (Simulation)', '투자 배분 (Portfolio)', '자금 흐름 (Main)']) {
       // Simulate cache lock ID rotation; it must not become a new visual launch.
       await page.evaluate(() => sessionStorage.setItem('isf-account-tab-id', crypto.randomUUID()));
       const releaseNext = server.holdReads();

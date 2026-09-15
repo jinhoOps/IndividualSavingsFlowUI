@@ -9,6 +9,8 @@ describe('static Google auth', () => {
   });
   it('builds a callback beneath the static base and allows only product paths', () => {
     expect(authCallbackUrl('https://example.com', '/IndividualSavingsFlowUI/')).toBe('https://example.com/IndividualSavingsFlowUI/apps/auth/callback/');
+    expect(safeReturnPath('/IndividualSavingsFlowUI/apps/account-map/', '/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/main/');
+    expect(safeReturnPath('/IndividualSavingsFlowUI/apps/account-map/index.html', '/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/main/');
     expect(safeReturnPath('//evil.com', '/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/main/');
     expect(safeReturnPath('/IndividualSavingsFlowUI/apps/portfolio/', '/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/portfolio/');
   });

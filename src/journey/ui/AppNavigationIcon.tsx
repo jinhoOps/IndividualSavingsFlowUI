@@ -30,20 +30,10 @@ export function AppNavigationIcon({ app }: { app: JourneyApp }) {
     );
   }
 
-  if (app === 'portfolio') {
-    return (
-      <svg {...common}>
-        <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12Z" />
-        <path d="M14 3.7a8.5 8.5 0 0 1 6.3 6.3H14Z" />
-      </svg>
-    );
-  }
-
   return (
     <svg {...common}>
-      <path d="M3.5 6.5c3.1-.9 5.9-.5 8.5 1.2v11c-2.6-1.7-5.4-2.1-8.5-1.2Z" />
-      <path d="M20.5 6.5c-3.1-.9-5.9-.5-8.5 1.2v11c2.6-1.7 5.4-2.1 8.5-1.2Z" />
-      <path d="M6.3 10h2.8M14.9 10h2.8M6.3 13h2.8M14.9 13h2.8" />
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12Z" />
+      <path d="M14 3.7a8.5 8.5 0 0 1 6.3 6.3H14Z" />
     </svg>
   );
 }

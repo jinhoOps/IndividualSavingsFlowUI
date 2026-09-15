@@ -199,7 +199,6 @@ for (const viewport of sharedShellViewports) {
       'apps/main/',
       'apps/simulation/',
       'apps/portfolio/',
-      'apps/account-map/',
     ];
     const geometries: Array<{ frame: { x: number; y: number; width: number }; launcher: { x: number; y: number; width: number } }> = [];
 
@@ -284,62 +283,6 @@ test('revisits Simulation at the result and refreshes only its Main source', asy
   expect(stored.workspace.simulation.draft.initialInvestmentWon).toBe(10_000_000);
 });
 
-test('keeps detailed Portfolio and purpose-first Account Map isolated', async ({ page }) => {
-  const supportedAccountMapWorkspace = { ...appliedWorkspace, main: {...appliedWorkspace.main, expenseAssistant: null},
-    schemaVersion: 5,
-    accountMap: { applied: null, draft: null },
-  };
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), supportedAccountMapWorkspace);
-  await page.goto('apps/portfolio/');
-  await expect(page.getByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
-  await expect(page.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
-  await page.addInitScript(() => {
-    const calls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }> = [];
-    const originalGetItem = Storage.prototype.getItem;
-    const originalSetItem = Storage.prototype.setItem;
-    const originalRemoveItem = Storage.prototype.removeItem;
-    Object.defineProperty(window, '__accountMapStorageCalls', { value: calls });
-    Storage.prototype.getItem = function (key) {
-      if (this === localStorage) calls.push({ operation: 'get', key });
-      return originalGetItem.call(this, key);
-    };
-    Storage.prototype.setItem = function (key, value) {
-      if (this === localStorage) calls.push({ operation: 'set', key });
-      return originalSetItem.call(this, key, value);
-    };
-    Storage.prototype.removeItem = function (key) {
-      if (this === localStorage) calls.push({ operation: 'remove', key });
-      return originalRemoveItem.call(this, key);
-    };
-  });
-  await page.goto('apps/account-map/');
-  await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
-  await expect(page.locator('app-header, data-hub-modal, #portfolioCreator, #accountMapCanvas')).toHaveCount(0);
-  const accountMapObservation = await page.evaluate(() => ({
-    calls: (
-    window as typeof window & {
-      __accountMapStorageCalls: Array<{ operation: 'get' | 'set' | 'remove'; key: string }>;
-    }
-    ).__accountMapStorageCalls,
-    protectedSlices: (() => {
-      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
-      return {
-        main: workspace.main,
-        simulation: workspace.simulation,
-        portfolio: workspace.portfolio,
-      };
-    })(),
-  }));
-  expect(accountMapObservation.calls.length).toBeGreaterThan(0);
-  expect([...new Set(accountMapObservation.calls.map(({ key }) => key))]).toEqual(['isf-workspace-v5']);
-  expect(accountMapObservation.calls.filter(({ operation }) => operation !== 'get')).toEqual([]);
-  expect(accountMapObservation.protectedSlices).toEqual({
-    main: supportedAccountMapWorkspace.main,
-    simulation: supportedAccountMapWorkspace.simulation,
-    portfolio: supportedAccountMapWorkspace.portfolio,
-  });
-});
-
 test('groups icon navigation and management in a compact dock across viewports', async ({ page }) => {
   await page.addInitScript((fixture) => {
     localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
@@ -370,7 +313,7 @@ test('groups icon navigation and management in a compact dock across viewports',
         const rect = link.getBoundingClientRect();
         return { width: rect.width, height: rect.height, top: rect.top };
       }));
-    expect(appTargets).toHaveLength(4);
+    expect(appTargets).toHaveLength(3);
     for (const target of appTargets) {
       expect(target.width).toBe(44);
       expect(target.height).toBe(44);
@@ -413,7 +356,7 @@ test('keeps all app icons visible while launcher geometry is unresolved', async 
 
   const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
   const links = navigation.locator('.journey-launcher__app-link');
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveCount(3);
 
   const unresolvedGeometry = await page.addStyleTag({
     content: `
@@ -428,11 +371,11 @@ test('keeps all app icons visible while launcher geometry is unresolved', async 
     `,
   });
 
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveCount(3);
   await expect(navigation.getByRole('button', { name: '앱 더보기' })).toHaveCount(0);
 
   await unresolvedGeometry.evaluate((style) => style.remove());
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveCount(3);
   await expect.poll(async () => links.first().evaluate((link) => link.getBoundingClientRect().width))
     .toBe(44);
 });
@@ -465,8 +408,6 @@ test('dock preview follows pointer and keyboard without changing the current app
 
   await portfolio.focus();
   await tracks(portfolio);
-  await page.keyboard.press('Tab');
-  await tracks(navigation.getByRole('link', { name: /계좌 연결/ }));
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: '관리 메뉴', exact: true })).toBeFocused();
   await tracks(main);
@@ -529,7 +470,6 @@ test('keeps each app management menu reachable and contained across viewports', 
     { path: 'apps/main/', text: '처음부터 다시' },
     { path: 'apps/simulation/', text: '시뮬레이션 다시 설정' },
     { path: 'apps/portfolio/', text: '투자 배분 처음부터 다시' },
-    { path: 'apps/account-map/', text: '아직 만든 연결 지도가 없습니다' },
   ];
 
   for (const viewport of [
@@ -577,51 +517,6 @@ test('keeps each app management menu reachable and contained across viewports', 
   }
 });
 
-test('keeps Account Map usable at mobile, tablet, and desktop widths', async ({ page }) => {
-  await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspace);
-  for (const viewport of [
-    { width: 390, height: 844 },
-    { width: 768, height: 900 },
-    { width: 1280, height: 900 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.goto('apps/account-map/');
-
-    const launcher = page.getByRole('navigation', { name: 'ISF 앱' });
-    const accountMapLink = page.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ });
-    await expect(launcher).toBeVisible();
-    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
-
-    await expect(accountMapLink).toHaveAttribute('aria-current', 'page');
-
-    const visibleTargetSizes = await page.locator(
-      '.journey-launcher__app-link, .account-map-setup button, .account-map-actions button',
-    ).evaluateAll((elements) => elements
-      .map((element) => element.getBoundingClientRect())
-      .filter((rect) => rect.width > 0 && rect.height > 0)
-      .map((rect) => ({ width: rect.width, height: rect.height })));
-    expect(visibleTargetSizes.length).toBeGreaterThan(0);
-    for (const size of visibleTargetSizes) {
-      // CSS pixel layout can report 43.999… for the 44px minimum at fractional device scale.
-      expect(size.width).toBeGreaterThanOrEqual(43.9);
-      expect(size.height).toBeGreaterThanOrEqual(43.9);
-    }
-
-    for (let attempt = 0; attempt < 8 && !await accountMapLink.evaluate(
-      (element) => document.activeElement === element,
-    ); attempt += 1) {
-      await page.keyboard.press('Tab');
-    }
-    await expect(accountMapLink).toBeFocused();
-    expect(await accountMapLink.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) >= 1;
-    })).toBe(true);
-
-    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-  }
-});
-
 test('explains app icons with pointer, keyboard and touch without duplicate management help', async ({ page }) => {
   await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspace);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -664,12 +559,12 @@ test('explains app icons with pointer, keyboard and touch without duplicate mana
 
 test('keeps the current app direct and exposes hidden apps through overflow', async ({ page }) => {
   await page.addInitScript((fixture) => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspace);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('apps/account-map/');
-  const narrowLauncher = await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+  await page.setViewportSize({ width: 768, height: 900 });
+  await page.goto('apps/portfolio/');
+  const narrowLauncher = await page.addStyleTag({ content: '.journey-launcher { width: 170px !important; }' });
 
   const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
-  await expect(navigation.getByRole('link', { name: /계좌 연결 \(Account Map\).*현재 위치/ })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ })).toBeVisible();
   const more = navigation.getByRole('button', { name: '앱 더보기' });
   await expect(more).toBeVisible();
   await expect(more).toHaveAttribute('aria-expanded', 'false');
@@ -679,10 +574,10 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   const overflowBox = await overflow.boundingBox();
   expect(overflowBox).not.toBeNull();
   expect(overflowBox!.x).toBeGreaterThanOrEqual(16);
-  expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(374);
+  expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(752);
   await expect(overflow.getByRole('link')).toHaveCount(2);
-  await expect(overflow.getByRole('link').nth(0)).toContainText('미래 성장 (Simulation)');
-  await expect(overflow.getByRole('link').nth(1)).toContainText('투자 배분 (Portfolio)');
+  await expect(overflow.getByRole('link').nth(0)).toContainText('자금 흐름 (Main)');
+  await expect(overflow.getByRole('link').nth(1)).toContainText('미래 성장 (Simulation)');
 
   const gear = page.getByRole('button', { name: '관리 메뉴' });
   await gear.click();
@@ -704,26 +599,24 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
   await narrowLauncher.evaluate((style) => style.remove());
-  await expect(navigation.getByRole('link')).toHaveCount(4);
+  await expect(navigation.getByRole('link')).toHaveCount(3);
   await expect(more).toHaveCount(0);
-  await expect(navigation.getByRole('link', { name: /계좌 연결.*현재 위치/ })).toBeFocused();
+  await expect(navigation.getByRole('link', { name: /투자 배분.*현재 위치/ })).toBeFocused();
 });
 
-test('commits launcher reveals before paint on the supported Account Map under reduced motion', async ({ page }) => {
+test('commits launcher reveals before paint on Portfolio under reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('apps/account-map/');
+  await page.goto('apps/portfolio/');
 
-  const accountMapMessage = page.locator('.account-map-message');
   const currentLine = page.locator(
     '[aria-current="page"] .journey-launcher__current-line',
   );
-  await expect(accountMapMessage).toBeVisible();
-  await expect(page.getByRole('heading', { name: '월 자금 계획이 먼저 필요해요' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect(currentLine).toBeVisible();
   expect(await readMotionState(currentLine)).toEqual({ opacity: 1, x: 0, y: 0 });
 
-  await page.addStyleTag({ content: '.journey-launcher { width: 220px !important; }' });
+  await page.addStyleTag({ content: '.journey-launcher { width: 170px !important; }' });
   const more = page.getByRole('button', { name: '앱 더보기' });
   await more.click();
   const overflow = page.getByRole('region', { name: '추가 앱' });
@@ -797,7 +690,7 @@ test('primary action labels meet text contrast in resting and hover states acros
     localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
   }, workspaceWithSimulationDraft);
 
-  for (const app of ['main', 'simulation', 'portfolio', 'account-map']) {
+  for (const app of ['main', 'simulation', 'portfolio']) {
     await page.goto(`apps/${app}/`);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     if (app === 'main') await page.getByRole('button', { name: '미래 성장 보기' }).focus();

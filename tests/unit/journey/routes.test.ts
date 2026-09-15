@@ -10,6 +10,6 @@ describe('appPath', () => {
 
   it('normalizes missing base boundary slashes', () => {
     expect(appPath('portfolio', 'IndividualSavingsFlowUI')).toBe('/IndividualSavingsFlowUI/apps/portfolio/');
-    expect(appPath('account-map', '/IndividualSavingsFlowUI')).toBe('/IndividualSavingsFlowUI/apps/account-map/');
+    expect(appPath('main', '/IndividualSavingsFlowUI')).toBe('/IndividualSavingsFlowUI/apps/main/');
   });
 });

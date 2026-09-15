@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe('report-vite-chunks', () => {
-  it('reports root HTML bytes separately from the four JavaScript entry baselines', () => {
+  it('reports root HTML bytes separately from the three JavaScript entry baselines', () => {
     const workingDirectory = mkdtempSync(resolve(tmpdir(), 'isf-vite-chunks-'));
     temporaryDirectories.push(workingDirectory);
     const distDirectory = resolve(workingDirectory, 'dist');
@@ -24,7 +24,6 @@ describe('report-vite-chunks', () => {
 
     writeFileSync(resolve(distDirectory, 'index.html'), 'root-html');
     writeFileSync(resolve(assetsDirectory, 'shared.js'), 'shared');
-    writeFileSync(resolve(assetsDirectory, 'account-map.js'), 'account');
     writeFileSync(resolve(assetsDirectory, 'main.js'), 'main');
     writeFileSync(resolve(assetsDirectory, 'portfolio.js'), 'portfolio');
     writeFileSync(resolve(assetsDirectory, 'simulation.js'), 'simulation');
@@ -32,12 +31,6 @@ describe('report-vite-chunks', () => {
       resolve(distDirectory, '.vite/manifest.json'),
       JSON.stringify({
         '_shared.js': { file: 'assets/shared.js' },
-        'apps/account-map/index.html': {
-          file: 'assets/account-map.js',
-          name: 'accountMap',
-          isEntry: true,
-          imports: ['_shared.js'],
-        },
         'apps/main/index.html': {
           file: 'assets/main.js',
           name: 'mainApp',
@@ -66,11 +59,6 @@ describe('report-vite-chunks', () => {
 
     expect(JSON.parse(output)).toEqual({
       rootHtmlBytes: 9,
-      accountMap: {
-        entryBytes: 7,
-        initialBytes: 13,
-        files: ['assets/account-map.js', 'assets/shared.js'],
-      },
       mainApp: {
         entryBytes: 4,
         initialBytes: 10,

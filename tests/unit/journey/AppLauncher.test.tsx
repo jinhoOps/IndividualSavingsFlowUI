@@ -46,11 +46,15 @@ afterEach(() => {
 });
 
 describe('AppLauncher', () => {
+  it('offers only the three supported products', () => {
+    render(<AppLauncher currentApp="main" />);
+    expect(screen.getAllByRole('link')).toHaveLength(3);
+    expect(screen.queryByRole('link', { name: /Account Map/ })).not.toBeInTheDocument();
+  });
   it.each([
     ['main', '자금 흐름 (Main)'],
     ['simulation', '미래 성장 (Simulation)'],
     ['portfolio', '투자 배분 (Portfolio)'],
-    ['account-map', '계좌 연결 (Account Map)'],
   ] satisfies ReadonlyArray<[JourneyApp, string]>)(
     'renders icon navigation and marks %s as the current location',
     (currentApp, currentLabel) => {
@@ -61,11 +65,11 @@ describe('AppLauncher', () => {
         name: new RegExp(`${escapeRegExp(currentLabel)}.*현재 위치`),
       });
       expect(currentLink).toHaveAttribute('aria-current', 'page');
-      expect(screen.getByRole('link', { name: /계좌 연결 \(Account Map\)/ })).toBeVisible();
+      expect(screen.queryByRole('link', { name: /계좌 연결 \(Account Map\)/ })).not.toBeInTheDocument();
       expect(screen.queryByText('준비 중')).not.toBeInTheDocument();
       expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
       expect(container.querySelector('details, summary')).toBeNull();
-      expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(4);
+      expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(3);
     },
   );
 
@@ -77,7 +81,7 @@ describe('AppLauncher', () => {
     const navigation = screen.getByRole('navigation', { name: 'ISF 앱' });
     const tools = screen.getByRole('group', { name: '앱 도구' });
     const management = screen.getByRole('button', { name: '관리 메뉴' });
-    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(within(navigation).getAllByRole('link')).toHaveLength(3);
     expect(within(navigation).queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
     expect(within(tools).getByRole('button', { name: '관리 메뉴' })).toBe(management);
     expect(screen.queryByRole('button', { name: '앱 아이콘 도움말' })).not.toBeInTheDocument();
@@ -96,7 +100,7 @@ describe('AppLauncher', () => {
   });
 
   it('keeps the current app direct and routes hidden apps through more', async () => {
-    const viewport = mockLauncherViewport(140);
+    const viewport = mockLauncherViewport(92);
 
     render(
       <>
@@ -109,15 +113,15 @@ describe('AppLauncher', () => {
     const navigation = screen.getByRole('navigation', { name: 'ISF 앱' });
     expect(within(navigation).getByRole('link', { name: /투자 배분 \(Portfolio\).*현재 위치/ }))
       .toHaveAttribute('aria-current', 'page');
-    await waitFor(() => expect(within(navigation).getAllByRole('link')).toHaveLength(2));
+    await waitFor(() => expect(within(navigation).getAllByRole('link')).toHaveLength(1));
     const more = within(navigation).getByRole('button', { name: '앱 더보기' });
     fireEvent.click(more);
     const menu = screen.getByRole('region', { name: '추가 앱' });
     expect(within(menu).getAllByRole('link')).toHaveLength(2);
     expect(within(menu).getByRole('link', { name: /미래 성장 \(Simulation\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/simulation/'));
-    expect(within(menu).getByRole('link', { name: /계좌 연결 \(Account Map\)/ }))
-      .toHaveAttribute('href', expect.stringContaining('/apps/account-map/'));
+    expect(within(menu).getByRole('link', { name: /자금 흐름 \(Main\)/ }))
+      .toHaveAttribute('href', expect.stringContaining('/apps/main/'));
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
@@ -129,13 +133,13 @@ describe('AppLauncher', () => {
     expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
 
     viewport.resize(188);
-    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(within(navigation).getAllByRole('link')).toHaveLength(3);
     expect(within(navigation).queryByRole('button', { name: '앱 더보기' }))
       .not.toBeInTheDocument();
   });
 
   it('reveals the current line and overflow with fast shared motion while state closes immediately', async () => {
-    const viewport = mockLauncherViewport(140);
+    const viewport = mockLauncherViewport(92);
     const { container } = render(<AppLauncher currentApp="portfolio" />);
     viewport.flushMeasurement();
 
@@ -170,8 +174,8 @@ describe('AppLauncher', () => {
   });
 
   it('preserves app focus when a resize moves an overflow link into direct navigation', async () => {
-    const viewport = mockLauncherViewport(140);
-    render(<AppLauncher currentApp="account-map" />);
+    const viewport = mockLauncherViewport(92);
+    render(<AppLauncher currentApp="portfolio" />);
     viewport.flushMeasurement();
 
     fireEvent.click(await screen.findByRole('button', { name: '앱 더보기' }));
@@ -185,7 +189,7 @@ describe('AppLauncher', () => {
       expect(screen.getByRole('link', { name: /미래 성장 \(Simulation\)/ })).toHaveFocus();
     });
 
-    viewport.resize(140);
+    viewport.resize(92);
     await waitFor(() => expect(screen.getByRole('button', { name: '앱 더보기' })).toHaveFocus());
   });
 

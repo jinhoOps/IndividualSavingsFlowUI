@@ -28,6 +28,9 @@ const forbiddenDirectories = [
   'shared/pwa',
   'shared/core',
   'shared/styles',
+  'src/account-map/ui',
+  'src/account-map/application',
+  'src/account-map/infrastructure',
 ] as const;
 
 const forbiddenRuntimeTokens = [
@@ -54,6 +57,9 @@ const retiredPaths = [
   'src/core/types/money.ts',
   'tests/unit/core/IsfStore.test.ts',
   'tests/step1.spec.ts',
+  'src/journey/accountMap.tsx',
+  'src/journey/ui/AccountMapJourney.tsx',
+  'src/journey/ui/MainPlanEditOverlay.tsx',
 ] as const;
 
 describe('supported route closure', () => {

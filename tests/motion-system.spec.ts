@@ -122,7 +122,6 @@ for (const viewport of VIEWPORTS) {
     test.skip(testInfo.project.name === 'pwa-chromium', 'The preview project runs only the offline revisit gate.');
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await installAccountMapFirstFrameProbe(page);
 
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, MAIN, 'normal');
     await captureMainReview(page, testInfo.outputPath.bind(testInfo), viewport.width, {
@@ -222,27 +221,9 @@ for (const viewport of VIEWPORTS) {
     await expectNoDocumentOverflow(page);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-sort-after.png`);
 
-    await openWithWorkspace(page, 'apps/account-map/', WORKSPACE);
-    const setup = page.locator('.account-map-setup');
-    const setupFirstFrame = await readProbedAccountMapFirstFrame(page);
-    expect(setupFirstFrame).toEqual({
-      activeAnimations: 0,
-      heading: '월 자금 기준 확인',
-      opacity: 1,
-      x: 0,
-      y: 0,
-    });
-    await expect(page.getByRole('heading', { name: '월 자금 기준 확인' })).toBeVisible();
-    const basisContinue = page.getByRole('button', { name: '이 금액으로 계속' });
-    await basisContinue.focus();
-    await expect(basisContinue).toBeFocused();
-    await expectFinalTransform(setup);
-    await expectNoDocumentOverflow(page);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-setup.png`);
-
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await captureReducedMotionFinals(page, viewport.width);
-    await screenshot(page, testInfo.outputPath.bind(testInfo), `account-map-${viewport.width}-reduced-motion.png`);
+    await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-reduced-motion.png`);
   });
 }
 
@@ -261,7 +242,6 @@ test('PWA offline revisit keeps all app routes and final motion state available'
     { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-allocation' },
     { path: 'apps/simulation/', heading: /1억 원을 모으려면/, motion: '.growth-chart' },
     { path: 'apps/portfolio/', heading: '안정 50%', motion: '.portfolio-summary' },
-    { path: 'apps/account-map/', heading: '월 자금 기준 확인', motion: '.account-map-setup' },
   ] as const;
 
   for (const route of routes) {
@@ -291,9 +271,6 @@ test('PWA offline revisit keeps all app routes and final motion state available'
           page.locator('.portfolio-summary').getByRole('listitem'),
           PORTFOLIO_INITIAL_ROWS,
         );
-      }
-      if (route.path === 'apps/account-map/') {
-        await expectFinalTransform(page.locator('.account-map-setup'));
       }
     }
   } finally {
@@ -434,15 +411,6 @@ async function captureReducedMotionFinals(page: Page, width: number): Promise<vo
   ))).toBe(true);
   expect(reducedPortfolioFirstRead.activeAnimations).toBe(0);
 
-  await openWithWorkspace(page, 'apps/account-map/', WORKSPACE);
-  const reducedSetupFirstRead = await readProbedAccountMapFirstFrame(page);
-  expect(reducedSetupFirstRead).toEqual({
-    activeAnimations: 0,
-    heading: '월 자금 기준 확인',
-    opacity: 1,
-    x: 0,
-    y: 0,
-  });
   await expectNoDocumentOverflow(page);
   expect(width).toBeGreaterThan(0);
 }
@@ -669,61 +637,6 @@ async function readProbedPortfolioBoundary(page: Page) {
       }>;
     };
   }).__isfPortfolioBoundary);
-}
-
-async function expectFinalTransform(locator: Locator): Promise<void> {
-  await expect.poll(() => locator.evaluate((element) => {
-    const style = getComputedStyle(element);
-    const matrix = new DOMMatrixReadOnly(style.transform);
-    return { opacity: Number(style.opacity), x: matrix.m41, y: matrix.m42 };
-  })).toEqual({ opacity: 1, x: 0, y: 0 });
-}
-
-async function installAccountMapFirstFrameProbe(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const stateWindow = window as typeof window & {
-      __isfAccountMapFirstFrame?: {
-        activeAnimations: number;
-        heading: string | undefined;
-        opacity: number;
-        x: number;
-        y: number;
-      };
-    };
-    const observer = new MutationObserver(() => {
-      const root = document.querySelector<HTMLElement>('.account-map-setup');
-      if (root === null) return;
-      const style = getComputedStyle(root);
-      const matrix = new DOMMatrixReadOnly(style.transform);
-      stateWindow.__isfAccountMapFirstFrame = {
-        activeAnimations: root.getAnimations({ subtree: true })
-          .filter((animation) => (
-            (animation.playState === 'running' || animation.playState === 'pending')
-            && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1
-          ))
-          .length,
-        heading: root.querySelector('h1')?.textContent?.trim(),
-        opacity: Number(style.opacity),
-        x: matrix.m41,
-        y: matrix.m42,
-      };
-      observer.disconnect();
-    });
-    observer.observe(document, { childList: true, subtree: true });
-  });
-}
-
-async function readProbedAccountMapFirstFrame(page: Page) {
-  await page.waitForFunction(() => '__isfAccountMapFirstFrame' in window);
-  return page.evaluate(() => (window as typeof window & {
-    __isfAccountMapFirstFrame: {
-      activeAnimations: number;
-      heading: string | undefined;
-      opacity: number;
-      x: number;
-      y: number;
-    };
-  }).__isfAccountMapFirstFrame);
 }
 
 async function screenshot(

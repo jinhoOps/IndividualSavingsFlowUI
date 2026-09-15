@@ -1,13 +1,12 @@
 # IndividualSavings Flow UIUX
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 실행 계획으로 연결하는 정적 웹 앱입니다. 2026-09-08 최신 main 기능과 Supabase workspace v4를 통합하고 원격 main push·Pages 배포를 완료했습니다. 2026-09-10 지출 도우미·workspace v5도 운영 DB에 적용하고 Pages 배포와 실제 계정 저장을 검증했습니다. 공개 사이트의 실제 임시 이메일 로그인·계정 저장·두 브라우저 동기화를 검증했습니다. 2026-09-10 Google 테스트 계정의 실제 로그인과 기존 계정·데이터 보존을 확인했습니다. Google OAuth는 테스트 모드이며 일반 사용자 공개는 아직 미완료입니다. [Google 연결 기록](docs/superpowers/evidence/2026-09-10-google-oauth-linking.md)을 참고하세요. [최신 배포 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [계정 저장 운영 안내](docs/supabase-account-setup.md)를 따릅니다.
+개인 재무 흐름을 입력하고 장기 투자 전략과 배분 계획으로 연결하는 정적 웹 앱입니다. Main, Simulation, Portfolio 세 앱이 하나의 Supabase 계정 workspace를 사용합니다.
 
-현재 지원 제품은 Main, Simulation, Portfolio와 Account Map입니다. 네 앱은 shared workspace를 사용합니다.
-
-- **Main**: 월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 보여주고 월간 계획을 계정에 저장하는 현재 제품 기준선입니다.
+- **Main**: 월 실수령액, 지출, 저축, 투자와 남는 돈을 보여주고 월간 계획을 저장합니다.
 - **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
-- **Portfolio**: 최신 Main 투자금을 첫 설정 흐름에서 전체 기준으로 배분하고, 이후 안정 비중 중심 결과와 집중 편집 화면을 제공합니다.
-- **Account Map**: Main의 다섯 월 금액을 읽어 목적 배정과 계좌 간 월 계획 흐름을 만들고 노드 지도로 관리합니다.
+- **Portfolio**: 최신 Main 투자금을 투자 대상과 현금에 배분하고 안정 비중과 배분 결과를 보여줍니다.
+
+2026-09-15 Account Map 앱을 제거했습니다. 기존 `apps/account-map/`과 `apps/account-map/index.html`은 Main으로 이동하며, 저장된 계좌지도·금융 위치 데이터와 백업·복구 호환성은 유지합니다. [제거 설계](docs/superpowers/specs/2026-09-15-account-map-retirement-design.md)를 참고하세요.
 
 배포 페이지: https://jinhoops.github.io/IndividualSavingsFlowUI/
 
@@ -15,19 +14,18 @@
 
 ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금 들어오는 돈이 생활비, 저축과 투자로 어떻게 나뉘는지 이해하고, 현재 선택을 장기 계획과 실제 실행으로 연결해 가기 위한 개인 재무 플래닝 도구입니다.
 
-현재는 월간 현금흐름을 정리하는 Main, N년 후 기대 자산을 비교하는 Simulation, 최신 Main 투자금을 전체 기준으로 배분하는 Portfolio, 계획을 실제 금융 위치에 연결하는 Account Map을 제공합니다. 네 앱은 하나의 versioned workspace를 사용합니다.
+현재는 월간 현금흐름을 정리하는 Main, N년 후 기대 자산을 비교하는 Simulation, 최신 Main 투자금을 전체 기준으로 배분하는 Portfolio를 제공합니다.
 
 여기서 보여주는 미래 값은 확정된 예측이나 수익 보장이 아닙니다. 사용자가 입력한 현재 상황과 가정을 바탕으로 여러 선택지를 비교하고 더 나은 질문을 만들기 위한 계획용 시나리오입니다.
 
 ## 프로젝트 목표
 
-ISF의 네 앱은 다음 질문에 답합니다.
+ISF의 세 앱은 다음 질문에 답합니다.
 
 - 내 월 수입은 어디로 흘러가는가?
 - 생활비, 저축과 투자 비중은 현재 계획에 맞는가?
 - **Simulation**: 정한 월 저축·투자가 장기 복리로 얼마나 커지는가?
 - **Portfolio**: 선택한 전략을 어떤 투자 대상으로 배분할 것인가?
-- **Account Map**: 금융 위치와 계좌 간 월 계획 흐름을 어떻게 관리할 것인가?
 
 사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화하며, 로그인한 Supabase 계정의 workspace를 저장합니다. Google과 임시 이메일·비밀번호 로그인은 같은 사용자 ID와 저장 계약을 사용합니다. 별도 앱 서버나 은행 연동은 없습니다.
 
@@ -55,9 +53,7 @@ Main에 적용된 계획이 있으면 화면 최하단에서 추가 스크롤·�
 
 기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
 
-런처는 Main, Simulation, Portfolio와 Account Map을 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분합니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기로 확인할 수 있습니다.
-
-## Portfolio와 Account Map
+런처는 Main, Simulation, Portfolio를 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분합니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기로 확인할 수 있습니다.
 
 ### Portfolio
 
@@ -65,15 +61,11 @@ Main에 적용된 계획이 있으면 화면 최하단에서 추가 스크롤·�
 
 선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화합니다.
 
-### Account Map
-
-Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합니다. 최초 설정에서 수입·주거·생활비·저축·투자를 계좌·보관처에 배정하고, 계좌 간 고정 이체와 `남은 금액 전부` 규칙을 확인합니다. 완료 지도는 전체 월 계획 흐름을 기본으로 보이고, 계좌를 한 번 선택하면 상·하류·목적과 명시적 흐름 편집 action을 보여줍니다. 이는 실제 잔액·거래 또는 실행 이체가 아닙니다. Main 금액 수정은 지도를 유지한 Main 소유 overlay에서만 저장하며, 저장 뒤에는 사용자가 `현재 Main 기준으로 확인`을 명시해야 stale notice가 해제됩니다. Account Map command는 `workspace.locations`와 `workspace.accountMap`만 갱신하고 Main·Simulation·Portfolio에는 write-back하지 않습니다. 상세 계약은 [Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)에 정의되어 있습니다.
-
 ## 공유 인프라
 
-현재 네 앱은 다음 기반을 공유합니다.
+현재 세 앱은 다음 기반을 공유합니다.
 
-- 네 목적지 앱 런처와 현재 위치 표시
+- 세 목적지 앱 런처와 현재 위치 표시
 - 계정당 하나의 Supabase JSONB workspace(schema v5)와 앱별 typed slice adapter
 - RLS 계정 격리, 서버 revision 검사와 mutation receipt를 사용한 동시 저장·중복 재시도 보호
 - 기존 whole-workspace 백업의 검증·복원 호환성과 미전송 입력 복구
@@ -84,7 +76,7 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 
 금융 데이터 원본은 로그인한 계정의 서버 workspace입니다. 브라우저에는 계정별 마지막 snapshot과 미전송 입력을 복구용으로 보관합니다. 오프라인 재방문은 읽기 전용이며, 열린 화면은 focus·online 복귀 또는 visible 상태의 30초 조회로 최신화합니다. 다른 기기가 먼저 저장했으면 입력을 유지하고 명시적으로 재적용합니다. Portfolio의 금액 표시·정렬 같은 보기 설정은 금융 workspace와 별개의 브라우저 설정입니다.
 
-현재 코드는 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)의 workspace v5를 사용합니다. 기존 [v4 통합](docs/superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md) 위에 Main 항목별 답변을 추가하고 모든 RPC에 protocol 5를 요구합니다. 계정 캐시는 `isf-account-workspace-v3`이며 구 v2/v1 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 보관합니다.
+현재 코드는 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)의 workspace v5를 사용합니다. 기존 [v4 통합](docs/superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md) 위에 Main 항목별 답변을 추가하고 모든 RPC에 protocol 5를 요구합니다. Account Map 제거 후에도 `workspace.accountMap`과 `workspace.locations`, schema v5, 서버 protocol 5와 기존 DB migration·RPC를 보존합니다. 계정 캐시는 `isf-account-workspace-v3`이며 구 v2/v1 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 보관합니다.
 
 브라우저 현재 키는 `isf-workspace-v5`이며 명시적 가져오기 후보입니다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본 `isf-workspace-v1` 순으로 읽기 전용 변환합니다. invalid 최신 원본에서는 과거 버전으로 fallback하지 않고 원본·foreign record를 변경하거나 삭제하지 않습니다. 일반 톱니 메뉴의 백업 내보내기·가져오기는 제거했습니다. 초기 브라우저 이전·저장 오류 복구용 backup format 4/workspace v5와 기존 format 3/2/1 parser·converter는 유지합니다. 미전송 입력은 별도의 복구 파일로 제공합니다.
 
@@ -98,10 +90,12 @@ Account Map은 Main의 다섯 월 금액을 읽기 전용 기준으로 사용합
 - **계정별 원본**: 서버 저장 확정 후 성공을 표시하고, 로컬 원본과 미전송 입력은 구분해 보존합니다.
 - **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
 - **시각화 중심**: 현재 Main의 월 자금 구성과 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
-- **명시적 연결**: 앱 이동은 URL만 사용하고 Simulation·Portfolio·Account Map이 같은 workspace의 최신 Main slice를 읽습니다. Account Map의 Main 수정 요청은 Main 소유 overlay가 처리합니다.
+- **명시적 연결**: 앱 이동은 URL만 사용하고 Simulation·Portfolio가 같은 workspace의 최신 Main slice를 읽습니다. Main 금액은 Main UI에서 수정합니다.
 - **책임 분리**: 각 앱은 자신의 draft/applied 상태만 쓰고 다른 제품 slice에는 암묵적으로 write-back하지 않습니다.
 
 ## Legacy Migration Status
+
+Account Map의 과거 Phase B 구현과 운영 검증은 이력으로 보존하며 현재 지원 상태를 뜻하지 않습니다. [v4 통합 기록](docs/superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md), [v5 운영 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [Google 연결 기록](docs/superpowers/evidence/2026-09-10-google-oauth-linking.md)은 각 배포 당시의 증거입니다. Google OAuth는 테스트 모드이며 일반 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
 아직 이관하지 않은 기능이나 데이터 호환성 지식이 남아 있는 레거시 코드는 임시로 보존합니다.
 
@@ -152,7 +146,7 @@ npm run build
 
 ## 개발 구조
 
-이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation, Portfolio와 Account Map은 React·TypeScript·Tailwind CSS로 구성됩니다.
+이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation, Portfolio는 React·TypeScript·Tailwind CSS로 구성됩니다.
 
 큰 책임 경계:
 
@@ -161,7 +155,7 @@ npm run build
 - **현재 계산**: Main 월간 현금흐름, 잔액과 적자
 - **현재 시각화**: Main 요약 카드와 월 자금 구성
 - **저장과 공유**: 단일 revisioned workspace, 앱 slice adapter, 공유 금융 위치와 whole-workspace JSON
-- **앱 연결**: URL로 이동하는 Main → Simulation → Portfolio → Account Map 상세 화면
+- **앱 연결**: URL로 이동하는 Main → Simulation → Portfolio 상세 화면
 - **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
 
 ## 검증 기준
@@ -184,10 +178,10 @@ Main의 빠른 설정이나 대시보드를 수정했다면 focused 회귀를 �
 npx playwright test tests/main-react.spec.ts
 ```
 
-Account Map 사용자 흐름, Main overlay와 v3/v2 호환성 회귀는 다음 명령으로 실행합니다.
+세 앱의 이동과 폐기된 Account Map URL의 Main 연결 회귀는 다음 명령으로 실행합니다.
 
 ```bash
-npx playwright test tests/account-map.spec.ts --reporter=list
+npx playwright test tests/app-journey.spec.ts tests/account-workspace.spec.ts --reporter=list
 ```
 
 계정 흐름은 `npx playwright test --project=cloud`, 기존 로컬 데이터 호환성과 제품 회귀는 테스트 전용 entry의 `--project=chromium`으로 검증합니다. 인증 우회는 production entry에 없습니다. DB 권한·트랜잭션 검증은 Docker 실행 후 `node scripts/test-workspace-db.mjs`로 수행하며 운영 DB에는 접속하지 않습니다.
@@ -196,11 +190,10 @@ Node 25 이상에서 실험적 Web Storage가 jsdom과 충돌하면 단위 테�
 
 ## 현재 로드맵
 
-Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio, planned account-flow Account Map은 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
+Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio는 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
 - **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 운영 DB·Pages 배포와 등록한 Google 테스트 계정의 실제 왕복은 검증했습니다. 일반 Google 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
-- **Phase B 완료**: 계좌 우선 설정, 계좌·보관처 registry, 노드 지도와 가역적 관리가 있는 Account Map
-- **Phase C**: 현재 Main metric 영역을 대체하는 Main·Simulation·Portfolio·Account Map 연결 결과 카드
+- **연결 결과 카드**: 기존 Phase C의 4개 앱 연결 계획은 Account Map 제거로 대체되며, 3개 앱 기준의 후속 설계가 필요합니다.
 - **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
 - **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture
@@ -216,8 +209,8 @@ Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfol
 - [Design Contract](DESIGN.md)
 - [Product Direction and Documentation Spec](docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
 - [Journey Snapshot Retirement Spec](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
-- [Connected Account Map Workspace Design](docs/superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)
-- [Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)
+- [과거 Connected Account Map Workspace Design](docs/superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)
+- [과거 Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)
 - [Shared Workspace Foundation Plan](docs/superpowers/plans/2026-08-06-shared-workspace-foundation.md)
 - [Account Flow Decision History](docs/adr/0002-account-flow-belongs-to-portfolio-boundary.md)
 

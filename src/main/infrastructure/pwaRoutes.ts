@@ -25,7 +25,7 @@ export function createMpaNavigationCaching(
     navigateFallback: null,
     runtimeCaching: [{
       urlPattern: new RegExp(
-        `^https?://[^/]+${escapedBase}apps/(?:main|simulation|portfolio|account-map)/(?:index\\.html)?(?:[?#].*)?$`,
+        `^https?://[^/]+${escapedBase}apps/(?:main|simulation|portfolio)/(?:index\\.html)?(?:[?#].*)?$`,
       ),
       handler: 'NetworkFirst',
       options: {

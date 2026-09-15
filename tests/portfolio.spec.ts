@@ -650,15 +650,29 @@ for (const viewport of [
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
   });
 }
-test('does not expose account or custody management and preserves dormant location data', async ({ page }) => {
+test('does not expose account or custody management and preserves retired Account Map data', async ({ page }) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('isf-retired-map-seeded')) return;
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
+    workspace.accountMap = {draft: null, applied: {
+      schemaVersion: 3, sourceMainUpdatedAt: workspace.main.applied.updatedAt,
+      customPurposes: [], transfers: [],
+      links: [{id: 'investing-isa', purposeId: 'system:investing', locationId: 'loc-isa',
+        monthlyAmountWon: 200_000, remainder: true, status: 'active', createdAt: 1, updatedAt: 1}],
+      setupCompletedAt: 1, updatedAt: 1,
+    }};
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+    sessionStorage.setItem('isf-retired-map-seeded', 'true');
+  });
   await page.goto('apps/portfolio/');
 
   const preservedBefore = await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return {
       locations: workspace.locations,
+      accountMap: workspace.accountMap,
       locationPlans: workspace.portfolio.plans.filter(
         (plan: { scope: { type: string } }) => plan.scope.type === 'location',
       ),
@@ -683,10 +697,13 @@ test('does not expose account or custody management and preserves dormant locati
     )?.items[0].shareUnits;
   })).toBe(500_000);
 
+  await page.reload();
+  await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
   expect(await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     return {
       locations: workspace.locations,
+      accountMap: workspace.accountMap,
       locationPlans: workspace.portfolio.plans.filter(
         (plan: { scope: { type: string } }) => plan.scope.type === 'location',
       ),

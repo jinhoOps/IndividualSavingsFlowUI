@@ -4,9 +4,9 @@
 
 Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별 계획 경험으로 바꾸는 도구입니다. 시각적 기반은 종이 같은 **ISF Pearl** 캔버스와 단색 테두리의 **flat editorial panel**입니다. 전통적인 스프레드시트의 긴장감은 줄이되 숫자의 정밀성과 신뢰감은 유지합니다.
 
-이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio와 account-first Account Map에 적용됩니다. Account Map 지도·계좌 흐름·Main overlay 표현은 [Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)을 따릅니다. 과거 레거시 화면과 superseded Account Map design의 모양이나 상호작용은 새 UI의 기준이 아닙니다.
+이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio에 적용됩니다. Account Map UI와 전용 Main overlay는 제거되었으며 과거 화면·상호작용은 새 UI의 기준이 아닙니다. 기존 `apps/account-map/`과 `apps/account-map/index.html`은 Main으로 이동합니다. [Account Map 제거 설계](docs/superpowers/specs/2026-09-15-account-map-retirement-design.md)를 따릅니다.
 
-현재 delivery boundary는 명확히 나눕니다. 현재 코드의 schema v5 단일 workspace, whole-workspace backup과 aggregate-first Portfolio, account-first Account Map이 현재 지원 기준선입니다. v4/v3는 read-only migration/rollback source이며 v5 운영 DB 적용·배포와 실제 계정 검증을 완료했습니다. Main 연결 결과 카드는 Phase C 범위이며, Phase 4 legacy retirement의 [최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 통과로 기록되어 있습니다. Portfolio의 `투자 위치` UI와 shared location command 진입점은 제거되었으며 보존 데이터만 migration fixture 계약으로 남습니다.
+schema v5 단일 workspace와 whole-workspace backup은 유지하며 `workspace.accountMap`과 `workspace.locations`는 기존 데이터의 저장·복구 호환성을 위해 보존합니다. 서버 protocol 5와 계정 캐시·미전송 입력 복구 계약도 유지합니다. v4/v3는 read-only migration/rollback source입니다. [v5 운영 적용](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [Phase 4 legacy retirement 최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 각 시점의 이력입니다. 기존 Phase C의 4개 앱 연결 결과 카드 계획은 대체되었으며 후속 설계 전에는 현재 UI 계약으로 취급하지 않습니다.
 
 ## Experience Principles
 
@@ -28,8 +28,8 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 2026-09-10 Google 연결 후 로그인과 세션 만료 재로그인에서 Google 버튼을 먼저 표시하고, 기존 이메일·비밀번호 폼을 보조 경로로 유지합니다. Google 버튼 → 이메일 → 비밀번호 → 이메일 제출 순서로 키보드 focus가 이동합니다. 임시 로그인은 실제 Supabase 인증을 사용하며 Google 인증을 완료한 것처럼 표시하지 않습니다. 회원가입이나 계정 자동 생성은 제공하지 않습니다.
 - 이메일·비밀번호 입력에는 명시적 label과 적절한 autocomplete를 제공하고 비밀번호는 가려서 입력합니다. 비밀번호를 미리 채우거나 안내 문구에 공개하지 않으며, 요청 중 중복 제출을 막고 실패 시 같은 화면에서 접근 가능한 오류와 재시도를 제공합니다. 어느 로그인 경로에서도 인증 성공과 workspace 검증 전 금융 화면을 열지 않습니다.
 - 내 계정에서 계정 식별 정보, 마지막 저장 시각과 필요한 경우 미전송 복구 파일을 제공합니다. 정상 자동 저장은 상시 성공 배너로 알리지 않습니다.
-- 계정 식별 정보·마지막 저장·브라우저 계획 교체·미전송 복구·로그아웃은 네 앱의 기존 톱니바퀴 관리 메뉴 하단 `계정` 영역에 모읍니다. 별도 상단 `내 계정` 버튼은 두지 않습니다. 오프라인에도 미전송 입력 복구와 로그아웃은 가능하며 금융 입력·앱별 변경 행동은 잠급니다. 오류·충돌·오프라인 알림은 메뉴 밖에서도 보이게 유지합니다.
-- 충돌 때 현재 입력을 보존하고 최신 계획 채택 또는 명시적 재적용을 제공합니다. 전체 복원은 대상 계정·현재/복원 요약을 확인하며 충돌 후에도 재확인합니다. Account Map의 Main-null 예외는 유지합니다.
+- 계정 식별 정보·마지막 저장·브라우저 계획 교체·미전송 복구·로그아웃은 세 앱의 기존 톱니바퀴 관리 메뉴 하단 `계정` 영역에 모읍니다. 별도 상단 `내 계정` 버튼은 두지 않습니다. 오프라인에도 미전송 입력 복구와 로그아웃은 가능하며 금융 입력·앱별 변경 행동은 잠급니다. 오류·충돌·오프라인 알림은 메뉴 밖에서도 보이게 유지합니다.
+- 충돌 때 현재 입력을 보존하고 최신 계획 채택 또는 명시적 재적용을 제공합니다. 전체 복원은 대상 계정·현재/복원 요약을 확인하며 충돌 후에도 재확인합니다.
 - 오프라인에는 마지막 계정 계획을 읽기 전용으로 표시하고 만료 세션에서는 화면을 잠급니다. 재로그인 후 복구 입력을 자동 서버 저장하지 않습니다.
 - 로그아웃 시 미전송 입력이 있으면 복구 파일 보관 또는 명시적 폐기를 선택합니다. 미전송 입력은 서버에 저장된 계획과 구분합니다.
 - 로그인·이전·계정 메뉴·충돌 안내는 390px, 768px와 desktop에서 overflow 없이 표시하고 조작 영역 44px, 키보드 focus와 접근 가능한 이름을 유지합니다. 전체 교체·폐기 확인은 브라우저 기본 확인창을 사용합니다.
@@ -53,7 +53,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 다섯 금액 편집은 공통 `월 금액 편집`으로도 엽니다. 767px 이하는 하단 고정 바, 768px 이상은 요약 카드 하단 버튼입니다. 바는 탭·키보드 진입점이며 드래그 동작은 없습니다.
 - Simulation 진입점은 기본 화면에서 시각적으로 숨깁니다. 페이지 끝에 도착한 뒤 새로 시작한 아래 스크롤 또는 위쪽 스와이프로 `이 계획을 계속하면?`과 `미래 성장 보기`를 드러냅니다. 노출만으로 이동하지 않으며 버튼 활성화로만 URL 탐색합니다. 키보드 Tab으로 진입점에 도달하면 즉시 드러내고, 모바일 고정 편집 바에 가리지 않습니다. 편집기·모달·내부 스크롤 중에는 탐색 제스처를 무시합니다. 기존 런처 이동은 유지합니다.
 - Main 소유 편집기는 제목·닫기·설명 뒤에 다섯 금액을 label–input 행으로 표시합니다. 단위는 입력 오른쪽에 두고, 빠른 금액 조정은 focus된 행에서만 펼칩니다. 오류는 해당 행 아래에 연결합니다. 모바일은 bottom sheet, 768px 이상은 읽을 수 있는 너비의 side panel을 유지합니다.
-- 편집 footer는 상태 문구 아래 `취소`·`적용`을 한 줄로 배치합니다. 변경 전 적용 비활성, 저장 중 잠금, 실패 재시도와 draft 보존 동작은 유지합니다. Main과 Account Map에서 여는 Main 소유 편집기에 같은 규칙을 적용합니다.
+- 편집 footer는 상태 문구 아래 `취소`·`적용`을 한 줄로 배치합니다. 변경 전 적용 비활성, 저장 중 잠금, 실패 재시도와 draft 보존 동작은 유지합니다.
 
 ### 지출 계산 도우미
 
@@ -71,11 +71,11 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 ### Current Journey
 
-- 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`, `계좌 연결 (Account Map)`을 각각 집, 상승 그래프, 분할 도넛, 펼친 통장 아이콘으로 표시합니다.
+- 앱 런처는 `자금 흐름 (Main)`, `미래 성장 (Simulation)`, `투자 배분 (Portfolio)`를 각각 집, 상승 그래프, 분할 도넛 아이콘으로 표시합니다.
 - 현재 위치는 아이콘 아래 선과 `aria-current`로 표시합니다.
 - 앱 런처와 CTA는 URL 탐색만 수행하며 데이터를 전달하거나 저장하지 않습니다.
 - Simulation과 Portfolio는 현재 v5 workspace의 Main applied를 각자의 읽기 전용 adapter로 읽고 write-back하지 않습니다. 브라우저 이전 후보는 v5 → v4 → v3 → retired v1/v2 우선순위로 읽고, 존재하지만 invalid인 최신 원본에서 이전 버전으로 fallback하지 않습니다.
-- Simulation과 Portfolio의 Main read는 읽기 전용입니다. Portfolio는 자기 slice만, Account Map은 자기 slice와 공유 금융 위치 registry만 갱신합니다. 성공한 write마다 monotonic revision을 증가시킵니다.
+- Simulation과 Portfolio의 Main read는 읽기 전용입니다. 각 앱은 자기 slice만 갱신하고 보존된 계좌지도·금융 위치 데이터는 변경하지 않습니다. 성공한 write마다 monotonic revision을 증가시킵니다.
 
 ### Simulation
 
@@ -108,22 +108,6 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 - 현재 배분 편집과 결과는 항상 `전체 기준`이 우선입니다.
 - 최초 설정, 결과와 배분 수정 어디에서도 계좌·기관·보관처 또는 공유 금융 위치 관리 UI를 표시하지 않습니다.
 - retired location-scoped Portfolio 데이터는 conversion에서 현재 state로 보존하지 않으며, Portfolio가 이를 만들거나 편집할 수 있는 것처럼 표현하지 않습니다.
-
-### Account Map
-
-- 최초 생성은 월 계획 확인 → 목적별 계좌 질문 → 이체 계획 → 지도 검토로 안내합니다. 완료 후에는 목적별 배정·계좌 정보·계좌 간 흐름을 요약 행에서 바로 편집합니다. 모바일 고정 편집 진입점, 하단 sheet/768px 이상 우측 panel, 미저장 닫기 확인과 입력·focus 보존은 [계좌 맵 입력 설계](docs/design/account-map-input-redesign.md)를 따릅니다.
-
-- 계좌·기관·보관처의 생성, 이름 변경과 보관을 Account Map이 소유합니다.
-- Portfolio 투자 대상과 계좌·보관처의 연결은 별도 승인된 상세 명세가 있을 때만 제공하며, Account Map command는 Main에 write-back하지 않습니다.
-- 완료 화면은 주 수입 계좌를 먼저 두는 하나의 account-first 계획 흐름 관계도를 주요 시각 요소로 사용합니다. 목적과 계좌·보관처의 배정, 계좌 간 고정 이체와 `남은 금액 전부` 규칙은 실제 잔액·거래·계좌 간 실행 이체가 아닙니다.
-- 기본 상태는 전체 계좌 토폴로지, 목적 기준 금액과 계획상 부족·미배정을 보여줍니다. 관계 유형, rule, excess와 선택 상태는 색상과 짧은 텍스트를 함께 사용해 색상만으로 구분하지 않습니다. zero sweep도 숨기지 않습니다.
-- 계좌의 첫 pointer·touch·keyboard 선택은 도달 가능한 상·하류 흐름과 목적, 고정 금액 또는 sweep 규칙을 정적 최종 상태로 공개하고 `계좌 정보 편집`·`연결 추가`·`흐름 편집`을 명시한다. 두 번째 선택을 요구하지 않으며 reduced-motion에서는 즉시 최종 상태를 보입니다.
-- `계좌 정보 편집`은 선택한 계좌의 편집 양식을 바로 열며, 닫기·취소·저장 뒤에는 진입 버튼으로 focus를 돌려줍니다. 계좌 보관은 편집 맥락에서도 접근할 수 있고 영향을 먼저 확인합니다.
-- 자기 이체, 중복 active source/target, cycle, 없는/보관된 endpoint, 한 출발 계좌의 복수 sweep은 적용 전에 차단합니다. 계획상 부족은 경고이며 저장 corruption이 아닙니다.
-- Account Map에서 Main 금액 수정을 요청하면 같은 URL의 journey overlay가 Main 소유 editor를 mounted map 위에 표시한다. 배경 map은 blur·`inert`가 되고, overlay는 labelled modal, focus trap, Escape/Back close와 trigger focus 복원을 제공한다. dirty Escape/Back은 discard 확인을 거치고, 실패·conflict에서는 input을 유지한다.
-- 성공한 Main 저장 뒤 Map은 최신 workspace를 다시 읽고, `sourceMainUpdatedAt !== main.updatedAt`이면 하나의 `확인 필요` 상태를 announcement로 표시한다. `현재 Main 기준으로 확인`은 명시 command로 purpose remainder만 재계산하고 fixed/sweep transfer를 바꾸지 않는다. fixed purpose allocation 초과면 오류를 설명하고 write하지 않는다.
-- 계좌·보관처 보관은 영향을 먼저 보여주고 purpose·transfer 관계를 중지하며, 복원은 관계별 선택을 제공한다. stale conflict·collision은 입력을 유지한 명시 재적용을 요구한다. Main이 없으면 replay 없이 Main-required로 전환한다.
-- screen-reader용 선형 표는 Main anchor, 계좌와 ordered transfer, 목적 anchor를 포함해 지도와 같은 결정적 reading order를 제공합니다. 모바일 요약은 관계도를 첫 viewport 밖으로 밀어내지 않아야 합니다.
 
 ## Colors
 
@@ -180,12 +164,12 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 ### App Launcher
 
 - 상단 중앙의 작은 둥근 도크 안에 `ISF 앱` 탐색과 `앱 도구` 그룹을 모으고 짧은 간격과 세로 hairline으로 구분합니다. 도크는 아이콘 수에 맞는 폭을 사용하며 페이지와 함께 스크롤합니다. 앱 이름은 기본으로 숨기며 기존 아이콘 의미를 유지합니다. 앱 링크와 톱니는 모두 44×44px 선택 영역을 유지합니다.
-- Main, Simulation, Portfolio와 Account Map을 한 줄의 아이콘으로 보여주되, 가용 폭이 부족할 때만 `더보기`에 원래 순서대로 이동합니다. 현재 앱은 항상 직접 표시하고 네 앱이 모두 들어가면 `더보기`를 렌더링하지 않습니다.
+- Main, Simulation, Portfolio를 한 줄의 아이콘으로 보여주되, 가용 폭이 부족할 때만 `더보기`에 원래 순서대로 이동합니다. 현재 앱은 항상 직접 표시하고 세 앱이 모두 들어가면 `더보기`를 렌더링하지 않습니다.
 - 현재 목적지는 안정적인 아이콘 아래 선과 `aria-current`로 분명히 표시합니다.
 - 옅은 청록 배경은 hover·keyboard focus·길게 누른 아이콘을 따라 180ms로 이동하고 상호작용이 끝나면 현재 앱으로 돌아옵니다. 이 미리보기는 현재 위치나 실제 URL을 바꾸지 않습니다. fine pointer에서는 아이콘만 2px 이내로 떠오르고 touch pressed에서는 아이콘만 작게 눌립니다. 선택 영역의 크기와 위치는 움직이지 않습니다.
 - pointer hover와 keyboard focus는 동일한 한글·영문 툴팁을 제공하고, touch는 450ms 길게 누르면 같은 정보를 표시하되 해당 탭의 탐색과 context menu를 한 번 억제합니다.
 - 톱니 팝오버는 앱별 보기 설정·다시 설정 뒤에 공통 계정 정보·로그아웃을 표시합니다. 일반 백업 내보내기·가져오기와 중복된 `앱 아이콘 안내`는 표시하지 않습니다. 초기 브라우저 이전과 오류·미전송 입력 복구 경로는 유지합니다.
-- Main은 `처음부터 다시`, Simulation은 `시뮬레이션 다시 설정`, Portfolio는 금액 표시·정렬과 `투자 배분 처음부터 다시`, Account Map은 보관 항목 복원과 `월 연결 다시 만들기`를 제공합니다. 아직 지도가 없으면 상태 안내만 표시합니다. 빈 action 구역과 양 끝 구분선을 만들지 않으며, 앱 설정과 계정 항목이 모두 없을 때만 톱니를 숨깁니다.
+- Main은 `처음부터 다시`, Simulation은 `시뮬레이션 다시 설정`, Portfolio는 금액 표시·정렬과 `투자 배분 처음부터 다시`를 제공합니다. 빈 action 구역과 양 끝 구분선을 만들지 않으며, 앱 설정과 계정 항목이 모두 없을 때만 톱니를 숨깁니다.
 - Main 재시작 확인은 왼쪽 `초기화`와 오른쪽 취소·다시 시작을 제공한다. 초기화는 모달을 열 때마다 카운트다운 표시 없이 2.5초간 비활성화하고 취소에 초기 focus를 둔다. 다섯 월 금액의 입력 칸을 비운 재시작 초안과 지출 도우미 전체 내역 삭제를 한 번에 저장한다. 기존 적용 계획과 다른 앱 설정은 보존한다. 기존 계획은 새 설정의 마지막 적용 때 바뀐다고 안내한다. 저장 실패 시 현재 계획과 모달을 유지한다.
 - 관리 popover는 viewport 좌우 16px 안에 머물고, Escape 또는 바깥 pointer 입력으로 닫힌 뒤 톱니 버튼으로 focus를 돌려보냅니다. 파괴적 행동은 별도 확인 dialog와 내부 focus 관리를 거칩니다.
 - 툴팁, `더보기`, 관리 메뉴는 Escape 또는 바깥 pointer 입력으로 닫히고 소유 trigger로 focus를 돌려보냅니다. 두 popover는 동시에 열리지 않으며 `prefers-reduced-motion`에서는 전환 효과를 제거합니다.
@@ -221,7 +205,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 ### 저장 이전과 복구
 
 - 일반 톱니 메뉴는 수동 백업 내보내기·가져오기를 제공하지 않습니다. 초기 브라우저 계획 이전과 유효하지 않은 계정 저장 상태의 명시적 복구에서만 관련 파일·전체 교체 흐름을 제공합니다.
-- 이전·복구 파일은 Main·Simulation·Portfolio·공유 위치와 Account Map contract를 backup format 4 envelope로 다룹니다.
+- 이전·복구 파일은 Main·Simulation·Portfolio·보존된 공유 위치와 Account Map 데이터 계약을 backup format 4 envelope로 다룹니다.
 - import는 모든 slice와 참조를 적용 전에 검증하고 유효하면 전체 교체 확인 뒤 한 번에 v5 workspace를 교체합니다. format 3의 v4, format 2의 v3와 format 1 retired input은 같은 read-only converter로 검증·변환하며, invalid input은 현재 raw workspace를 유지합니다.
 
 ### Button
@@ -294,17 +278,15 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다. 일
 - 보이는 주요 버튼과 입력은 최소 44px touch target을 가져야 합니다.
 - modal 콘텐츠는 viewport 안에서 스크롤되고 footer 또는 Pending Bar가 가려지지 않아야 합니다.
 - 다중 열 control은 768px 이하에서 단일 열 또는 읽을 수 있는 compact layout으로 전환합니다.
-- 현재 Main 월 자금 구성, Simulation 그래프와 Account Map 전체 흐름 지도는 의미를 잃도록 과도하게 축소하지 않습니다.
+- 현재 Main 월 자금 구성, Simulation 그래프와 Portfolio 배분 목록는 의미를 잃도록 과도하게 축소하지 않습니다.
 - Portfolio의 설정과 하단 편집 sheet는 390px에서 이름·금액·비율과 action이 패널 밖으로 넘치지 않아야 합니다.
-- Account Map의 compact summary와 `확인 필요` notice는 모바일 첫 화면에서 전체 흐름 지도를 밀어내지 않아야 합니다.
-- Account Map의 월 계획 흐름, focused detail, account/flow editor와 Main overlay는 390px, 768px와 desktop에서 viewport/canvas 안에 머물고 가로 overflow를 만들지 않아야 합니다.
 
 ## Accessibility
 
 - 모든 입력은 label 또는 동등한 accessible name을 가져야 합니다.
-- modal은 올바른 role, 제목 연결, focus trap과 close 뒤 trigger focus 복원이 필요합니다. Main overlay는 map background를 inert accessibility tree 밖으로 둡니다.
+- modal은 올바른 role, 제목 연결, focus trap과 close 뒤 trigger focus 복원이 필요합니다. modal 배경은 비활성화하고 accessibility tree 밖으로 둡니다.
 - field 오류와 stale 재적용 충돌은 첫 관련 control에 focus를 이동하고 오류 설명을 해당 control과 연결합니다.
-- 그래프는 source, target, rule/amount와 state를 설명하는 accessible name 및 전체 흐름을 읽을 수 있는 텍스트 표를 제공합니다.
+- 시각화는 항목, 금액·비율·기간과 상태를 설명하는 accessible name 및 같은 핵심 정보를 읽을 수 있는 텍스트를 제공합니다.
 - 키보드로 주요 선택, 저장, 취소와 닫기를 수행할 수 있어야 합니다.
 - 오류와 상태는 색상 외의 텍스트 또는 아이콘으로도 전달합니다.
 
@@ -321,10 +303,10 @@ gradient와 반투명 card를 기본 스타일로 사용하지 않습니다. 일
 
 - 레거시 UI를 새 화면의 디자인 기준으로 사용하지 않습니다.
 - Main에 두 번째 일반 재무 편집기를 만들지 않습니다.
-- Phase C 전에 Main 연결 결과 카드를 현재 계약처럼 표시하지 않습니다.
+- 후속 설계 승인 전에 Main 연결 결과 카드를 현재 계약처럼 표시하지 않습니다.
 - Portfolio에 계좌·기관·보관처 관리나 location-scoped 배분 action을 추가하지 않습니다.
 - 모든 앱에 하나의 전역 Pending Bar 동작을 강제하지 않습니다.
-- Account Map 수정이 Main에 자동 반영되는 것처럼 표현하지 않습니다.
+- 폐기된 Account Map 편집 진입점이나 다른 앱에서 Main을 수정하는 UI를 다시 추가하지 않습니다.
 - 카드에 gradient 또는 과도한 translucent effect를 사용하지 않습니다.
 - Gowun Batang과 Gowun Dodum의 역할을 임의로 뒤섞지 않습니다.
 - 390px와 768px 검증 없이 responsive 작업을 완료로 선언하지 않습니다.

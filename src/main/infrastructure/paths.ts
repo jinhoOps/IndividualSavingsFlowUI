@@ -5,7 +5,6 @@ export function createAppPaths(baseUrl: string) {
     main: `${base}apps/main/`,
     simulation: `${base}apps/simulation/`,
     portfolio: `${base}apps/portfolio/`,
-    accountMap: `${base}apps/account-map/`,
   } as const;
 }
 

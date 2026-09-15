@@ -57,7 +57,7 @@ const agents = requireFile(agentsPath);
 requireIncludes(agentsPath, agents, [
   '## Code Review Rules',
   'Product PRD',
-  'Simulation, Portfolio, or Account Map write Main-owned',
+  'Simulation or Portfolio write Main-owned',
   'partial import behavior',
   'style-only comments',
 ]);
