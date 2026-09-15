@@ -680,7 +680,7 @@ test('expense assistant remembers each answer, replaces rough totals only on com
 });
 
 for (const width of [390, 768, 1280]) {
-  test(`expense entry and whole-plan editor have distinct contained controls and focus at ${width}px`, async ({page, context}) => {
+  test(`expense entry and whole-plan editor have distinct contained controls and focus at ${width}px`, async ({page, context}, testInfo) => {
     const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
     await page.setViewportSize({width, height: 844}); await page.goto('apps/main/');
     const edit = page.getByRole('button', {name: '월 금액 편집'});
@@ -694,10 +694,13 @@ for (const width of [390, 768, 1280]) {
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading')).toBeFocused();
     await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
-    await dialog.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+    // Anime.js drives requestAnimationFrame; Element.getAnimations only sees CSS/WAAPI.
+    await expect(dialog).toHaveCSS('opacity', '1');
+    await expect(dialog).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
     const box = (await dialog.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(844);
+    await page.screenshot({path: testInfo.outputPath(`expense-assistant-${width}.png`), fullPage: true});
     await page.keyboard.press('Shift+Tab');
     await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeFocused();
     await page.keyboard.press('Tab');

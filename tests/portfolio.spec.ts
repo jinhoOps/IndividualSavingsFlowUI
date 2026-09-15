@@ -443,7 +443,42 @@ test('keeps add-sheet amount adjustments ordered, touch-sized, and on one row at
   await expect(amount).toHaveValue('1,200,000');
 });
 
-test('isolates applied editing as a sheet or panel and restores focus', async ({ page }) => {
+test('slides the mobile edit card in from below the viewport', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
+  await page.goto('apps/portfolio/');
+  await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
+  const frames = await page.evaluate(async () => {
+    const samples: { top: number; height: number; bottom: number }[] = [];
+    const started = performance.now();
+    const sampled = new Promise<typeof samples>((resolve) => {
+      function sample() {
+        const card = document.querySelector<HTMLDialogElement>('.portfolio-edit-surface[open]');
+        if (card) {
+          const box = card.getBoundingClientRect();
+          samples.push({ top: box.top, height: box.height, bottom: box.bottom });
+        }
+        if (performance.now() - started < 400) requestAnimationFrame(sample);
+        else resolve(samples);
+      }
+      requestAnimationFrame(sample);
+    });
+    document.querySelector<HTMLButtonElement>('button[aria-label="배분 수정"]')!.click();
+    return sampled;
+  });
+  expect(frames.length).toBeGreaterThan(3);
+  expect(frames[0].top).toBeGreaterThan(844 - frames[0].height * 0.25);
+  expect(frames.at(-1)!.bottom).toBeCloseTo(844, 0);
+  expect(Math.max(...frames.map((frame) => frame.height)) - Math.min(...frames.map((frame) => frame.height))).toBeLessThan(1);
+  const cardBox = await page.getByRole('dialog', { name: '투자 배분 수정' }).boundingBox();
+  expect(cardBox!.x).toBe(0);
+  expect(cardBox!.width).toBe(390);
+  await expect(page.getByRole('button', { name: '편집기 닫기' })).toBeFocused();
+  await page.screenshot({ path: testInfo.outputPath('portfolio-edit-mobile.png') });
+});
+
+test('isolates applied editing as a sheet or panel and restores focus', async ({ page }, testInfo) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
 
@@ -458,6 +493,20 @@ test('isolates applied editing as a sheet or panel and restores focus', async ({
     await trigger.click();
     const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
     await expect(editor).toHaveAttribute('data-presentation', viewport.mode);
+    await expect(editor).toHaveCSS('opacity', '1');
+    const box = await editor.boundingBox();
+    expect(box!.x + box!.width).toBeCloseTo(viewport.width, 0);
+    if (viewport.mode === 'sheet') {
+      expect(box!.x).toBe(0);
+      expect(box!.width).toBe(viewport.width);
+      expect(box!.y + box!.height).toBeCloseTo(900, 0);
+    }
+    const nameInput = editor.getByRole('textbox', { name: '투자 대상 이름 1' });
+    expect((await nameInput.boundingBox())!.width).toBeGreaterThanOrEqual(180);
+    const add = editor.getByRole('button', { name: '투자 대상 추가' });
+    expect(await add.evaluate((button) => getComputedStyle(button, '::before').content)).toBe('"+"');
+    expect((await add.boundingBox())!.width).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: testInfo.outputPath(`portfolio-edit-${viewport.width}.png`) });
     await expect(page.getByTestId('portfolio-result-controls')).toHaveAttribute('inert', '');
     await expect(page.getByRole('region', { name: '투자 위치' })).toHaveCount(0);
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);

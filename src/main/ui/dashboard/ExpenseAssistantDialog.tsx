@@ -1,4 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react';
+import { useAssistantReveal } from '../common/useAssistantReveal';
 import { ArrowLeft, X } from 'lucide-react';
 import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
 import { SegmentedControl } from '../../../components/common/SegmentedControl';
@@ -29,7 +30,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   const [error, setError] = useState(initial.error);
   const [invalidAmount, setInvalidAmount] = useState(false);
   const [returnToReview, setReturnToReview] = useState(() => expenseAnswersComplete((recovered ?? initial.draft).answers));
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useAssistantReveal();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(persisted);
   useAccountRecovery('main-expense', draft, dirty, !initial.error);

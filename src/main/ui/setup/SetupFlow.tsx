@@ -4,6 +4,7 @@ import { SavingOverlay } from '../common/SavingOverlay';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
+import { useAnimatedProgress } from '../../../components/motion/useAnimatedProgress';
 import type { MainData, SetupStep } from '../../domain/model';
 import type { ValidationCode } from '../../domain/validation';
 import { Button } from '../common/Button';
@@ -81,6 +82,8 @@ export function SetupFlow({
   const welcomePlayedRef = useRef(false);
   const welcomeElementRef = useRef<HTMLElement | null>(null);
   const stepIndex = steps.indexOf(step);
+  const progress = ((stepIndex + 1) / steps.length) * 100;
+  const progressRef = useAnimatedProgress<HTMLDivElement>(progress);
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
   const setupSurfaceClassName = 'setup-flow-surface';
@@ -223,7 +226,7 @@ export function SetupFlow({
   return (
     <Surface as="section" className={setupSurfaceClassName} aria-labelledby="setup-flow-title">
       <div className="mx-6 mt-6 h-1.5 overflow-hidden rounded-full bg-slate-100 sm:mx-10">
-        <div className="h-full bg-accent transition-[width]" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
+        <div ref={progressRef} className="h-full bg-accent" style={{ width: `${progress}%` }} />
       </div>
       <div className="mx-6 mt-5 flex items-center justify-between gap-4 sm:mx-10">
         <p className="m-0 text-sm font-black tracking-wide text-accent" id="setup-flow-title" role="status">

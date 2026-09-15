@@ -22,6 +22,11 @@ export function PortfolioDialog({
 }) {
   const focusEffectGenerationRef = useRef(0);
   const dialogRef = useAnimeScope<HTMLDialogElement>(({ root, reducedMotion }) => {
+    // The closed native dialog has no measurable height. Open before sizing the sheet.
+    if (!root.open) {
+      if (typeof root.showModal === 'function') root.showModal();
+      else root.setAttribute('open', '');
+    }
     const presentation = dataPresentation ?? 'modal';
     const target = presentation === 'modal'
       ? root.querySelector<HTMLElement>('[data-dialog-motion]')
@@ -29,7 +34,9 @@ export function PortfolioDialog({
     if (target === null) return;
     const distance = presentation === 'modal'
       ? MOTION_DISTANCE_PX.subtle
-      : MOTION_DISTANCE_PX.reveal;
+      : presentation === 'sheet'
+        ? root.getBoundingClientRect().height
+        : MOTION_DISTANCE_PX.reveal;
     revealDialog(target, presentation, distance, reducedMotion);
   }, [dataPresentation]);
 
@@ -37,10 +44,6 @@ export function PortfolioDialog({
     const dialog = dialogRef.current;
     if (dialog === null) return;
     const generation = ++focusEffectGenerationRef.current;
-    if (!dialog.open) {
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else dialog.setAttribute('open', '');
-    }
     dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus();
     return () => {
       if (dialog.open && typeof dialog.close === 'function') dialog.close();
@@ -79,7 +82,6 @@ export function PortfolioDialog({
       aria-labelledby={labelledBy}
       className={`portfolio-dialog ui-surface${className ? ` ${className}` : ''}`}
       data-presentation={dataPresentation}
-      style={{ animation: 'none' }}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -113,7 +115,7 @@ function revealDialog(
         : presentation === 'sheet'
           ? { bottom: [-distance, 0] }
           : { right: [-distance, 0] }),
-      duration: MOTION_DURATION.normal,
+      duration: presentation === 'sheet' ? MOTION_DURATION.emphasis : MOTION_DURATION.normal,
       ease: MOTION_EASE.enter,
       ...(presentation === 'modal'
         ? {}

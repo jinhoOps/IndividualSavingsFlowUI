@@ -125,7 +125,7 @@ async function expectDashboardSummary(page: Page, amounts: {
   const summary = page.getByRole('region', { name: '월 자금 구성 요약' });
   await expect(summary).toBeVisible();
   await page.mouse.move(0, 0);
-  await expect(summary.locator('.cashflow-allocation__ratio strong')).toHaveText('15.6%');
+  await expect(summary.locator('[data-visual-ratio]')).toHaveText('15.6%');
   await expect(summary.getByText('저축·투자 비중', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '월 실수령액 편집' })).toHaveCount(0);
   await expect(page.getByText('자세히 보기', { exact: true })).toHaveCount(0);
@@ -854,7 +854,7 @@ test.describe('mobile cashflow allocation', () => {
     await summary.getByRole('button', { name: /^저축 ·/ }).focus();
     await expect(summary.locator('[data-segment="saving"]')).toHaveAttribute('data-active', 'true');
     await expect(summary.locator('.cashflow-metric__value')).toHaveCount(4);
-    await expect(summary.locator('.cashflow-allocation__ratio strong')).toHaveText('15.6%');
+    await expect(summary.locator('[data-visual-ratio]')).toHaveText('15.6%');
     await expect(summary.getByRole('tooltip')).toHaveCount(0);
   });
 });
@@ -1109,7 +1109,7 @@ test('dashboard deficit shows all allocations and the income threshold after edi
   await page.getByLabel('월 투자액').fill('1500000');
   await page.getByRole('button', { name: '적용' }).click();
   await expect(page.getByRole('img', { name: /월수입/ })).toHaveAccessibleName(/투자 46.9%.*40만 원 초과/);
-  await expect(page.locator('[data-segment="remaining"]')).toHaveCount(0);
+  await expect(page.locator('[data-segment="remaining"]')).toHaveCSS('width', '0px');
   await expect(page.getByText('기준선: 월수입 100%')).toBeVisible();
   await expect(page.locator('.cashflow-metric[data-deficit="true"]')).toContainText('-40만 원');
   await page.getByRole('button', { name: '편집기 닫기' }).click();
@@ -1198,8 +1198,8 @@ for (const width of [390, 768, 1280]) {
     await page.goto('apps/main/');
     const entry = page.locator('.main-journey-entry');
     await expect(entry).toHaveAttribute('data-revealed', 'false');
-    await expect(page.locator('.cashflow-allocation__ratio strong')).toHaveText('15.6%');
-    await expect(page.locator('.cashflow-allocation__split strong')).toHaveText('60 : 40');
+    await expect(page.locator('[data-visual-ratio]')).toHaveText('15.6%');
+    await expect(page.locator('[data-visual-split]')).toHaveText('60 : 40');
     await expect(page.getByRole('region', { name: '월 자금 구성 요약' })).not.toContainText('320만 원');
     await expect(page.locator('.allocation-details')).toHaveCount(0);
     await page.screenshot({ fullPage: true, path: testInfo.outputPath(`main-allocation-${width}.png`) });

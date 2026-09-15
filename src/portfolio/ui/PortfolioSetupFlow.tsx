@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useAnimatedProgress } from '../../components/motion/useAnimatedProgress';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import type {
@@ -31,6 +32,8 @@ const steps: PortfolioSetupStep[] = ['welcome', 'allocation', 'review'];
 export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const index = steps.indexOf(props.step);
+  const progress = ((index + 1) / steps.length) * 100;
+  const progressRef = useAnimatedProgress<HTMLSpanElement>(progress);
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -44,7 +47,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       aria-labelledby="portfolio-setup-title"
     >
       <div className="portfolio-setup__progress" aria-hidden="true">
-        <span style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
+        <span ref={progressRef} style={{ width: `${progress}%` }} />
       </div>
       <p className="portfolio-setup__status" role="status">
         {index + 1} / {steps.length} · {setupLabel(props.step)}

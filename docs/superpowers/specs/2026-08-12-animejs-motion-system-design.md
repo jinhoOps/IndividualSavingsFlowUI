@@ -80,7 +80,7 @@ Anime.js는 필요한 하위 모듈만 import한다. 일반 hover, focus, presse
 
 - 현재 앱 표시선과 overflow 메뉴는 120~160ms로 전환한다.
 - 앱 간 페이지 이동을 모션 때문에 지연하지 않는다.
-- modal, bottom sheet, side panel, disclosure와 toast는 160~220ms 범위의 공통 reveal을 사용한다.
+- modal, side panel, disclosure와 toast는 160~220ms 범위의 공통 reveal을 사용한다. 2026-09-15 모바일 편집 피드백을 반영해 Portfolio bottom sheet는 실제 카드 높이만큼 화면 아래에서 260ms로 진입하며, 세부 계약은 `DESIGN.md`의 Portfolio 절을 따른다.
 - overlay가 닫히면 애니메이션과 무관하게 기존 계약대로 focus를 trigger에 돌려준다.
 
 ### 5.2 Main 첫 화면과 입력 단계

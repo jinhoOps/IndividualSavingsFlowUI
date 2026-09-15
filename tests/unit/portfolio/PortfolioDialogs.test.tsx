@@ -41,6 +41,7 @@ vi.mock('animejs', () => ({
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   animeMocks.state.reducedMotion = false;
 });
@@ -181,6 +182,11 @@ describe('Portfolio confirmation dialogs', () => {
       ease: MOTION_EASE.enter,
     });
 
+    const measuredOpenStates: boolean[] = [];
+    vi.spyOn(HTMLDialogElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLDialogElement) {
+      measuredOpenStates.push(this.open);
+      return { height: 640 } as DOMRect;
+    });
     rerender(
       <PortfolioDialog
         labelledBy="sheet-title"
@@ -195,11 +201,12 @@ describe('Portfolio confirmation dialogs', () => {
     const sheetOptions = animationOptionsFor(sheet);
     expect(sheetOptions).toMatchObject({
       opacity: [0, 1],
-      bottom: [-MOTION_DISTANCE_PX.reveal, 0],
-      duration: MOTION_DURATION.normal,
+      bottom: [-640, 0],
+      duration: MOTION_DURATION.emphasis,
       ease: MOTION_EASE.enter,
       onComplete: expect.any(Function),
     });
+    expect(measuredOpenStates).toEqual([true]);
     expect(sheetOptions).not.toHaveProperty('y');
     expect(sheet.style.transform).toBe('');
     expect(sheet.style.bottom).toBe('0px');
@@ -258,6 +265,21 @@ describe('Portfolio confirmation dialogs', () => {
     expect(reducedSheet.style.transform).toBe('');
     expect(reducedSheet.style.bottom).toBe('');
     expect(animationOptionsFor(reducedSheet)).toBeUndefined();
+  });
+
+  it('keeps the sheet open and usable if animation initialization fails', () => {
+    animeMocks.animate.mockImplementationOnce(() => { throw new Error('motion unavailable'); });
+    render(
+      <PortfolioDialog labelledBy="failed-sheet-title" dataPresentation="sheet" onClose={vi.fn()} returnFocusRef={{ current: null }}>
+        <h2 id="failed-sheet-title">하단 편집 복구</h2>
+        <button data-dialog-initial-focus>닫기</button>
+      </PortfolioDialog>,
+    );
+    const sheet = screen.getByRole('dialog', { name: '하단 편집 복구' });
+    expect(sheet).toHaveAttribute('open');
+    expect(sheet).toHaveStyle({ opacity: '1' });
+    expect(sheet.style.bottom).toBe('');
+    expect(within(sheet).getByRole('button', { name: '닫기' })).toHaveFocus();
   });
 
   it('focuses reset cancel and restores its trigger after Escape', async () => {

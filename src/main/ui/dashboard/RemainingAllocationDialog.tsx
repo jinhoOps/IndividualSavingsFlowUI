@@ -6,6 +6,7 @@ import type { MainData } from '../../domain/model';
 import { allocateRemaining, availableRemainingWon } from '../../domain/remainingAllocation';
 import { Button } from '../common/Button';
 import { SavingOverlay } from '../common/SavingOverlay';
+import { useAssistantReveal } from '../common/useAssistantReveal';
 
 const won = (value: number) => `${value.toLocaleString('ko-KR')}원`;
 
@@ -28,7 +29,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
   const [recovering, setRecovering] = useState(false);
   const submitted = useRef(false);
   const submitting = useRef(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useAssistantReveal();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const busy = saveStatus === 'saving' || recovering;
   const pending = !!session?.pending;

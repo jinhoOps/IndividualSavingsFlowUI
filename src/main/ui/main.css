@@ -225,7 +225,6 @@
     background: #fff;
     color: var(--ink);
     box-shadow: -12px 0 48px rgb(15 23 42 / 8%);
-    animation: expense-assistant-enter .22s ease-out;
   }
   .expense-assistant__header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .5rem; }
   .expense-assistant__header > span { display: flex; align-items: center; gap: .5rem; color: var(--tone-accent); font-size: .875rem; font-weight: 700; }
@@ -267,14 +266,12 @@
   .remaining-allocation__input > span { color: var(--muted); }
   .remaining-allocation__preview { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; margin: .5rem 0 0; color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
   .remaining-allocation__preview strong { color: var(--ink); }
-  @keyframes expense-assistant-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 767px) {
     .expense-assistant { top: auto; max-height: 92dvh; height: min(42rem, 92dvh); border-radius: 1.5rem 1.5rem 0 0; }
     .remaining-allocation, .expense-assistant--explained { height: min(46rem, 92dvh); }
     .expense-assistant__body { padding-inline: 1.25rem; }
     .expense-assistant__footer { padding-inline: 1.25rem; }
   }
-  @media (prefers-reduced-motion: reduce) { .expense-assistant { animation: none; } }
 
   .main-journey-entry { min-width: 0; position: relative; scroll-margin-bottom: 2rem; }
   .main-journey-entry[data-revealed="false"] { height: 0; }
@@ -597,7 +594,7 @@
   }
   .cashflow-allocation__overview { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
   .cashflow-allocation__overview > div { display: grid; gap: .375rem; min-width: 0; }
-  .cashflow-allocation__overview span { color: var(--muted); font-size: .875rem; }
+  .cashflow-allocation__overview > div > span { color: var(--muted); font-size: .875rem; }
   .cashflow-allocation__overview strong { color: var(--ink); font-family: var(--font-display); line-height: 1.25; overflow-wrap: anywhere; }
   .cashflow-allocation__ratio strong { font-size: clamp(1.75rem, 6.5vw, 2.5rem); }
   .cashflow-allocation__split { text-align: right; }
@@ -605,7 +602,7 @@
   .cashflow-allocation__overview small { color: var(--muted); font-size: .75rem; word-break: keep-all; }
   .cashflow-allocation__chart { position: relative; height: 32px; }
   .cashflow-allocation__track { display: flex; height: 100%; overflow: hidden; border-radius: 8px; background: var(--allocation-remaining); }
-  .cashflow-allocation__segment { flex: none; min-width: 0; transition: width 220ms ease-out, filter 160ms ease-out; }
+  .cashflow-allocation__segment { flex: none; min-width: 0; transition: filter 160ms ease-out; }
   .cashflow-allocation__segment + .cashflow-allocation__segment { box-shadow: inset 1px 0 rgb(255 255 255 / 75%); }
   .cashflow-allocation__segment[data-active="true"] { filter: brightness(.8); box-shadow: inset 0 0 0 2px var(--ink); }
   .cashflow-allocation--consumption { background-color: var(--allocation-consumption); }

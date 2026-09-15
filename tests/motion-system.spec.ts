@@ -445,7 +445,7 @@ async function readMainAllocation(chart: Locator) {
         (animation.playState === 'running' || animation.playState === 'pending')
         && Number(animation.effect?.getComputedTiming().duration ?? 0) > 1).length,
       semanticName: element.querySelector('[role="img"]')?.getAttribute('aria-label'),
-      ratio: element.querySelector('.cashflow-allocation__ratio strong')?.textContent,
+      ratio: element.querySelector('[data-visual-ratio]')?.textContent,
       segments: [...element.querySelectorAll('.cashflow-allocation__segment')].map(segment =>
         segment.getBoundingClientRect().width / track.width * 100),
     };

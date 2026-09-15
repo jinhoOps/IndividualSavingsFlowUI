@@ -9,7 +9,7 @@ describe('CashflowAllocationSummary', () => {
   it('shows the income basis, exact ratios and rows in allocation order', () => {
     const { container } = render(<CashflowAllocationSummary data={data} />);
     expect(screen.getByRole('img')).toHaveAccessibleName(/월수입 대비.*지출 56.3%.*저축 9.4%.*투자 6.3%.*여윳돈 28.1%/);
-    expect(screen.getByText('15.6%')).toBeVisible();
+    expect(screen.getByText('15.6%', { selector: '[aria-hidden]' })).toBeVisible();
     expect(screen.getByText('60 : 40')).toBeVisible();
     expect(screen.queryByText('320만 원')).toBeNull();
     expect(screen.getByRole('img')).not.toHaveAccessibleName(/320만 원/);
@@ -20,7 +20,7 @@ describe('CashflowAllocationSummary', () => {
     const { container } = render(<CashflowAllocationSummary data={{ ...data, monthlyInvestmentWon: 1_500_000 }} />);
     expect(screen.getByRole('img')).toHaveAccessibleName(/투자 46.9%.*40만 원 초과/);
     expect(container.querySelector('[data-segment="investment"]')).toHaveStyle({ width: `${150 / 360 * 100}%` });
-    expect(container.querySelector('[data-segment="remaining"]')).toBeNull();
+    expect(container.querySelector('[data-segment="remaining"]')).toHaveStyle({ width: '0%' });
     expect(screen.getByText('기준선: 월수입 100%')).toBeVisible();
     expect(screen.getByText('-40만 원', { selector: '.sr-only' })).toBeInTheDocument();
   });
@@ -32,13 +32,13 @@ describe('CashflowAllocationSummary', () => {
     fireEvent.click(saving);
     fireEvent.blur(saving);
     expect(saving).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('15.6%')).toBeVisible();
+    expect(screen.getByText('15.6%', { selector: '[aria-hidden]' })).toBeVisible();
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
   it('keeps zero and tiny amounts readable and editing connected', () => {
     const edit = vi.fn();
     const { container } = render(<CashflowAllocationSummary data={{ ...data, monthlySavingWon: 0, monthlyInvestmentWon: 1 }} onEditAmount={edit} />);
-    expect(container.querySelector('[data-segment="saving"]')).toBeNull();
+    expect(container.querySelector('[data-segment="saving"]')).toHaveStyle({ width: '0%' });
     expect(container.querySelector('[data-segment="investment"]')).toHaveStyle({ width: `${1 / 3_200_000 * 100}%` });
     fireEvent.click(screen.getByRole('button', { name: '월 저축 금액 편집 · 현재 0원' }));
     expect(edit).toHaveBeenCalledWith('monthlySavingWon', expect.any(HTMLElement));
@@ -50,8 +50,8 @@ describe('CashflowAllocationSummary', () => {
     [200_000, 300_000, '40 : 60'],
   ])('shows saving:investment independently from income for %i and %i', (saving, investment, expected) => {
     const { container } = render(<CashflowAllocationSummary data={{ ...data, monthlyNetIncomeWon: 0, monthlySavingWon: saving, monthlyInvestmentWon: investment }} />);
-    expect(container.querySelector('.cashflow-allocation__split strong')).toHaveTextContent(expected);
-    expect(container.querySelector('.cashflow-allocation__ratio strong')).toHaveTextContent('—');
+    expect(container.querySelector('[data-visual-split]')).toHaveTextContent(expected);
+    expect(container.querySelector('[data-visual-ratio]')).toHaveTextContent('—');
   });
   it('does not invent percentages without income', () => {
     render(<CashflowAllocationSummary data={{ ...data, monthlyNetIncomeWon: 0 }} />);

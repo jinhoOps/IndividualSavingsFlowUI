@@ -15,6 +15,7 @@
 
 ## Minimum Rules
 
+- 모션의 `Anime.js`/`anime.js`는 JavaScript 애니메이션 라이브러리(npm 패키지 `animejs`)를 뜻한다. React 연동은 [공식 가이드](https://animejs.com/documentation/getting-started/using-with-react)와 기존 `src/components/motion/`을 따른다.
 - Main과 Simulation은 완료된 현재 제품 기준선이다.
 - Main은 다섯 월간 금액과 지출 계산 도우미의 보조 답변을 소유하며 Main UI에서 수정한다.
 - Simulation은 Main을 읽기 전용으로 사용하며 자체 복리 시뮬레이션 초안만 소유한다.

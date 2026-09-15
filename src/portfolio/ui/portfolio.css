@@ -10,7 +10,7 @@
 .portfolio-summary-error { margin: 0 0 1rem; color: var(--status-error); font-weight: 700; }
 .portfolio-setup { padding: 1.5rem; }
 .portfolio-setup__progress { height: .375rem; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
-.portfolio-setup__progress span { display: block; height: 100%; background: var(--tone-primary); transition: width 180ms ease; }
+.portfolio-setup__progress span { display: block; height: 100%; background: var(--tone-primary); }
 .portfolio-setup__status { margin: 1rem 0; color: var(--tone-accent); font-weight: 700; }
 .portfolio-setup__welcome { display: grid; gap: 1rem; min-height: 16rem; align-content: center; }
 .portfolio-setup__welcome h1, .portfolio-setup__review h1, .portfolio-recovery h1, .portfolio-gate__message h1 { font-size: var(--ui-title-size); font-weight: 700; line-height: 1.35; word-break: keep-all; text-wrap: balance; }
@@ -73,6 +73,8 @@
 .portfolio-editor--setup .portfolio-editor__mode label:has(input:checked)::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--tone-primary); }
 .portfolio-editor__mode input { width: auto; min-height: 0; }
 .portfolio-editor__row { grid-template-columns: minmax(0, 1.4fr) minmax(10rem, 1fr) minmax(9rem, 1fr) auto auto; align-items: end; }
+.portfolio-editor--edit .portfolio-editor__row { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+.portfolio-editor__add { width: 100%; min-width: 44px; min-height: 44px; margin-top: .75rem; }
 .portfolio-editor__row-summary { display: none; }
 .portfolio-editor--setup .portfolio-editor__items { gap: 0; border-top: 1px solid var(--line); }
 .portfolio-editor--setup .portfolio-editor__row { grid-template-columns: minmax(0, 1fr) minmax(9rem, .65fr); gap: 1rem 1.25rem; padding: 1rem .25rem; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
@@ -83,7 +85,7 @@
 .portfolio-editor--setup .portfolio-editor__row-summary small { color: var(--muted); font-size: .8125rem; font-weight: 400; }
 .portfolio-editor--setup > .ui-button--secondary { min-height: 44px; padding-inline: .25rem; border: 0; background: transparent; color: var(--tone-accent); box-shadow: none; }
 .portfolio-editor--setup > .portfolio-editor__add { display: inline-flex; width: 100%; min-width: 44px; height: 52px; margin: 0; align-items: center; justify-content: center; padding: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
-.portfolio-editor--setup > .portfolio-editor__add::before { content: '+'; font-family: var(--font-body); font-size: 1.75rem; font-weight: 400; line-height: 1; }
+.portfolio-editor__add::before { content: '+'; font-family: var(--font-body); font-size: 1.75rem; font-weight: 400; line-height: 1; }
 .portfolio-editor--setup > .portfolio-editor__add:hover { background: color-mix(in srgb, var(--tone-accent) 13%, var(--panel)); }
 .portfolio-editor__classification-toggle { align-self: end; min-width: 4rem; min-height: 44px; padding: .5rem .75rem; border: 1px solid color-mix(in srgb, var(--tone-accent) 38%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--tone-accent) 8%, var(--panel)); color: var(--tone-accent); font-weight: 700; }
 .portfolio-editor__classification-toggle:hover { background: color-mix(in srgb, var(--tone-accent) 14%, var(--panel)); }
@@ -115,9 +117,9 @@
 .portfolio-view-preferences__choice:hover, .portfolio-view-preferences__choice:focus-within { background: color-mix(in srgb, var(--tone-accent) 8%, transparent); }
 .portfolio-view-preferences__choice-input { flex: 0 0 auto; width: 1.125rem; min-width: 1.125rem; min-height: 1.125rem; margin: 0; padding: 0; }
 .portfolio-apply-bar { position: fixed; z-index: 30; inset: auto max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); display: flex; align-items: center; justify-content: flex-end; gap: .5rem; padding: .75rem; box-shadow: var(--shadow-float); }
-.portfolio-dialog { position: fixed; z-index: 40; inset: 50% auto auto 50%; width: min(calc(100vw - 2rem), 28rem); max-height: calc(100dvh - 2rem); margin: 0; padding: 1.5rem; overflow: auto; transform: translate(-50%, -50%); }
+.portfolio-dialog { position: fixed; z-index: 40; inset: 50% auto auto 50%; width: min(calc(100vw - 2rem), 28rem); max-width: 100%; max-height: calc(100dvh - 2rem); margin: 0; padding: 1.5rem; overflow: auto; transform: translate(-50%, -50%); }
 .portfolio-dialog::backdrop { background: rgb(16 34 32 / 35%); }
-.portfolio-item-sheet { inset: auto 0 0; width: min(100%, 32rem); max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top))); margin: 0 auto; padding: 1.25rem 1rem calc(1rem + env(safe-area-inset-bottom)); overflow: auto; border: 0; border-radius: 1.5rem 1.5rem 0 0; transform: none; animation: portfolio-item-sheet-in 180ms ease-out both; }
+.portfolio-item-sheet { inset: auto 0 0; width: min(100%, 32rem); max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top))); margin: 0 auto; padding: 1.25rem 1rem calc(1rem + env(safe-area-inset-bottom)); overflow: auto; border: 0; border-radius: 1.5rem 1.5rem 0 0; transform: none; }
 .portfolio-item-sheet::backdrop { animation: portfolio-item-backdrop-in 180ms ease-out both; }
 .portfolio-item-sheet__header { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: .75rem; }
 .portfolio-item-sheet__header h2 { margin: 0; }
@@ -147,7 +149,6 @@
 .portfolio-confirmation__row dd { margin: 0; font-weight: 700; }
 :root { --portfolio-cash: #6ebdb6; --portfolio-color-0: var(--tone-accent); --portfolio-color-1: #269da0; --portfolio-color-2: #dc8a08; --portfolio-color-3: #4f8fb3; --portfolio-color-4: #6d6ab7; --portfolio-color-5: #248675; --portfolio-color-6: #b06b37; --portfolio-color-7: #56788f; --portfolio-color-8: #4d8f87; --portfolio-color-9: #8a6a9b; }
 
-@keyframes portfolio-item-sheet-in { from { opacity: 0; transform: translateY(100%); } }
 @keyframes portfolio-item-backdrop-in { from { background: rgb(16 34 32 / 0%); } }
 
 @media (max-width: 768px) {
@@ -172,5 +173,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .portfolio-item-sheet, .portfolio-item-sheet::backdrop { animation: none; }
+  .portfolio-item-sheet::backdrop { animation: none; }
 }
