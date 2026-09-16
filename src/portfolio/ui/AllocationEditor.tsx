@@ -3,10 +3,12 @@ import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { PortfolioAction } from '../application/portfolioReducer';
-import { materializeAllocation, normalizePortfolioName } from '../domain/allocation';
+import { materializeAllocation, normalizePortfolioName, setItemAmount } from '../domain/allocation';
 import type { Classification, PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 import { PortfolioItemSheet } from './PortfolioItemSheet';
+import { PortfolioEditorSummary } from './PortfolioEditorSummary';
+import { PortfolioAllocationRow } from './PortfolioAllocationRow';
 
 type ActiveItemSheet =
   | { mode: 'add'; id: string }
@@ -34,9 +36,12 @@ export function AllocationEditor({
   const [cashExpanded, setCashExpanded] = useState(false);
   const [activeItemSheet, setActiveItemSheet] = useState<ActiveItemSheet | null>(null);
   const itemSheetReturnFocusRef = useRef<HTMLElement | null>(null);
+  const itemRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pendingAddedIdRef = useRef<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const pendingCaretRef = useRef<{ id: string; caret: number } | null>(null);
   const isAtLimit = draft.items.length >= 10;
+  const isFocused = presentation !== 'standalone';
   const normalizedNameCounts = draft.items.reduce<Map<string, number>>((counts, item) => {
     const normalized = normalizePortfolioName(item.name);
     if (normalized.length > 0) counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
@@ -44,6 +49,15 @@ export function AllocationEditor({
   }, new Map());
 
   useLayoutEffect(() => {
+    const addedId = pendingAddedIdRef.current;
+    if (addedId !== null) {
+      const row = itemRowRefs.current[addedId]?.querySelector('button');
+      if (row) {
+        itemSheetReturnFocusRef.current = row;
+        row.focus();
+        pendingAddedIdRef.current = null;
+      }
+    }
     if (pendingCaretRef.current === null) return;
     const { id, caret } = pendingCaretRef.current;
     const input = inputRefs.current[id];
@@ -73,8 +87,8 @@ export function AllocationEditor({
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-editor-title">투자 배분 설정</h1>
       </header> : null}
-      {presentation === 'setup' ? (
-        <SetupAllocationSummary draft={draft} investmentWon={investmentWon} />
+      {isFocused ? (
+        <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
       ) : null}
       <div className="portfolio-editor__items">
         {draft.items.map((item, index) => {
@@ -89,21 +103,19 @@ export function AllocationEditor({
               : null;
           const nameErrorId = `portfolio-name-error-${index}`;
           const itemName = item.name || `투자 대상 ${index + 1}`;
-          if (presentation === 'setup') {
+          if (isFocused) {
             return (
-              <div className="portfolio-editor__row" key={item.id}>
-                <button
-                  type="button"
-                  className="portfolio-editor__row-summary"
-                  aria-label={`${itemName} 편집, ${formatPortfolioWon(result.amountWon)}, ${formatAllocationPercent(result.percentage)}`}
-                  onClick={(event) => {
-                    itemSheetReturnFocusRef.current = event.currentTarget;
+              <div className="portfolio-editor__row" key={item.id} ref={(node) => { itemRowRefs.current[item.id] = node; }}>
+                <PortfolioAllocationRow
+                  name={itemName}
+                  amountWon={result.amountWon}
+                  percentage={result.percentage}
+                  classification={item.classification}
+                  onEdit={(trigger) => {
+                    itemSheetReturnFocusRef.current = trigger;
                     setActiveItemSheet({ mode: 'edit', id: item.id });
                   }}
-                >
-                  <span><strong>{itemName}</strong></span>
-                  <span><strong>{formatPortfolioWon(result.amountWon)}</strong><small>{formatAllocationPercent(result.percentage)}</small></span>
-                </button>
+                />
               </div>
             );
           }
@@ -178,7 +190,7 @@ export function AllocationEditor({
         disabled={isAtLimit}
         onClick={(event) => {
           const id = createId();
-          if (presentation === 'setup') {
+          if (isFocused) {
             itemSheetReturnFocusRef.current = event.currentTarget;
             setActiveItemSheet({ mode: 'add', id });
           } else {
@@ -194,10 +206,10 @@ export function AllocationEditor({
 
       <section
         className="portfolio-editor__cash"
-        aria-label={presentation === 'setup' ? '현금' : undefined}
-        aria-labelledby={presentation === 'setup' ? undefined : 'portfolio-cash-title'}
+        aria-label={isFocused ? '현금' : undefined}
+        aria-labelledby={isFocused ? undefined : 'portfolio-cash-title'}
       >
-        {presentation === 'setup' ? (
+        {isFocused ? (
           <button
             type="button"
             className="portfolio-editor__cash-summary"
@@ -210,7 +222,7 @@ export function AllocationEditor({
         ) : (
           <><h2 id="portfolio-cash-title">현금</h2><p>분류 안정</p></>
         )}
-        {presentation !== 'setup' || cashExpanded ? <>
+        {!isFocused || cashExpanded ? <>
           <label>
           <span>현금 금액</span>
           <input
@@ -248,7 +260,7 @@ export function AllocationEditor({
         </> : null}
       </section>
       {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
-      {presentation === 'setup' && activeItemSheet ? (
+      {isFocused && activeItemSheet ? (
         <PortfolioItemSheet
           mode={activeItemSheet.mode}
           initialValue={itemSheetInitialValue(activeItemSheet, draft, allocation)}
@@ -259,13 +271,20 @@ export function AllocationEditor({
           returnFocusRef={itemSheetReturnFocusRef}
           onComplete={(value) => {
             const existing = draft.items.find((item) => item.id === activeItemSheet.id);
+            const item = {
+              id: activeItemSheet.id,
+              name: value.name,
+              order: existing?.order ?? draft.items.length,
+            };
+            try {
+              setItemAmount(draft, item, value.amountWon);
+            } catch (error) {
+              return errorMessage(error instanceof Error ? error.message : 'invalid-amount');
+            }
+            if (!existing) pendingAddedIdRef.current = item.id;
             onAction({
               type: 'draft-item-committed',
-              item: {
-                id: activeItemSheet.id,
-                name: value.name,
-                order: existing?.order ?? draft.items.length,
-              },
+              item,
               amountWon: value.amountWon,
               classification: value.classification,
               classificationOrigin: value.classificationOrigin,
@@ -303,34 +322,6 @@ function itemSheetInitialValue(
     classification: 'growth' as const,
     classificationOrigin: 'automatic' as const,
   };
-}
-
-function SetupAllocationSummary({
-  draft,
-  investmentWon,
-}: {
-  draft: PortfolioDraft;
-  investmentWon: number;
-}) {
-  const allocation = materializeAllocation(draft, investmentWon);
-  const stablePercentage = allocation.cashPercentage + allocation.items
-    .filter((item) => item.classification === 'stable')
-    .reduce((sum, item) => sum + item.percentage, 0);
-  const growthPercentage = Math.max(0, 100 - stablePercentage);
-
-  return (
-    <section className="portfolio-setup-summary" aria-label="현재 배분 요약">
-      <p>매달 {formatPortfolioWon(investmentWon)}을 나눠요</p>
-      <div className="portfolio-setup-summary__bar" aria-hidden="true">
-        <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
-        <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
-      </div>
-      <div className="portfolio-setup-summary__legend">
-        <span>성장 <strong>{formatAllocationPercent(growthPercentage)}</strong></span>
-        <span>안정 <strong>{formatAllocationPercent(stablePercentage)}</strong></span>
-      </div>
-    </section>
-  );
 }
 
 function ClassificationEditor({

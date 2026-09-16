@@ -25,6 +25,8 @@
 .portfolio-setup__actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
 .portfolio-setup-summary { margin: 1.25rem 0 1.5rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--ui-surface-radius); background: color-mix(in srgb, var(--panel) 88%, var(--bg)); }
 .portfolio-setup-summary > p { margin: 0 0 1rem; font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
+.portfolio-setup-summary > p small { color: var(--muted); font-family: var(--font-body); font-size: .875rem; font-weight: 400; }
+.portfolio-setup-summary > .portfolio-setup-summary__note { margin: .75rem 0 0; color: var(--muted); font-family: var(--font-body); font-size: .875rem; font-weight: 400; }
 .portfolio-setup-summary__bar { display: flex; height: .625rem; overflow: hidden; border-radius: 999px; background: var(--line); }
 .portfolio-setup-summary__growth { background: var(--tone-primary); }
 .portfolio-setup-summary__stable { background: var(--tone-accent); }
@@ -75,14 +77,15 @@
 .portfolio-editor__row { grid-template-columns: minmax(0, 1.4fr) minmax(10rem, 1fr) minmax(9rem, 1fr) auto auto; align-items: end; }
 .portfolio-editor--edit .portfolio-editor__row { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
 .portfolio-editor__add { width: 100%; min-width: 44px; min-height: 44px; margin-top: .75rem; }
-.portfolio-editor__row-summary { display: none; }
-.portfolio-editor--setup .portfolio-editor__items { gap: 0; border-top: 1px solid var(--line); }
-.portfolio-editor--setup .portfolio-editor__row { grid-template-columns: minmax(0, 1fr) minmax(9rem, .65fr); gap: 1rem 1.25rem; padding: 1rem .25rem; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
-.portfolio-editor--setup .portfolio-editor__row-summary { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.portfolio-editor--setup .portfolio-editor__row-summary > span { display: grid; min-width: 0; gap: .25rem; }
-.portfolio-editor--setup .portfolio-editor__row-summary > span:last-child { text-align: right; }
-.portfolio-editor--setup .portfolio-editor__row-summary strong { overflow-wrap: anywhere; }
-.portfolio-editor--setup .portfolio-editor__row-summary small { color: var(--muted); font-size: .8125rem; font-weight: 400; }
+:is(.portfolio-editor--setup, .portfolio-editor--edit) .portfolio-editor__items { gap: 0; border-top: 1px solid var(--line); }
+:is(.portfolio-editor--setup, .portfolio-editor--edit) .portfolio-editor__row { grid-template-columns: minmax(0, 1fr); padding: .75rem .25rem; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+.portfolio-editor__row-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.portfolio-editor__row-summary > span { display: grid; min-width: 0; gap: .25rem; }
+.portfolio-editor__row-summary > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.portfolio-editor__row-summary strong { overflow-wrap: anywhere; }
+.portfolio-editor__row-summary small { color: var(--muted); font-size: .875rem; font-weight: 400; }
+.portfolio-editor__row-summary svg { display: inline-block; vertical-align: middle; margin-left: .25rem; }
+.portfolio-editor__row-summary:focus-visible { box-shadow: var(--ui-focus-ring); }
 .portfolio-editor--setup > .ui-button--secondary { min-height: 44px; padding-inline: .25rem; border: 0; background: transparent; color: var(--tone-accent); box-shadow: none; }
 .portfolio-editor--setup > .portfolio-editor__add { display: inline-flex; width: 100%; min-width: 44px; height: 52px; margin: 0; align-items: center; justify-content: center; padding: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
 .portfolio-editor__add::before { content: '+'; font-family: var(--font-body); font-size: 1.75rem; font-weight: 400; line-height: 1; }
@@ -101,8 +104,8 @@
 .portfolio-editor__computed { display: grid; gap: .25rem; padding-bottom: .625rem; text-align: right; white-space: nowrap; }
 .portfolio-editor__computed span:last-child { color: var(--muted); font-size: .875rem; }
 .portfolio-editor__cash { margin-top: 1.5rem; }
-.portfolio-editor--setup .portfolio-editor__cash { margin-top: .25rem; padding: 1rem .25rem; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
-.portfolio-editor--setup .portfolio-editor__cash h2, .portfolio-editor--setup .portfolio-editor__cash p { margin: 0; }
+:is(.portfolio-editor--setup, .portfolio-editor--edit) .portfolio-editor__cash { margin-top: .25rem; padding: 1rem .25rem; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+:is(.portfolio-editor--setup, .portfolio-editor--edit) .portfolio-editor__cash h2, :is(.portfolio-editor--setup, .portfolio-editor--edit) .portfolio-editor__cash p { margin: 0; }
 .portfolio-editor__cash-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .portfolio-editor__cash-summary > span { display: grid; min-width: 0; gap: .25rem; }
 .portfolio-editor__cash-summary > span:last-child { text-align: right; }
@@ -166,7 +169,6 @@
   .portfolio-edit-surface { inset: auto 0 0; width: 100%; max-height: 88dvh; padding: 1rem 1rem calc(7rem + env(safe-area-inset-bottom)); border: 0; border-radius: 1.5rem 1.5rem 0 0; }
   .portfolio-edit-surface .portfolio-apply-bar { right: max(1rem, env(safe-area-inset-right)); left: max(1rem, env(safe-area-inset-left)); width: auto; }
   .portfolio-editor__row { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
-  .portfolio-editor--setup .portfolio-editor__row { grid-template-columns: minmax(0, 1fr) auto; padding: 1rem .25rem; }
   .portfolio-editor__computed { grid-template-columns: 1fr auto; padding-bottom: 0; text-align: left; }
   .portfolio-editor__row > .ui-button { width: 100%; }
   .portfolio-apply-bar { flex-wrap: wrap; }

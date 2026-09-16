@@ -41,6 +41,33 @@ function renderSheet(overrides: Partial<React.ComponentProps<typeof PortfolioIte
 }
 
 describe('PortfolioItemSheet', () => {
+  it('retains recovery and focuses a rejected amount until completion succeeds', () => {
+    const drafts: Record<string, unknown> = {};
+    const session = recoverySession(drafts);
+    const props = renderSheet({
+      session,
+      onComplete: vi.fn().mockReturnValueOnce('투자금을 초과해 배분할 수 없습니다.'),
+    });
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '금 현물' } });
+    const amount = within(sheet).getByLabelText('금액');
+    fireEvent.change(amount, { target: { value: '150000' } });
+    fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
+
+    expect(amount).toHaveFocus();
+    expect(amount).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    expect(drafts['portfolio-item:add']).toEqual({
+      name: '금 현물', amount: '150,000', classification: 'stable', classificationOrigin: 'automatic',
+    });
+    expect(props.onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(within(sheet).getByRole('button', { name: '-10만' }));
+    expect(amount).toHaveValue('50,000');
+    expect(amount).not.toHaveAttribute('aria-invalid');
+    fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
+    expect(drafts['portfolio-item:add']).toBeNull();
+  });
+
   it('restores unsaved raw item input without completing it on mount', () => {
     const session = recoverySession({
       'portfolio-item:add': {

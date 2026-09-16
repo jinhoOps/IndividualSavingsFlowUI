@@ -24,7 +24,7 @@ export interface PortfolioItemSheetProps {
   existingNames: string[];
   investmentWon: number;
   returnFocusRef: RefObject<HTMLElement | null>;
-  onComplete(value: PortfolioItemSheetValue): void;
+  onComplete(value: PortfolioItemSheetValue): string | void;
   onRemove?(): void;
   onClose(): void;
 }
@@ -48,6 +48,7 @@ export function PortfolioItemSheet({
   const [classificationOrigin, setClassificationOrigin] = useState(recovered?.classificationOrigin ?? initialValue.classificationOrigin);
   const [nameTouched, setNameTouched] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
@@ -66,7 +67,7 @@ export function PortfolioItemSheet({
     : duplicateName ? '같은 이름의 투자 대상이 이미 있습니다.' : null;
   const amountError = !Number.isInteger(amountWon) || amountWon < 1_000
     ? '투자 대상 금액은 1,000원 이상이어야 합니다.'
-    : amountWon > investmentWon ? '월 투자금을 초과할 수 없습니다.' : null;
+    : amountWon > investmentWon ? '월 투자금을 초과할 수 없습니다.' : commitError;
   const dirty = name !== initialValue.name
     || amount !== formatWonInput(initialValue.amountWon)
     || classification !== initialValue.classification
@@ -200,6 +201,7 @@ export function PortfolioItemSheet({
                 );
                 pendingCaretRef.current = normalized.caret;
                 setAmountTouched(true);
+                setCommitError(null);
                 setAmount(normalized.displayValue);
               }}
             />
@@ -216,6 +218,7 @@ export function PortfolioItemSheet({
             label="빠른 조정"
             onAdjust={(deltaWon) => {
               setAmountTouched(true);
+              setCommitError(null);
               setAmount(formatWonInput(adjustWon(amountWon, deltaWon)));
             }}
           />
@@ -227,8 +230,14 @@ export function PortfolioItemSheet({
             variant="primary"
             disabled={nameError !== null || amountError !== null}
             onClick={() => {
+              const error = onComplete({ name: name.trim(), amountWon, classification, classificationOrigin });
+              if (error) {
+                setCommitError(error);
+                setAmountTouched(true);
+                amountInputRef.current?.focus();
+                return;
+              }
               session?.recordRecoveryDraft(recoveryKey, null);
-              onComplete({ name: name.trim(), amountWon, classification, classificationOrigin });
             }}
           >완료</Button>
         </footer>
