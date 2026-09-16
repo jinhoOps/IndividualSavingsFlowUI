@@ -194,9 +194,11 @@ for (const viewport of VIEWPORTS) {
     await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-allocation-before.png`);
 
     await page.getByRole('button', { name: '배분 수정' }).click();
-    const goldAmount = page.getByLabel('금 금액', { exact: true });
+    await page.getByRole('button', { name: /^금 편집,/ }).click();
+    const itemEditor = page.getByRole('dialog', { name: '투자 대상 수정' });
+    const goldAmount = itemEditor.getByLabel('금액', { exact: true });
     await goldAmount.fill('40000');
-    await goldAmount.blur();
+    await itemEditor.getByRole('button', { name: '완료' }).click();
     await page.getByRole('button', { name: '적용' }).click();
     await installPortfolioBoundaryProbe(page, PORTFOLIO_UPDATED_ROWS);
     await page.getByRole('dialog', { name: '투자 배분을 적용할까요?' })

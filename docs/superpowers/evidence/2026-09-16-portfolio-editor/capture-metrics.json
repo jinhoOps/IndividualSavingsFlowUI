@@ -1,0 +1,4512 @@
+{
+  "after-1280-10-clean": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 69,
+          "height": 44,
+          "width": 61.84375,
+          "x": 1193.15625,
+          "y": 25
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 299,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 250
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 373,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 324
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 447,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 398
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 521,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 472
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 595,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 546
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 669,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 620
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 743,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 694
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 817,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 768
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 891,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 842
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 965,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 916
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분80,000원10%",
+        "rect": {
+          "bottom": 1045.5,
+          "height": 47.5,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 998
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1118.5,
+          "height": 44,
+          "width": 479.59375,
+          "x": 771.40625,
+          "y": 1074.5
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 900,
+          "height": 900,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 546,
+        "overflow": false,
+        "rect": {
+          "bottom": 779,
+          "height": 546,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 914
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 883,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 779
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-1280-10-dirty": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 69,
+          "height": 44,
+          "width": 61.84375,
+          "x": 1193.15625,
+          "y": 25
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 50,000원, 6.3%",
+        "rect": {
+          "bottom": 299,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 250
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 373,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 324
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 447,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 398
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 521,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 472
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 595,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 546
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 669,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 620
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 743,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 694
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 817,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 768
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 891,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 842
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 965,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 916
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분102,000원12.8%",
+        "rect": {
+          "bottom": 1045.5,
+          "height": 47.5,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 998
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1118.5,
+          "height": 44,
+          "width": 479.59375,
+          "x": 771.40625,
+          "y": 1074.5
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 865,
+          "height": 44,
+          "width": 62,
+          "x": 1122.0390625,
+          "y": 821
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 865,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 1192.0390625,
+          "y": 821
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 900,
+          "height": 900,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 546,
+        "overflow": false,
+        "rect": {
+          "bottom": 779,
+          "height": 546,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 914
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 883,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 779
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-1280-10-error": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 69,
+          "height": 44,
+          "width": 61.84375,
+          "x": 1193.15625,
+          "y": 25
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 50,000원, 6.3%",
+        "rect": {
+          "bottom": -315,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": -364
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -241,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": -290
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -167,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": -216
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -93,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": -142
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -19,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": -68
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 55,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 6
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 129,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 80
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 203,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 154
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 277,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 228
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 351,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 302
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분102,000원12.8%",
+        "rect": {
+          "bottom": 448.5,
+          "height": 64.5,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 384
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 731.09375,
+          "height": 44,
+          "width": 479.59375,
+          "x": 771.40625,
+          "y": 687.09375
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 865,
+          "height": 44,
+          "width": 62,
+          "x": 1122.0390625,
+          "y": 821
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 865,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 1192.0390625,
+          "y": 821
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 900,
+          "height": 900,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 546,
+        "overflow": false,
+        "rect": {
+          "bottom": 779,
+          "height": 546,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 1164
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 883,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 779
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-1280-clean": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 69,
+          "height": 44,
+          "width": 61.84375,
+          "x": 1193.15625,
+          "y": 25
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 400,000원, 50%",
+        "rect": {
+          "bottom": 299,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 250
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 373,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 324
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 447,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 398
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분80,000원10%",
+        "rect": {
+          "bottom": 527.5,
+          "height": 47.5,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 480
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 600.5,
+          "height": 44,
+          "width": 479.59375,
+          "x": 771.40625,
+          "y": 556.5
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 725.5,
+          "height": 725.5,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 372,
+        "overflow": false,
+        "rect": {
+          "bottom": 604.5,
+          "height": 371.5,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 372
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 708.5,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 604.5
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-1280-dirty": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 69,
+          "height": 44,
+          "width": 61.84375,
+          "x": 1193.15625,
+          "y": 25
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 350,000원, 43.8%",
+        "rect": {
+          "bottom": 299,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 250
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 373,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 324
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 447,
+          "height": 49,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 398
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분130,000원16.3%",
+        "rect": {
+          "bottom": 527.5,
+          "height": 47.5,
+          "width": 471.59375,
+          "x": 775.40625,
+          "y": 480
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 600.5,
+          "height": 44,
+          "width": 479.59375,
+          "x": 771.40625,
+          "y": 556.5
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 690.5,
+          "height": 44,
+          "width": 62,
+          "x": 1122.0390625,
+          "y": 646.5
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 690.5,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 1192.0390625,
+          "y": 646.5
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 725.5,
+          "height": 725.5,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 372,
+        "overflow": false,
+        "rect": {
+          "bottom": 604.5,
+          "height": 371.5,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 372
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 708.5,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 604.5
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-1280-error": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 68,
+          "height": 44,
+          "width": 44,
+          "x": 1212,
+          "y": 24
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 225.59375,
+          "height": 44,
+          "width": 222,
+          "x": 801,
+          "y": 181.59375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 225.59375,
+          "height": 44,
+          "width": 222,
+          "x": 1026,
+          "y": 181.59375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 109.5,
+          "x": 801,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 109.5,
+          "x": 913.5,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 109.5,
+          "x": 1026,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 109.5,
+          "x": 1138.5,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 571.5703125,
+          "height": 48,
+          "width": 225.5,
+          "x": 793,
+          "y": 523.5703125
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 571.5703125,
+          "height": 48,
+          "width": 225.5,
+          "x": 1030.5,
+          "y": 523.5703125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 725.5,
+          "height": 725.5,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 595.5703125,
+          "height": 595.5703125,
+          "width": 512,
+          "x": 768,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 372,
+        "overflow": false,
+        "rect": {
+          "bottom": 604.5,
+          "height": 371.5,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 372
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 708.5,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 604.5
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-1280-invalid-cash-apply": {
+    "controls": [
+      {
+        "name": "계속 수정",
+        "rect": {
+          "bottom": 561.5,
+          "height": 44,
+          "width": 96.640625,
+          "x": 441,
+          "y": 517.5
+        }
+      },
+      {
+        "name": "배분 적용",
+        "rect": {
+          "bottom": 561.5,
+          "height": 44,
+          "width": 96.8046875,
+          "x": 537.640625,
+          "y": 517.5
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 900,
+          "height": 900,
+          "width": 537.59375,
+          "x": 742.40625,
+          "y": 0
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 586.5,
+          "height": 273,
+          "width": 448,
+          "x": 416,
+          "y": 313.5
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 900,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 546,
+        "overflow": false,
+        "rect": {
+          "bottom": 779,
+          "height": 546,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 233
+        },
+        "scrollHeight": 1164
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 883,
+          "height": 104,
+          "width": 487.59375,
+          "x": 767.40625,
+          "y": 779
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 1280
+  },
+  "after-390-0-targets": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 378.5,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 334.5
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분800,000원100%",
+        "rect": {
+          "bottom": 631,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 583.5
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 704,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 660
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 525.5,
+          "width": 390,
+          "x": 0,
+          "y": 318.5
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 182,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 181.5,
+          "width": 358,
+          "x": 16,
+          "y": 542.5
+        },
+        "scrollHeight": 182
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-1-targets": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 280.5,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 236.5
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 550.5,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 477.5
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분728,000원91%",
+        "rect": {
+          "bottom": 631,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 583.5
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 704,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 660
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 623.5,
+          "width": 390,
+          "x": 0,
+          "y": 220.5
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 280,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 279.5,
+          "width": 358,
+          "x": 16,
+          "y": 444.5
+        },
+        "scrollHeight": 280
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-10-clean": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 431.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 358.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 529.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 456.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 627.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 554.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 725.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 652.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 823.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 750.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 921.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 848.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1019.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 946.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1117.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1044.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1215.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1142.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1313.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1240.28125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분80,000원10%",
+        "rect": {
+          "bottom": 1393.78125,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 1346.28125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1466.78125,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 1422.78125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 1186
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-10-dirty": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 50,000원, 6.3%",
+        "rect": {
+          "bottom": 431.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 358.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 529.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 456.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 627.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 554.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 725.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 652.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 823.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 750.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 921.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 848.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1019.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 946.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1117.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1044.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1215.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1142.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1313.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1240.28125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분102,000원12.8%",
+        "rect": {
+          "bottom": 1393.78125,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 1346.28125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1466.78125,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 1422.78125
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62,
+          "x": 241.0390625,
+          "y": 766
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 311.0390625,
+          "y": 766
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 1186
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-10-error": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 50,000원, 6.3%",
+        "rect": {
+          "bottom": -586.21875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -659.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -488.21875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -561.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -390.21875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -463.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -292.21875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -365.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -194.21875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -267.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -96.21875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -169.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1.78125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -71.21875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 99.78125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 26.78125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 197.78125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 124.78125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 295.78125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 222.78125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분102,000원12.8%",
+        "rect": {
+          "bottom": 393.28125,
+          "height": 64.5,
+          "width": 310,
+          "x": 40,
+          "y": 328.78125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 675.875,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 631.875
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62,
+          "x": 241.0390625,
+          "y": 766
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 311.0390625,
+          "y": 766
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 1436
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-10-targets-bottom": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": -355.71875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -428.71875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": -257.71875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -330.71875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": -159.71875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -232.71875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": -61.71875,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -134.71875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 36.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": -36.71875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 134.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 61.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 232.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 159.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 330.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 257.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 428.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 355.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 526.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 453.28125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분100,000,000원10%",
+        "rect": {
+          "bottom": 606.78125,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 559.28125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 679.78125,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 635.78125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 1186
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-10-targets": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 431.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 358.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 529.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 456.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 627.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 554.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 725.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 652.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 823.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 750.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 921.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 848.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 1019.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 946.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 1117.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1044.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 1215.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1142.28125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 90,000,000원, 9%",
+        "rect": {
+          "bottom": 1313.28125,
+          "height": 73,
+          "width": 310,
+          "x": 40,
+          "y": 1240.28125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분100,000,000원10%",
+        "rect": {
+          "bottom": 1393.78125,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 1346.28125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1466.78125,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 1422.78125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 1186
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-clean": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 400,000원, 50%",
+        "rect": {
+          "bottom": 407.28125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 358.28125
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 481.28125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 432.28125
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 555.28125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 506.28125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분80,000원10%",
+        "rect": {
+          "bottom": 635.78125,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 588.28125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 708.78125,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 664.78125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-dirty": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 350,000원, 43.8%",
+        "rect": {
+          "bottom": 407.28125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 358.28125
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 481.28125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 432.28125
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 555.28125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 506.28125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분130,000원16.3%",
+        "rect": {
+          "bottom": 635.78125,
+          "height": 47.5,
+          "width": 310,
+          "x": 40,
+          "y": 588.28125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 708.78125,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 664.78125
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62,
+          "x": 241.0390625,
+          "y": 766
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 311.0390625,
+          "y": 766
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-duplicate": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 297.8359375,
+          "height": 44,
+          "width": 44,
+          "x": 330,
+          "y": 253.8359375
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 484.21875,
+          "height": 44,
+          "width": 169.5,
+          "x": 24,
+          "y": 440.21875
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 484.21875,
+          "height": 44,
+          "width": 169.5,
+          "x": 196.5,
+          "y": 440.21875
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 24,
+          "y": 658
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 110.25,
+          "y": 658
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 196.5,
+          "y": 658
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 282.75,
+          "y": 658
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 828,
+          "height": 48,
+          "width": 173,
+          "x": 16,
+          "y": 780
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 828,
+          "height": 48,
+          "width": 173,
+          "x": 201,
+          "y": 780
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 610.1640625,
+          "width": 390,
+          "x": 0,
+          "y": 233.8359375
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-error": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 324.4296875,
+          "height": 44,
+          "width": 44,
+          "x": 330,
+          "y": 280.4296875
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 482.0234375,
+          "height": 44,
+          "width": 169.5,
+          "x": 24,
+          "y": 438.0234375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 482.0234375,
+          "height": 44,
+          "width": 169.5,
+          "x": 196.5,
+          "y": 438.0234375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 24,
+          "y": 658
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 110.25,
+          "y": 658
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 196.5,
+          "y": 658
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 282.75,
+          "y": 658
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 828,
+          "height": 48,
+          "width": 173,
+          "x": 16,
+          "y": 780
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 828,
+          "height": 48,
+          "width": 173,
+          "x": 201,
+          "y": 780
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 583.5703125,
+          "width": 390,
+          "x": 0,
+          "y": 260.4296875
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-manual-unallocated": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 161.28125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 312.15625,
+          "y": 117.28125
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 400,000원, 50%",
+        "rect": {
+          "bottom": 83.78125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 34.78125
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 157.78125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 108.78125
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 231.78125,
+          "height": 49,
+          "width": 310,
+          "x": 40,
+          "y": 182.78125
+        }
+      },
+      {
+        "name": "현금직접 배분 · 안정40,000원5%",
+        "rect": {
+          "bottom": 329.28125,
+          "height": 64.5,
+          "width": 310,
+          "x": 40,
+          "y": 264.78125
+        }
+      },
+      {
+        "name": "현금 자동 배분 켜기",
+        "rect": {
+          "bottom": 630.875,
+          "height": 44,
+          "width": 163.203125,
+          "x": 40,
+          "y": 586.875
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 703.875,
+          "height": 44,
+          "width": 318,
+          "x": 36,
+          "y": 659.875
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62,
+          "x": 241.0390625,
+          "y": 766
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 810,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 311.0390625,
+          "y": 766
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 345,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 344.71875,
+          "width": 358,
+          "x": 16,
+          "y": 379.28125
+        },
+        "scrollHeight": 722
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390-minimum": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 324.4296875,
+          "height": 44,
+          "width": 44,
+          "x": 330,
+          "y": 280.4296875
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 482.0234375,
+          "height": 44,
+          "width": 169.5,
+          "x": 24,
+          "y": 438.0234375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 482.0234375,
+          "height": 44,
+          "width": 169.5,
+          "x": 196.5,
+          "y": 438.0234375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 24,
+          "y": 658
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 110.25,
+          "y": 658
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 196.5,
+          "y": 658
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 702,
+          "height": 44,
+          "width": 83.25,
+          "x": 282.75,
+          "y": 658
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 828,
+          "height": 48,
+          "width": 173,
+          "x": 16,
+          "y": 780
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 828,
+          "height": 48,
+          "width": 173,
+          "x": 201,
+          "y": 780
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 742.71875,
+          "width": 390,
+          "x": 0,
+          "y": 101.28125
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 844,
+          "height": 583.5703125,
+          "width": 390,
+          "x": 0,
+          "y": 260.4296875
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 844,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 399,
+        "overflow": false,
+        "rect": {
+          "bottom": 724,
+          "height": 398.71875,
+          "width": 358,
+          "x": 16,
+          "y": 325.28125
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 828,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 724
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-390x600-error": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 136,
+          "height": 44,
+          "width": 44,
+          "x": 330,
+          "y": 92
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 293.59375,
+          "height": 44,
+          "width": 169.5,
+          "x": 24,
+          "y": 249.59375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 293.59375,
+          "height": 44,
+          "width": 169.5,
+          "x": 196.5,
+          "y": 249.59375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 513.5703125,
+          "height": 44,
+          "width": 83.25,
+          "x": 24,
+          "y": 469.5703125
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 513.5703125,
+          "height": 44,
+          "width": 83.25,
+          "x": 110.25,
+          "y": 469.5703125
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 513.5703125,
+          "height": 44,
+          "width": 83.25,
+          "x": 196.5,
+          "y": 469.5703125
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 513.5703125,
+          "height": 44,
+          "width": 83.25,
+          "x": 282.75,
+          "y": 469.5703125
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 584,
+          "height": 48,
+          "width": 173,
+          "x": 16,
+          "y": 536
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 584,
+          "height": 48,
+          "width": 173,
+          "x": 201,
+          "y": 536
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 600,
+          "height": 528,
+          "width": 390,
+          "x": 0,
+          "y": 72
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 600,
+          "height": 528,
+          "width": 390,
+          "x": 0,
+          "y": 72
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 600,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 184,
+        "overflow": false,
+        "rect": {
+          "bottom": 480,
+          "height": 184,
+          "width": 358,
+          "x": 16,
+          "y": 296
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 584,
+          "height": 104,
+          "width": 358,
+          "x": 16,
+          "y": 480
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 390
+  },
+  "after-768-10-clean": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 182.8828125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 690.15625,
+          "y": 138.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 428.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 379.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 502.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 453.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 576.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 527.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 650.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 601.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 724.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 675.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 798.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 749.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 872.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 823.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 946.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 897.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1020.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 971.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1094.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 1045.8828125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분80,000원10%",
+        "rect": {
+          "bottom": 1175.3828125,
+          "height": 47.5,
+          "width": 688,
+          "x": 40,
+          "y": 1127.8828125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1248.3828125,
+          "height": 44,
+          "width": 696,
+          "x": 36,
+          "y": 1204.3828125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 901.1171875,
+          "width": 768,
+          "x": 0,
+          "y": 122.8828125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 557,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 557.1171875,
+          "width": 736,
+          "x": 16,
+          "y": 346.8828125
+        },
+        "scrollHeight": 946
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-768-10-dirty": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 182.8828125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 690.15625,
+          "y": 138.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 50,000원, 6.3%",
+        "rect": {
+          "bottom": 428.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 379.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 502.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 453.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 576.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 527.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 650.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 601.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 724.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 675.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 798.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 749.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 872.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 823.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 946.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 897.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1020.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 971.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 1094.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 1045.8828125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분102,000원12.8%",
+        "rect": {
+          "bottom": 1175.3828125,
+          "height": 47.5,
+          "width": 688,
+          "x": 40,
+          "y": 1127.8828125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 1248.3828125,
+          "height": 44,
+          "width": 696,
+          "x": 36,
+          "y": 1204.3828125
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 990,
+          "height": 44,
+          "width": 62,
+          "x": 619.0390625,
+          "y": 946
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 990,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 689.0390625,
+          "y": 946
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 901.1171875,
+          "width": 768,
+          "x": 0,
+          "y": 122.8828125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 557,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 557.1171875,
+          "width": 736,
+          "x": 16,
+          "y": 346.8828125
+        },
+        "scrollHeight": 946
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-768-10-error": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 182.8828125,
+          "height": 44,
+          "width": 61.84375,
+          "x": 690.15625,
+          "y": 138.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 1 편집, 성장, 50,000원, 6.3%",
+        "rect": {
+          "bottom": -190.1171875,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": -239.1171875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 2 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -116.1171875,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": -165.1171875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 3 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": -42.1171875,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": -91.1171875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 4 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 31.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": -17.1171875
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 5 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 105.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 56.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 6 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 179.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 130.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 7 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 253.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 204.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 8 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 327.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 278.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 9 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 401.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 352.8828125
+        }
+      },
+      {
+        "name": "전 세계 소형주 가치주 지수를 따르는 장기 투자 대상 10 편집, 성장, 72,000원, 9%",
+        "rect": {
+          "bottom": 475.8828125,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 426.8828125
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분102,000원12.8%",
+        "rect": {
+          "bottom": 573.3828125,
+          "height": 64.5,
+          "width": 688,
+          "x": 40,
+          "y": 508.8828125
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 855.9765625,
+          "height": 44,
+          "width": 696,
+          "x": 36,
+          "y": 811.9765625
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 990,
+          "height": 44,
+          "width": 62,
+          "x": 619.0390625,
+          "y": 946
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 990,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 689.0390625,
+          "y": 946
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 901.1171875,
+          "width": 768,
+          "x": 0,
+          "y": 122.8828125
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 557,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 557.1171875,
+          "width": 736,
+          "x": 16,
+          "y": 346.8828125
+        },
+        "scrollHeight": 1196
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-768-clean": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 336.5,
+          "height": 44,
+          "width": 61.84375,
+          "x": 690.15625,
+          "y": 292.5
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 400,000원, 50%",
+        "rect": {
+          "bottom": 582.5,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 533.5
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 656.5,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 607.5
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 730.5,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 681.5
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분80,000원10%",
+        "rect": {
+          "bottom": 811,
+          "height": 47.5,
+          "width": 688,
+          "x": 40,
+          "y": 763.5
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 884,
+          "height": 44,
+          "width": 696,
+          "x": 36,
+          "y": 840
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 747.5,
+          "width": 768,
+          "x": 0,
+          "y": 276.5
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 404,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 403.5,
+          "width": 736,
+          "x": 16,
+          "y": 500.5
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-768-dirty": {
+    "controls": [
+      {
+        "name": "편집기 닫기",
+        "rect": {
+          "bottom": 336.5,
+          "height": 44,
+          "width": 61.84375,
+          "x": 690.15625,
+          "y": 292.5
+        }
+      },
+      {
+        "name": "글로벌 인덱스 편집, 성장, 350,000원, 43.8%",
+        "rect": {
+          "bottom": 582.5,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 533.5
+        }
+      },
+      {
+        "name": "채권 편집, 안정, 200,000원, 25%",
+        "rect": {
+          "bottom": 656.5,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 607.5
+        }
+      },
+      {
+        "name": "금 편집, 안정, 120,000원, 15%",
+        "rect": {
+          "bottom": 730.5,
+          "height": 49,
+          "width": 688,
+          "x": 40,
+          "y": 681.5
+        }
+      },
+      {
+        "name": "현금남은 금액 자동 배분130,000원16.3%",
+        "rect": {
+          "bottom": 811,
+          "height": 47.5,
+          "width": 688,
+          "x": 40,
+          "y": 763.5
+        }
+      },
+      {
+        "name": "투자 대상 추가",
+        "rect": {
+          "bottom": 884,
+          "height": 44,
+          "width": 696,
+          "x": 36,
+          "y": 840
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 990,
+          "height": 44,
+          "width": 62,
+          "x": 619.0390625,
+          "y": 946
+        }
+      },
+      {
+        "name": "적용",
+        "rect": {
+          "bottom": 990,
+          "height": 44,
+          "width": 62.9609375,
+          "x": 689.0390625,
+          "y": 946
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 747.5,
+          "width": 768,
+          "x": 0,
+          "y": 276.5
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 404,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 403.5,
+          "width": 736,
+          "x": 16,
+          "y": 500.5
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-768-error": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 504.4296875,
+          "height": 44,
+          "width": 44,
+          "x": 580,
+          "y": 460.4296875
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 662.0234375,
+          "height": 44,
+          "width": 230.5,
+          "x": 152,
+          "y": 618.0234375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 662.0234375,
+          "height": 44,
+          "width": 230.5,
+          "x": 385.5,
+          "y": 618.0234375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 152,
+          "y": 838
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 268.75,
+          "y": 838
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 385.5,
+          "y": 838
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 502.25,
+          "y": 838
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 1008,
+          "height": 48,
+          "width": 234,
+          "x": 144,
+          "y": 960
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 1008,
+          "height": 48,
+          "width": 234,
+          "x": 390,
+          "y": 960
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 747.5,
+          "width": 768,
+          "x": 0,
+          "y": 276.5
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 583.5703125,
+          "width": 512,
+          "x": 128,
+          "y": 440.4296875
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 404,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 403.5,
+          "width": 736,
+          "x": 16,
+          "y": 500.5
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-boundary-767": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 504.4296875,
+          "height": 44,
+          "width": 44,
+          "x": 579.5,
+          "y": 460.4296875
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 662.0234375,
+          "height": 44,
+          "width": 230.5,
+          "x": 151.5,
+          "y": 618.0234375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 662.0234375,
+          "height": 44,
+          "width": 230.5,
+          "x": 385,
+          "y": 618.0234375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 151.5,
+          "y": 838
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 268.25,
+          "y": 838
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 385,
+          "y": 838
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 501.75,
+          "y": 838
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 1008,
+          "height": 48,
+          "width": 234,
+          "x": 143.5,
+          "y": 960
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 1008,
+          "height": 48,
+          "width": 234,
+          "x": 389.5,
+          "y": 960
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 747.5,
+          "width": 767,
+          "x": 0,
+          "y": 276.5
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 583.5703125,
+          "width": 512,
+          "x": 127.5,
+          "y": 440.4296875
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 404,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 403.5,
+          "width": 735,
+          "x": 16,
+          "y": 500.5
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 735,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 767
+  },
+  "after-boundary-768": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 504.4296875,
+          "height": 44,
+          "width": 44,
+          "x": 580,
+          "y": 460.4296875
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 662.0234375,
+          "height": 44,
+          "width": 230.5,
+          "x": 152,
+          "y": 618.0234375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 662.0234375,
+          "height": 44,
+          "width": 230.5,
+          "x": 385.5,
+          "y": 618.0234375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 152,
+          "y": 838
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 268.75,
+          "y": 838
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 385.5,
+          "y": 838
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 882,
+          "height": 44,
+          "width": 113.75,
+          "x": 502.25,
+          "y": 838
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 1008,
+          "height": 48,
+          "width": 234,
+          "x": 144,
+          "y": 960
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 1008,
+          "height": 48,
+          "width": 234,
+          "x": 390,
+          "y": 960
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 747.5,
+          "width": 768,
+          "x": 0,
+          "y": 276.5
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 1024,
+          "height": 583.5703125,
+          "width": 512,
+          "x": 128,
+          "y": 440.4296875
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 404,
+        "overflow": false,
+        "rect": {
+          "bottom": 904,
+          "height": 403.5,
+          "width": 736,
+          "x": 16,
+          "y": 500.5
+        },
+        "scrollHeight": 404
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 1008,
+          "height": 104,
+          "width": 736,
+          "x": 16,
+          "y": 904
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 768
+  },
+  "after-boundary-769": {
+    "controls": [
+      {
+        "name": "투자 대상 삭제",
+        "rect": {
+          "bottom": 68,
+          "height": 44,
+          "width": 44,
+          "x": 701,
+          "y": 24
+        }
+      },
+      {
+        "name": "성장",
+        "rect": {
+          "bottom": 225.59375,
+          "height": 44,
+          "width": 127.484375,
+          "x": 479.0234375,
+          "y": 181.59375
+        }
+      },
+      {
+        "name": "안정",
+        "rect": {
+          "bottom": 225.59375,
+          "height": 44,
+          "width": 127.4921875,
+          "x": 609.5078125,
+          "y": 181.59375
+        }
+      },
+      {
+        "name": "-50만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 62.2421875,
+          "x": 479.0234375,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "-10만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 62.2421875,
+          "x": 544.265625,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "+10만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 62.2421875,
+          "x": 609.5078125,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "+50만",
+        "rect": {
+          "bottom": 445.5703125,
+          "height": 44,
+          "width": 62.25,
+          "x": 674.75,
+          "y": 401.5703125
+        }
+      },
+      {
+        "name": "취소",
+        "rect": {
+          "bottom": 571.5703125,
+          "height": 48,
+          "width": 130.984375,
+          "x": 471.0234375,
+          "y": 523.5703125
+        }
+      },
+      {
+        "name": "완료",
+        "rect": {
+          "bottom": 571.5703125,
+          "height": 48,
+          "width": 130.9921875,
+          "x": 614.0078125,
+          "y": 523.5703125
+        }
+      }
+    ],
+    "dialogs": [
+      {
+        "inert": true,
+        "overflow": false,
+        "rect": {
+          "bottom": 725.5,
+          "height": 725.5,
+          "width": 322.9765625,
+          "x": 446.0234375,
+          "y": 0
+        }
+      },
+      {
+        "inert": false,
+        "overflow": false,
+        "rect": {
+          "bottom": 595.5703125,
+          "height": 595.5703125,
+          "width": 322.9765625,
+          "x": 446.0234375,
+          "y": 0
+        }
+      }
+    ],
+    "documentOverflow": false,
+    "height": 1024,
+    "sections": [
+      {
+        "class": "portfolio-edit-surface__body",
+        "clientHeight": 372,
+        "overflow": false,
+        "rect": {
+          "bottom": 604.5,
+          "height": 371.5,
+          "width": 272.9765625,
+          "x": 471.0234375,
+          "y": 233
+        },
+        "scrollHeight": 372
+      },
+      {
+        "class": "portfolio-edit-surface__footer",
+        "clientHeight": 104,
+        "overflow": false,
+        "rect": {
+          "bottom": 708.5,
+          "height": 104,
+          "width": 272.9765625,
+          "x": 471.0234375,
+          "y": 604.5
+        },
+        "scrollHeight": 104
+      }
+    ],
+    "width": 769
+  }
+}

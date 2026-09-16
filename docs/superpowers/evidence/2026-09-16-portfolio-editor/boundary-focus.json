@@ -1,0 +1,68 @@
+[
+  {
+    "dialogs": [
+      {
+        "inert": true,
+        "mode": "sheet",
+        "title": "portfolio-edit-title"
+      },
+      {
+        "inert": false,
+        "mode": "sheet",
+        "title": "portfolio-item-sheet-title"
+      }
+    ],
+    "focus": {
+      "id": "",
+      "tag": "INPUT",
+      "text": ""
+    },
+    "height": 1024,
+    "value": "999,999",
+    "width": 767
+  },
+  {
+    "dialogs": [
+      {
+        "inert": true,
+        "mode": "sheet",
+        "title": "portfolio-edit-title"
+      },
+      {
+        "inert": false,
+        "mode": "sheet",
+        "title": "portfolio-item-sheet-title"
+      }
+    ],
+    "focus": {
+      "id": "",
+      "tag": "INPUT",
+      "text": ""
+    },
+    "height": 1024,
+    "value": "999,999",
+    "width": 768
+  },
+  {
+    "dialogs": [
+      {
+        "inert": true,
+        "mode": "panel",
+        "title": "portfolio-edit-title"
+      },
+      {
+        "inert": false,
+        "mode": "panel",
+        "title": "portfolio-item-sheet-title"
+      }
+    ],
+    "focus": {
+      "id": "",
+      "tag": "INPUT",
+      "text": ""
+    },
+    "height": 1024,
+    "value": "999,999",
+    "width": 769
+  }
+]

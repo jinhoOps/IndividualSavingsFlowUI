@@ -1,0 +1,71 @@
+(node:66333) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2m[WebServer] [22m(node:66335) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:66335) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+[2m[WebServer] [22m(node:66342) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:66342) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+Running 29 tests using 1 worker
+
+(node:66367) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66367) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:66367) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/motion-system.spec.ts:121:3 › mobile captures cross-app motion boundaries without losing semantics or focus (6.9s)
+  ✓   2 [chromium] › tests/motion-system.spec.ts:121:3 › tablet captures cross-app motion boundaries without losing semantics or focus (6.4s)
+  ✓   3 [chromium] › tests/motion-system.spec.ts:121:3 › desktop captures cross-app motion boundaries without losing semantics or focus (6.5s)
+  -   4 [chromium] › tests/motion-system.spec.ts:232:1 › PWA offline revisit keeps all app routes and final motion state available
+  ✓   5 [chromium] › tests/portfolio.spec.ts:124:1 › creates one allocation and revisits result-first (742ms)
+  ✓   6 [chromium] › tests/portfolio.spec.ts:170:1 › resumes and cancels a draft, validates manual cash, and confirms reset (2.3s)
+  ✓   7 [chromium] › tests/portfolio.spec.ts:226:1 › explains duplicate names and blocks confirmation until corrected (669ms)
+  ✓   8 [chromium] › tests/portfolio.spec.ts:245:1 › puts a Main investment increase into cash (329ms)
+  ✓   9 [chromium] › tests/portfolio.spec.ts:256:1 › shows the source-state summary first and keeps view preferences separate (611ms)
+  ✓  10 [chromium] › tests/portfolio.spec.ts:280:1 › gates zero investment and focuses Main investment editing (477ms)
+  ✓  11 [chromium] › tests/portfolio.spec.ts:293:1 › keeps the summary-first ratio list usable across required widths (757ms)
+  ✓  12 [chromium] › tests/portfolio.spec.ts:391:1 › contains the mobile editor, apply bar, and confirmation dialog (1.2s)
+  ✓  13 [chromium] › tests/portfolio.spec.ts:419:1 › keeps add-sheet amount adjustments ordered, touch-sized, and on one row at 390px (767ms)
+  ✓  14 [chromium] › tests/portfolio.spec.ts:448:1 › slides the mobile edit card in from below the viewport (777ms)
+  ✓  15 [chromium] › tests/portfolio.spec.ts:483:1 › isolates applied editing as a sheet or panel and restores focus (1.5s)
+  ✓  16 [chromium] › tests/portfolio.spec.ts:521:1 › reflows a long Korean target name at a 200% desktop-zoom equivalent width (348ms)
+  ✓  17 [chromium] › tests/portfolio.spec.ts:572:1 › keeps the final mobile editor control above the save-error apply bar (1.1s)
+  ✓  18 [chromium] › tests/portfolio.spec.ts:608:1 › contains the focused target sheet at 768px (441ms)
+  ✓  19 [chromium] › tests/portfolio.spec.ts:623:1 › protects dirty mobile target input and reuses the sheet for editing (1.9s)
+  ✓  20 [chromium] › tests/portfolio.spec.ts:687:3 › contains target shortcuts at 768px (448ms)
+  ✓  21 [chromium] › tests/portfolio.spec.ts:687:3 › contains target shortcuts at 1280px (432ms)
+  ✓  22 [chromium] › tests/portfolio.spec.ts:706:1 › does not expose account or custody management and preserves retired Account Map data (1.2s)
+  ✓  23 [chromium] › tests/portfolio.spec.ts:769:3 › keeps nested editor focus and footer containment at 390px (1.3s)
+  ✓  24 [chromium] › tests/portfolio.spec.ts:769:3 › keeps nested editor focus and footer containment at 768px (1.4s)
+  ✓  25 [chromium] › tests/portfolio.spec.ts:769:3 › keeps nested editor focus and footer containment at 1280px (1.2s)
+  ✓  26 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 390px (823ms)
+  ✓  27 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 640px (770ms)
+  ✘  28 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 768px (451ms)
+(node:67628) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:67628) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:67628) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  29 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 1280px (809ms)
+
+
+  1) [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 768px
+
+    Error: page.evaluate: Execution context was destroyed, most likely because of a navigation.
+
+      840 |     });
+      841 |     await page.goto('apps/portfolio/');
+    > 842 |     await page.evaluate(() => document.fonts.ready);
+          |                ^
+      843 |     await page.getByRole('button', { name: '배분 수정' }).click();
+      844 |     const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
+      845 |     const body = editor.locator('.portfolio-edit-surface__body');
+        at /Users/jinho/orca/IndividualSavingsFlowUI/tests/portfolio.spec.ts:842:16
+
+    Error Context: test-results/portfolio-scrolls-ten-edit-7ec45-summary-or-actions-at-768px-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 768px
+  1 skipped
+  27 passed (44.4s)

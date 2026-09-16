@@ -1,0 +1,14 @@
+
+> individualsavingsflowui@0.11.96 test:unit
+> vitest run tests/unit/portfolio tests/unit/components
+
+
+ RUN  v4.1.5 /Users/jinho/orca/IndividualSavingsFlowUI
+
+(node:71955) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  25 passed (25)
+      Tests  228 passed (228)
+   Start at  11:10:41
+   Duration  2.60s (transform 1.56s, setup 0ms, import 3.80s, tests 4.38s, environment 7.10s)
