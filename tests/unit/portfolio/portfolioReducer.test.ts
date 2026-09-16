@@ -5,6 +5,7 @@ import {
   portfolioReducer,
 } from '../../../src/portfolio/application/portfolioReducer';
 import { createCashOnlyDraft, materializeAllocation } from '../../../src/portfolio/domain/allocation';
+import { createDraftFromExample, PORTFOLIO_EXAMPLES } from '../../../src/portfolio/domain/portfolioExamples';
 import type { PortfolioPlan } from '../../../src/portfolio/domain/model';
 
 const plan: PortfolioPlan = {
@@ -92,6 +93,23 @@ describe('portfolioReducer', () => {
     expect(next.applied).toEqual(plan);
     expect(next.draft).not.toEqual(state.draft);
     expect(next.dirty).toBe(true);
+  });
+
+  it('replaces the aggregate draft only with a valid candidate for the current Main investment', () => {
+    const state = createPortfolioState(readyWithPlan);
+    const candidate = createDraftFromExample(
+      PORTFOLIO_EXAMPLES.find((example) => example.id === 'voo-gold')!,
+      200_000,
+      2,
+    );
+
+    const replaced = portfolioReducer(state, { type: 'draft-replaced', draft: candidate });
+    expect(replaced.draft).toEqual(candidate);
+    expect(replaced.applied).toEqual(plan);
+    expect(replaced.dirty).toBe(true);
+
+    const staleCandidate = { ...candidate, syncedInvestmentWon: 300_000 };
+    expect(portfolioReducer(replaced, { type: 'draft-replaced', draft: staleCandidate })).toBe(replaced);
   });
 
   it('cancel discards the draft and returns to result', () => {

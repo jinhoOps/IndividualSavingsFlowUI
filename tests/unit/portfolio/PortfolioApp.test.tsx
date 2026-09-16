@@ -461,7 +461,7 @@ describe('PortfolioApp', () => {
 
   it('revisits a saved plan result-first', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    expect(screen.getByText('이번 달 투자금')).toBeVisible();
+    expect(screen.getByText('현재 포트폴리오')).toBeVisible();
     expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '안정 40%' }).closest('section'))
       .toHaveClass('ui-surface', 'portfolio-summary');
@@ -568,8 +568,8 @@ describe('PortfolioApp', () => {
 
     expect(await screen.findByRole('heading', { name: '안정 45%' })).toBeVisible();
     await waitFor(() => expect(anime.animate).toHaveBeenCalledWith(
-      expect.any(HTMLElement),
-      expect.objectContaining({ scaleX: [0.6, 0.55], duration: 180 }),
+      expect.objectContaining({ value: 60 }),
+      expect.objectContaining({ value: 55, duration: 180 }),
     ));
   });
 
@@ -617,7 +617,7 @@ describe('PortfolioApp', () => {
     expect(screen.getByTestId('app-shell-launcher')).not.toHaveClass('app-content-frame');
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
-    expect(screen.getByRole('heading', { name: '이번 달 투자금 200,000원' })).toBeVisible();
+    expect(screen.getByText('이번 달 투자금 200,000원')).toBeVisible();
   });
 
   it('shows the newly applied plan when draft cleanup fails after the applied write', async () => {

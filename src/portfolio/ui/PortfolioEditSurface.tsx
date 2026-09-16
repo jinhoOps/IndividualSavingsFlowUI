@@ -6,6 +6,7 @@ import { AllocationEditor } from './AllocationEditor';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioEditorSummary } from './PortfolioEditorSummary';
 import { PortfolioDialog } from './PortfolioDialog';
+import { PortfolioExamplePicker } from './PortfolioExamplePicker';
 
 export function PortfolioEditSurface({
   draft,
@@ -37,6 +38,7 @@ export function PortfolioEditSurface({
   now(): number;
 }) {
   const [cashError, setCashError] = useState<string | null>(null);
+  const [examplePickerOpen, setExamplePickerOpen] = useState(false);
   const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
       ? 'sheet'
@@ -58,30 +60,59 @@ export function PortfolioEditSurface({
       dataPresentation={presentation}
       labelledBy="portfolio-edit-title"
       onClose={() => {
-        if (!applying) onCancel();
+        if (!applying) {
+          if (examplePickerOpen) setExamplePickerOpen(false);
+          else onCancel();
+        }
       }}
       returnFocusRef={returnFocusRef}
     >
       <header className="portfolio-edit-surface__header">
-        <h2 id="portfolio-edit-title">투자 배분 수정</h2>
-        <Button type="button" variant="quiet" data-dialog-initial-focus aria-label="편집기 닫기" disabled={applying} onClick={onCancel}>닫기</Button>
+        <h2 id="portfolio-edit-title">{examplePickerOpen ? '샘플로 배분 시작' : '투자 배분 수정'}</h2>
+        <div className="portfolio-edit-surface__header-actions">
+          {examplePickerOpen ? null : (
+            <Button type="button" variant="quiet" aria-label="샘플로 시작" onClick={() => setExamplePickerOpen(true)}>샘플</Button>
+          )}
+          <Button
+            type="button"
+            variant="quiet"
+            data-dialog-initial-focus
+            aria-label={examplePickerOpen ? '편집기로 돌아가기' : '편집기 닫기'}
+            disabled={applying}
+            onClick={examplePickerOpen ? () => setExamplePickerOpen(false) : onCancel}
+          >
+            {examplePickerOpen ? '돌아가기' : '닫기'}
+          </Button>
+        </div>
       </header>
       {showSaving ? <p role="status">저장 중</p> : null}
-      <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
-      <div className="portfolio-edit-surface__body">
-        <AllocationEditor
+      {examplePickerOpen ? (
+        <PortfolioExamplePicker
           draft={draft}
           investmentWon={investmentWon}
-          onAction={onAction}
           now={now}
-          fieldError={fieldError}
-          onCashErrorChange={setCashError}
-          presentation="edit"
-          showSummary={false}
+          onAction={onAction}
+          onClose={() => setExamplePickerOpen(false)}
         />
-      </div>
+      ) : (
+        <>
+          <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
+          <div className="portfolio-edit-surface__body">
+            <AllocationEditor
+              draft={draft}
+              investmentWon={investmentWon}
+              onAction={onAction}
+              now={now}
+              fieldError={fieldError}
+              onCashErrorChange={setCashError}
+              presentation="edit"
+              showSummary={false}
+            />
+          </div>
+        </>
+      )}
       <footer className="portfolio-edit-surface__footer">
-        {dirty ? (
+        {!examplePickerOpen && dirty ? (
           <PortfolioApplyBar
             dirty
             saveError={saveError}

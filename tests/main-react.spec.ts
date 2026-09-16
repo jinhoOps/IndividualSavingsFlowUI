@@ -289,6 +289,28 @@ test('Main restart brand entry preserves the applied plan and writes restart wel
   await expect(page.getByRole('navigation', { name: 'ISF 앱' })).toHaveCount(0);
 });
 
+test('Main reset action is neutral while its confirmation delay keeps it disabled', async ({ page }) => {
+  await page.addInitScript((workspace) => {
+    localStorage.clear();
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+
+  const reset = page.getByRole('button', { name: '초기화' });
+  await expect(reset).toBeDisabled();
+  await expect(reset).toHaveClass(/journey-management__dialog-alternate--disabled/);
+  await expect.poll(() => reset.evaluate((button) => {
+    const style = getComputedStyle(button);
+    return { color: style.color, cursor: style.cursor, opacity: style.opacity };
+  })).toEqual({ color: 'rgb(95, 111, 108)', cursor: 'not-allowed', opacity: '1' });
+
+  await expect(reset).toBeEnabled({ timeout: 3_000 });
+  await expect(reset).not.toHaveClass(/journey-management__dialog-alternate--disabled/);
+});
+
 test('Main brand intro reduced motion skips fresh animation and writes initial welcome progress', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await clearBrowserStorage(page);

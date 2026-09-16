@@ -126,6 +126,37 @@ describe('PortfolioSummary', () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
+  it('shows every allocation together in one 100 percent bar', () => {
+    render(
+      <PortfolioSummary
+        investmentWon={800_000}
+        allocation={allocation}
+        preferences={{ showAmounts: false, sortMode: 'ratio' }}
+      />,
+    );
+
+    const bar = screen.getByTestId('portfolio-allocation-bar');
+    expect(Array.from(bar.querySelectorAll<HTMLElement>('[data-segment-id]')).map((segment) => ({
+      id: segment.dataset.segmentId,
+      percent: segment.dataset.percent,
+    }))).toEqual([
+      { id: 'index', percent: '50' },
+      { id: 'bond', percent: '25' },
+      { id: 'gold', percent: '15' },
+      { id: 'cash', percent: '10' },
+    ]);
+    expect(screen.getByText('글로벌 인덱스').closest('li')
+      ?.querySelector('.portfolio-allocation-row__track')).toBeNull();
+
+    const index = screen.getByRole('button', { name: '글로벌 인덱스' });
+    fireEvent.click(index);
+    expect(index).toHaveAttribute('aria-pressed', 'true');
+    expect(bar.querySelector('[data-segment-id="index"]')).toHaveClass('is-active');
+    fireEvent.keyDown(index, { key: 'Escape' });
+    expect(index).toHaveAttribute('aria-pressed', 'false');
+    expect(bar.querySelector('[data-segment-id="index"]')).not.toHaveClass('is-active');
+  });
+
   it('uses the configured Vite base for the vendored edit icon', () => {
     vi.stubEnv('BASE_URL', '/IndividualSavingsFlowUI/');
     render(
@@ -144,7 +175,7 @@ describe('PortfolioSummary', () => {
     );
   });
 
-  it('keeps ratios primary and reveals the total and every row amount together', () => {
+  it('keeps the stability ratio primary and reveals the total and every row amount together', () => {
     render(
       <PortfolioSummary
         investmentWon={800_000}
@@ -154,8 +185,8 @@ describe('PortfolioSummary', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: '이번 달 투자금 800,000원' })).toBeVisible();
-    expect(screen.getByText('안정 50%')).toBeVisible();
+    expect(screen.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+    expect(screen.getByText('이번 달 투자금 800,000원')).toBeVisible();
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(4);
     expect(rows[0]).toHaveTextContent('글로벌 인덱스50%400,000원');
@@ -178,7 +209,7 @@ describe('PortfolioSummary', () => {
     expect(screen.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
   });
 
-  it('commits final order and accessible ratios while keyed rows and visual fills interpolate', () => {
+  it('commits final order and accessible ratios while keyed rows interpolate', () => {
     let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
     mockRowLayout(() => tops);
     const { rerender } = render(
@@ -205,23 +236,13 @@ describe('PortfolioSummary', () => {
     const goldRow = screen.getAllByRole('listitem')[0];
     const ratio = goldRow.querySelector<HTMLElement>('.portfolio-allocation-row__ratio');
     const visualRatio = goldRow.querySelector<HTMLElement>('[data-allocation-ratio-visual]');
-    const fill = goldRow.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
     expect(ratio).toHaveAccessibleName('30%');
     expect(visualRatio).toHaveAttribute('aria-hidden', 'true');
     expect(visualRatio).toHaveTextContent('15%');
-    expect(fill?.style.getPropertyValue('--allocation-scale')).toBe('0.3');
     expect(anime.animate).toHaveBeenCalledWith(
       goldRow,
       expect.objectContaining({
         translateY: [200, 0],
-        duration: 180,
-        ease: 'inOut(2)',
-      }),
-    );
-    expect(anime.animate).toHaveBeenCalledWith(
-      fill,
-      expect.objectContaining({
-        scaleX: [0.15, 0.3],
         duration: 180,
         ease: 'inOut(2)',
       }),
@@ -280,10 +301,6 @@ describe('PortfolioSummary', () => {
         duration: 180,
         ease: 'out(3)',
       }),
-    );
-    expect(anime.animate).toHaveBeenCalledWith(
-      newRow?.querySelector('.portfolio-allocation-row__fill'),
-      expect.objectContaining({ scaleX: [0, 0.1], duration: 180 }),
     );
   });
 
@@ -418,7 +435,7 @@ describe('PortfolioSummary', () => {
     expect(anime.animate).not.toHaveBeenCalled();
   });
 
-  it('uses final order, ratios, and fill geometry immediately with reduced motion', () => {
+  it('uses final order and ratios immediately with reduced motion', () => {
     let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
     mockRowLayout(() => tops);
     const { rerender } = render(
@@ -447,12 +464,10 @@ describe('PortfolioSummary', () => {
     expect(goldRow).not.toHaveStyle({ transform: expect.any(String) });
     expect(goldRow.querySelector('.portfolio-allocation-row__ratio')).toHaveAccessibleName('30%');
     expect(goldRow.querySelector('[data-allocation-ratio-visual]')).toHaveTextContent('30%');
-    expect((goldRow.querySelector('.portfolio-allocation-row__fill') as HTMLElement)
-      .style.getPropertyValue('--allocation-scale')).toBe('0.3');
     expect(anime.animate).not.toHaveBeenCalled();
   });
 
-  it('continues a rapid replacement from the currently displayed row and fill', () => {
+  it('continues a rapid replacement from the currently displayed row and ratio', () => {
     let tops: Record<string, number> = { index: 0, bond: 100, gold: 200, cash: 300 };
     mockRowLayout(() => tops);
     const { rerender } = render(
@@ -473,17 +488,11 @@ describe('PortfolioSummary', () => {
       />,
     );
     const goldRow = screen.getAllByRole('listitem')[0];
-    const fill = goldRow.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
     const rowTransition = anime.animate.mock.calls.find(([target]) => target === goldRow);
-    const fillTransition = anime.animate.mock.calls.find(([target]) => target === fill);
     const rowOptions = rowTransition?.[1] as { onUpdate?: () => void } | undefined;
-    const fillOptions = fillTransition?.[1] as { onUpdate?: () => void } | undefined;
     expect(rowOptions?.onUpdate).toEqual(expect.any(Function));
-    expect(fillOptions?.onUpdate).toEqual(expect.any(Function));
     tops.gold = 100;
-    fill!.style.transform = 'scaleX(0.225)';
     rowOptions?.onUpdate?.();
-    fillOptions?.onUpdate?.();
     const visualNumberTransition = anime.animate.mock.calls.find(([, options]) => (
       typeof options === 'object' && options !== null && 'value' in options
     ));
@@ -516,10 +525,6 @@ describe('PortfolioSummary', () => {
     expect(anime.animate).toHaveBeenCalledWith(
       goldRow,
       expect.objectContaining({ translateY: [100, 0], duration: 180 }),
-    );
-    expect(anime.animate).toHaveBeenCalledWith(
-      fill,
-      expect.objectContaining({ scaleX: [0.225, 0.5], duration: 180 }),
     );
     expect(anime.animate).toHaveBeenCalledWith(
       expect.objectContaining({ value: 22.5 }),

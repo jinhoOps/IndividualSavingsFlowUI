@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountManagementContext } from '../../../src/auth/AccountManagementContext';
@@ -147,6 +147,27 @@ describe('AppManagementMenu', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('keeps an internal label activation open until the browser resolves its focus target', async () => {
+    render(<AppManagementMenu items={[{
+      kind: 'control',
+      id: 'view-toggle',
+      content: <label><input type="checkbox" role="switch" />금액 보기</label>,
+    }]} />);
+    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
+    fireEvent.click(trigger);
+    const label = screen.getByText('금액 보기').closest('label')!;
+    const toggle = screen.getByRole('switch', { name: '금액 보기' });
+
+    fireEvent.pointerDown(label);
+    fireEvent.blur(trigger, { relatedTarget: document.body });
+    fireEvent.click(label);
+    toggle.focus();
+
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(toggle).toBeChecked();
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('does not steal focus when moving to another launcher control', async () => {
     render(
       <div className="journey-launcher">
@@ -188,6 +209,38 @@ describe('AppManagementMenu', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
     expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it('uses a neutral presentation while the delayed reset action is disabled', () => {
+    vi.useFakeTimers();
+    try {
+      render(<AppManagementMenu items={[{
+        kind: 'action',
+        id: 'main-reset',
+        label: '처음부터 다시',
+        tone: 'danger',
+        onSelect: vi.fn(),
+        confirmation: {
+          title: '초기화할까요?',
+          description: '입력한 내용을 지웁니다.',
+          confirmLabel: '다시 시작',
+          alternateAction: { label: '초기화', delayMs: 2_500, onSelect: vi.fn() },
+        },
+      }]} />);
+
+      fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
+
+      const reset = screen.getByRole('button', { name: '초기화' });
+      expect(reset).toBeDisabled();
+      expect(reset).toHaveClass('journey-management__dialog-alternate--disabled');
+
+      act(() => vi.advanceTimersByTime(2_500));
+      expect(reset).toBeEnabled();
+      expect(reset).not.toHaveClass('journey-management__dialog-alternate--disabled');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('keeps an async confirmation pending, blocks duplicates, and shows failure in place', async () => {

@@ -10,6 +10,7 @@ import { materializeAllocation } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
 import { validateApplicableDraft } from '../domain/validation';
 import { AllocationEditor } from './AllocationEditor';
+import { PortfolioExamplePicker } from './PortfolioExamplePicker';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 
 export interface PortfolioSetupFlowProps {
@@ -31,10 +32,12 @@ const steps: PortfolioSetupStep[] = ['welcome', 'allocation', 'review'];
 
 export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   const [cashError, setCashError] = useState<string | null>(null);
+  const [examplePickerOpen, setExamplePickerOpen] = useState(false);
   const activeFieldError = cashError ?? props.fieldError;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const index = steps.indexOf(props.step);
   const progress = ((index + 1) / steps.length) * 100;
+  const choosingExample = props.step === 'allocation' && examplePickerOpen;
   const progressRef = useAnimatedProgress<HTMLSpanElement>(progress);
 
   useEffect(() => {
@@ -70,15 +73,28 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       {props.step === 'allocation' ? (
         <div className="portfolio-setup__allocation">
           <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>투자 배분 설정</h1>
-          <AllocationEditor
-            draft={props.draft}
-            investmentWon={props.investmentWon}
-            onAction={props.onAction}
-            now={props.now}
-            fieldError={props.fieldError}
-            onCashErrorChange={setCashError}
-            presentation="setup"
-          />
+          {examplePickerOpen ? (
+            <PortfolioExamplePicker
+              draft={props.draft}
+              investmentWon={props.investmentWon}
+              now={props.now}
+              onAction={props.onAction}
+              onClose={() => setExamplePickerOpen(false)}
+            />
+          ) : (
+            <>
+              <Button type="button" variant="secondary" onClick={() => setExamplePickerOpen(true)}>샘플로 시작</Button>
+              <AllocationEditor
+                draft={props.draft}
+                investmentWon={props.investmentWon}
+                onAction={props.onAction}
+                now={props.now}
+                fieldError={props.fieldError}
+                onCashErrorChange={setCashError}
+                presentation="setup"
+              />
+            </>
+          )}
         </div>
       ) : null}
 
@@ -91,19 +107,21 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       ) : null}
 
       {props.step === 'review' && activeFieldError ? <p role="alert">입력 오류를 수정한 뒤 적용해 주세요.</p> : null}
-      <nav className="portfolio-setup__actions" aria-label="설정 이동">
-        {props.step !== 'welcome' ? (
-          <Button type="button" variant="secondary" disabled={props.applying} onClick={props.onPrevious}>이전</Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="primary"
-          disabled={props.applying || (props.step !== 'welcome' && (activeFieldError !== null || !validateApplicableDraft(props.draft)))}
-          onClick={props.step === 'review' ? props.onApply : props.onNext}
-        >
-          {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '이대로 시작' : '배분 확인'}
-        </Button>
-      </nav>
+      {choosingExample ? null : (
+        <nav className="portfolio-setup__actions" aria-label="설정 이동">
+          {props.step !== 'welcome' ? (
+            <Button type="button" variant="secondary" disabled={props.applying} onClick={props.onPrevious}>이전</Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="primary"
+            disabled={props.applying || (props.step !== 'welcome' && (activeFieldError !== null || !validateApplicableDraft(props.draft)))}
+            onClick={props.step === 'review' ? props.onApply : props.onNext}
+          >
+            {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '이대로 시작' : '배분 확인'}
+          </Button>
+        </nav>
+      )}
     </Surface>
   );
 }

@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { useMemo, useRef, type CSSProperties, type MouseEvent } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Surface } from '../../components/common/Surface';
 import {
   animateVisualNumber,
@@ -73,6 +73,9 @@ export function PortfolioSummary({
     items: allocation.items,
     cashShareUnits,
   }) / 10_000);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
+  const activeItemId = selectedItemId ?? focusedItemId;
   const motionKey = JSON.stringify(items.map((item) => [item.id, clampedPercentage(item.percentage)]));
   const motionSnapshotRef = useRef<AllocationMotionSnapshot | null>(null);
   const summaryRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
@@ -141,21 +144,6 @@ export function PortfolioSummary({
         continue;
       }
 
-      const fill = row.querySelector<HTMLElement>('.portfolio-allocation-row__fill');
-      if (fill !== null) {
-        animateSafely(fill, {
-          scaleX: [previousPercentage / 100, current.percentage / 100],
-          duration: MOTION_DURATION.normal,
-          ease: MOTION_EASE.update,
-          onUpdate: () => updateRowFrame(currentSnapshot, id, {
-            percentage: visualFillPercentage(fill, current.percentage),
-          }),
-          onComplete: () => updateRowFrame(currentSnapshot, id, {
-            percentage: current.percentage,
-          }),
-        });
-      }
-
       const visualRatio = row.querySelector<HTMLElement>('[data-allocation-ratio-visual]');
       if (visualRatio !== null) {
         animateVisualNumber(
@@ -177,13 +165,9 @@ export function PortfolioSummary({
       aria-labelledby="portfolio-summary-title"
     >
       <header className="portfolio-summary__hero">
-        <p className="portfolio-summary__eyebrow">이번 달 투자금</p>
+        <p className="portfolio-summary__eyebrow">현재 포트폴리오</p>
         <div className="portfolio-summary__headline">
-          <h1 id="portfolio-summary-title">
-            {preferences.showAmounts
-              ? `이번 달 투자금 ${formatPortfolioWon(investmentWon)}`
-              : `안정 ${stablePercent}`}
-          </h1>
+          <h1 id="portfolio-summary-title">안정 {stablePercent}</h1>
           {onEdit === undefined ? null : (
             <button
               type="button"
@@ -199,7 +183,9 @@ export function PortfolioSummary({
             </button>
           )}
         </div>
-        {preferences.showAmounts ? <p className="portfolio-summary__stable">안정 {stablePercent}</p> : null}
+        {preferences.showAmounts ? (
+          <p className="portfolio-summary__stable">이번 달 투자금 {formatPortfolioWon(investmentWon)}</p>
+        ) : null}
         {largest === undefined ? null : (
           <p className="portfolio-summary__largest">
             {largest.name}에 {formatAllocationPercent(largest.percentage)}를 배분해요
@@ -207,16 +193,41 @@ export function PortfolioSummary({
         )}
       </header>
 
-      <ul className="portfolio-allocation-list" aria-label="투자 배분 비율">
-        {items.map((item, index) => {
+      <div
+        className="portfolio-allocation-bar"
+        data-testid="portfolio-allocation-bar"
+        aria-hidden="true"
+      >
+        {items.map((item) => {
+          const percentage = clampedPercentage(item.percentage);
+          const color = allocationColor(item);
+          return (
+            <span
+              key={item.id}
+              className={`portfolio-allocation-bar__segment${activeItemId === item.id ? ' is-active' : ''}`}
+              style={{
+                '--allocation-color': color,
+                '--allocation-segment-width': `${percentage}%`,
+              } as CSSProperties}
+              data-segment-id={item.id}
+              data-percent={percentage}
+            />
+          );
+        })}
+      </div>
+
+      <ul
+        className="portfolio-allocation-list"
+        aria-label="투자 배분 비율"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') setSelectedItemId(null);
+          if (event.key === 'Escape') setFocusedItemId(null);
+        }}
+      >
+        {items.map((item) => {
           const percentage = clampedPercentage(item.percentage);
           const style = {
-            '--allocation-color': item.isCash
-              ? 'var(--portfolio-cash)'
-              : `var(--portfolio-color-${index % 10})`,
-          } as CSSProperties;
-          const fillStyle = {
-            '--allocation-scale': String(percentage / 100),
+            '--allocation-color': allocationColor(item),
           } as CSSProperties;
           return (
             <li
@@ -227,8 +238,19 @@ export function PortfolioSummary({
               data-allocation-percentage={percentage}
             >
               <h2 className="portfolio-allocation-row__name">
-                <span className="portfolio-allocation-row__marker" aria-hidden="true" />
-                {item.name}
+                <button
+                  type="button"
+                  className="portfolio-allocation-row__select"
+                  aria-pressed={selectedItemId === item.id}
+                  onFocus={() => setFocusedItemId(item.id)}
+                  onBlur={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
+                  onPointerEnter={() => setFocusedItemId(item.id)}
+                  onPointerLeave={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
+                  onClick={() => setSelectedItemId((selected) => selected === item.id ? null : item.id)}
+                >
+                  <span className="portfolio-allocation-row__marker" aria-hidden="true" />
+                  {item.name}
+                </button>
               </h2>
               <strong
                 className="portfolio-allocation-row__ratio"
@@ -241,9 +263,6 @@ export function PortfolioSummary({
               {preferences.showAmounts ? (
                 <span className="portfolio-allocation-row__amount">{formatPortfolioWon(item.amountWon)}</span>
               ) : null}
-              <span className="portfolio-allocation-row__track" aria-hidden="true">
-                <span className="portfolio-allocation-row__fill" style={fillStyle} />
-              </span>
             </li>
           );
         })}
@@ -332,13 +351,9 @@ function updateRowFrame(
   snapshot.rows.set(id, { ...frame, ...update });
 }
 
-function visualFillPercentage(fill: HTMLElement, fallback: number): number {
-  const transform = fill.style.transform || getComputedStyle(fill).transform;
-  const scaleX = transform.match(/scaleX\(\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*\)/i)?.[1]
-    ?? transform.match(/matrix(?:3d)?\(\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)/i)?.[1];
-  if (scaleX === undefined) return fallback;
-  const parsed = Number(scaleX);
-  return Number.isFinite(parsed) ? clampedPercentage(parsed * 100) : fallback;
+function allocationColor(item: DisplayResultItem): string {
+  if (item.isCash) return 'var(--portfolio-cash)';
+  return `var(--portfolio-color-${Math.max(0, item.order) % 10})`;
 }
 
 function visualOpacity(row: HTMLElement, fallback: number): number {

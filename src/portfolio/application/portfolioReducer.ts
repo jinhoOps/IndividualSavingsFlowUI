@@ -9,6 +9,7 @@ import {
   setItemPercentage,
 } from '../domain/allocation';
 import { recommendClassification } from '../domain/classification';
+import { validateApplicableDraft } from '../domain/validation';
 import type {
   Classification,
   ClassificationOrigin,
@@ -46,6 +47,7 @@ export type PortfolioAction =
   | { type: 'draft-cash-changed'; amountWon: number; now: number }
   | { type: 'automatic-cash-enabled'; now: number }
   | { type: 'input-mode-changed'; mode: InputMode }
+  | { type: 'draft-replaced'; draft: PortfolioDraft }
   | { type: 'cancel-edit' }
   | { type: 'save-started' }
   | { type: 'save-succeeded' }
@@ -86,6 +88,11 @@ export function portfolioReducer(state: PortfolioState, action: PortfolioAction)
         : { ...state, setupStep: state.setupStep === 'review' ? 'allocation' : 'welcome' };
     case 'input-mode-changed':
       return { ...state, draft: { ...state.draft, inputMode: action.mode }, fieldError: null };
+    case 'draft-replaced':
+      return action.draft.syncedInvestmentWon !== state.draft.syncedInvestmentWon
+        || !validateApplicableDraft(action.draft)
+        ? state
+        : updateDraft(state, action.draft);
     case 'draft-name-changed':
       return updateDraft(state, {
         ...state.draft,

@@ -34,6 +34,7 @@ export function ManagementConfirmationDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const focusEffectGenerationRef = useRef(0);
   const titleId = `journey-management-dialog-${confirmation.title.replace(/\s+/g, '-')}`;
+  const alternateDisabled = pending || !delayElapsed;
   const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     if (reducedMotion) {
       setMotionFinalState(root);
@@ -124,8 +125,8 @@ export function ManagementConfirmationDialog({
         )}
         <div className="journey-management__dialog-actions">
           {confirmation.alternateAction && onAlternate ? (
-            <Button variant="bare" className="journey-management__danger journey-management__dialog-alternate"
-              type="button" disabled={pending || !delayElapsed}
+            <Button variant="bare" className={`journey-management__danger journey-management__dialog-alternate${alternateDisabled ? ' journey-management__dialog-alternate--disabled' : ''}`}
+              type="button" disabled={alternateDisabled}
               onClick={() => { if (!pending && delayElapsed) onAlternate(); }}>
               {confirmation.alternateAction.label}
             </Button>

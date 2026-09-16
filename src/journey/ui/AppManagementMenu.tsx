@@ -24,6 +24,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const internalPointerDownRef = useRef(false);
   const confirmationPendingRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
@@ -116,9 +117,18 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       ref={rootRef}
       className="journey-management"
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        if (!internalPointerDownRef.current) {
           setOpen(false);
+          return;
         }
+        window.setTimeout(() => {
+          if (!rootRef.current?.contains(document.activeElement)) setOpen(false);
+        }, 0);
+      }}
+      onPointerDownCapture={() => {
+        internalPointerDownRef.current = true;
+        window.setTimeout(() => { internalPointerDownRef.current = false; }, 0);
       }}
     >
       <button

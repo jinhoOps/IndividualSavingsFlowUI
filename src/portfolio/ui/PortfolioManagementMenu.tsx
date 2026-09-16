@@ -27,7 +27,7 @@ export function PortfolioManagementMenu({
             checked={preferences.showAmounts}
             onChange={(event) => onPreferencesChange({ ...preferences, showAmounts: event.currentTarget.checked })}
           />
-          금액 보기
+          <span>금액 보기</span>
         </label>
         <fieldset className="portfolio-view-preferences__sort">
           <legend className="portfolio-view-preferences__legend">정렬</legend>
@@ -39,7 +39,7 @@ export function PortfolioManagementMenu({
               checked={preferences.sortMode === 'ratio'}
               onChange={() => onPreferencesChange({ ...preferences, sortMode: 'ratio' })}
             />
-            비율순
+            <span>비율순</span>
           </label>
           <label className="portfolio-view-preferences__choice">
             <input
@@ -49,7 +49,7 @@ export function PortfolioManagementMenu({
               checked={preferences.sortMode === 'input'}
               onChange={() => onPreferencesChange({ ...preferences, sortMode: 'input' })}
             />
-            입력순
+            <span>입력순</span>
           </label>
         </fieldset>
       </fieldset>

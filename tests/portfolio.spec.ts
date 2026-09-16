@@ -167,6 +167,28 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   });
 });
 
+test('starts from a sample without changing the applied plan until the existing apply flow completes', async ({ page }) => {
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
+
+  await page.getByRole('button', { name: '샘플로 시작' }).click();
+  await page.getByRole('button', { name: 'VOO 70 · 금 30' }).click();
+  await expect(page.getByRole('heading', { name: '구성 미리보기' })).toBeVisible();
+  await page.getByRole('button', { name: '이 구성으로 채우기' }).click();
+  await expect(page.getByRole('button', { name: /VOO 편집/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /금\(GOLD\) 편집/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (
+    JSON.parse(localStorage.getItem('isf-workspace-v5')!).portfolio.plans
+  ))).toEqual([]);
+
+  await page.getByRole('button', { name: '배분 확인' }).click();
+  await page.getByRole('button', { name: '이대로 시작' }).click();
+  await expect(page.getByRole('heading', { name: '안정 30%' })).toBeVisible();
+  await expect(page.locator('.portfolio-summary')).toContainText('VOO70%');
+  await expect(page.locator('.portfolio-summary')).toContainText('금(GOLD)30%');
+});
+
 test('resumes and cancels a draft, validates manual cash, and confirms reset', async ({ page }) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
@@ -270,8 +292,14 @@ test('shows the source-state summary first and keeps view preferences separate',
   }
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  await page.getByRole('switch', { name: '금액 보기' }).check();
-  await expect(page.getByRole('heading', { name: '이번 달 투자금 800,000원' })).toBeVisible();
+  const amountSwitch = page.getByRole('switch', { name: '금액 보기' });
+  const amountLabel = amountSwitch.locator('..');
+  const amountLabelBox = await amountLabel.boundingBox();
+  if (amountLabelBox === null) throw new Error('금액 보기 라벨이 표시되지 않음');
+  await amountLabel.click({ position: { x: amountLabelBox.width - 12, y: amountLabelBox.height / 2 } });
+  await expect(amountSwitch).toBeChecked();
+  await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByText('이번 달 투자금 800,000원')).toBeVisible();
   await page.getByRole('radio', { name: '입력순' }).check();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-portfolio-view-preferences-v1')))
     .toContain('"sortMode":"input"');
@@ -326,6 +354,8 @@ test('keeps the summary-first ratio list usable across required widths', async (
     }
     expect(await summary.locator('.portfolio-allocation-list')
       .evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
+    await expect(summary.getByTestId('portfolio-allocation-bar').locator('[data-segment-id]')).toHaveCount(4);
+    await expect(summary.locator('.portfolio-allocation-row__track')).toHaveCount(0);
     const edit = page.getByRole('button', { name: '배분 수정' });
     const editBox = await edit.boundingBox();
     expect(editBox).not.toBeNull();
@@ -366,12 +396,13 @@ test('keeps the summary-first ratio list usable across required widths', async (
       expect(summaryBox!.width).toBeGreaterThanOrEqual(767);
       expect(summaryBox!.width).toBeLessThanOrEqual(768);
     }
-    const fill = summary.locator('.portfolio-allocation-row__fill').first();
-    const track = summary.locator('.portfolio-allocation-row__track').first();
-    const [fillBox, trackBox] = await Promise.all([fill.boundingBox(), track.boundingBox()]);
-    expect(fillBox).not.toBeNull();
-    expect(trackBox).not.toBeNull();
-    expect(fillBox!.width / trackBox!.width).toBeCloseTo(0.5, 1);
+    const allocationBar = summary.getByTestId('portfolio-allocation-bar');
+    const indexSegment = allocationBar.locator('[data-segment-id="global-index"]');
+    const [barBox, indexSegmentBox] = await Promise.all([allocationBar.boundingBox(), indexSegment.boundingBox()]);
+    expect(barBox).not.toBeNull();
+    expect(indexSegmentBox).not.toBeNull();
+    expect(indexSegmentBox!.width / barBox!.width).toBeCloseTo(0.5, 1);
+    await expect(summary.locator('.portfolio-allocation-row__fill')).toHaveCount(0);
 
     await page.getByRole('button', { name: '관리 메뉴' }).click();
     const inputSort = page.getByRole('radio', { name: '입력순' });
