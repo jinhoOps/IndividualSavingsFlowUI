@@ -10,22 +10,27 @@ const openDialogs: HTMLDialogElement[] = [];
 export function PortfolioDialog({
   labelledBy,
   onClose,
+  onEscape,
   returnFocusRef,
   className,
   dataPresentation,
   closeOnBackdrop = false,
+  open = true,
   children,
 }: {
   labelledBy: string;
   onClose(): void;
+  onEscape?(): void;
   returnFocusRef: RefObject<HTMLElement | null>;
   className?: string;
   dataPresentation?: 'sheet' | 'panel';
   closeOnBackdrop?: boolean;
+  open?: boolean;
   children: ReactNode;
 }) {
   const focusEffectGenerationRef = useRef(0);
   const dialogRef = useAnimeScope<HTMLDialogElement>(({ root, reducedMotion }) => {
+    if (!open) return;
     // The closed native dialog has no measurable height. Open before sizing the sheet.
     if (!root.open) {
       if (typeof root.showModal === 'function') root.showModal();
@@ -42,11 +47,11 @@ export function PortfolioDialog({
         ? root.getBoundingClientRect().height
         : MOTION_DISTANCE_PX.reveal;
     revealDialog(target, presentation, distance, reducedMotion);
-  }, [dataPresentation]);
+  }, [dataPresentation, open]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (dialog === null) return;
+    if (dialog === null || !open) return;
     const generation = ++focusEffectGenerationRef.current;
     const scrollPositions: { element: HTMLElement; top: number; left: number }[] = [];
     for (let element = returnFocusRef.current?.parentElement; element; element = element.parentElement) {
@@ -74,20 +79,20 @@ export function PortfolioDialog({
         }
       });
     };
-  }, [returnFocusRef]);
+  }, [returnFocusRef, open]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDialogElement>): void {
     if (openDialogs.at(-1) !== event.currentTarget) return;
     event.stopPropagation();
     if (event.key === 'Escape') {
       event.preventDefault();
-      onClose();
+      (onEscape ?? onClose)();
       return;
     }
     if (event.key !== 'Tab') return;
     const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
       'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
-    ));
+    )).filter((element) => !element.closest('[hidden], [inert]'));
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -110,10 +115,13 @@ export function PortfolioDialog({
       onCancel={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (openDialogs.at(-1) === event.currentTarget) onClose();
+        if (openDialogs.at(-1) === event.currentTarget) (onEscape ?? onClose)();
       }}
       onClick={(event) => {
-        if (closeOnBackdrop && event.target === event.currentTarget) onClose();
+        if (!closeOnBackdrop || event.target !== event.currentTarget || openDialogs.at(-1) !== event.currentTarget) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX >= bounds.right
+          || event.clientY < bounds.top || event.clientY >= bounds.bottom) onClose();
       }}
       onKeyDown={handleKeyDown}
     >

@@ -1276,7 +1276,7 @@ for (const failure of ['save-failure', 'conflict'] as const) {
     const original = portfolioEditorPlan();
     server.rows.set(userA, original); await server.attach(context, userA);
     await page.goto('apps/portfolio/');
-    await page.getByRole('button', {name: '배분 수정'}).click();
+    await page.locator('.portfolio-allocation-row__select').first().click();
     await page.getByRole('button', {name: /인덱스 편집/}).click();
     const item = page.getByRole('dialog', {name: '투자 대상 수정'});
     await item.getByLabel('금액', {exact: true}).fill('110000');
@@ -1305,12 +1305,12 @@ for (const failure of ['save-failure', 'conflict'] as const) {
 test('Portfolio editor recovers unsent item input and retains offline locks in portaled dialogs', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, portfolioEditorPlan()); await server.attach(context, userA);
   await page.goto('apps/portfolio/');
-  await page.getByRole('button', {name: '배분 수정'}).click();
+  await page.locator('.portfolio-allocation-row__select').first().click();
   await page.getByRole('button', {name: /인덱스 편집/}).click();
   await page.getByLabel('투자 대상 이름').fill('아직 완료하지 않은 이름');
   await page.getByLabel('금액', {exact: true}).fill('110000');
   await page.reload();
-  await page.getByRole('button', {name: '배분 수정'}).click();
+  await page.locator('.portfolio-allocation-row__select').first().click();
   await page.getByRole('button', {name: /인덱스 편집/}).click();
   await expect(page.getByLabel('투자 대상 이름')).toHaveValue('아직 완료하지 않은 이름');
   await expect(page.getByLabel('금액', {exact: true})).toHaveValue('110,000');
@@ -1318,14 +1318,14 @@ test('Portfolio editor recovers unsent item input and retains offline locks in p
   server.setFailRead(true);
   await page.reload();
   await expect(page.getByText('오프라인 · 마지막 저장 계획')).toBeVisible();
-  await expect(page.getByRole('button', {name: '배분 수정'})).toBeDisabled();
+  await expect(page.locator('.portfolio-allocation-row__select').first()).toBeDisabled();
   expect(server.operations).toEqual([]);
 });
 
 test('Portfolio editor locks an already open item dialog when account refresh goes offline', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, portfolioEditorPlan()); await server.attach(context, userA);
   await page.goto('apps/portfolio/');
-  await page.getByRole('button', {name: '배분 수정'}).click();
+  await page.locator('.portfolio-allocation-row__select').first().click();
   await page.getByRole('button', {name: /인덱스 편집/}).click();
   server.setFailRead(true);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));

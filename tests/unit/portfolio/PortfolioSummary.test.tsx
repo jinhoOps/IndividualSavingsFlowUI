@@ -120,8 +120,8 @@ describe('PortfolioSummary', () => {
       '현금10%',
     ]);
 
-    const edit = screen.getByRole('button', { name: '배분 수정' });
-    expect(edit).toHaveClass('portfolio-summary__edit');
+    const edit = screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!;
+    expect(edit).toHaveClass('portfolio-allocation-row__select');
     fireEvent.click(edit);
     expect(onEdit).toHaveBeenCalledOnce();
   });
@@ -157,22 +157,24 @@ describe('PortfolioSummary', () => {
     expect(bar.querySelector('[data-segment-id="index"]')).not.toHaveClass('is-active');
   });
 
-  it('uses the configured Vite base for the vendored edit icon', () => {
-    vi.stubEnv('BASE_URL', '/IndividualSavingsFlowUI/');
+  it('opens editing from allocation rows without a separate pencil action', () => {
+    const onEdit = vi.fn();
     render(
       <PortfolioSummary
         investmentWon={800_000}
         allocation={allocation}
         preferences={{ showAmounts: false, sortMode: 'ratio' }}
-        onEdit={() => undefined}
+        onEdit={onEdit}
       />,
     );
 
-    const icon = screen.getByRole('button', { name: '배분 수정' }).querySelector('img');
-    expect(icon).toHaveAttribute(
-      'src',
-      '/IndividualSavingsFlowUI/icons/portfolio-edit.svg',
-    );
+    expect(screen.queryByRole('button', { name: '배분 수정' })).not.toBeInTheDocument();
+    for (const name of ['글로벌 인덱스', '채권', '금', '현금']) {
+      const row = screen.getByRole('button', { name });
+      expect(row).toHaveAttribute('aria-haspopup', 'dialog');
+      fireEvent.click(row);
+    }
+    expect(onEdit).toHaveBeenCalledTimes(4);
   });
 
   it('keeps the stability ratio primary and reveals the total and every row amount together', () => {
@@ -264,7 +266,7 @@ describe('PortfolioSummary', () => {
         onEdit={() => undefined}
       />,
     );
-    const edit = screen.getByRole('button', { name: '배분 수정' });
+    const edit = screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!;
     edit.focus();
     anime.animate.mockClear();
     tops = { index: 0, bond: 100, gold: 200, emerging: 300, cash: 400 };
@@ -315,7 +317,7 @@ describe('PortfolioSummary', () => {
         onEdit={() => undefined}
       />,
     );
-    const edit = screen.getByRole('button', { name: '배분 수정' });
+    const edit = screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!;
     edit.focus();
     tops = { index: 0, bond: 100, gold: 200, emerging: 300, cash: 400 };
     const withNewItem: MaterializedAllocation = {

@@ -193,7 +193,7 @@ for (const viewport of VIEWPORTS) {
     await expectNoDocumentOverflow(page);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `portfolio-${viewport.width}-allocation-before.png`);
 
-    await page.getByRole('button', { name: '배분 수정' }).click();
+    await page.locator('.portfolio-allocation-row__select').first().click();
     await page.getByRole('button', { name: /^금 편집,/ }).click();
     const itemEditor = page.getByRole('dialog', { name: '투자 대상 수정' });
     const goldAmount = itemEditor.getByLabel('금액', { exact: true });
@@ -504,7 +504,7 @@ async function readPortfolioRows(rows: Locator) {
     const fillMatrix = new DOMMatrixReadOnly(fill === null ? 'none' : getComputedStyle(fill).transform);
     return {
       id: row.getAttribute('data-allocation-id'),
-      name: row.querySelector('h2')?.textContent?.trim(),
+      name: row.querySelector('[role="heading"]')?.textContent?.trim(),
       accessible: row.querySelector('strong')?.getAttribute('aria-label'),
       visual: row.querySelector('[data-allocation-ratio-visual]')?.textContent,
       fillScale: fillMatrix.a,
@@ -580,7 +580,7 @@ async function installPortfolioBoundaryProbe(
       const elements = [...summary.querySelectorAll<HTMLElement>('[data-allocation-id]')];
       const semantics = elements.map((row) => ({
         id: row.getAttribute('data-allocation-id'),
-        name: row.querySelector('h2')?.textContent?.trim(),
+        name: row.querySelector('[role="heading"]')?.textContent?.trim(),
         accessible: row.querySelector('strong')?.getAttribute('aria-label'),
       }));
       if (JSON.stringify(semantics) !== expectedSignature) return false;
@@ -599,7 +599,7 @@ async function installPortfolioBoundaryProbe(
           );
           return {
             id: row.getAttribute('data-allocation-id'),
-            name: row.querySelector('h2')?.textContent?.trim(),
+            name: row.querySelector('[role="heading"]')?.textContent?.trim(),
             accessible: row.querySelector('strong')?.getAttribute('aria-label'),
             visual: row.querySelector('[data-allocation-ratio-visual]')?.textContent,
             fillScale: fillMatrix.a,

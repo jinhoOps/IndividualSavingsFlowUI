@@ -93,12 +93,20 @@ export function PortfolioApp({
     () => preferencesRepository.load(),
   );
   const editTriggerRef = useRef<HTMLButtonElement>(null);
+  const resultControlsRef = useRef<HTMLDivElement>(null);
   const delayedApply = useDelayedPending(applyPending, 600);
   const delayedAutomaticSaving = useDelayedPending(
     state?.saveState === 'saving' && !applyPending,
     600,
   );
   const showSaving = applyPending ? delayedApply : delayedAutomaticSaving;
+
+  useEffect(() => {
+    if (state?.view !== 'edit' && editTriggerRef.current && !editTriggerRef.current.isConnected) {
+      editTriggerRef.current = resultControlsRef.current?.querySelector<HTMLButtonElement>('.portfolio-allocation-row__select') ?? null;
+      editTriggerRef.current?.focus({ preventScroll: true });
+    }
+  }, [state?.view]);
 
   useEffect(() => {
     mounted.current = true;
@@ -324,6 +332,7 @@ export function PortfolioApp({
           ) : state.applied !== null ? (
             <>
               <div
+                ref={resultControlsRef}
                 data-testid="portfolio-result-controls"
                 inert={state.view === 'edit' ? true : undefined}
                 aria-hidden={state.view === 'edit' ? 'true' : undefined}

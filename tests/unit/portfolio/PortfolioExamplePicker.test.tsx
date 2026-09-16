@@ -8,6 +8,31 @@ import { PortfolioExamplePicker } from '../../../src/portfolio/ui/PortfolioExamp
 afterEach(cleanup);
 
 describe('PortfolioExamplePicker', () => {
+  it('commits the adjusted preview rather than the original sample ratios', () => {
+    const onAction = vi.fn();
+    render(<PortfolioExamplePicker draft={createCashOnlyDraft(200_000, 1)} investmentWon={200_000}
+      now={() => 2} onAction={onAction} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'VOO 70 · 금 30' }));
+    fireEvent.click(screen.getByRole('button', { name: '주력 비율 5% 높이기' }));
+    fireEvent.click(screen.getByRole('button', { name: '이 구성으로 초안 채우기' }));
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'draft-replaced', draft: expect.objectContaining({ items: expect.arrayContaining([
+        expect.objectContaining({ id: 'VOO', shareUnits: 750_000 }),
+        expect.objectContaining({ id: 'GOLD', shareUnits: 250_000 }),
+      ]) }),
+    }));
+  });
+
+  it('preserves selected adjustments when returning to the sample list', () => {
+    render(<PortfolioExamplePicker draft={createCashOnlyDraft(200_000, 1)} investmentWon={200_000}
+      now={() => 2} onAction={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'VOO 70 · 금 30' }));
+    fireEvent.click(screen.getByRole('button', { name: '주력 비율 5% 높이기' }));
+    fireEvent.click(screen.getByRole('button', { name: '샘플 목록' }));
+    expect(screen.queryByRole('button', { name: '이 구성으로 초안 채우기' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'VOO 70 · 금 30' }));
+    expect(screen.getByRole('slider', { name: '주력 자산 비율' })).toHaveValue('75');
+  });
   it('requires explicit confirmation before replacing a non-empty draft', () => {
     const onAction = vi.fn<(action: PortfolioAction) => void>();
     const onClose = vi.fn();
@@ -18,7 +43,7 @@ describe('PortfolioExamplePicker', () => {
       onAction={onAction} onClose={onClose} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'VOO 70 · 금 30' }));
-    fireEvent.click(screen.getByRole('button', { name: '이 구성으로 채우기' }));
+    fireEvent.click(screen.getByRole('button', { name: '이 구성으로 초안 채우기' }));
     expect(screen.getByRole('heading', { name: '현재 초안을 이 구성으로 바꿀까요?' })).toBeVisible();
     expect(onAction).not.toHaveBeenCalled();
 
@@ -43,7 +68,7 @@ describe('PortfolioExamplePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: '직접 조합' }));
     fireEvent.change(screen.getByLabelText('주 투자 대상'), { target: { value: 'VOO' } });
     fireEvent.change(screen.getByLabelText('보조 투자 대상 1'), { target: { value: 'GOLD' } });
-    fireEvent.click(screen.getByRole('button', { name: '이 구성으로 채우기' }));
+    fireEvent.click(screen.getByRole('button', { name: '이 구성으로 초안 채우기' }));
 
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({
       type: 'draft-replaced',

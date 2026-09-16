@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { Button } from '../../components/common/Button';
+import { SegmentedControl } from '../../components/common/SegmentedControl';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import { materializeAllocation } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
 import {
   createDraftFromAllocation,
-  createDraftFromExample,
   PORTFOLIO_ASSETS,
   PORTFOLIO_EXAMPLES,
   type PortfolioAssetId,
@@ -23,18 +23,29 @@ const riskBandCopy: Record<PortfolioRiskBand, { title: string; description: stri
 
 const riskBands: PortfolioRiskBand[] = ['defensive', 'growth', 'aggressive'];
 
+export interface PortfolioExampleNavigation {
+  back(): void;
+  hasChanges: boolean;
+}
+
 export function PortfolioExamplePicker({
   draft,
   investmentWon,
   now,
   onAction,
   onClose,
+  onDismiss,
+  active = true,
+  navigationRef,
 }: {
   draft: PortfolioDraft;
   investmentWon: number;
   now(): number;
   onAction(action: PortfolioAction): void;
   onClose(): void;
+  onDismiss?(): void;
+  active?: boolean;
+  navigationRef?: Ref<PortfolioExampleNavigation>;
 }) {
   const [mode, setMode] = useState<'examples' | 'direct'>('examples');
   const [riskFilter, setRiskFilter] = useState<PortfolioRiskBand | 'all'>('all');
@@ -45,6 +56,12 @@ export function PortfolioExamplePicker({
   const [assistants, setAssistants] = useState<Array<PortfolioAssetId | ''>>(['']);
   const [confirmationCandidate, setConfirmationCandidate] = useState<PortfolioDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1100px)').matches);
+  const [detailPage, setDetailPage] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const selectedButtonRef = useRef<HTMLButtonElement | null>(null);
+  const confirmationRef = useRef<HTMLHeadingElement>(null);
   const selectedExample = PORTFOLIO_EXAMPLES.find((example) => example.id === selectedExampleId) ?? null;
   const selectedExampleLegs = selectedExample === null
     ? []
@@ -63,10 +80,51 @@ export function PortfolioExamplePicker({
 
   useEffect(() => {
     setConfirmationCandidate(null);
-  }, [draft.syncedInvestmentWon, draft.updatedAt]);
+  }, [draft.syncedInvestmentWon, draft.updatedAt, previewCandidate]);
+
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const media = window.matchMedia('(min-width: 1100px)');
+    const update = () => setWide(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (active) headingRef.current?.focus();
+  }, [active]);
+
+  useEffect(() => {
+    if (active && (detailPage || mode === 'direct')) {
+      detailRef.current?.scrollTo?.({ top: 0 });
+      detailRef.current?.querySelector<HTMLElement>('h3')?.focus();
+    }
+  }, [active, detailPage, selectedExampleId, mode, wide]);
+
+  useEffect(() => {
+    if (active && confirmationCandidate) confirmationRef.current?.focus();
+  }, [active, confirmationCandidate]);
+
+  function back(): void {
+    if (confirmationCandidate) {
+      setConfirmationCandidate(null);
+      return;
+    }
+    if (!wide && (detailPage || mode === 'direct')) {
+      setDetailPage(false);
+      setMode('examples');
+      requestAnimationFrame(() => (selectedButtonRef.current ?? headingRef.current)?.focus({ preventScroll: true }));
+    } else onClose();
+  }
+
+  useImperativeHandle(navigationRef, () => ({
+    back,
+    hasChanges: selectedExampleId !== null || leadAssetId !== '' || assistants.some(Boolean),
+  }));
 
   function chooseMode(nextMode: 'examples' | 'direct'): void {
     setMode(nextMode);
+    setDetailPage(nextMode === 'direct' || selectedExample !== null);
     setConfirmationCandidate(null);
     setError(null);
   }
@@ -83,13 +141,9 @@ export function PortfolioExamplePicker({
 
   function requestReplacement(): void {
     try {
-      const candidate = mode === 'examples'
-        ? selectedExample === null
-          ? null
-          : createDraftFromExample(selectedExample, investmentWon, now())
-        : directLegs.length === 0
-          ? null
-          : createDraftFromAllocation(directLegs, investmentWon, now());
+      const candidate = previewLegs.length === 0
+        ? null
+        : createDraftFromAllocation(previewLegs, investmentWon, now());
       if (candidate === null) return;
       setError(null);
       if (hasExistingAllocation) {
@@ -114,30 +168,27 @@ export function PortfolioExamplePicker({
   }
 
   return (
-    <section className="portfolio-example-picker" aria-labelledby="portfolio-example-picker-title">
+    <section className="portfolio-example-picker" aria-labelledby="portfolio-example-picker-title" hidden={!active}
+      data-detail={detailPage || mode === 'direct' ? 'true' : 'false'} data-wide={wide ? 'true' : 'false'}>
       <header className="portfolio-example-picker__header">
-        <div>
-          <p className="portfolio-example-picker__eyebrow">배분 시작 방식</p>
-          <h2 id="portfolio-example-picker-title">샘플로 빠르게 시작할 수 있어요</h2>
-        </div>
-        <Button type="button" variant="quiet" onClick={onClose}>돌아가기</Button>
+        <Button type="button" variant="quiet" onClick={back}>
+          {confirmationCandidate ? '구성 상세' : !wide && (detailPage || mode === 'direct') ? '샘플 목록' : '배분 편집'}
+        </Button>
+        <h2 id="portfolio-example-picker-title" ref={headingRef} tabIndex={-1} data-dialog-initial-focus>샘플로 구성하기</h2>
+        {onDismiss ? <Button type="button" variant="quiet" aria-label="편집기 닫기" onClick={onDismiss}>닫기</Button> : null}
       </header>
-
-      <p className="portfolio-example-picker__notice">
-        예시는 투자 권유가 아니며, 위험도는 절대 순위가 아닌 구성을 고르는 보조 기준이에요.
-      </p>
-      <div className="portfolio-example-picker__mode" role="group" aria-label="배분 시작 방식 선택">
-        <Button type="button" variant={mode === 'examples' ? 'primary' : 'secondary'} onClick={() => chooseMode('examples')}>샘플 보기</Button>
-        <Button type="button" variant={mode === 'direct' ? 'primary' : 'secondary'} onClick={() => chooseMode('direct')}>직접 조합</Button>
-      </div>
-
-      {mode === 'examples' ? (
-        <>
+      <SegmentedControl label="배분 시작 방식 선택" value={mode}
+        options={[{ value: 'examples', label: '샘플 선택' }, { value: 'direct', label: '직접 조합' }]}
+        onChange={chooseMode} className="portfolio-example-picker__mode" />
+      <div className="portfolio-example-picker__workspace">
+        <div className="portfolio-example-picker__catalog"
+          hidden={mode !== 'examples' || (!wide && detailPage)}>
+          <p className="portfolio-example-picker__notice">위험 구간은 구성을 비교하는 보조 기준이며 투자 권유가 아니에요.</p>
           <div className="portfolio-example-picker__filters" role="group" aria-label="샘플 위험 구간">
-            <Button type="button" variant={riskFilter === 'all' ? 'primary' : 'secondary'} onClick={() => setRiskFilter('all')}>전체</Button>
+            <Button type="button" variant="quiet" aria-pressed={riskFilter === 'all'} onClick={() => setRiskFilter('all')}>전체</Button>
             {riskBands.map((band) => (
-              <Button key={band} type="button" variant={riskFilter === band ? 'primary' : 'secondary'} onClick={() => setRiskFilter(band)}>
-                {riskBandCopy[band].title}
+              <Button key={band} type="button" variant="quiet" aria-pressed={riskFilter === band} onClick={() => setRiskFilter(band)}>
+                {riskBandCopy[band].title.replace(' 지향', '')}
               </Button>
             ))}
           </div>
@@ -154,9 +205,11 @@ export function PortfolioExamplePicker({
                       className="portfolio-example-picker__option"
                       aria-label={example.title}
                       aria-pressed={selectedExample?.id === example.id}
-                      onClick={() => {
+                      onClick={(event) => {
+                        selectedButtonRef.current = event.currentTarget;
+                        setDetailPage(true);
                         setSelectedExampleId(example.id);
-                        setAdjustedExampleLegs(null);
+                        if (selectedExampleId !== example.id) setAdjustedExampleLegs(null);
                         setConfirmationCandidate(null);
                         setError(null);
                       }}
@@ -169,96 +222,121 @@ export function PortfolioExamplePicker({
               </section>
             ))}
           </div>
-          {selectedExample === null ? null : (
-            <section className="portfolio-example-picker__adjustment" aria-labelledby="portfolio-example-adjustment-title">
-              <div>
-                <h3 id="portfolio-example-adjustment-title">샘플 비율 조정</h3>
-                <p>{adjustedExampleLegs === null
-                  ? `${riskBandCopy[selectedExample.riskBand].title} 기준 샘플이에요.`
-                  : '샘플에서 조정한 구성 · 위험 구간 미평가'}</p>
-              </div>
-              <LeadPercentageControl
-                value={selectedExampleLegs[0].percentage}
-                onChange={changeSelectedExampleLead}
-              />
-              {adjustedExampleLegs === null ? null : (
-                <Button type="button" variant="quiet" onClick={() => setAdjustedExampleLegs(null)}>샘플 비율로 되돌리기</Button>
-              )}
+        </div>
+        <div className="portfolio-example-picker__detail" hidden={!wide && !detailPage && mode === 'examples'}>
+          <div className="portfolio-example-picker__detail-body" ref={detailRef} hidden={confirmationCandidate !== null}>
+            {mode === 'examples' && selectedExample === null ? <p className="portfolio-example-picker__empty">샘플을 선택하면 구성과 비율을 확인할 수 있어요.</p> : null}
+            {mode === 'examples' && selectedExample !== null ? (
+              <h3 tabIndex={-1} className="portfolio-example-picker__selection-title">{selectedExample.title}</h3>
+            ) : null}
+            {mode === 'examples' && previewCandidate.draft !== null ? (
+              <PortfolioExamplePreview draft={previewCandidate.draft} investmentWon={investmentWon} />
+            ) : null}
+            {mode === 'examples' && selectedExample !== null ? (
+              <section className="portfolio-example-picker__adjustment" aria-labelledby="portfolio-example-adjustment-title">
+                <div>
+                  <h3 id="portfolio-example-adjustment-title">샘플 비율 조정</h3>
+                  <p>{adjustedExampleLegs === null
+                    ? `${riskBandCopy[selectedExample.riskBand].title} 기준 샘플이에요.`
+                    : '샘플에서 조정한 구성 · 위험 구간 미평가'}</p>
+                </div>
+                <LeadPercentageControl
+                  value={selectedExampleLegs[0].percentage}
+                  onChange={changeSelectedExampleLead}
+                />
+                {adjustedExampleLegs === null ? null : (
+                  <Button type="button" variant="quiet" onClick={() => setAdjustedExampleLegs(null)}>샘플 비율로 되돌리기</Button>
+                )}
+              </section>
+            ) : null}
+            {mode === 'direct' ? (
+              <section className="portfolio-example-picker__direct" aria-labelledby="portfolio-direct-composition-title">
+                <h3 id="portfolio-direct-composition-title" tabIndex={-1}>주 투자 대상부터 고르세요</h3>
+                <p>위험 구간 미평가 · 주 투자 대상은 50%부터 90%까지 5% 단위로 정하고, 남은 비율은 보조 대상에 자동으로 나눠요.</p>
+                <label>
+                  <span>주 투자 대상</span>
+                  <select
+                    aria-label="주 투자 대상"
+                    value={leadAssetId}
+                    onChange={(event) => {
+                      const next = event.currentTarget.value as PortfolioAssetId | '';
+                      setLeadAssetId(next);
+                      setAssistants((current) => current.map((id) => id === next ? '' : id));
+                    }}
+                  >
+                    <option value="">선택하세요</option>
+                    {assetOptions().map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                  </select>
+                </label>
+                <LeadPercentageControl value={leadPercentage} onChange={setLeadPercentage} />
+                <label>
+                  <span>보조 투자 대상 1</span>
+                  <select
+                    aria-label="보조 투자 대상 1"
+                    value={assistants[0]}
+                    onChange={(event) => setAssistant(0, event.currentTarget.value as PortfolioAssetId | '')}
+                  >
+                    <option value="">선택하세요</option>
+                    {assetOptions([leadAssetId, assistants[1] ?? '']).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                  </select>
+                </label>
+                {assistants.length === 2 ? (
+                  <>
+                    <label>
+                      <span>보조 투자 대상 2</span>
+                      <select
+                        aria-label="보조 투자 대상 2"
+                        value={assistants[1]}
+                        onChange={(event) => setAssistant(1, event.currentTarget.value as PortfolioAssetId | '')}
+                      >
+                        <option value="">선택하세요</option>
+                        {assetOptions([leadAssetId, assistants[0]]).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+                      </select>
+                    </label>
+                    <Button type="button" variant="quiet" onClick={() => setAssistants((current) => [current[0]])}>보조 대상 2 제거</Button>
+                  </>
+                ) : (
+                  <Button type="button" variant="quiet" disabled={assistants[0] === ''} onClick={() => setAssistants((current) => [...current, ''])}>
+                    보조 대상 하나 더 추가
+                  </Button>
+                )}
+              </section>
+            ) : null}
+
+            {mode !== 'direct' || previewCandidate.draft === null ? null : (
+              <PortfolioExamplePreview draft={previewCandidate.draft} investmentWon={investmentWon} />
+            )}
+            {previewLegs.length === 0 ? null : <PortfolioAssetNotes legs={previewLegs} />}
+            {previewCandidate.error === null && error === null ? null : (
+              <p className="portfolio-example-picker__error" role="alert">
+                {exampleErrorMessage(error ?? previewCandidate.error!)}
+              </p>
+            )}
+          </div>
+          {confirmationCandidate === null ? null : (
+            <section className="portfolio-example-picker__confirmation" aria-labelledby="portfolio-example-confirm-title">
+              <h3 id="portfolio-example-confirm-title" ref={confirmationRef} tabIndex={-1}>현재 초안을 이 구성으로 바꿀까요?</h3>
+              <p>
+                현재 초안 {draft.items.length}개를 새 구성 {confirmationCandidate.items.length}개로 바꾸고,
+                기존 대상과 현금 배분을 교체합니다.
+              </p>
+              <p>현금 {formatPortfolioWon(materializeAllocation(draft, investmentWon).cashAmountWon)} → {formatPortfolioWon(materializeAllocation(confirmationCandidate, investmentWon).cashAmountWon)}</p>
+              <PortfolioExamplePreview draft={confirmationCandidate} investmentWon={investmentWon} />
             </section>
           )}
-        </>
-      ) : (
-        <section className="portfolio-example-picker__direct" aria-labelledby="portfolio-direct-composition-title">
-          <h3 id="portfolio-direct-composition-title">주 투자 대상부터 고르세요</h3>
-          <p>위험 구간 미평가 · 주 투자 대상은 50%부터 90%까지 5% 단위로 정하고, 남은 비율은 보조 대상에 자동으로 나눠요.</p>
-          <label>
-            <span>주 투자 대상</span>
-            <select
-              aria-label="주 투자 대상"
-              value={leadAssetId}
-              onChange={(event) => setLeadAssetId(event.currentTarget.value as PortfolioAssetId | '')}
-            >
-              <option value="">선택하세요</option>
-              {assetOptions().map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
-            </select>
-          </label>
-          <LeadPercentageControl value={leadPercentage} onChange={setLeadPercentage} />
-          <label>
-            <span>보조 투자 대상 1</span>
-            <select
-              aria-label="보조 투자 대상 1"
-              value={assistants[0]}
-              onChange={(event) => setAssistant(0, event.currentTarget.value as PortfolioAssetId | '')}
-            >
-              <option value="">선택하세요</option>
-              {assetOptions([leadAssetId]).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
-            </select>
-          </label>
-          {assistants.length === 2 ? (
-            <>
-              <label>
-                <span>보조 투자 대상 2</span>
-                <select
-                  aria-label="보조 투자 대상 2"
-                  value={assistants[1]}
-                  onChange={(event) => setAssistant(1, event.currentTarget.value as PortfolioAssetId | '')}
-                >
-                  <option value="">선택하세요</option>
-                  {assetOptions([leadAssetId, assistants[0]]).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
-                </select>
-              </label>
-              <Button type="button" variant="quiet" onClick={() => setAssistants((current) => [current[0]])}>보조 대상 2 제거</Button>
-            </>
-          ) : (
-            <Button type="button" variant="quiet" disabled={assistants[0] === ''} onClick={() => setAssistants((current) => [...current, ''])}>
-              보조 대상 하나 더 추가
-            </Button>
-          )}
-        </section>
-      )}
-
-      {previewCandidate.draft === null ? null : (
-        <PortfolioExamplePreview draft={previewCandidate.draft} investmentWon={investmentWon} onUse={requestReplacement} />
-      )}
-      {previewLegs.length === 0 ? null : <PortfolioAssetNotes legs={previewLegs} />}
-      {previewCandidate.error === null && error === null ? null : (
-        <p className="portfolio-example-picker__error" role="alert">
-          {exampleErrorMessage(error ?? previewCandidate.error!)}
-        </p>
-      )}
-      {confirmationCandidate === null ? null : (
-        <section className="portfolio-example-picker__confirmation" aria-labelledby="portfolio-example-confirm-title">
-          <h3 id="portfolio-example-confirm-title">현재 초안을 이 구성으로 바꿀까요?</h3>
-          <p>
-            현재 초안 {draft.items.length}개를 새 구성 {confirmationCandidate.items.length}개로 바꾸고,
-            기존 대상과 현금 배분을 교체합니다.
-          </p>
-          <div>
-            <Button type="button" variant="secondary" onClick={() => setConfirmationCandidate(null)}>계속 편집</Button>
-            <Button type="button" variant="primary" onClick={() => replaceDraft(confirmationCandidate)}>초안 바꾸기</Button>
-          </div>
-        </section>
-      )}
+          {mode === 'direct' || selectedExample !== null ? (
+            <footer className="portfolio-example-picker__footer">
+              <p>아직 적용된 배분은 바뀌지 않아요.</p>
+              {confirmationCandidate ? (
+                <div>
+                  <Button type="button" variant="secondary" onClick={() => setConfirmationCandidate(null)}>계속 살펴보기</Button>
+                  <Button type="button" variant="primary" onClick={() => replaceDraft(confirmationCandidate)}>초안 바꾸기</Button>
+                </div>
+              ) : <Button type="button" variant="primary" disabled={previewCandidate.draft === null} onClick={requestReplacement}>이 구성으로 초안 채우기</Button>}
+            </footer>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 }
@@ -279,25 +357,27 @@ function PortfolioAssetNotes({ legs }: { legs: readonly PortfolioExampleLeg[] })
 function PortfolioExamplePreview({
   draft,
   investmentWon,
-  onUse,
 }: {
   draft: PortfolioDraft;
   investmentWon: number;
-  onUse(): void;
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   return (
-    <section className="portfolio-example-picker__preview" aria-labelledby="portfolio-example-preview-title">
-      <h3 id="portfolio-example-preview-title">구성 미리보기</h3>
+    <section className="portfolio-example-picker__preview" aria-label="구성 미리보기">
+      <h3>구성 미리보기</h3>
+      <div className="portfolio-example-picker__bar" aria-hidden="true">
+        {allocation.items.map((item, index) => (
+          <span key={item.id} style={{ width: `${item.percentage}%`, background: `var(--portfolio-color-${index})` }} />
+        ))}
+      </div>
       <ul>
         {allocation.items.map((item) => (
           <li key={item.id}>
             <span>{item.name}</span>
-            <strong>{item.percentage}% · {formatPortfolioWon(item.amountWon)}</strong>
+            <strong>{item.percentage}%<small>{formatPortfolioWon(item.amountWon)}</small></strong>
           </li>
         ))}
       </ul>
-      <Button type="button" variant="primary" onClick={onUse}>이 구성으로 채우기</Button>
     </section>
   );
 }

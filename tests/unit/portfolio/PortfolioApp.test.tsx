@@ -111,9 +111,32 @@ function firstSaveGate(): {
 }
 
 describe('PortfolioApp', () => {
+  it('closes clean editors outside and confirms before discarding a changed allocation', async () => {
+    const repository = createMemoryPortfolioRepository({ applied: plan });
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    const trigger = screen.getByRole('button', { name: '인덱스' });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('dialog', { name: '투자 배분 수정' }), { clientX: -1, clientY: -1 });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(trigger).toHaveFocus());
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    const editor = screen.getByRole('dialog', { name: '투자 배분 수정' });
+    fireEvent.click(editor, { clientX: -1, clientY: -1 });
+    expect(screen.getByRole('dialog', { name: '변경사항을 버릴까요?' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '계속 수정' }));
+    expect(editor).toHaveTextContent('110,000원');
+    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    fireEvent.click(screen.getByRole('button', { name: '변경 버리기' }));
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('list', { name: '투자 배분 비율' })).toHaveTextContent('60%');
+  });
   it('keeps nested item Escape inside the topmost dialog and returns focus', async () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     const editor = screen.getByRole('dialog', { name: '투자 배분 수정' });
     const row = screen.getByRole('button', { name: /인덱스 편집/ });
     fireEvent.click(row);
@@ -142,7 +165,7 @@ describe('PortfolioApp', () => {
 
   it.each(['reduced', 'animate-failure', 'scope-failure'])('keeps summary semantics immediate during %s motion', (mode) => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
     if (mode === 'reduced') anime.scope.matches.reducedMotion = true;
@@ -160,7 +183,7 @@ describe('PortfolioApp', () => {
   it('blocks applying a stale valid draft while the cash input has a rejected value', async () => {
     const repository = createMemoryPortfolioRepository({ applied: plan });
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
@@ -258,7 +281,7 @@ describe('PortfolioApp', () => {
 
   it('discloses cash, explains manual remainder and permits apply only after full allocation', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     const cash = screen.getByRole('button', { name: /현금.*남은 금액 자동 배분/ });
     expect(cash).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('현금 금액')).not.toBeInTheDocument();
@@ -294,7 +317,7 @@ describe('PortfolioApp', () => {
       </AccountDraftContext.Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     const amount = screen.getByLabelText('금액');
     fireEvent.change(amount, { target: { value: '110000' } });
@@ -465,8 +488,8 @@ describe('PortfolioApp', () => {
     expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '안정 40%' }).closest('section'))
       .toHaveClass('ui-surface', 'portfolio-summary');
-    expect(screen.getByRole('button', { name: '배분 수정' }))
-      .toHaveClass('portfolio-summary__edit');
+    expect(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!)
+      .toHaveClass('portfolio-allocation-row__select');
     expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
     expect(screen.queryByText(/투자 위치/)).not.toBeInTheDocument();
     expect(screen.queryByText(/계좌·보관처/)).not.toBeInTheDocument();
@@ -476,7 +499,7 @@ describe('PortfolioApp', () => {
     const repository = createMemoryPortfolioRepository({ applied: plan });
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     const classification = screen.getByRole('group', { name: '투자 대상 분류' });
     fireEvent.click(within(classification).getByRole('button', { name: '성장' }));
@@ -506,7 +529,7 @@ describe('PortfolioApp', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     fireEvent.click(screen.getByRole('button', { name: '안정' }));
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
@@ -519,7 +542,7 @@ describe('PortfolioApp', () => {
   it('opens applied editing in a modal surface without locations', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
 
     const dialog = screen.getByRole('dialog', { name: '투자 배분 수정' });
     expect(within(dialog).getByRole('heading', { name: '투자 배분 수정' })).toBeVisible();
@@ -530,7 +553,7 @@ describe('PortfolioApp', () => {
 
   it('shows apply actions only after the first allocation change', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     expect(screen.queryByRole('complementary', { name: '배분 변경' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
@@ -549,7 +572,7 @@ describe('PortfolioApp', () => {
       repository={repository}
       now={() => 2}
     />);
-    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
     anime.animate.mockClear();
 
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));

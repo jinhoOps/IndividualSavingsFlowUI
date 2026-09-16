@@ -10,7 +10,8 @@ import { materializeAllocation } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
 import { validateApplicableDraft } from '../domain/validation';
 import { AllocationEditor } from './AllocationEditor';
-import { PortfolioExamplePicker } from './PortfolioExamplePicker';
+import { PortfolioExamplePicker, type PortfolioExampleNavigation } from './PortfolioExamplePicker';
+import { PortfolioDialog } from './PortfolioDialog';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 
 export interface PortfolioSetupFlowProps {
@@ -33,6 +34,12 @@ const steps: PortfolioSetupStep[] = ['welcome', 'allocation', 'review'];
 export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   const [cashError, setCashError] = useState<string | null>(null);
   const [examplePickerOpen, setExamplePickerOpen] = useState(false);
+  const [exampleVisited, setExampleVisited] = useState(false);
+  const [discardExample, setDiscardExample] = useState(false);
+  const [editorGeneration, setEditorGeneration] = useState(0);
+  const pickerRef = useRef<PortfolioExampleNavigation>(null);
+  const sampleTriggerRef = useRef<HTMLButtonElement>(null);
+  const discardTriggerRef = useRef<HTMLElement | null>(null);
   const activeFieldError = cashError ?? props.fieldError;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const index = steps.indexOf(props.step);
@@ -73,28 +80,49 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       {props.step === 'allocation' ? (
         <div className="portfolio-setup__allocation">
           <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>투자 배분 설정</h1>
-          {examplePickerOpen ? (
-            <PortfolioExamplePicker
-              draft={props.draft}
-              investmentWon={props.investmentWon}
-              now={props.now}
-              onAction={props.onAction}
-              onClose={() => setExamplePickerOpen(false)}
-            />
-          ) : (
-            <>
-              <Button type="button" variant="secondary" onClick={() => setExamplePickerOpen(true)}>샘플로 시작</Button>
-              <AllocationEditor
-                draft={props.draft}
-                investmentWon={props.investmentWon}
-                onAction={props.onAction}
-                now={props.now}
-                fieldError={props.fieldError}
-                onCashErrorChange={setCashError}
-                presentation="setup"
-              />
-            </>
-          )}
+          <Button ref={sampleTriggerRef} type="button" variant="secondary" onClick={() => {
+            setExampleVisited(true);
+            setExamplePickerOpen(true);
+          }}>샘플로 구성하기</Button>
+          <AllocationEditor
+            key={editorGeneration}
+            draft={props.draft}
+            investmentWon={props.investmentWon}
+            onAction={props.onAction}
+            now={props.now}
+            fieldError={props.fieldError}
+            onCashErrorChange={setCashError}
+            presentation="setup"
+          />
+          {exampleVisited ? <PortfolioDialog open={examplePickerOpen}
+            className="portfolio-edit-surface portfolio-edit-surface--examples" labelledBy="portfolio-example-picker-title"
+            returnFocusRef={sampleTriggerRef} closeOnBackdrop
+            onEscape={() => pickerRef.current?.back()}
+            onClose={() => {
+              if (pickerRef.current?.hasChanges) {
+                discardTriggerRef.current = document.activeElement as HTMLElement;
+                setDiscardExample(true);
+              } else setExamplePickerOpen(false);
+            }}>
+            <PortfolioExamplePicker draft={props.draft} investmentWon={props.investmentWon}
+              now={props.now} onAction={(action) => {
+                props.onAction(action);
+                if (action.type === 'draft-replaced') {
+                  setCashError(null);
+                  setEditorGeneration((generation) => generation + 1);
+                }
+              }} active={examplePickerOpen} navigationRef={pickerRef}
+              onClose={() => setExamplePickerOpen(false)} />
+          </PortfolioDialog> : null}
+          {discardExample ? <PortfolioDialog labelledBy="portfolio-example-discard-title" returnFocusRef={discardTriggerRef}
+            onClose={() => setDiscardExample(false)}>
+            <h2 id="portfolio-example-discard-title">선택한 구성을 버릴까요?</h2>
+            <p>선택한 구성을 버리고 배분 설정으로 돌아갑니다.</p>
+            <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => setDiscardExample(false)}>계속 살펴보기</Button>
+            <Button type="button" variant="primary" onClick={() => {
+              setDiscardExample(false); setExamplePickerOpen(false); setExampleVisited(false);
+            }}>구성 버리기</Button>
+          </PortfolioDialog> : null}
         </div>
       ) : null}
 

@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useId, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Surface } from '../../components/common/Surface';
 import {
   animateVisualNumber,
@@ -47,6 +47,7 @@ export function PortfolioSummary({
   preferences: PortfolioViewPreferences;
   onEdit?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
+  const summaryId = useId();
   const cashShareUnits = Math.round(allocation.cashPercentage * 10_000);
   const items = useMemo<DisplayResultItem[]>(() => orderedResultItems(
     allocation.items,
@@ -168,20 +169,6 @@ export function PortfolioSummary({
         <p className="portfolio-summary__eyebrow">현재 포트폴리오</p>
         <div className="portfolio-summary__headline">
           <h1 id="portfolio-summary-title">안정 {stablePercent}</h1>
-          {onEdit === undefined ? null : (
-            <button
-              type="button"
-              className="portfolio-summary__edit"
-              aria-label="배분 수정"
-              onClick={onEdit}
-            >
-              <img
-                src={`${import.meta.env.BASE_URL}icons/portfolio-edit.svg`}
-                alt=""
-                aria-hidden="true"
-              />
-            </button>
-          )}
         </div>
         {preferences.showAmounts ? (
           <p className="portfolio-summary__stable">이번 달 투자금 {formatPortfolioWon(investmentWon)}</p>
@@ -237,32 +224,41 @@ export function PortfolioSummary({
               data-allocation-id={item.id}
               data-allocation-percentage={percentage}
             >
-              <h2 className="portfolio-allocation-row__name">
-                <button
-                  type="button"
-                  className="portfolio-allocation-row__select"
-                  aria-pressed={selectedItemId === item.id}
-                  onFocus={() => setFocusedItemId(item.id)}
-                  onBlur={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
-                  onPointerEnter={() => setFocusedItemId(item.id)}
-                  onPointerLeave={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
-                  onClick={() => setSelectedItemId((selected) => selected === item.id ? null : item.id)}
-                >
+              <button
+                type="button"
+                className="portfolio-allocation-row__select"
+                aria-label={item.name}
+                aria-describedby={`${summaryId}-${item.id}-values`}
+                aria-description={onEdit ? '배분 수정 열기' : undefined}
+                aria-haspopup={onEdit ? 'dialog' : undefined}
+                aria-pressed={onEdit ? undefined : selectedItemId === item.id}
+                onFocus={() => setFocusedItemId(item.id)}
+                onBlur={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
+                onPointerEnter={() => setFocusedItemId(item.id)}
+                onPointerLeave={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
+                onClick={(event) => {
+                  if (onEdit) onEdit(event);
+                  else setSelectedItemId((selected) => selected === item.id ? null : item.id);
+                }}
+              >
+                <span className="portfolio-allocation-row__name" role="heading" aria-level={2}>
                   <span className="portfolio-allocation-row__marker" aria-hidden="true" />
                   {item.name}
-                </button>
-              </h2>
-              <strong
-                className="portfolio-allocation-row__ratio"
-                aria-label={formatAllocationPercent(item.percentage)}
-              >
-                <span aria-hidden="true" data-allocation-ratio-visual>
-                  {formatAllocationPercent(item.percentage)}
                 </span>
-              </strong>
-              {preferences.showAmounts ? (
-                <span className="portfolio-allocation-row__amount">{formatPortfolioWon(item.amountWon)}</span>
-              ) : null}
+                <span className="portfolio-allocation-row__values" id={`${summaryId}-${item.id}-values`}>
+                  <strong
+                    className="portfolio-allocation-row__ratio"
+                    aria-label={formatAllocationPercent(item.percentage)}
+                  >
+                    <span aria-hidden="true" data-allocation-ratio-visual>
+                      {formatAllocationPercent(item.percentage)}
+                    </span>
+                  </strong>
+                  {preferences.showAmounts ? (
+                    <span className="portfolio-allocation-row__amount">{formatPortfolioWon(item.amountWon)}</span>
+                  ) : null}
+                </span>
+              </button>
             </li>
           );
         })}

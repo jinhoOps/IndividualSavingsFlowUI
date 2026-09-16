@@ -24,6 +24,7 @@ export function AllocationEditor({
   now,
   fieldError = null,
   onCashErrorChange,
+  onCashDirtyChange,
   createId = () => crypto.randomUUID(),
   presentation = 'standalone',
   showSummary = true,
@@ -34,6 +35,7 @@ export function AllocationEditor({
   now: () => number;
   fieldError?: string | null;
   onCashErrorChange?(error: string | null): void;
+  onCashDirtyChange?(dirty: boolean): void;
   createId?: () => string;
   presentation?: 'standalone' | 'setup' | 'edit';
   showSummary?: boolean;
@@ -66,6 +68,10 @@ export function AllocationEditor({
   useEffect(() => () => {
     onCashErrorChange?.(null);
   }, [onCashErrorChange]);
+
+  useEffect(() => {
+    onCashDirtyChange?.(rawValues.cash !== undefined && parseWonInput(rawValues.cash) !== allocation.cashAmountWon);
+  }, [rawValues.cash, allocation.cashAmountWon, onCashDirtyChange]);
 
   useEffect(() => {
     if (isFocused && activeFieldError) inputRefs.current.cash?.focus();
