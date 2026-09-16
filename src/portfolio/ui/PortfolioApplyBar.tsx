@@ -14,6 +14,7 @@ import { PortfolioDialog } from './PortfolioDialog';
 export function PortfolioApplyBar({
   dirty,
   saveError = false,
+  fieldError = null,
   applying = false,
   showAmounts = false,
   draft,
@@ -23,6 +24,7 @@ export function PortfolioApplyBar({
 }: {
   dirty: boolean;
   saveError?: boolean;
+  fieldError?: string | null;
   applying?: boolean;
   showAmounts?: boolean;
   draft: PortfolioDraft;
@@ -59,7 +61,7 @@ export function PortfolioApplyBar({
       <Button
         type="button"
         variant="primary"
-        disabled={applying || !validateApplicableDraft(draft)}
+        disabled={applying || fieldError !== null || !validateApplicableDraft(draft)}
         onClick={(event) => {
           triggerRef.current = event.currentTarget;
           setOpen(true);
@@ -74,9 +76,10 @@ export function PortfolioApplyBar({
             <div className="portfolio-confirmation__row"><dt>현금 비중</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
             {showAmounts ? <div className="portfolio-confirmation__row"><dt>총 투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div> : null}
           </dl>
+          {fieldError ? <p role="alert">입력 오류를 수정한 뒤 적용해 주세요.</p> : null}
           {saveError ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
           <Button type="button" variant="secondary" data-dialog-initial-focus disabled={applying} onClick={close}>계속 수정</Button>
-          <Button type="button" variant="primary" disabled={applying || !validateApplicableDraft(draft)} onClick={onApply}>배분 적용</Button>
+          <Button type="button" variant="primary" disabled={applying || fieldError !== null || !validateApplicableDraft(draft)} onClick={onApply}>배분 적용</Button>
         </PortfolioDialog>
       ) : null}
     </Surface>

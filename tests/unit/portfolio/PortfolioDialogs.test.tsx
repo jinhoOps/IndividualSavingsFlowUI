@@ -146,6 +146,22 @@ describe('Portfolio confirmation dialogs', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('blocks an already open apply confirmation when a field error arrives', () => {
+    const onApply = vi.fn();
+    const props = { dirty: true, draft: createCashOnlyDraft(200_000, 1), investmentWon: 200_000,
+      onCancel: vi.fn(), onApply };
+    const { rerender } = render(<PortfolioApplyBar {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: '적용' }));
+    rerender(<PortfolioApplyBar {...props} fieldError="allocation-exceeds-investment" />);
+    const confirmation = screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
+    const confirm = within(confirmation).getByRole('button', { name: '배분 적용' });
+    expect(confirm).toBeDisabled();
+    expect(within(confirmation).getByRole('alert')).toHaveTextContent('입력 오류를 수정한 뒤 적용해 주세요.');
+    fireEvent.click(confirm);
+    expect(onApply).not.toHaveBeenCalled();
+    expect(within(confirmation).getByRole('button', { name: '계속 수정' })).toBeEnabled();
+  });
+
   it('disables apply, cancel, and confirmation close paths while explicit apply is pending', () => {
     const onCancel = vi.fn();
     const onApply = vi.fn();

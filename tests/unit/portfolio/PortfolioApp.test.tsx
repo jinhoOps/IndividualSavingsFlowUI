@@ -155,6 +155,34 @@ describe('PortfolioApp', () => {
     expect(screen.getByRole('button', { name: '적용' })).toBeEnabled();
   });
 
+  it('blocks applying a stale valid draft while the cash input has a rejected value', async () => {
+    const repository = createMemoryPortfolioRepository({ applied: plan });
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    fireEvent.click(screen.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }));
+    const cash = screen.getByLabelText('현금 금액');
+    fireEvent.change(cash, { target: { value: '900000' } });
+    fireEvent.blur(cash);
+
+    expect(cash).toHaveValue('900,000');
+    expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    const apply = screen.getByRole('button', { name: '적용' });
+    expect(apply).toBeDisabled();
+    fireEvent.click(apply);
+    expect(screen.queryByRole('dialog', { name: '투자 배분을 적용할까요?' })).not.toBeInTheDocument();
+    expect(repository.applied?.items[0].shareUnits).toBe(600_000);
+
+    fireEvent.change(cash, { target: { value: '90000' } });
+    fireEvent.blur(cash);
+    expect(apply).toBeEnabled();
+    fireEvent.click(apply);
+    fireEvent.click(screen.getByRole('button', { name: '배분 적용' }));
+    await waitFor(() => expect(repository.applied?.items[0].shareUnits).toBe(550_000));
+  });
+
   it('discloses cash, explains manual remainder and permits apply only after full allocation', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
     fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));

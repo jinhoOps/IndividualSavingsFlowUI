@@ -83,6 +83,7 @@ export function PortfolioEditSurface({
           <PortfolioApplyBar
             dirty
             saveError={saveError}
+            fieldError={fieldError}
             applying={applying}
             showAmounts={showAmounts}
             draft={draft}
