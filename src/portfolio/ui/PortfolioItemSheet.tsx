@@ -57,6 +57,7 @@ export function PortfolioItemSheet({
   ));
   const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const discardReturnFocusRef = useRef<HTMLElement | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
   const amountWon = parseWonInput(amount);
   const normalizedName = normalizePortfolioName(name);
@@ -91,7 +92,10 @@ export function PortfolioItemSheet({
   }, []);
 
   function requestClose(): void {
-    if (dirty) setConfirmDiscard(true);
+    if (dirty) {
+      discardReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : nameInputRef.current;
+      setConfirmDiscard(true);
+    }
     else {
       session?.recordRecoveryDraft(recoveryKey, null);
       onClose();
@@ -186,7 +190,7 @@ export function PortfolioItemSheet({
           ) : null}
           <label className="portfolio-item-sheet__amount">
             <span>금액</span>
-            <input
+            <span className="portfolio-item-sheet__amount-control"><input
               ref={amountInputRef}
               inputMode="numeric"
               aria-label="금액"
@@ -205,6 +209,7 @@ export function PortfolioItemSheet({
                 setAmount(normalized.displayValue);
               }}
             />
+            <span aria-hidden="true">원</span></span>
             {amountTouched && amountError ? (
               <span className="portfolio-editor__field-error" id="portfolio-item-amount-error">{amountError}</span>
             ) : amountError === null ? (
@@ -224,6 +229,7 @@ export function PortfolioItemSheet({
           />
         </div>
         <footer className="portfolio-item-sheet__actions">
+          <p>배분 초안에 반영돼요</p>
           <Button type="button" variant="secondary" onClick={requestClose}>취소</Button>
           <Button
             type="button"
@@ -246,7 +252,7 @@ export function PortfolioItemSheet({
         <PortfolioDialog
           labelledBy="portfolio-item-discard-title"
           onClose={() => setConfirmDiscard(false)}
-          returnFocusRef={nameInputRef}
+          returnFocusRef={discardReturnFocusRef}
         >
           <h2 id="portfolio-item-discard-title">입력 내용을 버릴까요?</h2>
           <p>완료하지 않은 변경 내용이 사라집니다.</p>

@@ -7,6 +7,7 @@ import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/c
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { PortfolioApplyBar } from '../../../src/portfolio/ui/PortfolioApplyBar';
 import { PortfolioDialog } from '../../../src/portfolio/ui/PortfolioDialog';
+import { AccountManagementContext, AccountProductBoundary } from '../../../src/auth/AccountManagementContext';
 import { PortfolioManagementMenu } from '../../../src/portfolio/ui/PortfolioManagementMenu';
 
 const animeMocks = vi.hoisted(() => {
@@ -47,6 +48,17 @@ afterEach(() => {
 });
 
 describe('Portfolio confirmation dialogs', () => {
+  it('preserves the account offline lock when a dialog escapes its parent DOM', () => {
+    const content = <AccountProductBoundary><PortfolioDialog labelledBy="offline-title" onClose={vi.fn()} returnFocusRef={{ current: null }}>
+      <h2 id="offline-title">계정 편집</h2><input aria-label="입력" /><button>완료</button>
+    </PortfolioDialog></AccountProductBoundary>;
+    const { rerender } = render(<AccountManagementContext.Provider value={{ items: [], readOnly: false }}>{content}</AccountManagementContext.Provider>);
+    expect(screen.getByLabelText('입력')).toBeEnabled();
+    rerender(<AccountManagementContext.Provider value={{ items: [], readOnly: true }}>{content}</AccountManagementContext.Provider>);
+    expect(screen.getByLabelText('입력')).toBeDisabled();
+    expect(screen.getByRole('button', { name: '완료' })).toBeDisabled();
+  });
+
   it('keeps dialog focus inside during Strict Mode preflight and restores it on actual close', async () => {
     function Harness() {
       const triggerRef = useRef<HTMLButtonElement>(null);

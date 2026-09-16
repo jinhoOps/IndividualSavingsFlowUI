@@ -1,3 +1,7 @@
+import { animate } from 'animejs';
+import { useRef } from 'react';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { materializeAllocation } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
@@ -17,10 +21,30 @@ export function PortfolioEditorSummary({ draft, investmentWon }: PortfolioEditor
     .reduce((sum, item) => sum + item.percentage, 0);
   const unallocatedWon = investmentWon - allocation.totalAmountWon;
 
+  const previous = useRef([growthPercentage, stablePercentage]);
+  const barRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    const next = [growthPercentage, stablePercentage];
+    const before = previous.current;
+    previous.current = next;
+    const bars = Array.from(root.children) as HTMLElement[];
+    const finish = () => bars.forEach((bar, index) => { bar.style.width = `${next[index]}%`; });
+    finish();
+    if (!reducedMotion) {
+      try {
+        bars.forEach((bar, index) => {
+          if (before[index] !== next[index]) animate(bar, {
+            width: [`${before[index]}%`, `${next[index]}%`],
+            duration: MOTION_DURATION.emphasis, ease: MOTION_EASE.update,
+          });
+        });
+      } catch { finish(); }
+    }
+  }, [growthPercentage, stablePercentage]);
+
   return (
     <section className="portfolio-setup-summary" aria-label="현재 배분 요약">
       <p>월 투자금 <strong>{formatPortfolioWon(investmentWon)}</strong> <small>Main 기준</small></p>
-      <div className="portfolio-setup-summary__bar" aria-hidden="true">
+      <div ref={barRef} className="portfolio-setup-summary__bar" aria-hidden="true">
         <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
         <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
       </div>

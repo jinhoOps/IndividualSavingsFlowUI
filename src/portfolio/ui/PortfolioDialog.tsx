@@ -1,7 +1,11 @@
+import { createPortal } from 'react-dom';
 import { animate } from 'animejs';
 import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
+
+const openDialogs: HTMLDialogElement[] = [];
 
 export function PortfolioDialog({
   labelledBy,
@@ -44,16 +48,37 @@ export function PortfolioDialog({
     const dialog = dialogRef.current;
     if (dialog === null) return;
     const generation = ++focusEffectGenerationRef.current;
+    const scrollPositions: { element: HTMLElement; top: number; left: number }[] = [];
+    for (let element = returnFocusRef.current?.parentElement; element; element = element.parentElement) {
+      if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+        scrollPositions.push({ element, top: element.scrollTop, left: element.scrollLeft });
+      }
+    }
+    openDialogs.push(dialog);
+    for (const parent of openDialogs.slice(0, -1)) parent.inert = true;
     dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus();
     return () => {
+      openDialogs.splice(openDialogs.indexOf(dialog), 1);
+      const parent = openDialogs.at(-1);
+      if (parent) parent.inert = false;
       if (dialog.open && typeof dialog.close === 'function') dialog.close();
       queueMicrotask(() => {
-        if (focusEffectGenerationRef.current === generation) returnFocusRef.current?.focus();
+        const target = returnFocusRef.current;
+        const top = openDialogs.at(-1);
+        if (focusEffectGenerationRef.current === generation && target?.isConnected && (!top || top.contains(target))) {
+          target.focus({ preventScroll: true });
+          for (const { element, top, left } of scrollPositions) {
+            element.scrollTop = top;
+            element.scrollLeft = left;
+          }
+        }
       });
     };
   }, [returnFocusRef]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDialogElement>): void {
+    if (openDialogs.at(-1) !== event.currentTarget) return;
+    event.stopPropagation();
     if (event.key === 'Escape') {
       event.preventDefault();
       onClose();
@@ -75,8 +100,8 @@ export function PortfolioDialog({
     }
   }
 
-  return (
-    <dialog
+  return createPortal(
+    <AccountProductBoundary><dialog
       ref={dialogRef}
       aria-modal="true"
       aria-labelledby={labelledBy}
@@ -84,7 +109,8 @@ export function PortfolioDialog({
       data-presentation={dataPresentation}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        event.stopPropagation();
+        if (openDialogs.at(-1) === event.currentTarget) onClose();
       }}
       onClick={(event) => {
         if (closeOnBackdrop && event.target === event.currentTarget) onClose();
@@ -92,7 +118,8 @@ export function PortfolioDialog({
       onKeyDown={handleKeyDown}
     >
       <div data-dialog-motion>{children}</div>
-    </dialog>
+    </dialog></AccountProductBoundary>,
+    document.body,
   );
 }
 

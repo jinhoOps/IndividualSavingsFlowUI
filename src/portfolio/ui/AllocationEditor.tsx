@@ -1,4 +1,7 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { animate } from 'animejs';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
@@ -22,6 +25,7 @@ export function AllocationEditor({
   fieldError = null,
   createId = () => crypto.randomUUID(),
   presentation = 'standalone',
+  showSummary = true,
 }: {
   draft: PortfolioDraft;
   investmentWon: number;
@@ -30,6 +34,7 @@ export function AllocationEditor({
   fieldError?: string | null;
   createId?: () => string;
   presentation?: 'standalone' | 'setup' | 'edit';
+  showSummary?: boolean;
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
@@ -40,6 +45,12 @@ export function AllocationEditor({
   const pendingAddedIdRef = useRef<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const pendingCaretRef = useRef<{ id: string; caret: number } | null>(null);
+  const cashTriggerRef = useRef<HTMLButtonElement>(null);
+  const cashDetailsRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
+    if (reducedMotion) return;
+    try { animate(root, { opacity: [0, 1], y: [4, 0], duration: MOTION_DURATION.normal, ease: MOTION_EASE.enter }); }
+    catch { root.style.opacity = '1'; root.style.transform = 'none'; }
+  }, [cashExpanded]);
   const isAtLimit = draft.items.length >= 10;
   const isFocused = presentation !== 'standalone';
   const normalizedNameCounts = draft.items.reduce<Map<string, number>>((counts, item) => {
@@ -48,13 +59,17 @@ export function AllocationEditor({
     return counts;
   }, new Map());
 
+  useEffect(() => {
+    if (isFocused && fieldError) inputRefs.current.cash?.focus();
+  }, [isFocused, fieldError]);
+
   useLayoutEffect(() => {
     const addedId = pendingAddedIdRef.current;
     if (addedId !== null) {
       const row = itemRowRefs.current[addedId]?.querySelector('button');
       if (row) {
         itemSheetReturnFocusRef.current = row;
-        row.focus();
+        row.focus({ preventScroll: true });
         pendingAddedIdRef.current = null;
       }
     }
@@ -87,7 +102,7 @@ export function AllocationEditor({
         <p>한 달 투자금을 배분합니다</p>
         <h1 id="portfolio-editor-title">투자 배분 설정</h1>
       </header> : null}
-      {isFocused ? (
+      {isFocused && showSummary ? (
         <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
       ) : null}
       <div className="portfolio-editor__items">
@@ -182,28 +197,6 @@ export function AllocationEditor({
         })}
       </div>
 
-      <Button
-        type="button"
-        variant="secondary"
-        className="portfolio-editor__add"
-        aria-label="투자 대상 추가"
-        disabled={isAtLimit}
-        onClick={(event) => {
-          const id = createId();
-          if (isFocused) {
-            itemSheetReturnFocusRef.current = event.currentTarget;
-            setActiveItemSheet({ mode: 'add', id });
-          } else {
-            onAction({
-              type: 'draft-item-added',
-              item: { id, name: '', order: draft.items.length },
-              now: now(),
-            });
-          }
-        }}
-      />
-      {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
-
       <section
         className="portfolio-editor__cash"
         aria-label={isFocused ? '현금' : undefined}
@@ -212,22 +205,28 @@ export function AllocationEditor({
         {isFocused ? (
           <button
             type="button"
+            ref={cashTriggerRef}
             className="portfolio-editor__cash-summary"
             aria-expanded={cashExpanded}
-            onClick={() => setCashExpanded((current) => !current)}
+            onClick={() => {
+              setCashExpanded((current) => !current);
+              cashTriggerRef.current?.focus({ preventScroll: true });
+            }}
           >
-            <span><strong>현금</strong></span>
+            <span><strong>현금</strong><small>{draft.cashMode === 'automatic' ? '남은 금액 자동 배분' : '직접 배분 · 안정'}</small></span>
             <span><strong>{formatPortfolioWon(allocation.cashAmountWon)}</strong><small>{formatAllocationPercent(allocation.cashPercentage)}</small></span>
           </button>
         ) : (
           <><h2 id="portfolio-cash-title">현금</h2><p>분류 안정</p></>
         )}
-        {!isFocused || cashExpanded ? <>
+        {!isFocused || cashExpanded ? <div ref={cashDetailsRef} className="portfolio-editor__cash-details">
           <label>
           <span>현금 금액</span>
           <input
             ref={(input) => { inputRefs.current.cash = input; }}
             aria-label="현금 금액"
+            aria-invalid={isFocused && fieldError ? true : undefined}
+            aria-describedby={isFocused && fieldError ? "portfolio-cash-error" : undefined}
             inputMode="numeric"
             value={rawValues.cash ?? formatWonInput(allocation.cashAmountWon, { zeroDisplay: 'zero' })}
             onChange={(event) => {
@@ -251,15 +250,40 @@ export function AllocationEditor({
           {draft.cashMode === 'manual' ? (
             <div>
               <p role="status">현금 직접 배분 중</p>
-              <p>남은 투자금을 현금으로 자동 배분합니다</p>
-              <Button type="button" variant="quiet" onClick={() => onAction({ type: 'automatic-cash-enabled', now: now() })}>
+              <p>자동 배분을 켜면 남은 투자금을 현금으로 배분합니다</p>
+              <Button type="button" variant="quiet" onClick={() => {
+                setRawValues(({ cash: _cash, ...rest }) => rest);
+                onAction({ type: 'automatic-cash-enabled', now: now() });
+              }}>
                 현금 자동 배분 켜기
               </Button>
             </div>
-          ) : <p role="status">남은 투자금 자동 배분</p>}
-        </> : null}
+          ) : <p role="status">남은 금액 자동 배분 · 현금은 안정 자산이에요</p>}
+        </div> : null}
       </section>
-      {fieldError ? <p role="alert">{errorMessage(fieldError)}</p> : null}
+      <Button
+        type="button"
+        variant="secondary"
+        className="portfolio-editor__add"
+        aria-label="투자 대상 추가"
+        disabled={isAtLimit}
+        onClick={(event) => {
+          const id = createId();
+          if (isFocused) {
+            itemSheetReturnFocusRef.current = event.currentTarget;
+            setActiveItemSheet({ mode: 'add', id });
+          } else {
+            onAction({
+              type: 'draft-item-added',
+              item: { id, name: '', order: draft.items.length },
+              now: now(),
+            });
+          }
+        }}
+      >{isFocused ? '투자 대상 추가' : null}</Button>
+      {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
+
+      {fieldError ? <p id="portfolio-cash-error" role="alert">{errorMessage(fieldError)}</p> : null}
       {isFocused && activeItemSheet ? (
         <PortfolioItemSheet
           mode={activeItemSheet.mode}

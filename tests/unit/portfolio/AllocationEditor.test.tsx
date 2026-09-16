@@ -185,8 +185,8 @@ describe('AllocationEditor', () => {
       presentation="setup"
     />);
 
-    const editTarget = screen.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' });
-    expect(editTarget).toHaveAccessibleName('미국 인덱스 편집, 120,000원, 60%');
+    const editTarget = screen.getByRole('button', { name: '미국 인덱스 편집, 성장, 120,000원, 60%' });
+    expect(editTarget).toHaveAccessibleName('미국 인덱스 편집, 성장, 120,000원, 60%');
     expect(editTarget).toHaveTextContent('성장');
     expect(editTarget).not.toHaveTextContent('자동 추천');
     expect(screen.queryByRole('dialog', { name: '투자 대상 수정' })).not.toBeInTheDocument();
@@ -264,7 +264,7 @@ describe('AllocationEditor', () => {
     />);
     expect(screen.getByText('현금 직접 배분 중')).toBeVisible();
     expect(screen.getByRole('button', { name: '현금 자동 배분 켜기' })).toBeVisible();
-    expect(screen.getByText('남은 투자금을 현금으로 자동 배분합니다')).toBeVisible();
+    expect(screen.getByText('자동 배분을 켜면 남은 투자금을 현금으로 배분합니다')).toBeVisible();
   });
 
   it('provides each investment classification as an announced radio group and presents cash as stable without a control', () => {

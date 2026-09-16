@@ -1261,3 +1261,77 @@ for (const width of [390, 768, 1280]) {
     });
   }
 }
+
+function portfolioEditorPlan(): WorkspaceDocument {
+  const workspace = mappedPlan();
+  workspace.portfolio.plans = [{schemaVersion: 2, scope: {type: 'aggregate'},
+    items: [{id: 'index', name: '인덱스', shareUnits: 600000, order: 0, classification: 'growth', classificationOrigin: 'automatic'}],
+    cashShareUnits: 400000, cashMode: 'automatic', syncedInvestmentWon: 200000, appliedAt: 1000, updatedAt: 1000}];
+  return workspace;
+}
+
+for (const failure of ['save-failure', 'conflict'] as const) {
+  test(`Portfolio editor preserves completed draft and Main ownership after ${failure}`, async ({page, context}) => {
+    const server = fakeServer();
+    const original = portfolioEditorPlan();
+    server.rows.set(userA, original); await server.attach(context, userA);
+    await page.goto('apps/portfolio/');
+    await page.getByRole('button', {name: '배분 수정'}).click();
+    await page.getByRole('button', {name: /인덱스 편집/}).click();
+    const item = page.getByRole('dialog', {name: '투자 대상 수정'});
+    await item.getByLabel('금액', {exact: true}).fill('110000');
+    if (failure === 'save-failure') server.setFailWrite(true);
+    else {
+      server.rows.set(userA, {...original, revision: original.revision + 1, main: {...original.main,
+        applied: {...original.main.applied!, monthlyNetIncomeWon: 4000000, monthlyInvestmentWon: 300000, updatedAt: 2000}}});
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await expect(item.getByLabel('금액', {exact: true})).toHaveValue('110,000');
+    }
+    await item.getByRole('button', {name: '완료'}).click();
+    const editor = page.getByRole('dialog', {name: '투자 배분 수정'});
+    await expect(editor.getByRole('alert')).toContainText('저장하지 못했습니다');
+    await expect(editor.getByRole('button', {name: /인덱스 편집/})).toContainText('110,000원');
+    expect(server.rows.get(userA)?.portfolio.plans).toEqual(original.portfolio.plans);
+    expect(server.operations.every(operation => operation === 'save_portfolio')).toBe(true);
+    expect(server.rows.get(userA)?.main.applied?.monthlyNetIncomeWon).toBe(failure === 'conflict' ? 4000000 : 3200000);
+    expect(server.rows.get(userA)?.main.applied?.monthlyInvestmentWon).toBe(failure === 'conflict' ? 300000 : 200000);
+    expect(server.rows.get(userA)?.locations).toEqual(original.locations);
+    expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
+    await editor.getByRole('button', {name: /인덱스 편집/}).click();
+    await expect(page.getByLabel('금액', {exact: true})).toHaveValue('110,000');
+  });
+}
+
+test('Portfolio editor recovers unsent item input and retains offline locks in portaled dialogs', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, portfolioEditorPlan()); await server.attach(context, userA);
+  await page.goto('apps/portfolio/');
+  await page.getByRole('button', {name: '배분 수정'}).click();
+  await page.getByRole('button', {name: /인덱스 편집/}).click();
+  await page.getByLabel('투자 대상 이름').fill('아직 완료하지 않은 이름');
+  await page.getByLabel('금액', {exact: true}).fill('110000');
+  await page.reload();
+  await page.getByRole('button', {name: '배분 수정'}).click();
+  await page.getByRole('button', {name: /인덱스 편집/}).click();
+  await expect(page.getByLabel('투자 대상 이름')).toHaveValue('아직 완료하지 않은 이름');
+  await expect(page.getByLabel('금액', {exact: true})).toHaveValue('110,000');
+  expect(server.operations).toEqual([]);
+  server.setFailRead(true);
+  await page.reload();
+  await expect(page.getByText('오프라인 · 마지막 저장 계획')).toBeVisible();
+  await expect(page.getByRole('button', {name: '배분 수정'})).toBeDisabled();
+  expect(server.operations).toEqual([]);
+});
+
+test('Portfolio editor locks an already open item dialog when account refresh goes offline', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, portfolioEditorPlan()); await server.attach(context, userA);
+  await page.goto('apps/portfolio/');
+  await page.getByRole('button', {name: '배분 수정'}).click();
+  await page.getByRole('button', {name: /인덱스 편집/}).click();
+  server.setFailRead(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const item = page.getByRole('dialog', {name: '투자 대상 수정'});
+  await expect(item.getByLabel('금액', {exact: true})).toBeDisabled();
+  await expect(item.getByRole('button', {name: '완료'})).toBeDisabled();
+  await expect(item.getByLabel('금액', {exact: true})).toHaveValue('120,000');
+  expect(server.operations).toEqual([]);
+});

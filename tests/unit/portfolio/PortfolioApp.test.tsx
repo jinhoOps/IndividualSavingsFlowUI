@@ -109,6 +109,76 @@ function firstSaveGate(): {
 }
 
 describe('PortfolioApp', () => {
+  it('keeps nested item Escape inside the topmost dialog and returns focus', async () => {
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    const editor = screen.getByRole('dialog', { name: '투자 배분 수정' });
+    const row = screen.getByRole('button', { name: /인덱스 편집/ });
+    fireEvent.click(row);
+    fireEvent.keyDown(screen.getByLabelText('투자 대상 이름'), { key: 'Escape' });
+    expect(editor).toBeVisible();
+    expect(screen.queryByRole('dialog', { name: '투자 대상 수정' })).not.toBeInTheDocument();
+    await waitFor(() => expect(row).toHaveFocus());
+    fireEvent.click(row);
+    const name = screen.getByLabelText('투자 대상 이름');
+    fireEvent.change(name, { target: { value: '새 이름' } });
+    fireEvent.keyDown(name, { key: 'Escape' });
+    expect(editor).toBeVisible();
+    const discard = screen.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
+    const keep = within(discard).getByRole('button', { name: '계속 입력' });
+    expect(keep).toHaveFocus();
+    fireEvent.keyDown(keep, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: '입력 내용을 버릴까요?' })).not.toBeInTheDocument();
+    expect(name).toHaveValue('새 이름');
+    await waitFor(() => expect(name).toHaveFocus());
+    const amount = screen.getByLabelText('금액');
+    amount.focus();
+    fireEvent.keyDown(amount, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: '계속 입력' }));
+    await waitFor(() => expect(amount).toHaveFocus());
+  });
+
+  it.each(['reduced', 'animate-failure', 'scope-failure'])('keeps summary semantics immediate during %s motion', (mode) => {
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
+    if (mode === 'reduced') anime.scope.matches.reducedMotion = true;
+    if (mode === 'animate-failure') anime.animate.mockImplementation(() => { throw new Error('animation unavailable'); });
+    if (mode === 'scope-failure') anime.createScope.mockImplementationOnce(() => { throw new Error('scope unavailable'); });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    const summary = screen.getByRole('region', { name: '현재 배분 요약' });
+    expect(summary).toHaveTextContent('성장 55%');
+    expect(summary).toHaveTextContent('안정 45%');
+    expect(summary.querySelector('.portfolio-setup-summary__growth')).toHaveStyle({ width: '55%' });
+    expect(summary.querySelector('.portfolio-setup-summary__stable')).toHaveStyle({ width: '45%' });
+    expect(screen.getByRole('button', { name: '적용' })).toBeEnabled();
+  });
+
+  it('discloses cash, explains manual remainder and permits apply only after full allocation', () => {
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
+    const cash = screen.getByRole('button', { name: /현금.*남은 금액 자동 배분/ });
+    expect(cash).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('현금 금액')).not.toBeInTheDocument();
+    fireEvent.click(cash);
+    fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '900000' } });
+    fireEvent.blur(screen.getByLabelText('현금 금액'));
+    expect(screen.getByLabelText('현금 금액')).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    expect(screen.getByLabelText('현금 금액')).toHaveFocus();
+    fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '40000' } });
+    fireEvent.blur(screen.getByLabelText('현금 금액'));
+    expect(screen.getByRole('region', { name: '현재 배분 요약' })).toHaveTextContent('아직 배분하지 않은 금액 40,000원');
+    expect(screen.getByRole('button', { name: '적용' })).toBeDisabled();
+    expect(screen.getByText('아직 적용하지 않은 변경이 있어요')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '현금 자동 배분 켜기' }));
+    expect(screen.getByLabelText('현금 금액')).toHaveValue('80,000');
+    expect(screen.queryByRole('button', { name: '적용' })).not.toBeInTheDocument();
+    fireEvent.click(cash);
+    expect(screen.queryByLabelText('현금 금액')).not.toBeInTheDocument();
+    expect(cash).toHaveFocus();
+  });
+
   it('coalesces cloud draft autosaves after a 500ms quiet period', async () => {
     vi.useFakeTimers();
     const repository = createMemoryPortfolioRepository({ applied: plan });
@@ -124,10 +194,11 @@ describe('PortfolioApp', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
-    const amount = screen.getByLabelText('인덱스 금액');
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    const amount = screen.getByLabelText('금액');
     fireEvent.change(amount, { target: { value: '110000' } });
     fireEvent.change(amount, { target: { value: '120000' } });
-    fireEvent.blur(amount);
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
     await act(async () => { await Promise.resolve(); });
     expect(saveDraft).not.toHaveBeenCalled();
 
@@ -215,7 +286,7 @@ describe('PortfolioApp', () => {
       now={() => 2}
     />);
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
-    fireEvent.click(screen.getByRole('button', { name: '현금 200,000원 100%' }));
+    fireEvent.click(screen.getByRole('button', { name: /현금.*200,000원.*100%/ }));
     fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '190000' } });
     fireEvent.blur(screen.getByLabelText('현금 금액'));
     await act(async () => undefined);
@@ -270,10 +341,10 @@ describe('PortfolioApp', () => {
     fireEvent.change(within(targetSheet).getByLabelText('금액'), { target: { value: '120000' } });
     fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
     expect(screen.queryByRole('dialog', { name: '투자 대상 추가' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '미국 인덱스 편집, 120,000원, 60%' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '미국 인덱스 편집, 성장, 120,000원, 60%' })).toBeVisible();
 
     const liveSummary = screen.getByRole('region', { name: '현재 배분 요약' });
-    expect(liveSummary).toHaveTextContent('매달 200,000원');
+    expect(liveSummary).toHaveTextContent('월 투자금 200,000원');
     expect(liveSummary).toHaveTextContent('성장 60%');
     expect(liveSummary).toHaveTextContent('안정 40%');
 
@@ -305,10 +376,12 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
-    const classification = screen.getByRole('group', { name: '인덱스 분류' });
-    fireEvent.click(within(classification).getByRole('radio', { name: '성장' }));
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    const classification = screen.getByRole('group', { name: '투자 대상 분류' });
+    fireEvent.click(within(classification).getByRole('button', { name: '성장' }));
 
-    expect(within(classification).getByRole('status')).toHaveTextContent('직접 선택: 성장');
+    expect(screen.getByText('사용자 지정')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
     expect(repository.applied?.items[0].classificationOrigin).toBe('automatic');
     await waitFor(() => expect(repository.draft?.items[0].classificationOrigin).toBe('user'));
 
@@ -333,7 +406,9 @@ describe('PortfolioApp', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
-    fireEvent.click(within(screen.getByRole('group', { name: '인덱스 분류' })).getByRole('radio', { name: '안정' }));
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    fireEvent.click(screen.getByRole('button', { name: '안정' }));
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
     fireEvent.click(screen.getByRole('button', { name: '적용' }));
     const dialog = screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
     expect(within(dialog).getByText('총 투자금')).toBeVisible();
@@ -357,8 +432,11 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
     expect(screen.queryByRole('complementary', { name: '배분 변경' })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('인덱스 금액'), { target: { value: '110000' } });
-    fireEvent.blur(screen.getByLabelText('인덱스 금액'));
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    anime.animate.mockClear();
+    fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
+    expect(anime.animate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
     expect(screen.getByRole('complementary', { name: '배분 변경' })).toBeVisible();
   });
@@ -373,11 +451,15 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '배분 수정' }));
     anime.animate.mockClear();
 
-    fireEvent.change(screen.getByLabelText('인덱스 금액'), { target: { value: '110000' } });
-    fireEvent.blur(screen.getByLabelText('인덱스 금액'));
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    anime.animate.mockClear();
+    fireEvent.change(screen.getByLabelText('금액'), { target: { value: '110000' } });
+    expect(anime.animate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
     expect(screen.getByTestId('portfolio-result-controls')).toHaveTextContent('안정 40%');
-    expect(anime.animate).not.toHaveBeenCalled();
+    expect(screen.getByRole('region', { name: '현재 배분 요약' })).toHaveTextContent('안정 45%');
+    expect(anime.animate).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ duration: 260 }));
 
     fireEvent.click(screen.getByRole('button', { name: '적용' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' }))
@@ -543,7 +625,7 @@ describe('PortfolioApp', () => {
     fireEvent.change(within(targetSheet).getByLabelText('금액'), { target: { value: '100000' } });
     fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
     await waitFor(() => expect(repository.saveDraft).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: '초기 이름 편집, 100,000원, 50%' }));
+    fireEvent.click(screen.getByRole('button', { name: '초기 이름 편집, 성장, 100,000원, 50%' }));
     targetSheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
     fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '최신 이름' } });
     fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
@@ -574,7 +656,7 @@ describe('PortfolioApp', () => {
     />);
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
-    fireEvent.click(screen.getByRole('button', { name: '현금 200,000원 100%' }));
+    fireEvent.click(screen.getByRole('button', { name: /현금.*200,000원.*100%/ }));
     fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '200000' } });
     fireEvent.blur(screen.getByLabelText('현금 금액'));
     await gated.started;

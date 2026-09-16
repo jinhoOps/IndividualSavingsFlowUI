@@ -15,7 +15,7 @@ export function PortfolioAllocationRow({ name, amountWon, percentage, classifica
     <button
       type="button"
       className="portfolio-editor__row-summary"
-      aria-label={`${name} 편집, ${formatPortfolioWon(amountWon)}, ${formatAllocationPercent(percentage)}`}
+      aria-label={`${name} 편집, ${classification === 'growth' ? '성장' : '안정'}, ${formatPortfolioWon(amountWon)}, ${formatAllocationPercent(percentage)}`}
       onClick={(event) => onEdit(event.currentTarget)}
     >
       <span><strong>{name}</strong><small>{classification === 'growth' ? '성장' : '안정'}</small></span>

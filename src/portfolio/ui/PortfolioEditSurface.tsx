@@ -4,6 +4,7 @@ import type { PortfolioAction } from '../application/portfolioReducer';
 import type { PortfolioDraft } from '../domain/model';
 import { AllocationEditor } from './AllocationEditor';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
+import { PortfolioEditorSummary } from './PortfolioEditorSummary';
 import { PortfolioDialog } from './PortfolioDialog';
 
 export function PortfolioEditSurface({
@@ -65,26 +66,32 @@ export function PortfolioEditSurface({
         <Button type="button" variant="quiet" data-dialog-initial-focus aria-label="편집기 닫기" disabled={applying} onClick={onCancel}>닫기</Button>
       </header>
       {showSaving ? <p role="status">저장 중</p> : null}
-      <AllocationEditor
-        draft={draft}
-        investmentWon={investmentWon}
-        onAction={onAction}
-        now={now}
-        fieldError={fieldError}
-        presentation="edit"
-      />
-      {dirty ? (
-        <PortfolioApplyBar
-          dirty
-          saveError={saveError}
-          applying={applying}
-          showAmounts={showAmounts}
+      <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
+      <div className="portfolio-edit-surface__body">
+        <AllocationEditor
           draft={draft}
           investmentWon={investmentWon}
-          onCancel={onCancel}
-          onApply={onApply}
+          onAction={onAction}
+          now={now}
+          fieldError={fieldError}
+          presentation="edit"
+          showSummary={false}
         />
-      ) : null}
+      </div>
+      <footer className="portfolio-edit-surface__footer">
+        {dirty ? (
+          <PortfolioApplyBar
+            dirty
+            saveError={saveError}
+            applying={applying}
+            showAmounts={showAmounts}
+            draft={draft}
+            investmentWon={investmentWon}
+            onCancel={onCancel}
+            onApply={onApply}
+          />
+        ) : null}
+      </footer>
     </PortfolioDialog>
   );
 }

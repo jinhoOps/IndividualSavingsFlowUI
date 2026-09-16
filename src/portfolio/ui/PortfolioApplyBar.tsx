@@ -1,3 +1,6 @@
+import { animate } from 'animejs';
+import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
 import { useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
@@ -29,6 +32,11 @@ export function PortfolioApplyBar({
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const motionRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
+    if (reducedMotion) return;
+    try { animate(root, { opacity: [0, 1], y: [4, 0], duration: MOTION_DURATION.normal, ease: MOTION_EASE.enter }); }
+    catch { root.style.opacity = '1'; root.style.transform = 'none'; }
+  }, [dirty]);
   if (!dirty) return null;
   const allocation = materializeAllocation(draft, investmentWon);
 
@@ -39,17 +47,19 @@ export function PortfolioApplyBar({
 
   return (
     <Surface
+      ref={motionRef}
       as="aside"
       className="portfolio-apply-bar"
       aria-busy={applying ? 'true' : undefined}
       aria-label="배분 변경"
     >
+      <p className="portfolio-apply-bar__status">아직 적용하지 않은 변경이 있어요</p>
       {saveError && !open ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
       <Button type="button" variant="secondary" disabled={applying} onClick={onCancel}>취소</Button>
       <Button
         type="button"
         variant="primary"
-        disabled={applying}
+        disabled={applying || !validateApplicableDraft(draft)}
         onClick={(event) => {
           triggerRef.current = event.currentTarget;
           setOpen(true);
