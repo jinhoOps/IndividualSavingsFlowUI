@@ -1,0 +1,211 @@
+[
+  {
+    "scenario": "edit-390-rejected",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 844,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 390
+  },
+  {
+    "scenario": "edit-390-unrelated-edit",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 844,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 390
+  },
+  {
+    "scenario": "edit-390-corrected",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": false,
+    "error": null,
+    "height": 844,
+    "invalid": null,
+    "value": "102,000",
+    "width": 390
+  },
+  {
+    "scenario": "edit-768-rejected",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 1024,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 768
+  },
+  {
+    "scenario": "edit-768-unrelated-edit",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 1024,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 768
+  },
+  {
+    "scenario": "edit-768-corrected",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": false,
+    "error": null,
+    "height": 1024,
+    "invalid": null,
+    "value": "102,000",
+    "width": 768
+  },
+  {
+    "scenario": "edit-1280-rejected",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 900,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 1280
+  },
+  {
+    "scenario": "edit-1280-unrelated-edit",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 900,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 1280
+  },
+  {
+    "scenario": "edit-1280-corrected",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": false,
+    "error": null,
+    "height": 900,
+    "invalid": null,
+    "value": "102,000",
+    "width": 1280
+  },
+  {
+    "scenario": "setup-rejected",
+    "confirmation": false,
+    "dialogs": [],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 844,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 390
+  },
+  {
+    "scenario": "setup-unrelated-edit",
+    "confirmation": false,
+    "dialogs": [],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 844,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 390
+  },
+  {
+    "scenario": "setup-automatic-reset",
+    "confirmation": false,
+    "dialogs": [],
+    "disabled": false,
+    "error": null,
+    "height": 844,
+    "invalid": null,
+    "value": "400,000",
+    "width": 390
+  },
+  {
+    "scenario": "setup-second-rejected",
+    "confirmation": false,
+    "dialogs": [],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 844,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 390
+  },
+  {
+    "scenario": "setup-remounted",
+    "alerts": 0,
+    "disabled": false,
+    "height": 844,
+    "invalid": null,
+    "value": "400,000",
+    "width": 390
+  },
+  {
+    "scenario": "visible-error-390",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 844,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 390
+  },
+  {
+    "scenario": "visible-error-768",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 1024,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 768
+  },
+  {
+    "scenario": "visible-error-1280",
+    "confirmation": false,
+    "dialogs": [
+      "투자 배분 수정닫기월 투자금 800,000원 Main "
+    ],
+    "disabled": true,
+    "error": "portfolio-cash-error",
+    "height": 900,
+    "invalid": "true",
+    "value": "900,000",
+    "width": 1280
+  }
+]

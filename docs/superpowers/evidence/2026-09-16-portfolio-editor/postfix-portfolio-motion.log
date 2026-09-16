@@ -1,0 +1,51 @@
+(node:92261) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[2m[WebServer] [22m(node:92267) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:92267) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+[2m[WebServer] [22m(node:92301) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:92301) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+Running 32 tests using 1 worker
+
+(node:92310) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:92310) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:92310) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/motion-system.spec.ts:121:3 › mobile captures cross-app motion boundaries without losing semantics or focus (6.7s)
+  ✓   2 [chromium] › tests/motion-system.spec.ts:121:3 › tablet captures cross-app motion boundaries without losing semantics or focus (6.5s)
+  ✓   3 [chromium] › tests/motion-system.spec.ts:121:3 › desktop captures cross-app motion boundaries without losing semantics or focus (6.6s)
+  -   4 [chromium] › tests/motion-system.spec.ts:232:1 › PWA offline revisit keeps all app routes and final motion state available
+  ✓   5 [chromium] › tests/portfolio.spec.ts:124:1 › creates one allocation and revisits result-first (726ms)
+  ✓   6 [chromium] › tests/portfolio.spec.ts:170:1 › resumes and cancels a draft, validates manual cash, and confirms reset (2.3s)
+  ✓   7 [chromium] › tests/portfolio.spec.ts:226:1 › explains duplicate names and blocks confirmation until corrected (678ms)
+  ✓   8 [chromium] › tests/portfolio.spec.ts:245:1 › puts a Main investment increase into cash (327ms)
+  ✓   9 [chromium] › tests/portfolio.spec.ts:256:1 › shows the source-state summary first and keeps view preferences separate (622ms)
+  ✓  10 [chromium] › tests/portfolio.spec.ts:280:1 › gates zero investment and focuses Main investment editing (496ms)
+  ✓  11 [chromium] › tests/portfolio.spec.ts:293:1 › keeps the summary-first ratio list usable across required widths (770ms)
+  ✓  12 [chromium] › tests/portfolio.spec.ts:391:1 › contains the mobile editor, apply bar, and confirmation dialog (1.2s)
+  ✓  13 [chromium] › tests/portfolio.spec.ts:419:1 › keeps add-sheet amount adjustments ordered, touch-sized, and on one row at 390px (762ms)
+  ✓  14 [chromium] › tests/portfolio.spec.ts:448:1 › slides the mobile edit card in from below the viewport (816ms)
+  ✓  15 [chromium] › tests/portfolio.spec.ts:483:1 › isolates applied editing as a sheet or panel and restores focus (1.5s)
+  ✓  16 [chromium] › tests/portfolio.spec.ts:521:1 › reflows a long Korean target name at a 200% desktop-zoom equivalent width (362ms)
+  ✓  17 [chromium] › tests/portfolio.spec.ts:572:1 › keeps the final mobile editor control above the save-error apply bar (1.1s)
+  ✓  18 [chromium] › tests/portfolio.spec.ts:608:1 › contains the focused target sheet at 768px (449ms)
+  ✓  19 [chromium] › tests/portfolio.spec.ts:623:1 › protects dirty mobile target input and reuses the sheet for editing (1.9s)
+  ✓  20 [chromium] › tests/portfolio.spec.ts:687:3 › contains target shortcuts at 768px (462ms)
+  ✓  21 [chromium] › tests/portfolio.spec.ts:687:3 › contains target shortcuts at 1280px (450ms)
+  ✓  22 [chromium] › tests/portfolio.spec.ts:706:1 › does not expose account or custody management and preserves retired Account Map data (1.3s)
+  ✓  23 [chromium] › tests/portfolio.spec.ts:769:3 › keeps nested editor focus and footer containment at 390px (1.4s)
+  ✓  24 [chromium] › tests/portfolio.spec.ts:769:3 › keeps nested editor focus and footer containment at 768px (1.4s)
+  ✓  25 [chromium] › tests/portfolio.spec.ts:769:3 › keeps nested editor focus and footer containment at 1280px (1.2s)
+  ✓  26 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 390px (806ms)
+  ✓  27 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 640px (763ms)
+  ✓  28 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 768px (789ms)
+  ✓  29 [chromium] › tests/portfolio.spec.ts:827:3 › scrolls ten editor targets without covering summary or actions at 1280px (955ms)
+  ✓  30 [chromium] › tests/portfolio.spec.ts:873:3 › retains local cash validation through unrelated item edits in setup (656ms)
+  ✓  31 [chromium] › tests/portfolio.spec.ts:873:3 › retains local cash validation through unrelated item edits in edit (642ms)
+  ✓  32 [chromium] › tests/portfolio.spec.ts:918:1 › clears setup cash validation when back navigation discards its local input (569ms)
+
+  1 skipped
+  31 passed (47.5s)

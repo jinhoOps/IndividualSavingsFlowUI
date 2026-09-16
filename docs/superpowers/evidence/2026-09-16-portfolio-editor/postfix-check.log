@@ -1,0 +1,11 @@
+
+> individualsavingsflowui@0.11.96 check
+> npm run check:source && npm run check:unit
+
+
+> individualsavingsflowui@0.11.96 check:source
+> tsc --noEmit
+
+
+> individualsavingsflowui@0.11.96 check:unit
+> tsc --noEmit -p tsconfig.unit.json
