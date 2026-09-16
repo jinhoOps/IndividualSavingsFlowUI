@@ -52,7 +52,9 @@ describe('PortfolioItemSheet', () => {
 
     expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('  임시 ETF  ');
     expect(within(sheet).getByLabelText('금액')).toHaveValue('12,34');
-    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+    expect(within(sheet).getByRole('group', { name: '투자 대상 분류' }))
+      .toBeVisible();
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
     expect(props.onComplete).not.toHaveBeenCalled();
   });
 
@@ -60,7 +62,8 @@ describe('PortfolioItemSheet', () => {
     const props = renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
     expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveFocus();
-    expect(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' })).toBeVisible();
+    expect(within(sheet).getByRole('button', { name: '성장' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'false');
     expect(within(sheet).getByRole('button', { name: '완료' })).toBeDisabled();
     expect(within(sheet).queryByText('투자 대상 이름을 입력해 주세요.')).not.toBeInTheDocument();
     expect(within(sheet).queryByText('투자 대상 금액은 1,000원 이상이어야 합니다.')).not.toBeInTheDocument();
@@ -68,7 +71,7 @@ describe('PortfolioItemSheet', () => {
     fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 인덱스' } });
     fireEvent.change(within(sheet).getByLabelText('금액'), { target: { value: '120000' } });
     expect(within(sheet).getByLabelText('금액')).toHaveValue('120,000');
-    fireEvent.click(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' }));
+    fireEvent.click(within(sheet).getByRole('button', { name: '안정' }));
     fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
 
     expect(props.onComplete).toHaveBeenCalledWith({
@@ -83,7 +86,7 @@ describe('PortfolioItemSheet', () => {
 
     fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '국채 ETF' } });
 
-    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('quick-fills the approved target names and moves focus to the amount', () => {
@@ -98,18 +101,18 @@ describe('PortfolioItemSheet', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: '미국 국채' }));
 
     expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('미국 국채');
-    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(sheet).getByLabelText('금액')).toHaveFocus();
   });
 
   it('preserves a user classification when quick-filling a name', () => {
     renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
-    fireEvent.click(within(sheet).getByRole('button', { name: '성장, 누르면 안정으로 변경' }));
+    fireEvent.click(within(sheet).getByRole('button', { name: '안정' }));
 
     fireEvent.click(within(sheet).getByRole('button', { name: '나스닥' }));
 
-    expect(within(sheet).getByRole('button', { name: '안정, 누르면 성장으로 변경' })).toBeVisible();
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it.each(['취소', 'Escape', 'backdrop'] as const)('closes pristine input directly through %s', (route) => {
@@ -156,7 +159,7 @@ describe('PortfolioItemSheet', () => {
     expect(within(sheet).getByRole('button', { name: '완료' })).toBeDisabled();
   });
 
-  it('shows ordered add-only amount adjustments and keeps their values formatted', () => {
+  it('shows ordered amount adjustments and keeps their values formatted while adding', () => {
     renderSheet({
       initialValue: {
         name: '미국 인덱스', amountWon: 1_200_000,
@@ -180,7 +183,7 @@ describe('PortfolioItemSheet', () => {
     expect(amount).toHaveValue('1,200,000');
   });
 
-  it('clamps add-sheet amount adjustments at zero', () => {
+  it('clamps amount adjustments at zero', () => {
     renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
     const amount = within(sheet).getByLabelText('금액');
@@ -203,7 +206,7 @@ describe('PortfolioItemSheet', () => {
     expect(amount).toHaveAccessibleDescription('투자 대상 금액은 1,000원 이상이어야 합니다.');
   });
 
-  it('offers icon removal and no quick fills only while editing', () => {
+  it('offers edit adjustments and keeps the user classification while changing the name', () => {
     const onRemove = vi.fn();
     renderSheet({
       mode: 'edit',
@@ -216,13 +219,44 @@ describe('PortfolioItemSheet', () => {
     const sheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
 
     expect(within(sheet).queryByRole('button', { name: 'S&P 500' })).not.toBeInTheDocument();
-    expect(within(sheet).queryByRole('group', { name: '빠른 조정' })).not.toBeInTheDocument();
+    const adjustments = within(sheet).getByRole('group', { name: '빠른 조정' });
+    expect(within(adjustments).getAllByRole('button').map((button) => button.textContent))
+      .toEqual(['-50만', '-10만', '+10만', '+50만']);
+    fireEvent.click(within(sheet).getByRole('button', { name: '안정' }));
+    fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 국채' } });
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(adjustments).getByRole('button', { name: '+10만' }));
+    expect(within(sheet).getByLabelText('금액')).toHaveValue('220,000');
     const remove = within(sheet).getByRole('button', { name: '투자 대상 삭제' });
     expect(remove).not.toHaveTextContent('투자 대상 삭제');
     expect(remove.querySelector('svg')).toBeInTheDocument();
     fireEvent.click(remove);
 
     expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses a desktop side panel from 769px and a sheet through 768px', () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(max-width: 768px)' ? false : false,
+        addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      }),
+    });
+    renderSheet();
+    expect(screen.getByRole('dialog', { name: '투자 대상 추가' })).toHaveAttribute('data-presentation', 'panel');
+    cleanup();
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(max-width: 768px)',
+        addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      }),
+    });
+    renderSheet();
+    expect(screen.getByRole('dialog', { name: '투자 대상 추가' })).toHaveAttribute('data-presentation', 'sheet');
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
   });
 });
 

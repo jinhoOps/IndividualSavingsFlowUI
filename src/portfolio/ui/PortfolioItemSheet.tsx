@@ -1,7 +1,9 @@
-import { useContext, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Trash2 } from 'lucide-react';
 import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
 import { Button } from '../../components/common/Button';
+import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
+import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
 import type { Classification, ClassificationOrigin } from '../domain/model';
@@ -9,13 +11,6 @@ import { formatAllocationPercent } from './format';
 import { PortfolioDialog } from './PortfolioDialog';
 
 const QUICK_TARGET_NAMES = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'] as const;
-const QUICK_AMOUNT_ADJUSTMENTS = [
-  { label: '-50만', deltaWon: -500_000 },
-  { label: '-10만', deltaWon: -100_000 },
-  { label: '+10만', deltaWon: 100_000 },
-  { label: '+50만', deltaWon: 500_000 },
-] as const;
-
 export interface PortfolioItemSheetValue {
   name: string;
   amountWon: number;
@@ -54,6 +49,11 @@ export function PortfolioItemSheet({
   const [nameTouched, setNameTouched] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
+      ? 'sheet'
+      : 'panel'
+  ));
   const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const pendingCaretRef = useRef<number | null>(null);
@@ -79,6 +79,15 @@ export function PortfolioItemSheet({
     amountInputRef.current.setSelectionRange(pendingCaretRef.current, pendingCaretRef.current);
     pendingCaretRef.current = null;
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const media = window.matchMedia('(max-width: 768px)');
+    const update = () => setPresentation(media.matches ? 'sheet' : 'panel');
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   function requestClose(): void {
     if (dirty) setConfirmDiscard(true);
@@ -108,7 +117,7 @@ export function PortfolioItemSheet({
         onClose={requestClose}
         returnFocusRef={returnFocusRef}
         className="portfolio-item-sheet"
-        dataPresentation="sheet"
+        dataPresentation={presentation}
         closeOnBackdrop
       >
         <header className="portfolio-item-sheet__header">
@@ -137,15 +146,15 @@ export function PortfolioItemSheet({
               />
               {nameTouched && nameError ? <span className="portfolio-editor__field-error" id="portfolio-item-name-error">{nameError}</span> : null}
             </label>
-            <button
-              type="button"
-              className="portfolio-editor__classification-toggle"
-              aria-label={`${classification === 'growth' ? '성장' : '안정'}, 누르면 ${classification === 'growth' ? '안정' : '성장'}으로 변경`}
-              onClick={() => {
-                setClassification((current) => current === 'growth' ? 'stable' : 'growth');
+            <SegmentedControl
+              label="투자 대상 분류"
+              value={classification}
+              options={[{ value: 'growth', label: '성장' }, { value: 'stable', label: '안정' }]}
+              onChange={(value) => {
+                setClassification(value);
                 setClassificationOrigin('user');
               }}
-            >{classification === 'growth' ? '성장' : '안정'}</button>
+            />
           </div>
           {mode === 'add' ? (
             <div className="portfolio-item-sheet__quick-targets" role="group" aria-label="대표 투자 대상">
@@ -187,21 +196,14 @@ export function PortfolioItemSheet({
               </span>
               ) : null}
           </label>
-          {mode === 'add' ? (
-            <div className="portfolio-item-sheet__quick-adjustments" role="group" aria-label="빠른 조정">
-              {QUICK_AMOUNT_ADJUSTMENTS.map(({ label, deltaWon }) => (
-                <Button
-                  key={label}
-                  type="button"
-                  variant="quiet"
-                  onClick={() => {
-                    setAmountTouched(true);
-                    setAmount(formatWonInput(adjustWon(amountWon, deltaWon)));
-                  }}
-                >{label}</Button>
-              ))}
-            </div>
-          ) : null}
+          <MoneyAdjustments
+            className="portfolio-item-sheet__quick-adjustments"
+            label="빠른 조정"
+            onAdjust={(deltaWon) => {
+              setAmountTouched(true);
+              setAmount(formatWonInput(adjustWon(amountWon, deltaWon)));
+            }}
+          />
         </div>
         <footer className="portfolio-item-sheet__actions">
           <Button type="button" variant="secondary" onClick={requestClose}>취소</Button>
