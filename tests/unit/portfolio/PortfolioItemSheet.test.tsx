@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -134,6 +135,12 @@ describe('PortfolioItemSheet', () => {
     fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 국채' } });
 
     expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps the automatic recommendation reset action at the 44px control minimum', () => {
+    const stylesheet = readFileSync('src/portfolio/ui/portfolio.css', 'utf8');
+
+    expect(stylesheet).toContain('.portfolio-item-sheet__classification-origin .ui-button { min-height: 44px;');
   });
 
   it.each(['취소', 'Escape', 'backdrop'] as const)('closes pristine input directly through %s', (route) => {
