@@ -36,6 +36,7 @@ export function PortfolioEditSurface({
   showAmounts: boolean;
   now(): number;
 }) {
+  const [cashError, setCashError] = useState<string | null>(null);
   const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
       ? 'sheet'
@@ -74,6 +75,7 @@ export function PortfolioEditSurface({
           onAction={onAction}
           now={now}
           fieldError={fieldError}
+          onCashErrorChange={setCashError}
           presentation="edit"
           showSummary={false}
         />
@@ -83,7 +85,7 @@ export function PortfolioEditSurface({
           <PortfolioApplyBar
             dirty
             saveError={saveError}
-            fieldError={fieldError}
+            fieldError={cashError ?? fieldError}
             applying={applying}
             showAmounts={showAmounts}
             draft={draft}

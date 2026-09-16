@@ -9,6 +9,8 @@ import {
   type PortfolioWriteResult,
 } from '../../../src/portfolio/infrastructure/portfolioRepository';
 import type { PortfolioPreferencesRepository } from '../../../src/portfolio/infrastructure/portfolioPreferencesRepository';
+import { PortfolioSetupFlow } from '../../../src/portfolio/ui/PortfolioSetupFlow';
+import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { PortfolioApp } from '../../../src/portfolio/ui/PortfolioApp';
 import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
 import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
@@ -169,6 +171,11 @@ describe('PortfolioApp', () => {
 
     expect(cash).toHaveValue('900,000');
     expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
+    fireEvent.change(screen.getByLabelText('투자 대상 이름'), { target: { value: '새 인덱스' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    expect(cash).toHaveValue('900,000');
+    expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
     const apply = screen.getByRole('button', { name: '적용' });
     expect(apply).toBeDisabled();
     fireEvent.click(apply);
@@ -181,6 +188,47 @@ describe('PortfolioApp', () => {
     fireEvent.click(apply);
     fireEvent.click(screen.getByRole('button', { name: '배분 적용' }));
     await waitFor(() => expect(repository.applied?.items[0].shareUnits).toBe(550_000));
+  });
+
+  it('keeps setup cash errors across unrelated item commits and blocks review until reset', async () => {
+    const repository = createMemoryPortfolioRepository();
+    render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }));
+    const cash = screen.getByLabelText('현금 금액');
+    fireEvent.change(cash, { target: { value: '900000' } });
+    fireEvent.blur(cash);
+    const next = screen.getByRole('button', { name: '배분 확인' });
+    expect(next).toBeDisabled();
+    fireEvent.click(next);
+    expect(screen.queryByRole('region', { name: '배분 검토' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
+    fireEvent.change(screen.getByLabelText('투자 대상 이름'), { target: { value: '인덱스' } });
+    fireEvent.change(screen.getByLabelText('금액'), { target: { value: '10000' } });
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    expect(cash).toHaveValue('900,000');
+    expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    expect(next).toBeDisabled();
+    expect(repository.applied).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '현금 자동 배분 켜기' }));
+    expect(cash).toHaveValue('190,000');
+    expect(cash).not.toHaveAttribute('aria-invalid');
+    expect(next).toBeEnabled();
+    fireEvent.click(next);
+    fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
+    await waitFor(() => expect(repository.applied?.cashShareUnits).toBe(950_000));
+  });
+
+  it('blocks setup final apply when an existing field error is present', () => {
+    const onApply = vi.fn();
+    render(<PortfolioSetupFlow step="review" draft={createCashOnlyDraft(200_000, 1)}
+      investmentWon={200_000} saveError={false} applying={false} showSaving={false}
+      fieldError="allocation-exceeds-investment" onAction={vi.fn()} onPrevious={vi.fn()}
+      onNext={vi.fn()} onApply={onApply} now={() => 2} />);
+    const apply = screen.getByRole('button', { name: '이대로 시작' });
+    expect(apply).toBeDisabled();
+    fireEvent.click(apply);
+    expect(onApply).not.toHaveBeenCalled();
   });
 
   it('discloses cash, explains manual remainder and permits apply only after full allocation', () => {

@@ -868,3 +868,49 @@ for (const width of [390, 640, 768, 1280]) {
     expect(await body.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   });
 }
+
+for (const mode of ['setup', 'edit'] as const) {
+  test(`retains local cash validation through unrelated item edits in ${mode}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await seedMain(page, 200_000);
+    if (mode === 'edit') await seedAppliedPortfolio(page);
+    await page.goto('apps/portfolio/');
+    if (mode === 'setup') {
+      await enterFirstSetupAllocation(page);
+      await page.getByRole('button', { name: '투자 대상 추가' }).click();
+      await page.getByLabel('투자 대상 이름').fill('인덱스');
+      await page.getByLabel('금액', { exact: true }).fill('120000');
+      await page.getByRole('button', { name: '완료' }).click();
+    } else await page.getByRole('button', { name: '배분 수정' }).click();
+    await page.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }).click();
+    const cash = page.getByLabel('현금 금액');
+    await cash.fill('900000');
+    await cash.blur();
+    await expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    await page.getByRole('button', { name: /인덱스 편집/ }).click();
+    await page.getByLabel('투자 대상 이름').fill('수정한 인덱스');
+    await page.getByRole('button', { name: '완료' }).click();
+    await expect(cash).toHaveValue('900,000');
+    await expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    const action = page.getByRole('button', { name: mode === 'setup' ? '배분 확인' : '적용', exact: true });
+    await expect(action).toBeDisabled();
+    await expect(page.getByRole('dialog', { name: '투자 배분을 적용할까요?' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: '배분 검토' })).toHaveCount(0);
+    if (mode === 'setup') {
+      await page.getByRole('button', { name: '현금 자동 배분 켜기' }).click();
+    } else {
+      await cash.fill('80000');
+      await cash.blur();
+    }
+    await expect(cash).toHaveValue('80,000');
+    await expect(cash).not.toHaveAttribute('aria-invalid');
+    await expect(action).toBeEnabled();
+    await action.click();
+    await page.getByRole('button', { name: mode === 'setup' ? '이대로 시작' : '배분 적용', exact: true }).click();
+    await expect(page.getByRole('button', { name: '배분 수정' })).toBeVisible();
+    const workspace = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!));
+    expect(workspace.portfolio.plans[0].items[0].name).toBe('수정한 인덱스');
+    expect(workspace.main.applied.monthlyInvestmentWon).toBe(200000);
+  });
+}

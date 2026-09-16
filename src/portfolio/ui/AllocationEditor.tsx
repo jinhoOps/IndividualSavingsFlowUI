@@ -6,7 +6,7 @@ import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import { formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import type { PortfolioAction } from '../application/portfolioReducer';
-import { materializeAllocation, normalizePortfolioName, setItemAmount } from '../domain/allocation';
+import { materializeAllocation, normalizePortfolioName, setCashAmount, setItemAmount } from '../domain/allocation';
 import type { Classification, PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 import { PortfolioItemSheet } from './PortfolioItemSheet';
@@ -23,6 +23,7 @@ export function AllocationEditor({
   onAction,
   now,
   fieldError = null,
+  onCashErrorChange,
   createId = () => crypto.randomUUID(),
   presentation = 'standalone',
   showSummary = true,
@@ -32,12 +33,15 @@ export function AllocationEditor({
   onAction: (action: PortfolioAction) => void;
   now: () => number;
   fieldError?: string | null;
+  onCashErrorChange?(error: string | null): void;
   createId?: () => string;
   presentation?: 'standalone' | 'setup' | 'edit';
   showSummary?: boolean;
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
+  const [cashError, setCashError] = useState<string | null>(null);
+  const activeFieldError = cashError ?? fieldError;
   const [cashExpanded, setCashExpanded] = useState(false);
   const [activeItemSheet, setActiveItemSheet] = useState<ActiveItemSheet | null>(null);
   const itemSheetReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -60,8 +64,8 @@ export function AllocationEditor({
   }, new Map());
 
   useEffect(() => {
-    if (isFocused && fieldError) inputRefs.current.cash?.focus();
-  }, [isFocused, fieldError]);
+    if (isFocused && activeFieldError) inputRefs.current.cash?.focus();
+  }, [isFocused, activeFieldError]);
 
   useLayoutEffect(() => {
     const addedId = pendingAddedIdRef.current;
@@ -79,6 +83,11 @@ export function AllocationEditor({
     if (input !== null && input !== undefined) input.setSelectionRange(caret, caret);
     pendingCaretRef.current = null;
   });
+
+  function updateCashError(error: string | null): void {
+    setCashError(error);
+    onCashErrorChange?.(error);
+  }
 
   function commitItem(id: string, fallback: number): void {
     const raw = rawValues[id];
@@ -225,8 +234,8 @@ export function AllocationEditor({
           <input
             ref={(input) => { inputRefs.current.cash = input; }}
             aria-label="현금 금액"
-            aria-invalid={isFocused && fieldError ? true : undefined}
-            aria-describedby={isFocused && fieldError ? "portfolio-cash-error" : undefined}
+            aria-invalid={isFocused && activeFieldError ? true : undefined}
+            aria-describedby={isFocused && activeFieldError ? "portfolio-cash-error" : undefined}
             inputMode="numeric"
             value={rawValues.cash ?? formatWonInput(allocation.cashAmountWon, { zeroDisplay: 'zero' })}
             onChange={(event) => {
@@ -240,6 +249,13 @@ export function AllocationEditor({
             }}
             onBlur={() => {
               const amountWon = parseWonInput(rawValues.cash ?? allocation.cashAmountWon);
+              try {
+                setCashAmount(draft, amountWon);
+              } catch (error) {
+                updateCashError(error instanceof Error ? error.message : 'invalid-cash');
+                return;
+              }
+              updateCashError(null);
               onAction({ type: 'draft-cash-changed', amountWon, now: now() });
               setRawValues((current) => ({ ...current, cash: formatWonInput(amountWon, { zeroDisplay: 'zero' }) }));
             }}
@@ -247,11 +263,12 @@ export function AllocationEditor({
           </label>
           <span>{formatPortfolioWon(allocation.cashAmountWon)}</span>
           <span>{formatAllocationPercent(allocation.cashPercentage)}</span>
-          {draft.cashMode === 'manual' ? (
+          {draft.cashMode === 'manual' || cashError !== null ? (
             <div>
-              <p role="status">현금 직접 배분 중</p>
+              <p role="status">{draft.cashMode === 'manual' ? '현금 직접 배분 중' : '현금 입력을 확인해 주세요'}</p>
               <p>자동 배분을 켜면 남은 투자금을 현금으로 배분합니다</p>
               <Button type="button" variant="quiet" onClick={() => {
+                updateCashError(null);
                 setRawValues(({ cash: _cash, ...rest }) => rest);
                 onAction({ type: 'automatic-cash-enabled', now: now() });
               }}>
@@ -283,7 +300,7 @@ export function AllocationEditor({
       >{isFocused ? '투자 대상 추가' : null}</Button>
       {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
 
-      {fieldError ? <p id="portfolio-cash-error" role="alert">{errorMessage(fieldError)}</p> : null}
+      {activeFieldError ? <p id="portfolio-cash-error" role="alert">{errorMessage(activeFieldError)}</p> : null}
       {isFocused && activeItemSheet ? (
         <PortfolioItemSheet
           mode={activeItemSheet.mode}
