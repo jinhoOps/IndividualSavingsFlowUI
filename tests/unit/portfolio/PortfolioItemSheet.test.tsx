@@ -115,6 +115,27 @@ describe('PortfolioItemSheet', () => {
     expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('restores automatic classification and updates it with later name changes', () => {
+    renderSheet({
+      initialValue: {
+        name: '미국 인덱스', amountWon: 120_000,
+        classification: 'growth', classificationOrigin: 'automatic',
+      },
+    });
+    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+
+    expect(within(sheet).getByText('자동 추천')).toBeVisible();
+    fireEvent.click(within(sheet).getByRole('button', { name: '안정' }));
+    expect(within(sheet).getByText('사용자 지정')).toBeVisible();
+    fireEvent.click(within(sheet).getByRole('button', { name: '자동 추천 사용' }));
+    expect(within(sheet).getByText('자동 추천')).toBeVisible();
+    expect(within(sheet).getByRole('button', { name: '성장' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 국채' } });
+
+    expect(within(sheet).getByRole('button', { name: '안정' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it.each(['취소', 'Escape', 'backdrop'] as const)('closes pristine input directly through %s', (route) => {
     const props = renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });

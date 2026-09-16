@@ -146,15 +146,30 @@ export function PortfolioItemSheet({
               />
               {nameTouched && nameError ? <span className="portfolio-editor__field-error" id="portfolio-item-name-error">{nameError}</span> : null}
             </label>
-            <SegmentedControl
-              label="투자 대상 분류"
-              value={classification}
-              options={[{ value: 'growth', label: '성장' }, { value: 'stable', label: '안정' }]}
-              onChange={(value) => {
-                setClassification(value);
-                setClassificationOrigin('user');
-              }}
-            />
+            <div className="portfolio-item-sheet__classification">
+              <SegmentedControl
+                label="투자 대상 분류"
+                value={classification}
+                options={[{ value: 'growth', label: '성장' }, { value: 'stable', label: '안정' }]}
+                onChange={(value) => {
+                  setClassification(value);
+                  setClassificationOrigin('user');
+                }}
+              />
+              <div className="portfolio-item-sheet__classification-origin">
+                <span>{classificationOrigin === 'automatic' ? '자동 추천' : '사용자 지정'}</span>
+                {classificationOrigin === 'user' ? (
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    onClick={() => {
+                      setClassification(recommendClassification(name));
+                      setClassificationOrigin('automatic');
+                    }}
+                  >자동 추천 사용</Button>
+                ) : null}
+              </div>
+            </div>
           </div>
           {mode === 'add' ? (
             <div className="portfolio-item-sheet__quick-targets" role="group" aria-label="대표 투자 대상">
