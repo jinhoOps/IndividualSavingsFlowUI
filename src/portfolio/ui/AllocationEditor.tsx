@@ -63,6 +63,10 @@ export function AllocationEditor({
     return counts;
   }, new Map());
 
+  useEffect(() => () => {
+    onCashErrorChange?.(null);
+  }, [onCashErrorChange]);
+
   useEffect(() => {
     if (isFocused && activeFieldError) inputRefs.current.cash?.focus();
   }, [isFocused, activeFieldError]);

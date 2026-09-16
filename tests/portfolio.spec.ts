@@ -914,3 +914,24 @@ for (const mode of ['setup', 'edit'] as const) {
     expect(workspace.main.applied.monthlyInvestmentWon).toBe(200000);
   });
 }
+
+test('clears setup cash validation when back navigation discards its local input', async ({ page }) => {
+  await seedMain(page, 200_000);
+  await page.goto('apps/portfolio/');
+  await enterFirstSetupAllocation(page);
+  await page.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }).click();
+  await page.getByLabel('현금 금액').fill('900000');
+  await page.getByLabel('현금 금액').blur();
+  await expect(page.getByRole('button', { name: '배분 확인' })).toBeDisabled();
+  await page.getByRole('button', { name: '이전' }).click();
+  await enterFirstSetupAllocation(page);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const next = page.getByRole('button', { name: '배분 확인' });
+  await expect(next).toBeEnabled();
+  await page.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }).click();
+  await expect(page.getByLabel('현금 금액')).toHaveValue('200,000');
+  await expect(page.getByLabel('현금 금액')).not.toHaveAttribute('aria-invalid');
+  await next.click();
+  await page.getByRole('button', { name: '이대로 시작' }).click();
+  await expect(page.getByRole('heading', { name: '안정 100%' })).toBeVisible();
+});

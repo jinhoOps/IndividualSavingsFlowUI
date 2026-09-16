@@ -219,6 +219,31 @@ describe('PortfolioApp', () => {
     await waitFor(() => expect(repository.applied?.cashShareUnits).toBe(950_000));
   });
 
+  it('clears lifted cash validation when setup back navigation unmounts the raw input', () => {
+    render(<StrictMode><PortfolioApp mainSourceRepository={mainFound}
+      repository={createMemoryPortfolioRepository()} now={() => 2} /></StrictMode>);
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    fireEvent.click(screen.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }));
+    fireEvent.change(screen.getByLabelText('현금 금액'), { target: { value: '900000' } });
+    fireEvent.blur(screen.getByLabelText('현금 금액'));
+    expect(screen.getByRole('button', { name: '배분 확인' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '이전' }));
+    fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    const next = screen.getByRole('button', { name: '배분 확인' });
+    expect(next).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /현금.*남은 금액 자동 배분/ }));
+    const cash = screen.getByLabelText('현금 금액');
+    expect(cash).toHaveValue('200,000');
+    expect(cash).not.toHaveAttribute('aria-invalid');
+    fireEvent.change(cash, { target: { value: '900000' } });
+    fireEvent.blur(cash);
+    expect(next).toBeDisabled();
+    expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    fireEvent.click(screen.getByRole('button', { name: '현금 자동 배분 켜기' }));
+    expect(next).toBeEnabled();
+  });
+
   it('blocks setup final apply when an existing field error is present', () => {
     const onApply = vi.fn();
     render(<PortfolioSetupFlow step="review" draft={createCashOnlyDraft(200_000, 1)}
