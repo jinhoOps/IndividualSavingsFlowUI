@@ -6,6 +6,8 @@
 
 **Scope:** Portfolio 최초 설정, 결과와 배분 수정의 화면 분리
 
+> 2026-09-16 후속 계약: 최초 설정의 `배분` 단계와 재편집의 대상 표현·편집 surface·breakpoint·focus 반환은 [Portfolio Editor Hierarchy Design](2026-09-16-portfolio-editor-hierarchy-design.md)으로 대체한다. 이 문서는 결과와 편집의 상태 분리, aggregate-only 경계 및 명시적 적용처럼 겹치지 않는 계약의 이력으로 유지한다.
+
 > 2026-08-13 경계 변경: 공유 금융 위치의 생성·변경·보관은 Portfolio 책임에서 제거하고 Phase B Account Map으로 이관한다. 이 문서의 `투자 위치` disclosure·관리 요구사항은 폐기했으며 UI와 command 진입점도 런타임에서 제거했다. 기존 location 데이터와 location-scoped plan은 호환성을 위해 보존한다.
 
 ## 배경
