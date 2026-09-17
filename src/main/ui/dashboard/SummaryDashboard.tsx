@@ -2,8 +2,9 @@ import { animate } from 'animejs';
 import { ChevronUp } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppContentFrame } from '../../../components/common/AppContentFrame';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
+import { useSheetDismiss } from '../../../components/motion/useSheetDismiss';
 import type { MainState } from '../../application/mainReducer';
 import type { MainData } from '../../domain/model';
 import type { ValidationResult } from '../../domain/validation';
@@ -53,6 +54,12 @@ export function SummaryDashboard({
   const [requestedFocusPath, setRequestedFocusPath] = useState(initialFocusPath);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [remainingOpen, setRemainingOpen] = useState(false);
+  const [closingEditor, setClosingEditor] = useState<{
+    draft: MainData;
+    dirty: boolean;
+    issues: ValidationResult['issues'];
+  } | null>(null);
+  const editorBackdropRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
   const isMobile = useMobileEditor();
@@ -64,8 +71,22 @@ export function SummaryDashboard({
     revealEditor(root, 'horizontal', reducedMotion);
   }, [editorOpen, isMobile]);
   const saving = saveStatus === 'saving';
+  useSheetDismiss({
+    rootRef: modalRef,
+    backdropRef: editorBackdropRef,
+    enabled: mobileModalOpen,
+    blocked: saving || closingEditor !== null,
+    isTopmost: () => editorOpen && !expenseOpen && !remainingOpen,
+    onRequestDismiss: requestSheetDismiss,
+    onDismissed: () => {
+      setEditorOpen(false);
+      setClosingEditor(null);
+    },
+  });
   const firstIssuePath = issues[0]?.path;
-  const editorFocusPath = (firstIssuePath as keyof MainData | undefined) ?? requestedFocusPath;
+  const editorFocusPath = (closingEditor?.issues[0]?.path as keyof MainData | undefined)
+    ?? (firstIssuePath as keyof MainData | undefined)
+    ?? requestedFocusPath;
   const initialFocusConsumed = useRef(false);
 
   useEffect(() => {
@@ -110,13 +131,21 @@ export function SummaryDashboard({
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [dirty, editorOpen, saving]);
+  }, [closingEditor, dirty, editorOpen, saving]);
 
   function requestClose() {
-    if (saving) return;
+    if (saving || closingEditor !== null) return;
     if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return;
     if (dirty) onCancel();
     setEditorOpen(false);
+  }
+
+  function requestSheetDismiss(): boolean {
+    if (saving || closingEditor !== null || !mobileModalOpen) return false;
+    if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return false;
+    setClosingEditor({ draft, dirty, issues });
+    if (dirty) onCancel();
+    return true;
   }
 
   function openEditor(opener: HTMLElement, focusPath?: keyof MainData) {
@@ -132,6 +161,11 @@ export function SummaryDashboard({
   }
 
   function trapModalFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (closingEditor !== null) {
+      if (event.key === 'Tab' || event.key === 'Escape') event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (event.key !== 'Tab' || modalRef.current === null) return;
     const focusable = getFocusableElements(modalRef.current);
     if (focusable.length === 0) return;
@@ -145,6 +179,10 @@ export function SummaryDashboard({
       first.focus();
     }
   }
+
+  const editorDraft = closingEditor?.draft ?? draft;
+  const editorDirty = closingEditor?.dirty ?? dirty;
+  const editorIssues = closingEditor?.issues ?? issues;
 
   return (
     <AppContentFrame
@@ -209,25 +247,26 @@ export function SummaryDashboard({
       {editorOpen ? (
         isMobile ? (
           <>
-            <div className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm" aria-hidden="true" data-testid="editor-backdrop" onClick={requestClose} />
+            <div ref={editorBackdropRef} className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm" aria-hidden="true" data-testid="editor-backdrop" data-sheet-dismiss-backdrop onClick={requestClose} />
             <div
               className="main-editor-sheet"
               aria-labelledby="cashflow-editor-title"
               aria-modal="true"
+              aria-busy={closingEditor !== null ? 'true' : undefined}
               onKeyDown={trapModalFocus}
               ref={modalRef}
               role="dialog"
             >
               <MainPlanEditor
-                draft={draft}
-                issues={issues}
-                saving={saving}
+                draft={editorDraft}
+                issues={editorIssues}
+                saving={saving || closingEditor !== null}
                 presentation="content"
                 initialFocusPath={editorFocusPath}
                 onChange={onDraftChange}
                 onRequestClose={requestClose}
               />
-              <ApplyBar dirty={dirty} saveStatus={saveStatus} onApply={onApply} onCancel={onCancel} />
+              <ApplyBar dirty={editorDirty} saveStatus={saveStatus} onApply={onApply} onCancel={onCancel} />
             </div>
           </>
         ) : (
@@ -268,7 +307,7 @@ function revealEditor(
         ? { y: [MOTION_DISTANCE_PX.reveal, 0] }
         : { x: [MOTION_DISTANCE_PX.reveal, 0] }),
       duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
+      ease: createProductSpring('surface'),
     });
   } catch {
     setEditorRevealFinalState(target, direction);

@@ -7,6 +7,7 @@ import { allocateRemaining, availableRemainingWon } from '../../domain/remaining
 import { Button } from '../common/Button';
 import { SavingOverlay } from '../common/SavingOverlay';
 import { useAssistantReveal } from '../common/useAssistantReveal';
+import { useSheetDismiss } from '../../../components/motion/useSheetDismiss';
 
 const won = (value: number) => `${value.toLocaleString('ko-KR')}원`;
 
@@ -32,6 +33,14 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
   const dialogRef = useAssistantReveal();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const busy = saveStatus === 'saving' || recovering;
+  useSheetDismiss({
+    rootRef: dialogRef,
+    enabled: true,
+    mediaQuery: '(max-width: 767px)',
+    blocked: busy,
+    onRequestDismiss: requestSheetDismiss,
+    onDismissed: onClose,
+  });
   const pending = !!session?.pending;
   const proposal = allocateRemaining(base, savingWon, investmentWon);
   const total = savingWon + investmentWon;
@@ -62,7 +71,22 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
     onClose();
   }
 
+  function requestSheetDismiss(): boolean {
+    if (busy || submitting.current) return false;
+    if (pending) return true;
+    if (dirty || total > 0 || inputError) {
+      if (!window.confirm('나누던 금액을 반영하지 않고 닫을까요?')) return false;
+      if (dirty) onCancel();
+    }
+    return true;
+  }
+
   function trap(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (dialogRef.current?.hasAttribute('data-sheet-exiting')) {
+      if (event.key === 'Tab' || event.key === 'Escape') event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
     if (event.key !== 'Tab') return;
     const controls = [...dialogRef.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled)')]
@@ -79,7 +103,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, onDraftC
     <div className="expense-assistant__backdrop" aria-hidden="true" onClick={close} />
     <div className="expense-assistant remaining-allocation" role="dialog" aria-modal="true" aria-labelledby="remaining-allocation-title"
       aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
-      <header className="expense-assistant__header">
+      <header className="expense-assistant__header" data-sheet-drag-handle>
         <span>남는 돈 분배 도우미</span>
         <Button type="button" variant="quiet" aria-label="분배 도우미 닫기" disabled={busy} onClick={close}><X size={22} aria-hidden="true" /></Button>
       </header>

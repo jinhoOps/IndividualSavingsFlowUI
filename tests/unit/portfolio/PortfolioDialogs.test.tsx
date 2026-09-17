@@ -42,7 +42,9 @@ vi.mock('animejs', () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.clearAllMocks();
   animeMocks.state.reducedMotion = false;
 });
@@ -113,6 +115,39 @@ describe('Portfolio confirmation dialogs', () => {
     );
     fireEvent.click(screen.getByRole('dialog', { name: '대상 입력' }));
     expect(sheetClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes an opted-in mobile sheet from a downward header drag', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes('max-width'),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })));
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    render(
+      <PortfolioDialog
+        labelledBy="drag-sheet-title"
+        onClose={onClose}
+        onSheetDismiss={() => true}
+        onSheetDismissed={onClose}
+        returnFocusRef={{ current: null }}
+        dataPresentation="sheet"
+        enableSheetDismiss
+      >
+        <header data-sheet-drag-handle><h2 id="drag-sheet-title">드래그 시트</h2></header>
+      </PortfolioDialog>,
+    );
+    const handle = screen.getByRole('heading', { name: '드래그 시트' }).parentElement!;
+    act(() => {
+      dispatchPointer(handle, 'pointerdown', { clientY: 0 });
+      dispatchPointer(handle, 'pointermove', { clientY: 100 });
+      dispatchPointer(handle, 'pointerup', { clientY: 100 });
+    });
+    expect(screen.getByRole('dialog', { name: '드래그 시트' })).toHaveAttribute('data-sheet-exiting', 'true');
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(300));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('focuses the apply cancel action, traps Tab, closes on Escape, and restores the trigger', async () => {
@@ -357,4 +392,17 @@ function animationOptionsFor(target: Element): Record<string, unknown> | undefin
   return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
     | Record<string, unknown>
     | undefined;
+}
+
+function dispatchPointer(target: HTMLElement, type: string, properties: Record<string, unknown>): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  for (const [key, value] of Object.entries({
+    pointerId: 1,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: 0,
+    clientY: 0,
+    ...properties,
+  })) Object.defineProperty(event, key, { configurable: true, value });
+  target.dispatchEvent(event);
 }

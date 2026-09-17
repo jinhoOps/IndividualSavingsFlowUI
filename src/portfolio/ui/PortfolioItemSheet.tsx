@@ -58,6 +58,7 @@ export function PortfolioItemSheet({
   const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const discardReturnFocusRef = useRef<HTMLElement | null>(null);
+  const pendingSheetDismissRef = useRef<((approved: boolean) => void) | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
   const amountWon = parseWonInput(amount);
   const normalizedName = normalizePortfolioName(name);
@@ -91,6 +92,11 @@ export function PortfolioItemSheet({
     return () => media.removeEventListener('change', update);
   }, []);
 
+  useEffect(() => () => {
+    pendingSheetDismissRef.current?.(false);
+    pendingSheetDismissRef.current = null;
+  }, []);
+
   function requestClose(): void {
     if (dirty) {
       discardReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : nameInputRef.current;
@@ -100,6 +106,32 @@ export function PortfolioItemSheet({
       session?.recordRecoveryDraft(recoveryKey, null);
       onClose();
     }
+  }
+
+  function requestSheetDismiss(): boolean | Promise<boolean> {
+    if (dirty) {
+      discardReturnFocusRef.current = nameInputRef.current;
+      setConfirmDiscard(true);
+      return new Promise(resolve => { pendingSheetDismissRef.current = resolve; });
+    }
+    session?.recordRecoveryDraft(recoveryKey, null);
+    return true;
+  }
+
+  function cancelDiscard(): void {
+    setConfirmDiscard(false);
+    const resolve = pendingSheetDismissRef.current;
+    pendingSheetDismissRef.current = null;
+    resolve?.(false);
+  }
+
+  function discardChanges(): void {
+    session?.recordRecoveryDraft(recoveryKey, null);
+    setConfirmDiscard(false);
+    const resolve = pendingSheetDismissRef.current;
+    pendingSheetDismissRef.current = null;
+    if (resolve) resolve(true);
+    else onClose();
   }
 
   function updateName(nextName: string): void {
@@ -124,8 +156,11 @@ export function PortfolioItemSheet({
         className="portfolio-item-sheet"
         dataPresentation={presentation}
         closeOnBackdrop
+        enableSheetDismiss={true}
+        onSheetDismiss={requestSheetDismiss}
+        onSheetDismissed={onClose}
       >
-        <header className="portfolio-item-sheet__header">
+        <header className="portfolio-item-sheet__header" data-sheet-drag-handle>
           <h2 id="portfolio-item-sheet-title">{title}</h2>
           {mode === 'edit' && onRemove ? (
             <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={() => {
@@ -251,17 +286,14 @@ export function PortfolioItemSheet({
       {confirmDiscard ? (
         <PortfolioDialog
           labelledBy="portfolio-item-discard-title"
-          onClose={() => setConfirmDiscard(false)}
+          onClose={cancelDiscard}
           returnFocusRef={discardReturnFocusRef}
         >
           <h2 id="portfolio-item-discard-title">입력 내용을 버릴까요?</h2>
           <p>완료하지 않은 변경 내용이 사라집니다.</p>
           <div className="portfolio-item-sheet__discard-actions">
-            <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => setConfirmDiscard(false)}>계속 입력</Button>
-            <Button type="button" variant="primary" onClick={() => {
-              session?.recordRecoveryDraft(recoveryKey, null);
-              onClose();
-            }}>버리기</Button>
+            <Button type="button" variant="secondary" data-dialog-initial-focus onClick={cancelDiscard}>계속 입력</Button>
+            <Button type="button" variant="primary" onClick={discardChanges}>버리기</Button>
           </div>
         </PortfolioDialog>
       ) : null}

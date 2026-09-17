@@ -1,6 +1,6 @@
 import { animate } from 'animejs';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
-import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { createProductSpring, MOTION_DURATION } from '../../components/motion/tokens';
 import { useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
@@ -36,7 +36,7 @@ export function PortfolioApplyBar({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const motionRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
     if (reducedMotion) return;
-    try { animate(root, { opacity: [0, 1], y: [4, 0], duration: MOTION_DURATION.normal, ease: MOTION_EASE.enter }); }
+    try { animate(root, { opacity: [0, 1], y: [4, 0], duration: MOTION_DURATION.normal, ease: createProductSpring('surface') }); }
     catch { root.style.opacity = '1'; root.style.transform = 'none'; }
   }, [dirty]);
   if (!dirty) return null;

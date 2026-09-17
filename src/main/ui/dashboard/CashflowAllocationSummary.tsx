@@ -1,7 +1,7 @@
 import { animate } from 'animejs';
 import { useRef, useState, type CSSProperties } from 'react';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
-import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { createProductSpring, MOTION_DURATION } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import type { MainData } from '../../domain/model';
 import { calculateCashflow } from '../../domain/cashflow';
@@ -66,7 +66,7 @@ export function CashflowAllocationSummary({ data, ...actions }: Props) {
       const state = { progress: 0 };
       paint(previous);
       if (!attemptMotion(() => animate(state, {
-        progress: 1, duration: MOTION_DURATION.emphasis, ease: MOTION_EASE.update,
+        progress: 1, duration: MOTION_DURATION.emphasis, ease: createProductSpring('value'),
         onUpdate: () => {
           const mix = (from: number, to: number) => from + (to - from) * state.progress;
           const mixNullable = (from: number | null, to: number | null) => from === null || to === null ? to : mix(from, to);

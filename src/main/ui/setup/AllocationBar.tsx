@@ -1,7 +1,7 @@
 import { animate } from 'animejs';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
-import { MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { createProductSpring, MOTION_DURATION } from '../../../components/motion/tokens';
 import type { MainData } from '../../domain/model';
 import { PercentageTooltip } from '../common/PercentageTooltip';
 import { createCashflowBarGeometry, type CashflowViewport } from './cashflowBarGeometry';
@@ -175,7 +175,7 @@ export function AllocationBar({ data }: AllocationBarProps) {
         desiredEndPercent: targetState.desiredEndPercent,
         visibleEndPercent: targetState.visibleEndPercent,
         duration: MOTION_DURATION.emphasis,
-        ease: MOTION_EASE.update,
+        ease: createProductSpring('value'),
         onComplete: () => {
           if (motionGenerationRef.current !== generation) return;
           commitFinalBarMotion(state, targetState, bar, targetIds, setVisualSegmentIds);

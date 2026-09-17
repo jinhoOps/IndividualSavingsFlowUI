@@ -9,6 +9,7 @@ import type { MainData } from '../../domain/model';
 import type { ExpenseAssistantRepository } from '../../infrastructure/expenseAssistantRepository';
 import { Button } from '../common/Button';
 import { SavingOverlay } from '../common/SavingOverlay';
+import { useSheetDismiss } from '../../../components/motion/useSheetDismiss';
 import { formatDashboardWon } from './CashflowSummary';
 
 export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
@@ -33,6 +34,14 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   const dialogRef = useAssistantReveal();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(persisted);
+  useSheetDismiss({
+    rootRef: dialogRef,
+    enabled: true,
+    mediaQuery: '(max-width: 767px)',
+    blocked: busy,
+    onRequestDismiss: requestSheetDismiss,
+    onDismissed: onClose,
+  });
   useAccountRecovery('main-expense', draft, dirty, !initial.error);
   const index = EXPENSE_ITEMS.findIndex(item => item.id === draft.step);
   const item = index < 0 ? null : EXPENSE_ITEMS[index];
@@ -50,8 +59,8 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     return () => window.removeEventListener('beforeunload', protect);
   }, [dirty]);
 
-  async function save(next: ExpenseAssistantDraft, complete = false, close = false) {
-    if (busyRef.current || initial.error) return;
+  async function save(next: ExpenseAssistantDraft, complete = false, close = false): Promise<boolean> {
+    if (busyRef.current || initial.error) return false;
     busyRef.current = true;
     setBusy(true); setError('');
     try {
@@ -60,8 +69,10 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
       session?.recordRecoveryDraft('main-expense', null);
       if (complete) onApplied(result.data);
       if (complete || close) onClose();
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '답변을 저장하지 못했습니다. 다시 시도해주세요.');
+      return false;
     } finally { busyRef.current = false; setBusy(false); }
   }
 
@@ -70,6 +81,13 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     if (session && (session.pending || session.status === 'offline')) onClose();
     else if (dirty && !initial.error) void save(draft, false, true);
     else onClose();
+  }
+
+  function requestSheetDismiss(): boolean | Promise<boolean> {
+    if (busyRef.current) return false;
+    if (session && (session.pending || session.status === 'offline')) return true;
+    if (dirty && !initial.error) return save(draft);
+    return true;
   }
   function next(none = false) {
     if (!item || (!none && invalidAmount)) return;
@@ -84,6 +102,11 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   }
 
   function trap(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (dialogRef.current?.hasAttribute('data-sheet-exiting')) {
+      if (event.key === 'Tab' || event.key === 'Escape') event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
     if (event.key !== 'Tab') return;
     const controls = [...dialogRef.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled)')]
@@ -97,7 +120,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   return <>
     <div className="expense-assistant__backdrop" aria-hidden="true" onClick={close} />
     <div className={`expense-assistant${item && 'example' in item ? ' expense-assistant--explained' : ''}`} role="dialog" aria-modal="true" aria-labelledby="expense-assistant-title" aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
-      <header className="expense-assistant__header">
+      <header className="expense-assistant__header" data-sheet-drag-handle>
         <span>지출 계산 도우미</span>
         <Button type="button" variant="quiet" aria-label="도우미 닫기" disabled={busy} onClick={close}><X size={22} aria-hidden="true" /></Button>
       </header>

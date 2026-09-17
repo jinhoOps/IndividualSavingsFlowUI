@@ -2,29 +2,36 @@ import { createPortal } from 'react-dom';
 import { animate } from 'animejs';
 import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { AccountProductBoundary } from '../../auth/AccountManagementContext';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { useSheetDismiss } from '../../components/motion/useSheetDismiss';
 
 const openDialogs: HTMLDialogElement[] = [];
 
 export function PortfolioDialog({
   labelledBy,
   onClose,
+  onSheetDismiss = onClose,
+  onSheetDismissed,
   onEscape,
   returnFocusRef,
   className,
   dataPresentation,
   closeOnBackdrop = false,
+  enableSheetDismiss = false,
   open = true,
   children,
-}: {
+  }: {
   labelledBy: string;
   onClose(): void;
+  onSheetDismiss?(): boolean | void | Promise<boolean | void>;
+  onSheetDismissed?(): void;
   onEscape?(): void;
   returnFocusRef: RefObject<HTMLElement | null>;
   className?: string;
   dataPresentation?: 'sheet' | 'panel';
   closeOnBackdrop?: boolean;
+  enableSheetDismiss?: boolean;
   open?: boolean;
   children: ReactNode;
 }) {
@@ -48,6 +55,15 @@ export function PortfolioDialog({
         : MOTION_DISTANCE_PX.reveal;
     revealDialog(target, presentation, distance, reducedMotion);
   }, [dataPresentation, open]);
+  useSheetDismiss({
+    rootRef: dialogRef,
+    enabled: enableSheetDismiss && dataPresentation === 'sheet',
+    mediaQuery: '(max-width: 768px)',
+    blocked: !open,
+    isTopmost: () => openDialogs.at(-1) === dialogRef.current,
+    onRequestDismiss: onSheetDismiss,
+    onDismissed: onSheetDismissed,
+  });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -83,6 +99,11 @@ export function PortfolioDialog({
 
   function handleKeyDown(event: KeyboardEvent<HTMLDialogElement>): void {
     if (openDialogs.at(-1) !== event.currentTarget) return;
+    if (event.currentTarget.hasAttribute('data-sheet-exiting')) {
+      if (event.key === 'Tab' || event.key === 'Escape') event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     event.stopPropagation();
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -115,10 +136,12 @@ export function PortfolioDialog({
       onCancel={(event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (event.currentTarget.hasAttribute('data-sheet-exiting')) return;
         if (openDialogs.at(-1) === event.currentTarget) (onEscape ?? onClose)();
       }}
       onClick={(event) => {
-        if (!closeOnBackdrop || event.target !== event.currentTarget || openDialogs.at(-1) !== event.currentTarget) return;
+        if (event.currentTarget.hasAttribute('data-sheet-exiting') || !closeOnBackdrop
+          || event.target !== event.currentTarget || openDialogs.at(-1) !== event.currentTarget) return;
         const bounds = event.currentTarget.getBoundingClientRect();
         if (event.clientX < bounds.left || event.clientX >= bounds.right
           || event.clientY < bounds.top || event.clientY >= bounds.bottom) onClose();
@@ -151,7 +174,7 @@ function revealDialog(
           ? { bottom: [-distance, 0] }
           : { right: [-distance, 0] }),
       duration: presentation === 'sheet' ? MOTION_DURATION.emphasis : MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
+      ease: createProductSpring('surface'),
       ...(presentation === 'modal'
         ? {}
         : { onComplete: () => clearPresentedRevealStyles(target, presentation) }),

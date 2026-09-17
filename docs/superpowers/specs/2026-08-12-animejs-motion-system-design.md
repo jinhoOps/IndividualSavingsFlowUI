@@ -54,7 +54,15 @@ focus, 클릭, 저장과 탐색은 애니메이션 완료를 기다리지 않는
 | 강조 | 260ms | 결과 카드와 데이터 시각화 전환 |
 | 이동 거리 | 4~8px | reveal과 panel 진입 |
 
-easing은 빠르게 반응하고 부드럽게 정착하는 공통 곡선을 사용한다. spring이나 bounce는 금융 정보의 정밀한 인상을 해치므로 기본 토큰으로 제공하지 않는다.
+기본 easing은 빠르게 반응하고 부드럽게 정착하는 공통 곡선을 사용한다. 2026-09-16 Main·Portfolio 모바일 편집 피드백에 따라 두 앱의 surface·return 모션에는 절제된 Anime.js spring을 추가하고, 닫기·금액·비율·막대·진행률에는 bounce 0 spring을 사용한다. Simulation·브랜드 시작 장면과 공통 토큰을 명시적으로 선택하지 않은 소비자는 기존 easing을 유지한다.
+
+### 4.1.1 Main·Portfolio product spring 프로필
+
+- `surface`: `spring({ bounce: .12, duration: 260 })` — sheet·panel 등장과 펼치기.
+- `return`: `spring({ bounce: .12, duration: 220 })` — 짧은 모바일 sheet 드래그 복귀.
+- `exit`: `spring({ bounce: 0, duration: 180 })` — 화면 밖으로 닫기.
+- `value`: `spring({ bounce: 0, duration: 260 })` — 금액·비율·막대·진행률의 단조 전환.
+- 각 애니메이션은 새 spring 인스턴스를 만들며, reduced-motion·초기화 실패에서는 최종 상태를 즉시 표시한다. surface·return의 실제 위치 overshoot는 최종 위치 기준 4px 이내로 제한한다. Anime.js의 `duration`은 spring의 perceived duration이며 실제 settling duration은 더 길 수 있다.
 
 ### 4.2 공통 구성 요소
 
@@ -80,7 +88,7 @@ Anime.js는 필요한 하위 모듈만 import한다. 일반 hover, focus, presse
 
 - 현재 앱 표시선과 overflow 메뉴는 120~160ms로 전환한다.
 - 앱 간 페이지 이동을 모션 때문에 지연하지 않는다.
-- modal, side panel, disclosure와 toast는 160~220ms 범위의 공통 reveal을 사용한다. 2026-09-15 모바일 편집 피드백을 반영해 Portfolio bottom sheet는 실제 카드 높이만큼 화면 아래에서 260ms로 진입하며, 세부 계약은 `DESIGN.md`의 Portfolio 절을 따른다.
+- spring 프로필을 선택하지 않은 modal, side panel, disclosure와 toast는 160~220ms 범위의 공통 reveal을 사용한다. Main·Portfolio의 편집 surface는 product spring 프로필을 적용한다. Portfolio bottom sheet는 실제 카드 높이만큼 화면 아래에서 surface spring으로 진입하며, 세부 계약은 `DESIGN.md`의 Portfolio 절을 따른다.
 - overlay가 닫히면 애니메이션과 무관하게 기존 계약대로 focus를 trigger에 돌려준다.
 
 ### 5.2 Main 첫 화면과 입력 단계

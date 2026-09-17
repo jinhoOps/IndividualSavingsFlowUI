@@ -294,6 +294,10 @@
     box-shadow: var(--shadow-float);
   }
 
+  .main-editor-sheet[data-sheet-exiting],
+  .expense-assistant[data-sheet-exiting],
+  [data-sheet-dismiss-backdrop][data-sheet-exiting] { pointer-events: none; }
+
   .main-editor-panel {
     position: fixed;
     inset-block: 0;
@@ -324,6 +328,31 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: .5rem;
+  }
+
+  @media (max-width: 767px) {
+    .main-editor-sheet .main-plan-editor__header,
+    .expense-assistant__header[data-sheet-drag-handle] {
+      position: relative;
+      touch-action: none;
+      padding-top: 1.25rem;
+      cursor: grab;
+    }
+    .main-editor-sheet .main-plan-editor__header::before,
+    .expense-assistant__header[data-sheet-drag-handle]::before {
+      position: absolute;
+      top: .5rem;
+      left: 50%;
+      width: 2.5rem;
+      height: .25rem;
+      border-radius: 999px;
+      background: var(--line-strong, var(--line));
+      content: '';
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    [data-sheet-dragging] .main-plan-editor__header,
+    [data-sheet-dragging] .expense-assistant__header[data-sheet-drag-handle] { cursor: grabbing; }
   }
 
   .main-plan-editor__header h2 {

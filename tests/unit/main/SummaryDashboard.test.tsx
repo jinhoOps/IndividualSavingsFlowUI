@@ -59,8 +59,8 @@ function clone(data: MainData): MainData {
 }
 
 function stubMobileViewport() {
-  vi.stubGlobal('matchMedia', vi.fn().mockImplementation(() => ({
-    matches: true,
+  vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
+    matches: query.includes('max-width'),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   })));
@@ -339,6 +339,48 @@ describe('SummaryDashboard', () => {
     expect(within(dialog).getByLabelText('월 투자액')).toBeVisible();
   });
 
+  it('keeps the mobile editor modal until the approved drag exit finishes', () => {
+    render(<DashboardHarness mobile />);
+    vi.useFakeTimers();
+    const opener = screen.getByRole('button', { name: '월 금액 편집' });
+    fireEvent.click(opener);
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+    const handle = dialog.querySelector<HTMLElement>('[data-sheet-drag-handle]');
+    expect(handle).not.toBeNull();
+
+    act(() => {
+      dispatchPointer(handle!, 'pointerdown', { clientY: 0 });
+      dispatchPointer(handle!, 'pointermove', { clientY: 100 });
+      dispatchPointer(handle!, 'pointerup', { clientY: 100 });
+    });
+
+    expect(dialog).toHaveAttribute('data-sheet-exiting', 'true');
+    expect(dialog).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  it('keeps a dirty mobile draft when its drag dismissal is rejected', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<DashboardHarness mobile />);
+    fireEvent.click(screen.getByRole('button', { name: '월 금액 편집' }));
+    fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+    const handle = dialog.querySelector<HTMLElement>('[data-sheet-drag-handle]')!;
+
+    act(() => {
+      dispatchPointer(handle, 'pointerdown', { clientY: 0 });
+      dispatchPointer(handle, 'pointermove', { clientY: 120 });
+      dispatchPointer(handle, 'pointerup', { clientY: 120 });
+    });
+
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(dialog).toBeVisible();
+    expect(dialog).not.toHaveAttribute('data-sheet-exiting');
+    expect(screen.getByLabelText('월 실수령액')).toHaveValue('4,000,000');
+  });
+
   it('reveals the mobile editor upward with normal motion and closes it synchronously', () => {
     render(<DashboardHarness mobile />);
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
@@ -506,6 +548,19 @@ function animationOptionsFor(target: Element): Record<string, unknown> | undefin
   return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
     | Record<string, unknown>
     | undefined;
+}
+
+function dispatchPointer(target: HTMLElement, type: string, properties: Record<string, unknown>): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  for (const [key, value] of Object.entries({
+    pointerId: 1,
+    pointerType: 'touch',
+    isPrimary: true,
+    clientX: 0,
+    clientY: 0,
+    ...properties,
+  })) Object.defineProperty(event, key, { configurable: true, value });
+  target.dispatchEvent(event);
 }
 
 describe('amount editing shortcuts', () => {

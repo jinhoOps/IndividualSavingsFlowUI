@@ -192,6 +192,7 @@
 .portfolio-view-preferences__choice-input:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
 .portfolio-apply-bar { position: fixed; z-index: 30; inset: auto max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); display: flex; align-items: center; justify-content: flex-end; gap: .5rem; padding: .75rem; box-shadow: var(--shadow-float); }
 .portfolio-dialog { position: fixed; z-index: 40; inset: 50% auto auto 50%; width: min(calc(100vw - 2rem), 28rem); max-width: 100%; max-height: calc(100dvh - 2rem); margin: 0; padding: 1.5rem; overflow: auto; transform: translate(-50%, -50%); }
+.portfolio-dialog[data-sheet-exiting] { pointer-events: none; }
 .portfolio-dialog::backdrop { background: rgb(16 34 32 / 35%); }
 .portfolio-item-sheet { inset: auto 0 0; width: min(100%, 32rem); max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top))); margin: 0 auto; padding: 1.25rem 1rem calc(1rem + env(safe-area-inset-bottom)); overflow: hidden; border: 0; border-radius: 1.5rem 1.5rem 0 0; transform: none; }
 .portfolio-item-sheet[data-presentation='panel'] { inset: 0 0 0 auto; width: min(32rem, 42vw); max-height: 100dvh; margin: 0; padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); border-left: 1px solid var(--line); border-radius: 0; }
@@ -261,6 +262,9 @@
   .portfolio-setup__actions { padding-top: .75rem; border-top: 1px solid var(--line); }
   .portfolio-setup__actions .ui-button:last-child { flex: 1; }
   .portfolio-edit-surface { inset: auto 0 0; width: 100%; max-height: 88dvh; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 0; border-radius: 1.5rem 1.5rem 0 0; }
+  :is(.portfolio-edit-surface, .portfolio-item-sheet) [data-sheet-drag-handle] { position: relative; touch-action: none; cursor: grab; }
+  :is(.portfolio-edit-surface, .portfolio-item-sheet) [data-sheet-drag-handle]::before { position: absolute; top: -.5rem; left: 50%; width: 2.5rem; height: .25rem; border-radius: 999px; background: var(--line-strong, var(--line)); content: ''; transform: translateX(-50%); pointer-events: none; }
+  :is(.portfolio-edit-surface, .portfolio-item-sheet)[data-sheet-dragging] [data-sheet-drag-handle] { cursor: grabbing; }
   .portfolio-editor__row { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
   .portfolio-editor__computed { grid-template-columns: 1fr auto; padding-bottom: 0; text-align: left; }
   .portfolio-editor__row > .ui-button { width: 100%; }

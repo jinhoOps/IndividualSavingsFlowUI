@@ -2,7 +2,7 @@ import { animate, createTimeline, stagger } from 'animejs';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { SavingOverlay } from '../common/SavingOverlay';
 import { attemptMotion } from '../../../components/motion/attemptMotion';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../components/motion/tokens';
+import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import { useAnimatedProgress } from '../../../components/motion/useAnimatedProgress';
 import type { MainData, SetupStep } from '../../domain/model';
@@ -83,7 +83,7 @@ export function SetupFlow({
   const welcomeElementRef = useRef<HTMLElement | null>(null);
   const stepIndex = steps.indexOf(step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
-  const progressRef = useAnimatedProgress<HTMLDivElement>(progress);
+  const progressRef = useAnimatedProgress<HTMLDivElement>(progress, createProductSpring('value'));
   const previousStep = steps[stepIndex - 1];
   const nextStep = steps[stepIndex + 1];
   const setupSurfaceClassName = 'setup-flow-surface';
@@ -125,7 +125,7 @@ export function SetupFlow({
           y: [MOTION_DISTANCE_PX.reveal, 0],
           duration: MOTION_DURATION.normal,
           delay: 0,
-          ease: MOTION_EASE.enter,
+          ease: createProductSpring('surface'),
         });
       })) setRevealFinalStyles(elements);
       return;
@@ -141,7 +141,7 @@ export function SetupFlow({
         y: [MOTION_DISTANCE_PX.reveal, 0],
         duration: MOTION_DURATION.normal,
         delay: stagger(WELCOME_STAGGER_MS),
-        ease: MOTION_EASE.enter,
+        ease: createProductSpring('surface'),
         onComplete: recovery.complete,
       });
       recovery.attachCancel(() => animation.cancel());
@@ -176,7 +176,7 @@ export function SetupFlow({
     );
     const started = attemptMotion(() => {
       const timeline = createTimeline({
-        defaults: { ease: MOTION_EASE.enter },
+        defaults: { ease: createProductSpring('surface') },
         onComplete: recovery.complete,
       });
       recovery.attachCancel(() => timeline.cancel());

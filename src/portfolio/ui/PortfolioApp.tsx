@@ -75,6 +75,7 @@ export function PortfolioApp({
     const normal = createPortfolioState(initial);
     return recovered ? {...normal, draft: recovered, dirty: true, view: normal.applied ? 'edit' : 'setup', saveState: 'error'} : normal;
   });
+  const [closingEdit, setClosingEdit] = useState<PortfolioState | null>(null);
   useAccountRecovery('portfolio', state?.draft, state?.saveState !== 'saved' && state?.dirty === true, state !== null);
   const stateRef = useRef(state);
   const initialPersistenceStarted = useRef(recovered !== null);
@@ -102,11 +103,12 @@ export function PortfolioApp({
   const showSaving = applyPending ? delayedApply : delayedAutomaticSaving;
 
   useEffect(() => {
-    if (state?.view !== 'edit' && editTriggerRef.current && !editTriggerRef.current.isConnected) {
+    if (state?.view !== 'edit' && closingEdit === null
+      && editTriggerRef.current && !editTriggerRef.current.isConnected) {
       editTriggerRef.current = resultControlsRef.current?.querySelector<HTMLButtonElement>('.portfolio-allocation-row__select') ?? null;
       editTriggerRef.current?.focus({ preventScroll: true });
     }
-  }, [state?.view]);
+  }, [state?.view, closingEdit]);
 
   useEffect(() => {
     mounted.current = true;
@@ -334,8 +336,8 @@ export function PortfolioApp({
               <div
                 ref={resultControlsRef}
                 data-testid="portfolio-result-controls"
-                inert={state.view === 'edit' ? true : undefined}
-                aria-hidden={state.view === 'edit' ? 'true' : undefined}
+                inert={state.view === 'edit' || closingEdit !== null ? true : undefined}
+                aria-hidden={state.view === 'edit' || closingEdit !== null ? 'true' : undefined}
               >
                 {state.saveState === 'error' || state.saveState === 'cleanup-error' ? (
                   <p role="alert" className="portfolio-summary-error">
@@ -354,18 +356,26 @@ export function PortfolioApp({
                   }}
                 />
               </div>
-              {state.view === 'edit' ? (
+              {state.view === 'edit' || closingEdit !== null ? (
                 <PortfolioEditSurface
-                  draft={state.draft}
-                  investmentWon={state.draft.syncedInvestmentWon}
-                  dirty={state.dirty}
-                  saveError={state.saveState === 'error'}
+                  draft={(closingEdit ?? state).draft}
+                  investmentWon={(closingEdit ?? state).draft.syncedInvestmentWon}
+                  dirty={(closingEdit ?? state).dirty}
+                  saveError={(closingEdit ?? state).saveState === 'error'}
                   applying={applyPending}
                   showSaving={showSaving}
-                  fieldError={state.fieldError}
+                  fieldError={(closingEdit ?? state).fieldError}
                   returnFocusRef={editTriggerRef}
                   onAction={dispatchDraft}
                   onCancel={() => dispatchDraft({ type: 'cancel-edit' })}
+                  onSheetDismiss={() => {
+                    const current = stateRef.current;
+                    if (current === null || applyPendingRef.current) return false;
+                    setClosingEdit(current);
+                    dispatchDraft({ type: 'cancel-edit' });
+                    return true;
+                  }}
+                  onSheetDismissed={() => setClosingEdit(null)}
                   onApply={apply}
                   showAmounts={preferences.showAmounts}
                   now={now}

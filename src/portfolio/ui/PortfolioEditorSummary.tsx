@@ -1,7 +1,7 @@
 import { animate } from 'animejs';
 import { useRef } from 'react';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
-import { MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
+import { createProductSpring, MOTION_DURATION } from '../../components/motion/tokens';
 import { materializeAllocation } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
@@ -34,7 +34,7 @@ export function PortfolioEditorSummary({ draft, investmentWon }: PortfolioEditor
         bars.forEach((bar, index) => {
           if (before[index] !== next[index]) animate(bar, {
             width: [`${before[index]}%`, `${next[index]}%`],
-            duration: MOTION_DURATION.emphasis, ease: MOTION_EASE.update,
+            duration: MOTION_DURATION.emphasis, ease: createProductSpring('value'),
           });
         });
       } catch { finish(); }

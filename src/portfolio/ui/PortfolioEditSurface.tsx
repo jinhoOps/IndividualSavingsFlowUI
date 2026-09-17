@@ -19,6 +19,8 @@ export function PortfolioEditSurface({
   returnFocusRef,
   onAction,
   onCancel,
+  onSheetDismiss,
+  onSheetDismissed,
   onApply,
   showAmounts,
   now,
@@ -33,6 +35,8 @@ export function PortfolioEditSurface({
   returnFocusRef: RefObject<HTMLElement | null>;
   onAction(action: PortfolioAction): void;
   onCancel(): void;
+  onSheetDismiss?(): boolean | void;
+  onSheetDismissed?(): void;
   onApply(): void;
   showAmounts: boolean;
   now(): number;
@@ -45,7 +49,9 @@ export function PortfolioEditSurface({
   const [editorGeneration, setEditorGeneration] = useState(0);
   const pickerRef = useRef<PortfolioExampleNavigation>(null);
   const sampleTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const discardTriggerRef = useRef<HTMLElement | null>(null);
+  const pendingSheetDismissRef = useRef<((approved: boolean) => void) | null>(null);
   const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
       ? 'sheet'
@@ -61,12 +67,50 @@ export function PortfolioEditSurface({
     return () => media.removeEventListener('change', update);
   }, []);
 
+  useEffect(() => () => {
+    pendingSheetDismissRef.current?.(false);
+    pendingSheetDismissRef.current = null;
+  }, []);
+
   function requestClose(): void {
     if (applying) return;
     if (dirty || cashDirty || cashError || fieldError || pickerRef.current?.hasChanges) {
       discardTriggerRef.current = document.activeElement as HTMLElement | null;
       setConfirmDiscard(true);
     } else onCancel();
+  }
+
+  function requestSheetDismiss(): boolean | Promise<boolean> {
+    if (applying) return false;
+    if (dirty || cashDirty || cashError || fieldError || pickerRef.current?.hasChanges) {
+      discardTriggerRef.current = closeButtonRef.current;
+      setConfirmDiscard(true);
+      return new Promise(resolve => { pendingSheetDismissRef.current = resolve; });
+    }
+    return onSheetDismiss?.() !== false;
+  }
+
+  function cancelDiscard(): void {
+    setConfirmDiscard(false);
+    const resolve = pendingSheetDismissRef.current;
+    pendingSheetDismissRef.current = null;
+    resolve?.(false);
+  }
+
+  function discardChanges(): void {
+    setConfirmDiscard(false);
+    const resolve = pendingSheetDismissRef.current;
+    pendingSheetDismissRef.current = null;
+    if (!resolve) {
+      onCancel();
+      return;
+    }
+    if (onSheetDismiss === undefined) {
+      onCancel();
+      resolve(false);
+      return;
+    }
+    resolve(onSheetDismiss() !== false);
   }
 
   function closeExamples(): void {
@@ -81,6 +125,9 @@ export function PortfolioEditSurface({
         dataPresentation={presentation}
         labelledBy={examplePickerOpen ? 'portfolio-example-picker-title' : 'portfolio-edit-title'}
         closeOnBackdrop
+        enableSheetDismiss={!examplePickerOpen}
+        onSheetDismiss={requestSheetDismiss}
+        onSheetDismissed={onSheetDismissed}
         onClose={requestClose}
         onEscape={() => {
           if (applying) return;
@@ -90,13 +137,14 @@ export function PortfolioEditSurface({
         returnFocusRef={returnFocusRef}
       >
         <div className="portfolio-edit-surface__editor" hidden={examplePickerOpen}>
-          <header className="portfolio-edit-surface__header">
+          <header className="portfolio-edit-surface__header" data-sheet-drag-handle>
             <h2 id="portfolio-edit-title">투자 배분 수정</h2>
             <div className="portfolio-edit-surface__header-actions">
               <Button
                 type="button"
-                variant="quiet"
-                data-dialog-initial-focus
+              variant="quiet"
+              ref={closeButtonRef}
+              data-dialog-initial-focus
                 aria-label="편집기 닫기"
                 disabled={applying}
                 onClick={requestClose}
@@ -152,12 +200,12 @@ export function PortfolioEditSurface({
         /> : null}
       </PortfolioDialog>
       {confirmDiscard ? <PortfolioDialog labelledBy="portfolio-discard-title" returnFocusRef={discardTriggerRef}
-        onClose={() => setConfirmDiscard(false)}>
+        onClose={cancelDiscard}>
         <h2 id="portfolio-discard-title">변경사항을 버릴까요?</h2>
         <p>적용하지 않은 배분과 샘플 구성을 버리고 닫습니다.</p>
         <div className="portfolio-item-sheet__discard-actions">
-          <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => setConfirmDiscard(false)}>계속 수정</Button>
-          <Button type="button" variant="primary" onClick={onCancel}>변경 버리기</Button>
+          <Button type="button" variant="secondary" data-dialog-initial-focus onClick={cancelDiscard}>계속 수정</Button>
+          <Button type="button" variant="primary" onClick={discardChanges}>변경 버리기</Button>
         </div>
       </PortfolioDialog> : null}
     </>

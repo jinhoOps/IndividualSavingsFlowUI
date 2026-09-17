@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAnimatedProgress } from '../../components/motion/useAnimatedProgress';
+import { createProductSpring } from '../../components/motion/tokens';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import type {
@@ -45,7 +46,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   const index = steps.indexOf(props.step);
   const progress = ((index + 1) / steps.length) * 100;
   const choosingExample = props.step === 'allocation' && examplePickerOpen;
-  const progressRef = useAnimatedProgress<HTMLSpanElement>(progress);
+  const progressRef = useAnimatedProgress<HTMLSpanElement>(progress, createProductSpring('value'));
 
   useEffect(() => {
     headingRef.current?.focus();

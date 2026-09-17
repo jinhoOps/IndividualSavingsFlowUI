@@ -41,7 +41,7 @@ export function MainPlanEditor({
     : 'main-plan-editor main-plan-editor--panel';
   const content = (
     <>
-      <header className="main-plan-editor__header">
+      <header className="main-plan-editor__header" data-sheet-drag-handle>
         <div>
           <h2 id="cashflow-editor-title">월 자금 계획 편집</h2>
           <p>한 달 기준 금액을 입력해 주세요.</p>

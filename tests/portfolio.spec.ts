@@ -626,28 +626,109 @@ test('slides the mobile edit card in from below the viewport', async ({ page }, 
   await page.screenshot({ path: testInfo.outputPath('portfolio-edit-mobile.png') });
 });
 
+test('closes the clean mobile Portfolio editor from a downward header drag', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
+  await page.goto('apps/portfolio/');
+
+  for (const height of [844, 600]) {
+    await page.setViewportSize({ width: 390, height });
+    const trigger = page.locator('.portfolio-allocation-row__select').first();
+    await trigger.click();
+    const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
+    const handle = editor.locator('[data-sheet-drag-handle]');
+    expect((await handle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+
+    await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
+    const exitPositions = await page.evaluate(async () => {
+      const sheet = document.querySelector<HTMLElement>('.portfolio-edit-surface');
+      const positions: number[] = [];
+      for (let frame = 0; frame < 12 && sheet?.isConnected; frame += 1) {
+        positions.push(sheet.getBoundingClientRect().top);
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      }
+      return positions;
+    });
+    expect(exitPositions.length).toBeGreaterThan(3);
+    expect(exitPositions.every((top, index) => index === 0 || top >= exitPositions[index - 1] - 0.5)).toBe(true);
+    await expect(editor).toBeHidden();
+    await expect(trigger).toBeFocused();
+  }
+});
+
+test('discards a dirty mobile Portfolio editor through its exit after drag confirmation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
+  await page.goto('apps/portfolio/');
+
+  const trigger = page.locator('.portfolio-allocation-row__select').first();
+  await trigger.click();
+  const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
+  await editor.getByRole('button', { name: /인덱스 편집/ }).click();
+  const item = page.getByRole('dialog', { name: '투자 대상 수정' });
+  await item.getByLabel('금액', { exact: true }).fill('110000');
+  await item.getByRole('button', { name: '완료' }).click();
+  await expect(editor.getByRole('button', { name: /인덱스 편집.*110,000원/ })).toBeVisible();
+
+  const handle = editor.locator('[data-sheet-drag-handle]');
+  for (const pointerId of [1, 2]) {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    await handle.dispatchEvent('pointerdown', { pointerId, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+    await handle.dispatchEvent('pointermove', { pointerId, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerup', { pointerId, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    const discard = page.getByRole('dialog', { name: '변경사항을 버릴까요?' });
+    await expect(discard).toBeVisible();
+    await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+    if (pointerId === 1) {
+      await discard.getByRole('button', { name: '계속 수정' }).click();
+      await expect(editor.getByRole('button', { name: '편집기 닫기' })).toBeFocused();
+      await expect(editor.getByRole('button', { name: /인덱스 편집.*110,000원/ })).toBeVisible();
+      continue;
+    }
+    await discard.getByRole('button', { name: '변경 버리기' }).click();
+  }
+
+  await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
+  await expect(editor).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await expect(page.locator('.portfolio-allocation-list')).toContainText('인덱스60%');
+});
+
 test('isolates applied editing as a sheet or panel and restores focus', async ({ page }, testInfo) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
 
   for (const viewport of [
-    { width: 390, mode: 'sheet' },
-    { width: 768, mode: 'sheet' },
-    { width: 1280, mode: 'panel' },
+    { width: 390, height: 844, mode: 'sheet' },
+    { width: 768, height: 1024, mode: 'sheet' },
+    { width: 769, height: 900, mode: 'panel' },
+    { width: 1280, height: 900, mode: 'panel' },
   ]) {
-    await page.setViewportSize({ width: viewport.width, height: 900 });
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('apps/portfolio/');
     const trigger = page.locator('.portfolio-allocation-row__select').first();
     await trigger.click();
     const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
     await expect(editor).toHaveAttribute('data-presentation', viewport.mode);
     await expect(editor).toHaveCSS('opacity', '1');
+    if (viewport.mode === 'sheet') {
+      await expect.poll(async () => {
+        const box = await editor.boundingBox();
+        return box === null ? Infinity : Math.abs(box.y + box.height - viewport.height);
+      }).toBeLessThan(0.5);
+    }
     const box = await editor.boundingBox();
     expect(box!.x + box!.width).toBeCloseTo(viewport.width, 0);
     if (viewport.mode === 'sheet') {
       expect(box!.x).toBe(0);
       expect(box!.width).toBe(viewport.width);
-      expect(box!.y + box!.height).toBeCloseTo(900, 0);
+      expect(box!.y + box!.height).toBeCloseTo(viewport.height, 0);
     }
     await expect(editor.getByRole('textbox')).toHaveCount(0);
     await expect(editor.getByRole('button', { name: /인덱스 편집.*성장/ })).toBeVisible();
@@ -795,6 +876,19 @@ test('protects dirty mobile target input and reuses the sheet for editing', asyn
   await expect(sheet.getByLabel('금액')).toBeFocused();
   expect(await sheet.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
   await sheet.getByLabel('투자 대상 이름').fill('미국 인덱스');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+
+  const dragHandle = sheet.locator('[data-sheet-drag-handle]');
+  await dragHandle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+  await dragHandle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  await dragHandle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  const dragDiscard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
+  await expect(dragDiscard).toBeVisible();
+  await expect(sheet).not.toHaveAttribute('data-sheet-exiting', 'true');
+  await expect(sheet.getByLabel('투자 대상 이름')).toHaveValue('미국 인덱스');
+  await dragDiscard.getByRole('button', { name: '계속 입력' }).click();
+  await expect(sheet.getByLabel('투자 대상 이름')).toBeFocused();
 
   await page.mouse.click(10, 100);
   let discard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
@@ -802,10 +896,15 @@ test('protects dirty mobile target input and reuses the sheet for editing', asyn
   await discard.getByRole('button', { name: '계속 입력' }).click();
   await expect(sheet.getByLabel('투자 대상 이름')).toHaveValue('미국 인덱스');
 
-  await page.mouse.click(10, 100);
+  await dragHandle.dispatchEvent('pointerdown', { pointerId: 2, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+  await dragHandle.dispatchEvent('pointermove', { pointerId: 2, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  await dragHandle.dispatchEvent('pointerup', { pointerId: 2, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
   discard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
+  await expect(discard).toBeVisible();
   await discard.getByRole('button', { name: '버리기' }).click();
+  await expect(sheet).toHaveAttribute('data-sheet-exiting', 'true');
   await expect(sheet).not.toBeVisible();
+  await expect(page.getByRole('button', { name: '투자 대상 추가' })).toBeFocused();
 
   await page.getByRole('button', { name: '투자 대상 추가' }).click();
   sheet = page.getByRole('dialog', { name: '투자 대상 추가' });
@@ -920,6 +1019,12 @@ for (const width of [390, 768, 1280]) {
     await page.locator('.portfolio-allocation-row__select').first().click();
     const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
     await expect(editor).toHaveCSS('opacity', '1');
+    if (width <= 768) {
+      await expect.poll(async () => {
+        const box = await editor.boundingBox();
+        return box === null ? Infinity : Math.abs(box.y + box.height - 844);
+      }).toBeLessThan(0.5);
+    }
     const body = editor.locator('.portfolio-edit-surface__body');
     const add = editor.getByRole('button', { name: '투자 대상 추가' });
     await expect(editor.getByRole('region', { name: '현재 배분 요약' })).toBeVisible();

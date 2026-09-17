@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useRef } from 'react';
 import { animateVisualNumber } from '../../../components/motion/animateVisualNumber';
+import { createProductSpring, MOTION_DURATION } from '../../../components/motion/tokens';
 import type { CashflowSummary as CashflowTotals } from '../../domain/cashflow';
 
 type AllocationId = 'consumption' | 'remaining' | 'saving' | 'investment';
@@ -106,6 +107,8 @@ function AnimatedMetricValue({ valueWon }: { valueWon: number }) {
       previousValue,
       valueWon,
       formatDashboardWon,
+      MOTION_DURATION.normal,
+      createProductSpring('value'),
     );
   }, [valueWon]);
 

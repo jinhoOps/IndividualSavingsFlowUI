@@ -8,7 +8,7 @@ import {
 import {
   MOTION_DISTANCE_PX,
   MOTION_DURATION,
-  MOTION_EASE,
+  createProductSpring,
 } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { largestResultItem, orderedResultItems } from '../domain/allocation';
@@ -108,7 +108,7 @@ export function PortfolioSummary({
           opacity: [0, 1],
           translateY: [MOTION_DISTANCE_PX.reveal, 0],
           duration: MOTION_DURATION.normal,
-          ease: MOTION_EASE.enter,
+          ease: createProductSpring('surface'),
           onUpdate: () => updateRowFrame(currentSnapshot, id, {
             opacity: visualOpacity(row, 1),
             rect: row.getBoundingClientRect(),
@@ -126,7 +126,7 @@ export function PortfolioSummary({
             ...(deltaY === 0 ? {} : { translateY: [deltaY, 0] }),
             ...(continuesReveal ? { opacity: [prior.opacity, 1] } : {}),
             duration: MOTION_DURATION.normal,
-            ease: continuesReveal ? MOTION_EASE.enter : MOTION_EASE.update,
+            ease: createProductSpring(continuesReveal ? 'surface' : 'value'),
             onUpdate: () => updateRowFrame(currentSnapshot, id, {
               opacity: visualOpacity(row, 1),
               rect: row.getBoundingClientRect(),
@@ -153,6 +153,7 @@ export function PortfolioSummary({
           current.percentage,
           formatAllocationPercent,
           MOTION_DURATION.normal,
+          createProductSpring('value'),
         );
       }
     }
@@ -316,7 +317,7 @@ function continueInterruptedRowReveals(
     animateSafely(row, {
       opacity: [prior.opacity, 1],
       duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
+      ease: createProductSpring('surface'),
       onUpdate: () => updateRowFrame(current, id, {
         opacity: visualOpacity(row, 1),
       }),

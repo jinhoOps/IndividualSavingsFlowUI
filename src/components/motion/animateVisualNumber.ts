@@ -1,4 +1,4 @@
-import { animate, type JSAnimation } from 'animejs';
+import { animate, type EasingParam, type JSAnimation } from 'animejs';
 import { attemptMotion } from './attemptMotion';
 import { MOTION_DURATION, MOTION_EASE } from './tokens';
 
@@ -18,6 +18,7 @@ export function animateVisualNumber(
   to: number,
   format: (value: number) => string,
   duration: number = MOTION_DURATION.normal,
+  easing: EasingParam = MOTION_EASE.update,
 ): () => void {
   const previousState = visualNumberStates.get(element);
 
@@ -73,7 +74,7 @@ export function animateVisualNumber(
     state.animation = animate(state, {
       value: to,
       duration,
-      ease: MOTION_EASE.update,
+      ease: easing,
       onUpdate: () => {
         if (!state.active || visualNumberStates.get(element) !== state) return;
         element.textContent = format(state.value);

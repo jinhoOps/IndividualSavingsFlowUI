@@ -906,13 +906,16 @@ test.describe('mobile quick setup', () => {
     await page.getByRole('button', { name: '다음' }).tap();
 
     await page.getByLabel('월 주거 고정비').fill('800000');
-    const quickAdjustments = ['-50만', '-10만', '+10만', '+50만'].map(
-      (name) => page.getByRole('button', { name }),
-    );
-    const adjustmentBoxes = await Promise.all(quickAdjustments.map((button) => button.boundingBox()));
-    expect(new Set(adjustmentBoxes.map((box) => Math.round(box!.y))).size).toBe(1);
+    const adjustmentBoxes = await page.locator('.ui-money-adjustments > button').evaluateAll((buttons) => (
+      buttons.map((button) => {
+        const bounds = button.getBoundingClientRect();
+        return { y: Math.round(bounds.y), height: bounds.height };
+      })
+    ));
+    expect(adjustmentBoxes).toHaveLength(4);
+    expect(new Set(adjustmentBoxes.map((box) => box.y)).size).toBe(1);
     for (const box of adjustmentBoxes) {
-      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
     }
     await expect(page.getByRole('progressbar', { name: '수입 대비 현재 계획' })).toHaveCount(0);
     await expect(page.getByText(/^월 수입 \d/)).toHaveCount(0);
@@ -1124,6 +1127,172 @@ test('dashboard edit persists only the v2 scalar plan', async ({ page }) => {
   ]);
 });
 
+test('closes the clean mobile cashflow editor from a downward header drag', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  for (const height of [844, 600]) {
+    await page.setViewportSize({ width: 390, height });
+    const opener = page.getByRole('button', { name: '월 금액 편집' });
+    await opener.click();
+    const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+    const handle = editor.locator('[data-sheet-drag-handle]');
+    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+
+    await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
+    const exitPositions = await page.evaluate(async () => {
+      const sheet = document.querySelector<HTMLElement>('.main-editor-sheet');
+      const positions: number[] = [];
+      for (let frame = 0; frame < 12 && sheet?.isConnected; frame += 1) {
+        positions.push(sheet.getBoundingClientRect().top);
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      }
+      return positions;
+    });
+    expect(exitPositions.length).toBeGreaterThan(3);
+    expect(exitPositions.every((top, index) => index === 0 || top >= exitPositions[index - 1] - 0.5)).toBe(true);
+    await expect(editor).toBeHidden();
+    await expect(opener).toBeFocused();
+  }
+});
+
+test('saves a dirty expense assistant draft before animating a drag dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  const trigger = page.getByRole('button', { name: /지출 계산 도우미/ });
+  await trigger.click();
+  const sheet = page.getByRole('dialog', { name: '매달 월세로 얼마를 내나요?' });
+  await sheet.getByLabel('월세 금액').fill('500000');
+  await sheet.evaluate(element => {
+    const browser = window as Window & { __sheetExitObserved?: boolean };
+    browser.__sheetExitObserved = false;
+    const observer = new MutationObserver(records => {
+      if (records.some(record => record.attributeName === 'data-sheet-exiting' && record.oldValue === null)) {
+        browser.__sheetExitObserved = true;
+        observer.disconnect();
+      }
+    });
+    observer.observe(element, { attributes: true, attributeFilter: ['data-sheet-exiting'], attributeOldValue: true });
+  });
+  const handle = sheet.locator('[data-sheet-drag-handle]');
+  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+
+  await expect(sheet).not.toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as Window & { __sheetExitObserved?: boolean }).__sheetExitObserved)).toBe(true);
+  await expect(trigger).toBeFocused();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.expenseAssistant.draft.answers.rent))
+    .toEqual({ amountWon: 500_000, period: 'month' });
+});
+
+test('keeps dirty expense answers visible when saving a drag dismissal fails', async ({ page }) => {
+  const expenseIds = ['rent', 'housingInterest', 'maintenance', 'insurance', 'telecom', 'subscriptions', 'utilities',
+    'food', 'transport', 'occasions', 'leisure', 'otherHousing', 'otherLiving'];
+  const initialAssistant = {
+    schemaVersion: 1,
+    draft: { answers: Object.fromEntries(expenseIds.map(id => [id, null])), step: 'rent', updatedAt: 1 },
+    lastApplied: null,
+  };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(({ fixture, assistant }) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify({ ...fixture, main: { ...fixture.main, expenseAssistant: assistant } }));
+  }, { fixture: appliedWorkspaceV5, assistant: initialAssistant });
+  await page.goto('apps/main/');
+
+  const trigger = page.getByRole('button', { name: /지출 계산 도우미/ });
+  await trigger.click();
+  const sheet = page.getByRole('dialog', { name: '매달 월세로 얼마를 내나요?' });
+  await sheet.getByLabel('월세 금액').fill('500000');
+  await page.evaluate(() => {
+    const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
+    workspace.main.expenseAssistant.draft.answers.rent = { amountWon: 1, period: 'month' };
+    workspace.main.expenseAssistant.draft.updatedAt = 2;
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
+  });
+  const handle = sheet.locator('[data-sheet-drag-handle]');
+  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+
+  await expect(sheet.getByRole('alert')).toContainText('다른 곳에서 지출 내역이 변경되었습니다');
+  await expect(sheet).not.toHaveAttribute('data-sheet-exiting', 'true');
+  await expect(sheet.getByLabel('월세 금액')).toHaveValue('500,000');
+  await expect(sheet).toBeVisible();
+});
+
+test('confirms a dirty remaining allocation before animating a drag dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  const trigger = page.getByRole('button', { name: /남는 돈 분배 도우미/ });
+  await trigger.click();
+  const sheet = page.getByRole('dialog', { name: '남는 돈을 더 모아볼까요?' });
+  await sheet.getByRole('button', { name: '저축에 전부' }).click();
+  const confirmPromise = page.waitForEvent('dialog');
+  const handle = sheet.locator('[data-sheet-drag-handle]');
+  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
+  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  const releasePromise = handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  const confirm = await confirmPromise;
+  await confirm.accept();
+  await releasePromise;
+
+  await expect(sheet).toHaveAttribute('data-sheet-exiting', 'true');
+  await expect(sheet).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+});
+
+test('returns a short mobile cashflow editor drag without more than 4px overshoot', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+  const opener = page.getByRole('button', { name: '월 금액 편집' });
+  await opener.click();
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  const handle = editor.locator('[data-sheet-drag-handle]');
+  expect((await handle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect.poll(async () => {
+    const box = await editor.boundingBox();
+    return box === null ? Infinity : Math.abs(box.y + box.height - 844);
+  }).toBeLessThan(0.5);
+  const restingTop = (await editor.boundingBox())!.y;
+  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 100 });
+  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 116 });
+  await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 116 });
+
+  expect(await editor.getAttribute('data-sheet-exiting')).toBeNull();
+  const positions = await page.evaluate(async () => {
+    const sheet = document.querySelector<HTMLElement>('.main-editor-sheet');
+    const samples: number[] = [];
+    for (let frame = 0; frame < 24 && sheet?.isConnected; frame += 1) {
+      samples.push(sheet.getBoundingClientRect().top);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    return samples;
+  });
+
+  expect(positions.length).toBeGreaterThan(10);
+  expect(Math.min(...positions)).toBeGreaterThanOrEqual(restingTop - 4);
+  expect(Math.max(...positions)).toBeLessThanOrEqual(restingTop + 20);
+  expect(Math.abs(positions.at(-1)! - restingTop)).toBeLessThanOrEqual(1);
+  await expect(editor).toBeVisible();
+});
+
 test('dashboard deficit shows all allocations and the income threshold after editing', async ({ page }, testInfo) => {
   await page.addInitScript(fixture => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspaceV5);
   await page.goto('apps/main/');
@@ -1167,9 +1336,10 @@ test('월 자금 계획 편집은 편집 중인 금액의 빠른 조정만 표�
   await expect(fields.nth(1).locator('.money-field__adjustments')).toBeVisible();
 });
 
-for (const width of [390, 768, 1280]) {
+for (const width of [390, 767, 768, 1280]) {
   test(`saving and investment amounts open their editor field at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 844});
+    const height = width === 768 ? 1024 : width === 1280 ? 900 : 844;
+    await page.setViewportSize({width, height});
     await page.addInitScript(fixture => localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture)), appliedWorkspaceV5);
     await page.goto('apps/main/');
     const original = await page.evaluate(() => localStorage.getItem('isf-workspace-v5'));
@@ -1184,7 +1354,7 @@ for (const width of [390, 768, 1280]) {
       await expect(field.getByRole('button', {name: '+10만', exact: true})).toBeVisible();
       const bounds = await input.boundingBox();
       expect(bounds!.y).toBeGreaterThanOrEqual(0);
-      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(original);
       if (width >= 768) {

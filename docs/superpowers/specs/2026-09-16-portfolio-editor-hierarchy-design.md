@@ -17,7 +17,7 @@
 
 ## Before evidence and problem
 
-이 설계는 [390px](../evidence/2026-09-16-portfolio-editor/before-390-edit.png), [768px](../evidence/2026-09-16-portfolio-editor/before-768-edit.png), [1280px](../evidence/2026-09-16-portfolio-editor/before-1280-edit.png) 편집 캡처를 before evidence로 사용한다. 기존 재편집은 전체 맥락을 먼저 보여주지 않고, 모든 대상의 폼을 동시에 펼쳐 390px에서는 약 1,805px의 내용이 약 743px sheet에 놓이고 1280px에서도 두 번째 대상을 한 화면에 비교하기 어렵다.
+설계 당시 390px, 768px, 1280px 편집 캡처를 문제 분석에 사용했다. 해당 before PNG는 현재 evidence tree에 보존되어 있지 않으며, 남아 있는 구현 후 캡처와 검증 결과는 [Portfolio 편집 검증 기록](../evidence/2026-09-16-portfolio-editor/verification.md)에서 확인할 수 있다. 기존 재편집은 전체 맥락을 먼저 보여주지 않고, 모든 대상의 폼을 동시에 펼쳐 390px에서는 약 1,805px의 내용이 약 743px sheet에 놓이고 1280px에서도 두 번째 대상을 한 화면에 비교하기 어렵다.
 
 구현은 글꼴·여백만 조정해서 끝내지 않는다. 최초 설정과 재편집 모두 `배분 요약 + 대상 목록 + 선택한 대상 편집`을 사용한다. 한 대상의 수정에는 한 번의 진입이 더 필요하지만, 전체 배분을 읽고 바꿀 대상 하나에 집중할 수 있다.
 
@@ -78,14 +78,16 @@
 
 | Event | Motion | Required final-state behavior |
 | --- | --- | --- |
-| 모바일 sheet 열기 | 실제 열린 카드 높이만큼 `bottom`을 260ms 보간 | fixed footer 기준을 바꾸는 transform을 dialog에 추가하지 않는다. |
-| desktop panel 열기 | `right` 기반 8px·180ms | 입력과 focus는 즉시 사용 가능하다. |
-| 현금 상세 열기 | 4–8px·180ms reveal | 접힐 때 내부 focus는 현금 trigger로 돌아간다. |
-| 대상 완료 뒤 요약 갱신 | 비례 막대만 260ms | 텍스트·accessible 값은 즉시 최종값이며 입력 숫자를 보간하지 않는다. |
-| dirty footer 첫 표시 | 4px·180ms | footer 공간을 미리 확보해 마지막 행과 CTA가 튀지 않는다. |
-| 닫기·저장·탐색 | 즉시 상태 전환 | animation callback이 저장 또는 focus return의 조건이 아니다. |
+| 모바일 sheet 열기 | 실제 열린 카드 높이만큼 `bottom`을 surface spring으로 보간 | fixed footer 기준을 바꾸는 transform을 dialog에 추가하지 않는다. |
+| desktop panel 열기 | `right` 기반 8px surface spring, 260ms perceived duration | 입력과 focus는 즉시 사용 가능하다. |
+| 현금 상세 열기 | 4px surface spring reveal | 접힐 때 내부 focus는 현금 trigger로 돌아간다. |
+| 대상 완료 뒤 요약 갱신 | value spring으로 비례 막대만 갱신 | 텍스트·accessible 값은 즉시 최종값이며 입력 숫자를 보간하지 않는다. |
+| dirty footer 첫 표시 | 4px surface spring | footer 공간을 미리 확보해 마지막 행과 CTA가 튀지 않는다. |
+| 짧은 모바일 sheet 드래그 | 손가락을 따라 이동한 뒤 return spring으로 복귀하거나 기존 닫기 경로 실행 | 80~140px 거리 또는 빠른 flick 기준을 사용하고, 본문 스크롤·interactive header 자식은 가로채지 않는다. |
+| 승인된 모바일 sheet 드래그 닫기 | bounce 0 exit spring, 최대 300ms | 기존 close guard와 도메인 변경은 한 번 실행하고, 퇴장 뒤 trigger focus를 복원한다. reduced-motion에서는 즉시 닫는다. |
+| 기존 닫기·저장·탐색 | 즉시 상태 전환 | animation callback은 저장·탐색의 조건이 아니며, 드래그 퇴장 예외도 데이터 변경을 지연시키지 않는다. |
 
-`prefers-reduced-motion`, animation/scope 초기화 실패, unmount와 연속 값 변경에서는 즉시 최종 상태와 cleanup을 보장한다. 반복 bounce, 모든 행 stagger, 매 keystroke 재등장, 전체 목록 자동 재정렬은 사용하지 않는다.
+`prefers-reduced-motion`, animation/scope 초기화 실패, unmount와 연속 값 변경에서는 즉시 최종 상태와 cleanup을 보장한다. surface·return 위치 overshoot는 4px 이내이며 반복 bounce, 모든 행 stagger, 매 keystroke 재등장, 전체 목록 자동 재정렬은 사용하지 않는다.
 
 ## Acceptance and implementation review
 
