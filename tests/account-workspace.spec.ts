@@ -1278,7 +1278,7 @@ for (const failure of ['save-failure', 'conflict'] as const) {
     await page.goto('apps/portfolio/');
     await page.locator('.portfolio-allocation-row__select').first().click();
     await page.getByRole('button', {name: /인덱스 편집/}).click();
-    const item = page.getByRole('dialog', {name: '투자 대상 수정'});
+    const item = page.getByRole('region', {name: '투자 대상 수정'});
     await item.getByLabel('금액', {exact: true}).fill('110000');
     if (failure === 'save-failure') server.setFailWrite(true);
     else {
@@ -1329,7 +1329,7 @@ test('Portfolio editor locks an already open item dialog when account refresh go
   await page.getByRole('button', {name: /인덱스 편집/}).click();
   server.setFailRead(true);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  const item = page.getByRole('dialog', {name: '투자 대상 수정'});
+  const item = page.getByRole('region', {name: '투자 대상 수정'});
   await expect(item.getByLabel('금액', {exact: true})).toBeDisabled();
   await expect(item.getByRole('button', {name: '완료'})).toBeDisabled();
   await expect(item.getByLabel('금액', {exact: true})).toHaveValue('120,000');

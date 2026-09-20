@@ -14,6 +14,16 @@ const draft = setItemAmount(createCashOnlyDraft(200_000, 1), {
 }, 120_000);
 
 describe('AllocationEditor', () => {
+  it('keeps the item form inside the editor surface instead of opening a nested dialog', () => {
+    render(<AllocationEditor draft={draft} investmentWon={200_000}
+      onAction={vi.fn()} now={() => 2} presentation="edit" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /미국 인덱스 편집/ }));
+
+    expect(screen.getByRole('region', { name: '투자 대상 수정' })).toBeVisible();
+    expect(screen.queryByRole('dialog', { name: '투자 대상 수정' })).not.toBeInTheDocument();
+  });
+
   it('opens applied editing with a summary and one selectable row', () => {
     const onAction = vi.fn<(action: PortfolioAction) => void>();
     render(<AllocationEditor draft={draft} investmentWon={200_000}
@@ -21,7 +31,7 @@ describe('AllocationEditor', () => {
     expect(screen.getByRole('region', { name: '현재 배분 요약' })).toBeVisible();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /미국 인덱스 편집/ }));
-    expect(screen.getByRole('dialog', { name: '투자 대상 수정' })).toBeVisible();
+    expect(screen.getByRole('region', { name: '투자 대상 수정' })).toBeVisible();
     expect(onAction).not.toHaveBeenCalled();
   });
 
@@ -40,7 +50,7 @@ describe('AllocationEditor', () => {
       render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={onAction}
         now={() => 2} presentation={presentation} createId={() => 'new'} />);
       fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-      const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+      const sheet = screen.getByRole('region', { name: '투자 대상 추가' });
       fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '금 현물' } });
       const amount = within(sheet).getByLabelText('금액');
       fireEvent.change(amount, { target: { value: '90000' } });
@@ -57,7 +67,7 @@ describe('AllocationEditor', () => {
         type: 'draft-item-committed', item: { id: 'new', name: '금 현물', order: 1 },
         amountWon: 80_000, classification: 'stable', classificationOrigin: 'automatic', now: 2,
       });
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: '투자 대상 추가' })).not.toBeInTheDocument();
     });
 
     it('keeps duplicate names and subminimum amounts local', () => {
@@ -65,7 +75,7 @@ describe('AllocationEditor', () => {
       render(<AllocationEditor draft={draft} investmentWon={200_000} onAction={onAction}
         now={() => 2} presentation={presentation} />);
       fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-      const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+      const sheet = screen.getByRole('region', { name: '투자 대상 추가' });
       const name = within(sheet).getByLabelText('투자 대상 이름');
       fireEvent.change(name, { target: { value: ' 미국   인덱스 ' } });
       fireEvent.change(within(sheet).getByLabelText('금액'), { target: { value: '500' } });
@@ -81,11 +91,11 @@ describe('AllocationEditor', () => {
         now={() => 2} presentation={presentation} />);
       const add = screen.getByRole('button', { name: '투자 대상 추가' });
       fireEvent.click(add);
-      const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+      const sheet = screen.getByRole('region', { name: '투자 대상 추가' });
       fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '금 현물' } });
       fireEvent.click(within(sheet).getByRole('button', { name: '취소' }));
       fireEvent.click(screen.getByRole('button', { name: '버리기' }));
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: '투자 대상 추가' })).not.toBeInTheDocument();
       expect(onAction).not.toHaveBeenCalled();
       await waitFor(() => expect(add).toHaveFocus());
     });
@@ -101,7 +111,7 @@ describe('AllocationEditor', () => {
       expect(onAction).toHaveBeenCalledWith(expect.objectContaining({
         type: 'draft-item-committed', classification: 'growth', classificationOrigin: 'automatic',
       }));
-      await waitFor(() => expect(row).toHaveFocus());
+      await waitFor(() => expect(screen.getByRole('button', { name: /미국 인덱스 편집, 안정/ })).toHaveFocus());
     });
 
     it('disables addition at ten targets', () => {
@@ -116,7 +126,7 @@ describe('AllocationEditor', () => {
       const props = { investmentWon: 200_000, onAction, now: () => 2, presentation, createId: () => 'gold' };
       const { rerender } = render(<AllocationEditor {...props} draft={draft} />);
       fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-      const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+      const sheet = screen.getByRole('region', { name: '투자 대상 추가' });
       fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '금 현물' } });
       fireEvent.change(within(sheet).getByLabelText('금액'), { target: { value: '50000' } });
       fireEvent.click(within(sheet).getByRole('button', { name: '완료' }));
@@ -193,7 +203,7 @@ describe('AllocationEditor', () => {
 
     fireEvent.click(editTarget);
 
-    const sheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
+    const sheet = screen.getByRole('region', { name: '투자 대상 수정' });
     expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveValue('미국 인덱스');
     expect(within(sheet).getByLabelText('금액')).toHaveValue('120,000');
     fireEvent.click(within(sheet).getByRole('button', { name: '안정' }));
@@ -220,7 +230,7 @@ describe('AllocationEditor', () => {
     />);
 
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-    const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    const sheet = screen.getByRole('region', { name: '투자 대상 추가' });
     expect(within(sheet).getByLabelText('투자 대상 이름')).toHaveFocus();
     expect(onAction).not.toHaveBeenCalled();
     fireEvent.change(within(sheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 인덱스' } });
@@ -248,11 +258,11 @@ describe('AllocationEditor', () => {
       presentation="setup"
     />);
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-    fireEvent.click(within(screen.getByRole('dialog', { name: '투자 대상 추가' }))
+    fireEvent.click(within(screen.getByRole('region', { name: '투자 대상 추가' }))
       .getByRole('button', { name: '취소' }));
 
     expect(onAction).not.toHaveBeenCalled();
-    expect(screen.queryByRole('dialog', { name: '투자 대상 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '투자 대상 추가' })).not.toBeInTheDocument();
   });
 
   it('explains manual cash and offers explicit automatic action', () => {

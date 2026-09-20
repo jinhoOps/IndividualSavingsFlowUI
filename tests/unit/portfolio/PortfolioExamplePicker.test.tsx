@@ -1,13 +1,28 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioAction } from '../../../src/portfolio/application/portfolioReducer';
 import { createCashOnlyDraft, setItemAmount } from '../../../src/portfolio/domain/allocation';
-import { PortfolioExamplePicker } from '../../../src/portfolio/ui/PortfolioExamplePicker';
+import { sampleForPreset } from '../../../src/portfolio/domain/samplePreset';
+import { PortfolioExamplePicker, type PortfolioExampleNavigation } from '../../../src/portfolio/ui/PortfolioExamplePicker';
 
 afterEach(cleanup);
 
 describe('PortfolioExamplePicker', () => {
+  it('preselects the 5% sample as SCHD 50 and gold 50 without marking the picker dirty', () => {
+    const navigationRef = createRef<PortfolioExampleNavigation>();
+    render(<PortfolioExamplePicker draft={createCashOnlyDraft(200_000, 1)} investmentWon={200_000}
+      now={() => 2} onAction={vi.fn()} onClose={vi.fn()} navigationRef={navigationRef}
+      initialSample={sampleForPreset(5)} />);
+
+    expect(screen.getByRole('heading', { name: 'SCHD 50 · 금 50' })).toBeVisible();
+    const preview = screen.getByRole('heading', { name: '구성 미리보기' }).closest('section')!;
+    expect(preview).toHaveTextContent('SCHD50%');
+    expect(preview).toHaveTextContent('금(GOLD)50%');
+    expect(navigationRef.current?.hasChanges).toBe(false);
+  });
+
   it('commits the adjusted preview rather than the original sample ratios', () => {
     const onAction = vi.fn();
     render(<PortfolioExamplePicker draft={createCashOnlyDraft(200_000, 1)} investmentWon={200_000}

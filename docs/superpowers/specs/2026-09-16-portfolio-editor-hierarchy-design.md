@@ -1,5 +1,7 @@
 # Portfolio Editor Hierarchy Design
 
+> 2026-09-19 후속 범위: [Portfolio VOC 설계](2026-09-19-portfolio-voc-design.md)에 따라 대상 추가·수정은 이 문서의 공통 필드·복귀·접근성 계약을 유지하면서 부모 배분 편집 영역 안의 인라인 폼으로 전환한다. 기존 별도 대상 sheet/panel 배치 문장은 이 후속 범위로 대체한다.
+
 **Date:** 2026-09-16
 
 **Status:** Approved implementation contract

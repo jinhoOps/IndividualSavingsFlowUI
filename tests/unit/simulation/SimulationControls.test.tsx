@@ -23,6 +23,8 @@ describe('SimulationControls', () => {
       .toHaveClass('ui-button', 'ui-button--secondary');
     expect(screen.getByRole('button', { name: '직접 입력' }))
       .toHaveClass('ui-button', 'ui-button--secondary');
+    expect(screen.getByRole('link', { name: '9% 샘플 포트폴리오 보기' }))
+      .toHaveAttribute('href', '/apps/portfolio/?samplePreset=9');
 
     fireEvent.click(screen.getByRole('button', { name: '연 기대수익률 13%' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -33,6 +35,8 @@ describe('SimulationControls', () => {
       .not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '직접 입력' }));
     expect(screen.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }))
+      .toBeVisible();
+    expect(screen.getByRole('link', { name: '9% 샘플 포트폴리오 보기' }))
       .toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '기대수익률 0.25%p 올리기' }));
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -73,6 +77,7 @@ describe('SimulationControls', () => {
       target: { value: '9.123' },
     });
     expect(screen.getByText('0~30 사이, 소수점 둘째 자리까지 입력해주세요.')).toBeVisible();
+    expect(screen.queryByRole('link', { name: '9% 샘플 포트폴리오 보기' })).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
 });

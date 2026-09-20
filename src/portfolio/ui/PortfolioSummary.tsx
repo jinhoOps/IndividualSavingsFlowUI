@@ -11,7 +11,7 @@ import {
   createProductSpring,
 } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
-import { largestResultItem, orderedResultItems } from '../domain/allocation';
+import { orderedResultItems } from '../domain/allocation';
 import { stableShareUnits } from '../domain/classification';
 import type {
   AllocationResultItem,
@@ -68,8 +68,6 @@ export function PortfolioSummary({
       percentage: materialized?.percentage ?? 0,
     };
   }), [allocation, cashShareUnits, preferences.sortMode]);
-  const largestResult = largestResultItem(items);
-  const largest = items.find((item) => item.id === largestResult?.id) ?? items[0];
   const stablePercent = formatAllocationPercent(stableShareUnits({
     items: allocation.items,
     cashShareUnits,
@@ -174,11 +172,6 @@ export function PortfolioSummary({
         {preferences.showAmounts ? (
           <p className="portfolio-summary__stable">이번 달 투자금 {formatPortfolioWon(investmentWon)}</p>
         ) : null}
-        {largest === undefined ? null : (
-          <p className="portfolio-summary__largest">
-            {largest.name}에 {formatAllocationPercent(largest.percentage)}를 배분해요
-          </p>
-        )}
       </header>
 
       <div

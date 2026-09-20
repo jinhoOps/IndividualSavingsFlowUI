@@ -25,6 +25,7 @@ export function AllocationEditor({
   fieldError = null,
   onCashErrorChange,
   onCashDirtyChange,
+  onItemEditingChange,
   createId = () => crypto.randomUUID(),
   presentation = 'standalone',
   showSummary = true,
@@ -36,6 +37,7 @@ export function AllocationEditor({
   fieldError?: string | null;
   onCashErrorChange?(error: string | null): void;
   onCashDirtyChange?(dirty: boolean): void;
+  onItemEditingChange?(editing: boolean): void;
   createId?: () => string;
   presentation?: 'standalone' | 'setup' | 'edit';
   showSummary?: boolean;
@@ -49,6 +51,8 @@ export function AllocationEditor({
   const itemSheetReturnFocusRef = useRef<HTMLElement | null>(null);
   const itemRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const pendingAddedIdRef = useRef<string | null>(null);
+  const pendingItemFocusRef = useRef<string | null>(null);
+  const itemEditorScrollRef = useRef<{ element: HTMLElement; top: number; left: number } | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const pendingCaretRef = useRef<{ id: string; caret: number } | null>(null);
   const cashTriggerRef = useRef<HTMLButtonElement>(null);
@@ -87,6 +91,14 @@ export function AllocationEditor({
         pendingAddedIdRef.current = null;
       }
     }
+    const focusedId = pendingItemFocusRef.current;
+    if (focusedId !== null) {
+      const row = itemRowRefs.current[focusedId]?.querySelector('button');
+      if (row) {
+        row.focus({ preventScroll: true });
+        pendingItemFocusRef.current = null;
+      }
+    }
     if (pendingCaretRef.current === null) return;
     const { id, caret } = pendingCaretRef.current;
     const input = inputRefs.current[id];
@@ -108,6 +120,32 @@ export function AllocationEditor({
       ...current,
       [id]: formatWonInput(Number.isSafeInteger(value) ? value : fallback, { zeroDisplay: 'zero' }),
     }));
+  }
+
+  function closeItemSheet(focusEditedItem = true): void {
+    const activeSheet = activeItemSheet;
+    if (focusEditedItem && activeSheet?.mode === 'edit') {
+      pendingItemFocusRef.current = activeSheet.id;
+    }
+    const returnFocus = itemSheetReturnFocusRef.current;
+    setActiveItemSheet(null);
+    onItemEditingChange?.(false);
+    if (!focusEditedItem || activeSheet?.mode === 'add') {
+      returnFocus?.focus({ preventScroll: true });
+      requestAnimationFrame(() => returnFocus?.focus({ preventScroll: true }));
+      setTimeout(() => returnFocus?.focus({ preventScroll: true }), 0);
+    }
+    const scroll = itemEditorScrollRef.current;
+    itemEditorScrollRef.current = null;
+    if (scroll !== null) {
+      const restoreScroll = () => {
+        scroll.element.scrollTop = scroll.top;
+        scroll.element.scrollLeft = scroll.left;
+      };
+      requestAnimationFrame(restoreScroll);
+      setTimeout(restoreScroll, 0);
+      setTimeout(restoreScroll, 50);
+    }
   }
 
   return (
@@ -138,6 +176,48 @@ export function AllocationEditor({
           const nameErrorId = `portfolio-name-error-${index}`;
           const itemName = item.name || `투자 대상 ${index + 1}`;
           if (isFocused) {
+            if (activeItemSheet?.mode === 'edit' && activeItemSheet.id === item.id) {
+              return (
+                <div className="portfolio-editor__row portfolio-editor__row--editing" key={item.id} ref={(node) => { itemRowRefs.current[item.id] = node; }}>
+                  <PortfolioItemSheet
+                    inline
+                    mode="edit"
+                    initialValue={itemSheetInitialValue(activeItemSheet, draft, allocation)}
+                    existingNames={draft.items.filter((candidate) => candidate.id !== activeItemSheet.id).map((candidate) => candidate.name)}
+                    investmentWon={investmentWon}
+                    returnFocusRef={itemSheetReturnFocusRef}
+                    onComplete={(value) => {
+                      const existing = draft.items.find((candidate) => candidate.id === activeItemSheet.id);
+                      const nextItem = {
+                        id: activeItemSheet.id,
+                        name: value.name,
+                        order: existing?.order ?? draft.items.length,
+                      };
+                      try {
+                        setItemAmount(draft, nextItem, value.amountWon);
+                      } catch (error) {
+                        return errorMessage(error instanceof Error ? error.message : 'invalid-amount');
+                      }
+                      onAction({
+                        type: 'draft-item-committed',
+                        item: nextItem,
+                        amountWon: value.amountWon,
+                        classification: value.classification,
+                        classificationOrigin: value.classificationOrigin,
+                        now: now(),
+                      });
+                      closeItemSheet();
+                    }}
+                    onRemove={() => {
+                      itemSheetReturnFocusRef.current = document.querySelector<HTMLElement>('.portfolio-editor__add');
+                      onAction({ type: 'draft-item-removed', id: item.id, now: now() });
+                      closeItemSheet(false);
+                    }}
+                    onClose={closeItemSheet}
+                  />
+                </div>
+              );
+            }
             return (
               <div className="portfolio-editor__row" key={item.id} ref={(node) => { itemRowRefs.current[item.id] = node; }}>
                 <PortfolioAllocationRow
@@ -147,7 +227,9 @@ export function AllocationEditor({
                   classification={item.classification}
                   onEdit={(trigger) => {
                     itemSheetReturnFocusRef.current = trigger;
+                    itemEditorScrollRef.current = captureScrollPosition(trigger);
                     setActiveItemSheet({ mode: 'edit', id: item.id });
+                    onItemEditingChange?.(true);
                   }}
                 />
               </div>
@@ -215,6 +297,39 @@ export function AllocationEditor({
           );
         })}
       </div>
+
+      {isFocused && activeItemSheet?.mode === 'add' ? (
+        <div className="portfolio-editor__row portfolio-editor__row--editing">
+          <PortfolioItemSheet
+            inline
+            mode="add"
+            initialValue={itemSheetInitialValue(activeItemSheet, draft, allocation)}
+            existingNames={draft.items.map((item) => item.name)}
+            investmentWon={investmentWon}
+            returnFocusRef={itemSheetReturnFocusRef}
+            onComplete={(value) => {
+              const item = { id: activeItemSheet.id, name: value.name, order: draft.items.length };
+              try {
+                setItemAmount(draft, item, value.amountWon);
+              } catch (error) {
+                return errorMessage(error instanceof Error ? error.message : 'invalid-amount');
+              }
+              pendingAddedIdRef.current = item.id;
+              onAction({
+                type: 'draft-item-committed',
+                item,
+                amountWon: value.amountWon,
+                classification: value.classification,
+                classificationOrigin: value.classificationOrigin,
+                now: now(),
+              });
+              setActiveItemSheet(null);
+              onItemEditingChange?.(false);
+            }}
+            onClose={closeItemSheet}
+          />
+        </div>
+      ) : null}
 
       <section
         className="portfolio-editor__cash"
@@ -298,7 +413,9 @@ export function AllocationEditor({
           const id = createId();
           if (isFocused) {
             itemSheetReturnFocusRef.current = event.currentTarget;
+            itemEditorScrollRef.current = captureScrollPosition(event.currentTarget);
             setActiveItemSheet({ mode: 'add', id });
+            onItemEditingChange?.(true);
           } else {
             onAction({
               type: 'draft-item-added',
@@ -311,48 +428,21 @@ export function AllocationEditor({
       {isAtLimit ? <p role="status">투자 대상은 최대 10개까지 추가할 수 있습니다</p> : null}
 
       {activeFieldError ? <p id="portfolio-cash-error" role="alert">{errorMessage(activeFieldError)}</p> : null}
-      {isFocused && activeItemSheet ? (
-        <PortfolioItemSheet
-          mode={activeItemSheet.mode}
-          initialValue={itemSheetInitialValue(activeItemSheet, draft, allocation)}
-          existingNames={draft.items
-            .filter((item) => item.id !== activeItemSheet.id)
-            .map((item) => item.name)}
-          investmentWon={investmentWon}
-          returnFocusRef={itemSheetReturnFocusRef}
-          onComplete={(value) => {
-            const existing = draft.items.find((item) => item.id === activeItemSheet.id);
-            const item = {
-              id: activeItemSheet.id,
-              name: value.name,
-              order: existing?.order ?? draft.items.length,
-            };
-            try {
-              setItemAmount(draft, item, value.amountWon);
-            } catch (error) {
-              return errorMessage(error instanceof Error ? error.message : 'invalid-amount');
-            }
-            if (!existing) pendingAddedIdRef.current = item.id;
-            onAction({
-              type: 'draft-item-committed',
-              item,
-              amountWon: value.amountWon,
-              classification: value.classification,
-              classificationOrigin: value.classificationOrigin,
-              now: now(),
-            });
-            setActiveItemSheet(null);
-          }}
-          onRemove={activeItemSheet.mode === 'edit' ? () => {
-            itemSheetReturnFocusRef.current = document.querySelector<HTMLElement>('.portfolio-editor__add');
-            onAction({ type: 'draft-item-removed', id: activeItemSheet.id, now: now() });
-            setActiveItemSheet(null);
-          } : undefined}
-          onClose={() => setActiveItemSheet(null)}
-        />
-      ) : null}
     </Surface>
   );
+}
+
+function captureScrollPosition(element: HTMLElement): { element: HTMLElement; top: number; left: number } | null {
+  const editorBody = element.closest<HTMLElement>('.portfolio-edit-surface__body');
+  if (editorBody !== null) {
+    return { element: editorBody, top: editorBody.scrollTop, left: editorBody.scrollLeft };
+  }
+  for (let parent = element.parentElement; parent !== null; parent = parent.parentElement) {
+    if (parent.scrollHeight > parent.clientHeight || parent.scrollWidth > parent.clientWidth) {
+      return { element: parent, top: parent.scrollTop, left: parent.scrollLeft };
+    }
+  }
+  return null;
 }
 
 function itemSheetInitialValue(

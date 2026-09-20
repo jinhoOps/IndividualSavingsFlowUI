@@ -13,6 +13,7 @@ import {
   type PortfolioExampleTag,
   type PortfolioRiskBand,
 } from '../domain/portfolioExamples';
+import type { PortfolioSampleSelection } from '../domain/samplePreset';
 import { formatPortfolioWon } from './format';
 
 const riskBandCopy: Record<PortfolioRiskBand, { title: string; description: string }> = {
@@ -37,6 +38,7 @@ export function PortfolioExamplePicker({
   onDismiss,
   active = true,
   navigationRef,
+  initialSample,
 }: {
   draft: PortfolioDraft;
   investmentWon: number;
@@ -46,6 +48,7 @@ export function PortfolioExamplePicker({
   onDismiss?(): void;
   active?: boolean;
   navigationRef?: Ref<PortfolioExampleNavigation>;
+  initialSample?: PortfolioSampleSelection;
 }) {
   const [mode, setMode] = useState<'examples' | 'direct'>('examples');
   const [riskFilter, setRiskFilter] = useState<PortfolioRiskBand | 'all'>('all');
@@ -58,6 +61,8 @@ export function PortfolioExamplePicker({
   const [error, setError] = useState<string | null>(null);
   const [wide, setWide] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1100px)').matches);
   const [detailPage, setDetailPage] = useState(false);
+  const [selectionTouched, setSelectionTouched] = useState(false);
+  const initialSampleAppliedRef = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   const selectedButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -66,6 +71,9 @@ export function PortfolioExamplePicker({
   const selectedExampleLegs = selectedExample === null
     ? []
     : adjustedExampleLegs ?? selectedExample.legs;
+  const selectedExampleTitle = selectedExample === null
+    ? null
+    : adjustedExampleLegs === null ? selectedExample.title : titleForLegs(selectedExampleLegs);
   const directLegs = useMemo(() => directComposition(leadAssetId, leadPercentage, assistants), [
     assistants,
     leadAssetId,
@@ -81,6 +89,15 @@ export function PortfolioExamplePicker({
   useEffect(() => {
     setConfirmationCandidate(null);
   }, [draft.syncedInvestmentWon, draft.updatedAt, previewCandidate]);
+
+  useEffect(() => {
+    if (!active || initialSample === undefined || initialSampleAppliedRef.current) return;
+    initialSampleAppliedRef.current = true;
+    setSelectedExampleId(initialSample.exampleId);
+    setAdjustedExampleLegs(initialSample.legs);
+    setLeadPercentage(initialSample.leadPercentage);
+    setDetailPage(true);
+  }, [active, initialSample]);
 
   useEffect(() => {
     if (!window.matchMedia) return;
@@ -119,7 +136,7 @@ export function PortfolioExamplePicker({
 
   useImperativeHandle(navigationRef, () => ({
     back,
-    hasChanges: selectedExampleId !== null || leadAssetId !== '' || assistants.some(Boolean),
+    hasChanges: selectionTouched || leadAssetId !== '' || assistants.some(Boolean),
   }));
 
   function chooseMode(nextMode: 'examples' | 'direct'): void {
@@ -134,7 +151,11 @@ export function PortfolioExamplePicker({
       setError('invalid-example-allocation');
       return;
     }
-    setAdjustedExampleLegs(rebalanceLead(selectedExample.legs, nextLeadPercentage));
+    const baseLegs = initialSample?.exampleId === selectedExample.id && adjustedExampleLegs !== null
+      ? selectedExampleLegs
+      : selectedExample.legs;
+    setAdjustedExampleLegs(rebalanceLead(baseLegs, nextLeadPercentage));
+    setSelectionTouched(true);
     setConfirmationCandidate(null);
     setError(null);
   }
@@ -210,6 +231,7 @@ export function PortfolioExamplePicker({
                         setDetailPage(true);
                         setSelectedExampleId(example.id);
                         if (selectedExampleId !== example.id) setAdjustedExampleLegs(null);
+                        setSelectionTouched(true);
                         setConfirmationCandidate(null);
                         setError(null);
                       }}
@@ -227,7 +249,7 @@ export function PortfolioExamplePicker({
           <div className="portfolio-example-picker__detail-body" ref={detailRef} hidden={confirmationCandidate !== null}>
             {mode === 'examples' && selectedExample === null ? <p className="portfolio-example-picker__empty">샘플을 선택하면 구성과 비율을 확인할 수 있어요.</p> : null}
             {mode === 'examples' && selectedExample !== null ? (
-              <h3 tabIndex={-1} className="portfolio-example-picker__selection-title">{selectedExample.title}</h3>
+              <h3 tabIndex={-1} className="portfolio-example-picker__selection-title">{selectedExampleTitle}</h3>
             ) : null}
             {mode === 'examples' && previewCandidate.draft !== null ? (
               <PortfolioExamplePreview draft={previewCandidate.draft} investmentWon={investmentWon} />
@@ -245,7 +267,10 @@ export function PortfolioExamplePicker({
                   onChange={changeSelectedExampleLead}
                 />
                 {adjustedExampleLegs === null ? null : (
-                  <Button type="button" variant="quiet" onClick={() => setAdjustedExampleLegs(null)}>샘플 비율로 되돌리기</Button>
+                  <Button type="button" variant="quiet" onClick={() => {
+                    setAdjustedExampleLegs(initialSample?.exampleId === selectedExample.id ? initialSample.legs : null);
+                    setSelectionTouched(true);
+                  }}>샘플 비율로 되돌리기</Button>
                 )}
               </section>
             ) : null}
@@ -261,6 +286,7 @@ export function PortfolioExamplePicker({
                     onChange={(event) => {
                       const next = event.currentTarget.value as PortfolioAssetId | '';
                       setLeadAssetId(next);
+                      setSelectionTouched(true);
                       setAssistants((current) => current.map((id) => id === next ? '' : id));
                     }}
                   >
@@ -268,13 +294,19 @@ export function PortfolioExamplePicker({
                     {assetOptions().map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
                   </select>
                 </label>
-                <LeadPercentageControl value={leadPercentage} onChange={setLeadPercentage} />
+                <LeadPercentageControl value={leadPercentage} onChange={(value) => {
+                  setSelectionTouched(true);
+                  setLeadPercentage(value);
+                }} />
                 <label>
                   <span>보조 투자 대상 1</span>
                   <select
                     aria-label="보조 투자 대상 1"
                     value={assistants[0]}
-                    onChange={(event) => setAssistant(0, event.currentTarget.value as PortfolioAssetId | '')}
+                    onChange={(event) => {
+                      setSelectionTouched(true);
+                      setAssistant(0, event.currentTarget.value as PortfolioAssetId | '');
+                    }}
                   >
                     <option value="">선택하세요</option>
                     {assetOptions([leadAssetId, assistants[1] ?? '']).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
@@ -287,16 +319,25 @@ export function PortfolioExamplePicker({
                       <select
                         aria-label="보조 투자 대상 2"
                         value={assistants[1]}
-                        onChange={(event) => setAssistant(1, event.currentTarget.value as PortfolioAssetId | '')}
+                        onChange={(event) => {
+                          setSelectionTouched(true);
+                          setAssistant(1, event.currentTarget.value as PortfolioAssetId | '');
+                        }}
                       >
                         <option value="">선택하세요</option>
                         {assetOptions([leadAssetId, assistants[0]]).map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
                       </select>
                     </label>
-                    <Button type="button" variant="quiet" onClick={() => setAssistants((current) => [current[0]])}>보조 대상 2 제거</Button>
+                    <Button type="button" variant="quiet" onClick={() => {
+                      setSelectionTouched(true);
+                      setAssistants((current) => [current[0]]);
+                    }}>보조 대상 2 제거</Button>
                   </>
                 ) : (
-                  <Button type="button" variant="quiet" disabled={assistants[0] === ''} onClick={() => setAssistants((current) => [...current, ''])}>
+                  <Button type="button" variant="quiet" disabled={assistants[0] === ''} onClick={() => {
+                    setSelectionTouched(true);
+                    setAssistants((current) => [...current, '']);
+                  }}>
                     보조 대상 하나 더 추가
                   </Button>
                 )}
@@ -479,6 +520,10 @@ function tagsForLegs(legs: readonly PortfolioExampleLeg[]): PortfolioExampleTag[
     else if (leg.assetId === 'BTC') tags.add('BTC');
   }
   return [...tags];
+}
+
+function titleForLegs(legs: readonly PortfolioExampleLeg[]): string {
+  return legs.map((leg) => `${leg.assetId === 'GOLD' ? '금' : leg.assetId} ${leg.percentage}`).join(' · ');
 }
 
 function exampleErrorMessage(error: string): string {

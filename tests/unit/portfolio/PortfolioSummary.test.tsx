@@ -110,7 +110,7 @@ describe('PortfolioSummary', () => {
     );
 
     expect(screen.getByRole('heading', { name: '안정 50%' })).toBeVisible();
-    expect(screen.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+    expect(screen.queryByText('글로벌 인덱스에 50%를 배분해요')).not.toBeInTheDocument();
     expect(screen.queryByText(/원/)).not.toBeInTheDocument();
     expect(visibleRowNames()).toEqual(['글로벌 인덱스', '채권', '금', '현금']);
     expect(screen.getAllByRole('listitem').map((row) => row.textContent)).toEqual([
@@ -208,7 +208,7 @@ describe('PortfolioSummary', () => {
     );
 
     expect(visibleRowNames()).toEqual(['금', '글로벌 인덱스', '채권', '현금']);
-    expect(screen.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+    expect(screen.queryByText('글로벌 인덱스에 50%를 배분해요')).not.toBeInTheDocument();
   });
 
   it('commits final order and accessible ratios while keyed rows interpolate', () => {
@@ -625,7 +625,7 @@ describe('PortfolioSummary', () => {
     );
 
     expect(visibleRowNames()).toEqual(['첫번째 입력', '두번째 입력', '현금']);
-    expect(screen.getByText('첫번째 입력에 40%를 배분해요')).toBeVisible();
+    expect(screen.queryByText('첫번째 입력에 40%를 배분해요')).not.toBeInTheDocument();
   });
 
   it('prefers an investment over cash when both share the largest ratio', () => {
@@ -650,6 +650,6 @@ describe('PortfolioSummary', () => {
     );
 
     expect(visibleRowNames()).toEqual(['글로벌 인덱스', '현금']);
-    expect(screen.getByText('글로벌 인덱스에 50%를 배분해요')).toBeVisible();
+    expect(screen.queryByText('글로벌 인덱스에 50%를 배분해요')).not.toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Button } from '../../components/common/Button';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import type { PortfolioDraft } from '../domain/model';
+import type { PortfolioSampleSelection } from '../domain/samplePreset';
 import { AllocationEditor } from './AllocationEditor';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioEditorSummary } from './PortfolioEditorSummary';
@@ -24,6 +25,9 @@ export function PortfolioEditSurface({
   onApply,
   showAmounts,
   now,
+  initialSample,
+  openExamples = false,
+  onSampleIntentOpened,
 }: {
   draft: PortfolioDraft;
   investmentWon: number;
@@ -40,18 +44,23 @@ export function PortfolioEditSurface({
   onApply(): void;
   showAmounts: boolean;
   now(): number;
+  initialSample?: PortfolioSampleSelection;
+  openExamples?: boolean;
+  onSampleIntentOpened?(): void;
 }) {
   const [cashError, setCashError] = useState<string | null>(null);
   const [examplePickerOpen, setExamplePickerOpen] = useState(false);
   const [exampleVisited, setExampleVisited] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [cashDirty, setCashDirty] = useState(false);
+  const [itemEditing, setItemEditing] = useState(false);
   const [editorGeneration, setEditorGeneration] = useState(0);
   const pickerRef = useRef<PortfolioExampleNavigation>(null);
   const sampleTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const discardTriggerRef = useRef<HTMLElement | null>(null);
   const pendingSheetDismissRef = useRef<((approved: boolean) => void) | null>(null);
+  const sampleIntentOpenedRef = useRef(false);
   const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
     typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
       ? 'sheet'
@@ -67,13 +76,21 @@ export function PortfolioEditSurface({
     return () => media.removeEventListener('change', update);
   }, []);
 
+  useEffect(() => {
+    if (!openExamples || examplePickerOpen || sampleIntentOpenedRef.current) return;
+    sampleIntentOpenedRef.current = true;
+    setExampleVisited(true);
+    setExamplePickerOpen(true);
+    onSampleIntentOpened?.();
+  }, [examplePickerOpen, onSampleIntentOpened, openExamples]);
+
   useEffect(() => () => {
     pendingSheetDismissRef.current?.(false);
     pendingSheetDismissRef.current = null;
   }, []);
 
   function requestClose(): void {
-    if (applying) return;
+    if (applying || itemEditing) return;
     if (dirty || cashDirty || cashError || fieldError || pickerRef.current?.hasChanges) {
       discardTriggerRef.current = document.activeElement as HTMLElement | null;
       setConfirmDiscard(true);
@@ -81,7 +98,7 @@ export function PortfolioEditSurface({
   }
 
   function requestSheetDismiss(): boolean | Promise<boolean> {
-    if (applying) return false;
+    if (applying || itemEditing) return false;
     if (dirty || cashDirty || cashError || fieldError || pickerRef.current?.hasChanges) {
       discardTriggerRef.current = closeButtonRef.current;
       setConfirmDiscard(true);
@@ -124,7 +141,7 @@ export function PortfolioEditSurface({
         className={`portfolio-edit-surface${examplePickerOpen ? ' portfolio-edit-surface--examples' : ''}`}
         dataPresentation={presentation}
         labelledBy={examplePickerOpen ? 'portfolio-example-picker-title' : 'portfolio-edit-title'}
-        closeOnBackdrop
+        closeOnBackdrop={!itemEditing}
         enableSheetDismiss={!examplePickerOpen}
         onSheetDismiss={requestSheetDismiss}
         onSheetDismissed={onSheetDismissed}
@@ -157,6 +174,7 @@ export function PortfolioEditSurface({
           <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
           <div className="portfolio-edit-surface__body">
             <Button ref={sampleTriggerRef} type="button" variant="quiet" className="portfolio-edit-surface__samples"
+              disabled={itemEditing}
               onClick={() => { setExampleVisited(true); setExamplePickerOpen(true); }}>샘플로 구성하기</Button>
             <AllocationEditor
               key={editorGeneration}
@@ -167,12 +185,13 @@ export function PortfolioEditSurface({
               fieldError={fieldError}
               onCashErrorChange={setCashError}
               onCashDirtyChange={setCashDirty}
+              onItemEditingChange={setItemEditing}
               presentation="edit"
               showSummary={false}
             />
           </div>
           <footer className="portfolio-edit-surface__footer">
-            {!examplePickerOpen && dirty ? (
+            {!examplePickerOpen && !itemEditing && dirty ? (
               <PortfolioApplyBar
                 dirty
                 saveError={saveError}
@@ -197,6 +216,7 @@ export function PortfolioEditSurface({
             }
           }}
           onClose={closeExamples} onDismiss={requestClose} active={examplePickerOpen} navigationRef={pickerRef}
+          initialSample={initialSample}
         /> : null}
       </PortfolioDialog>
       {confirmDiscard ? <PortfolioDialog labelledBy="portfolio-discard-title" returnFocusRef={discardTriggerRef}

@@ -9,6 +9,7 @@ import type {
 } from '../application/portfolioReducer';
 import { materializeAllocation } from '../domain/allocation';
 import type { PortfolioDraft } from '../domain/model';
+import type { PortfolioSampleSelection } from '../domain/samplePreset';
 import { validateApplicableDraft } from '../domain/validation';
 import { AllocationEditor } from './AllocationEditor';
 import { PortfolioExamplePicker, type PortfolioExampleNavigation } from './PortfolioExamplePicker';
@@ -28,6 +29,9 @@ export interface PortfolioSetupFlowProps {
   onNext(): void;
   onApply(): void;
   now(): number;
+  initialSample?: PortfolioSampleSelection;
+  openExamples?: boolean;
+  onSampleIntentOpened?(): void;
 }
 
 const steps: PortfolioSetupStep[] = ['welcome', 'allocation', 'review'];
@@ -38,9 +42,11 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   const [exampleVisited, setExampleVisited] = useState(false);
   const [discardExample, setDiscardExample] = useState(false);
   const [editorGeneration, setEditorGeneration] = useState(0);
+  const [itemEditing, setItemEditing] = useState(false);
   const pickerRef = useRef<PortfolioExampleNavigation>(null);
   const sampleTriggerRef = useRef<HTMLButtonElement>(null);
   const discardTriggerRef = useRef<HTMLElement | null>(null);
+  const sampleIntentOpenedRef = useRef(false);
   const activeFieldError = cashError ?? props.fieldError;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const index = steps.indexOf(props.step);
@@ -51,6 +57,14 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
   useEffect(() => {
     headingRef.current?.focus();
   }, [props.step]);
+
+  useEffect(() => {
+    if (props.step !== 'allocation' || !props.openExamples || examplePickerOpen || sampleIntentOpenedRef.current) return;
+    sampleIntentOpenedRef.current = true;
+    setExampleVisited(true);
+    setExamplePickerOpen(true);
+    props.onSampleIntentOpened?.();
+  }, [examplePickerOpen, props.openExamples, props.onSampleIntentOpened, props.step]);
 
   return (
     <Surface
@@ -81,7 +95,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       {props.step === 'allocation' ? (
         <div className="portfolio-setup__allocation">
           <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>투자 배분 설정</h1>
-          <Button ref={sampleTriggerRef} type="button" variant="secondary" onClick={() => {
+          <Button ref={sampleTriggerRef} type="button" variant="secondary" disabled={itemEditing || props.applying} onClick={() => {
             setExampleVisited(true);
             setExamplePickerOpen(true);
           }}>샘플로 구성하기</Button>
@@ -93,6 +107,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
             now={props.now}
             fieldError={props.fieldError}
             onCashErrorChange={setCashError}
+            onItemEditingChange={setItemEditing}
             presentation="setup"
           />
           {exampleVisited ? <PortfolioDialog open={examplePickerOpen}
@@ -113,7 +128,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
                   setEditorGeneration((generation) => generation + 1);
                 }
               }} active={examplePickerOpen} navigationRef={pickerRef}
-              onClose={() => setExamplePickerOpen(false)} />
+              onClose={() => setExamplePickerOpen(false)} initialSample={props.initialSample} />
           </PortfolioDialog> : null}
           {discardExample ? <PortfolioDialog labelledBy="portfolio-example-discard-title" returnFocusRef={discardTriggerRef}
             onClose={() => setDiscardExample(false)}>
@@ -139,12 +154,12 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       {choosingExample ? null : (
         <nav className="portfolio-setup__actions" aria-label="설정 이동">
           {props.step !== 'welcome' ? (
-            <Button type="button" variant="secondary" disabled={props.applying} onClick={props.onPrevious}>이전</Button>
+            <Button type="button" variant="secondary" disabled={props.applying || itemEditing} onClick={props.onPrevious}>이전</Button>
           ) : null}
           <Button
             type="button"
             variant="primary"
-            disabled={props.applying || (props.step !== 'welcome' && (activeFieldError !== null || !validateApplicableDraft(props.draft)))}
+            disabled={props.applying || itemEditing || (props.step !== 'welcome' && (activeFieldError !== null || !validateApplicableDraft(props.draft)))}
             onClick={props.step === 'review' ? props.onApply : props.onNext}
           >
             {props.step === 'welcome' ? '배분 시작하기' : props.step === 'review' ? '이대로 시작' : '배분 확인'}

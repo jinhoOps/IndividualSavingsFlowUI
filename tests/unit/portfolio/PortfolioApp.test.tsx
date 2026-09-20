@@ -142,9 +142,9 @@ describe('PortfolioApp', () => {
     fireEvent.click(row);
     fireEvent.keyDown(screen.getByLabelText('투자 대상 이름'), { key: 'Escape' });
     expect(editor).toBeVisible();
-    expect(screen.queryByRole('dialog', { name: '투자 대상 수정' })).not.toBeInTheDocument();
-    await waitFor(() => expect(row).toHaveFocus());
-    fireEvent.click(row);
+    expect(screen.queryByRole('region', { name: '투자 대상 수정' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: /인덱스 편집/ })).toHaveFocus());
+    fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     const name = screen.getByLabelText('투자 대상 이름');
     fireEvent.change(name, { target: { value: '새 이름' } });
     fireEvent.keyDown(name, { key: 'Escape' });
@@ -460,11 +460,11 @@ describe('PortfolioApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-    const targetSheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    const targetSheet = screen.getByRole('region', { name: '투자 대상 추가' });
     fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '미국 인덱스' } });
     fireEvent.change(within(targetSheet).getByLabelText('금액'), { target: { value: '120000' } });
     fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
-    expect(screen.queryByRole('dialog', { name: '투자 대상 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '투자 대상 추가' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '미국 인덱스 편집, 성장, 120,000원, 60%' })).toBeVisible();
 
     const liveSummary = screen.getByRole('region', { name: '현재 배분 요약' });
@@ -744,13 +744,13 @@ describe('PortfolioApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '배분 시작하기' }));
     fireEvent.click(screen.getByRole('button', { name: '투자 대상 추가' }));
-    let targetSheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
+    let targetSheet = screen.getByRole('region', { name: '투자 대상 추가' });
     fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '초기 이름' } });
     fireEvent.change(within(targetSheet).getByLabelText('금액'), { target: { value: '100000' } });
     fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
     await waitFor(() => expect(repository.saveDraft).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: '초기 이름 편집, 성장, 100,000원, 50%' }));
-    targetSheet = screen.getByRole('dialog', { name: '투자 대상 수정' });
+    targetSheet = screen.getByRole('region', { name: '투자 대상 수정' });
     fireEvent.change(within(targetSheet).getByLabelText('투자 대상 이름'), { target: { value: '최신 이름' } });
     fireEvent.click(within(targetSheet).getByRole('button', { name: '완료' }));
     expect(repository.saveDraft).toHaveBeenCalledTimes(1);

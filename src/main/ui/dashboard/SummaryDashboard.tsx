@@ -200,7 +200,6 @@ export function SummaryDashboard({
         <header className="main-dashboard__header">
           <p className="main-eyebrow">자금 흐름</p>
           <h1 className="main-page-title" id="summary-dashboard-title" tabIndex={-1} ref={summaryHeadingRef}>이번 달 자금 흐름</h1>
-          <p className="main-dashboard__description">수입과 지출, 저축, 투자 뒤에 남는 돈을 확인하세요.</p>
         </header>
 
         {backupStatus === null ? null : (

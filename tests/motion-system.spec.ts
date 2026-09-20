@@ -195,7 +195,7 @@ for (const viewport of VIEWPORTS) {
 
     await page.locator('.portfolio-allocation-row__select').first().click();
     await page.getByRole('button', { name: /^금 편집,/ }).click();
-    const itemEditor = page.getByRole('dialog', { name: '투자 대상 수정' });
+    const itemEditor = page.getByRole('region', { name: '투자 대상 수정' });
     const goldAmount = itemEditor.getByLabel('금액', { exact: true });
     await goldAmount.fill('40000');
     await itemEditor.getByRole('button', { name: '완료' }).click();

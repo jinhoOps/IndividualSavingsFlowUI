@@ -4,6 +4,7 @@ import { AppShell } from '../../components/common/AppShell';
 import { Surface } from '../../components/common/Surface';
 import { useDelayedPending } from '../../components/feedback/useDelayedPending';
 import { appPath } from '../../journey/routes';
+import { parsePortfolioSampleIntent } from '../../journey/portfolioSampleIntent';
 import { bootstrapPortfolio } from '../application/bootstrap';
 import {
   createPortfolioState,
@@ -13,6 +14,7 @@ import {
   type PortfolioState,
 } from '../application/portfolioReducer';
 import { materializeAllocation } from '../domain/allocation';
+import { sampleForPreset, type PortfolioSampleSelection } from '../domain/samplePreset';
 import {
   DEFAULT_PORTFOLIO_VIEW_PREFERENCES,
   type PortfolioPlan,
@@ -69,6 +71,14 @@ export function PortfolioApp({
     () => bootstrapPortfolio(mainRepository.load(), repository.load(), now()),
     [mainRepository, repository, now],
   );
+  const sampleIntent = useMemo(() => (
+    typeof window === 'undefined' ? null : parsePortfolioSampleIntent(window.location.search)
+  ), []);
+  const initialSample = useMemo<PortfolioSampleSelection | undefined>(() => (
+    sampleIntent?.preset === null || sampleIntent === null
+      ? undefined
+      : sampleForPreset(sampleIntent.preset)
+  ), [sampleIntent]);
   const recovered = useInitialRecovery('portfolio', parsePortfolioDraft);
   const [state, setState] = useState<PortfolioState | null>(() => {
     if (initial.kind !== 'ready') return null;
@@ -101,6 +111,8 @@ export function PortfolioApp({
     600,
   );
   const showSaving = applyPending ? delayedApply : delayedAutomaticSaving;
+  const sampleIntentHandledRef = useRef(false);
+  const openSamplePicker = sampleIntent !== null && !sampleIntentHandledRef.current;
 
   useEffect(() => {
     if (state?.view !== 'edit' && closingEdit === null
@@ -144,6 +156,31 @@ export function PortfolioApp({
       dispatchState({ type: result === 'saved' ? 'save-succeeded' : 'save-failed' });
     });
   }, [initial, repository]);
+
+  useEffect(() => {
+    if (sampleIntent === null || sampleIntentHandledRef.current || state === null) return;
+    const current = stateRef.current;
+    if (current === null) return;
+    if (current.view === 'setup' && current.setupStep === 'welcome') {
+      dispatchState({ type: 'setup-next' });
+      return;
+    }
+    if (current.view === 'result') {
+      dispatchState({ type: 'edit-opened' });
+      return;
+    }
+  }, [sampleIntent, state]);
+
+  function consumeSampleIntent(): void {
+    if (sampleIntentHandledRef.current) return;
+    sampleIntentHandledRef.current = true;
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('samplePreset');
+      url.searchParams.delete('samples');
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+  }
 
   function dispatchDraft(action: PortfolioAction): void {
     if (applyPendingRef.current) return;
@@ -330,6 +367,9 @@ export function PortfolioApp({
               onNext={() => dispatchState({ type: 'setup-next' })}
               onApply={apply}
               now={now}
+              initialSample={initialSample}
+              openExamples={openSamplePicker}
+              onSampleIntentOpened={consumeSampleIntent}
             />
           ) : state.applied !== null ? (
             <>
@@ -379,6 +419,9 @@ export function PortfolioApp({
                   onApply={apply}
                   showAmounts={preferences.showAmounts}
                   now={now}
+                  initialSample={initialSample}
+                  openExamples={openSamplePicker}
+                  onSampleIntentOpened={consumeSampleIntent}
                 />
               ) : null}
             </>

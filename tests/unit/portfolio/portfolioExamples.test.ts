@@ -5,6 +5,7 @@ import {
   createDraftFromAllocation,
   createDraftFromExample,
 } from '../../../src/portfolio/domain/portfolioExamples';
+import { sampleForPreset } from '../../../src/portfolio/domain/samplePreset';
 
 describe('portfolio examples', () => {
   it('keeps the agreed seven samples grouped by relative risk and attribute tags', () => {
@@ -57,5 +58,14 @@ describe('portfolio examples', () => {
 
     expect(materializeAllocation(draft, 200_000).items.map((item) => [item.id, item.amountWon]))
       .toEqual([['VOO', 140_000], ['GOLD', 60_000]]);
+  });
+
+  it('maps simulation presets to stable sample compositions', () => {
+    expect(sampleForPreset(5)).toMatchObject({
+      exampleId: 'schd-gold', leadPercentage: 50, riskBand: 'defensive',
+      legs: [{ assetId: 'SCHD', percentage: 50 }, { assetId: 'GOLD', percentage: 50 }],
+    });
+    expect(sampleForPreset(9)).toMatchObject({ exampleId: 'qqqm-schd', leadPercentage: 70, riskBand: 'growth' });
+    expect(sampleForPreset(13)).toMatchObject({ exampleId: 'qld-schd-gold', leadPercentage: 50, riskBand: 'aggressive' });
   });
 });

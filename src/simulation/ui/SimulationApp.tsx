@@ -290,9 +290,6 @@ export function SimulationApp({
                   options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
                   onChange={(amountMode) => saveDraft({ ...resultDraft, amountMode, updatedAt: now() })} />
               </header>
-              <p className="simulation-projection__basis">{resultDraft.amountMode === 'nominal'
-                ? '미래에 모일 금액 그대로 보여줘요.'
-                : '물가 상승을 반영해 오늘의 가치로 보여줘요.'}</p>
               {resultIsFinite ? <GrowthChart result={result} amountMode={resultDraft.amountMode} embedded /> : (
                 <p role="alert" className="simulation-calculation-error">
                   계산 결과를 표시할 수 없어요. 목표와 가정에서 입력값을 조정해주세요.

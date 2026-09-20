@@ -50,6 +50,8 @@ for (const viewport of [
     await expect(projection.getByRole('heading', { name: '5년 동안의 자산 변화' })).toBeVisible();
     await expect(projection.getByRole('img', { name: '기간별 복리 성장 그래프' })).toBeVisible();
     await expect(projection.getByRole('button', { name: '연 기대수익률 9%' })).toBeVisible();
+    await expect(projection.getByRole('link', { name: '9% 샘플 포트폴리오 보기' }))
+      .toHaveAttribute('href', '/IndividualSavingsFlowUI/apps/portfolio/?samplePreset=9');
     await expect(projection.getByText('넣은 돈 대비')).toBeVisible();
     const initialGoalCopy = await page.locator('#simulation-result-title').textContent();
     await projection.getByRole('spinbutton', { name: '기간 숫자' }).fill('8');
@@ -126,7 +128,7 @@ for (const viewport of [
     await expect(page.getByRole('spinbutton', { name: '기준금리', exact: true })).toBeHidden();
     await expect(page.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: '실질', exact: true }).click();
-    await expect(page.getByText('물가 상승을 반영해 오늘의 가치로 보여줘요.')).toBeVisible();
+    await expect(page.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: '명목', exact: true }).click();
     await page.evaluate(() => document.fonts.ready);
     await expect.poll(() => projection.locator('.simulation-comparison dd').evaluateAll(values => values.every(value => (

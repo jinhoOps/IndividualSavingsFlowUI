@@ -24,6 +24,7 @@ export interface PortfolioItemSheetProps {
   existingNames: string[];
   investmentWon: number;
   returnFocusRef: RefObject<HTMLElement | null>;
+  inline?: boolean;
   onComplete(value: PortfolioItemSheetValue): string | void;
   onRemove?(): void;
   onClose(): void;
@@ -35,6 +36,7 @@ export function PortfolioItemSheet({
   existingNames,
   investmentWon,
   returnFocusRef,
+  inline = false,
   onComplete,
   onRemove,
   onClose,
@@ -92,6 +94,10 @@ export function PortfolioItemSheet({
     return () => media.removeEventListener('change', update);
   }, []);
 
+  useEffect(() => {
+    if (inline) nameInputRef.current?.focus();
+  }, [inline]);
+
   useEffect(() => () => {
     pendingSheetDismissRef.current?.(false);
     pendingSheetDismissRef.current = null;
@@ -147,19 +153,8 @@ export function PortfolioItemSheet({
     amountInputRef.current?.focus();
   }
 
-  return (
+  const formContent = (
     <>
-      <PortfolioDialog
-        labelledBy="portfolio-item-sheet-title"
-        onClose={requestClose}
-        returnFocusRef={returnFocusRef}
-        className="portfolio-item-sheet"
-        dataPresentation={presentation}
-        closeOnBackdrop
-        enableSheetDismiss={true}
-        onSheetDismiss={requestSheetDismiss}
-        onSheetDismissed={onClose}
-      >
         <header className="portfolio-item-sheet__header" data-sheet-drag-handle>
           <h2 id="portfolio-item-sheet-title">{title}</h2>
           {mode === 'edit' && onRemove ? (
@@ -282,7 +277,36 @@ export function PortfolioItemSheet({
             }}
           >완료</Button>
         </footer>
-      </PortfolioDialog>
+    </>
+  );
+
+  return (
+    <>
+      {inline ? (
+        <section className="portfolio-item-form" aria-labelledby="portfolio-item-sheet-title"
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            requestClose();
+          }}>
+          {formContent}
+        </section>
+      ) : (
+        <PortfolioDialog
+          labelledBy="portfolio-item-sheet-title"
+          onClose={requestClose}
+          returnFocusRef={returnFocusRef}
+          className="portfolio-item-sheet"
+          dataPresentation={presentation}
+          closeOnBackdrop
+          enableSheetDismiss={true}
+          onSheetDismiss={requestSheetDismiss}
+          onSheetDismissed={onClose}
+        >
+          {formContent}
+        </PortfolioDialog>
+      )}
       {confirmDiscard ? (
         <PortfolioDialog
           labelledBy="portfolio-item-discard-title"
