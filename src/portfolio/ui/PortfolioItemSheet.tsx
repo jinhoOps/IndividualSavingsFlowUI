@@ -52,10 +52,10 @@ export function PortfolioItemSheet({
   const [amountTouched, setAmountTouched] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
-    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
+  const [presentation, setPresentation] = useState<'sheet' | 'modal'>(() => (
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches
       ? 'sheet'
-      : 'panel'
+      : 'modal'
   ));
   const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -87,8 +87,8 @@ export function PortfolioItemSheet({
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const media = window.matchMedia('(max-width: 768px)');
-    const update = () => setPresentation(media.matches ? 'sheet' : 'panel');
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setPresentation(media.matches ? 'sheet' : 'modal');
     update();
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);

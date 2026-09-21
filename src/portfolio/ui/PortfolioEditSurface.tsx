@@ -61,16 +61,16 @@ export function PortfolioEditSurface({
   const discardTriggerRef = useRef<HTMLElement | null>(null);
   const pendingSheetDismissRef = useRef<((approved: boolean) => void) | null>(null);
   const sampleIntentOpenedRef = useRef(false);
-  const [presentation, setPresentation] = useState<'sheet' | 'panel'>(() => (
-    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
+  const [presentation, setPresentation] = useState<'sheet' | 'modal'>(() => (
+    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches
       ? 'sheet'
-      : 'panel'
+      : 'modal'
   ));
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const media = window.matchMedia('(max-width: 768px)');
-    const update = () => setPresentation(media.matches ? 'sheet' : 'panel');
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setPresentation(media.matches ? 'sheet' : 'modal');
     update();
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);

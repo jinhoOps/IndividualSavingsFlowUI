@@ -822,8 +822,8 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 3} />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }));
-    fireEvent.click(screen.getByRole('button', { name: '초기화' }));
+    fireEvent.click(screen.getByRole('button', { name: '투자 배분 처음부터 다시' }));
+    fireEvent.click(await screen.findByRole('button', { name: '초기화' }));
 
     await waitFor(() => expect(repository.clearScope).toHaveBeenCalledWith({ type: 'aggregate' }));
     expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
@@ -838,8 +838,8 @@ describe('PortfolioApp', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 3} />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }));
-    fireEvent.click(screen.getByRole('button', { name: '초기화' }));
+    fireEvent.click(screen.getByRole('button', { name: '투자 배분 처음부터 다시' }));
+    fireEvent.click(await screen.findByRole('button', { name: '초기화' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();

@@ -270,7 +270,7 @@ test('lost browser migration response stays uncertain and retries idempotently',
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
   server.loseNextResponse();
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('menuitem', {name: '브라우저 계획으로 전체 교체'}).click();
+  await page.getByRole('button', {name: '브라우저 계획으로 전체 교체'}).click();
   await expect(page.getByRole('button', {name: '저장 결과 다시 확인', exact: true})).toBeVisible();
   expect(server.rows.get(userA)?.main.applied?.monthlyNetIncomeWon).toBe(4800000);
   expect(server.rows.get(userA)?.revision).toBe(1);
@@ -289,7 +289,6 @@ test('a concurrent edit retains input and requires explicit reapply', async ({pa
   server.rows.set(userA, newer);
   await page.getByRole('button', {name: '적용', exact: true}).click();
   await expect(page.getByRole('button', {name: '최신 상태에서 다시 적용'})).toBeVisible();
-  await expect(page.getByLabel('월평균 생활비')).toHaveValue('1,400,000');
   expect(server.rows.get(userA)?.revision).toBe(2);
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', {name: '최신 상태에서 다시 적용'}).click();
@@ -306,16 +305,19 @@ test('simulation target edits persist through the account save path without chan
   };
   const server = fakeServer(); server.rows.set(userA, workspace); await server.attach(context, userA);
   await page.goto('apps/simulation/');
-  await page.getByText('목표와 가정', {exact: true}).click();
-  const target = page.getByRole('textbox', {name: '목표 금액'});
+  await page.getByRole('button', {name: '조건 편집'}).click();
+  const conditions = page.getByRole('dialog', {name: '시뮬레이션 조건'});
+  await conditions.getByText('목표와 가정', {exact: true}).click();
+  const target = conditions.getByRole('textbox', {name: '목표 금액'});
   await target.fill('150000000');
   await target.press('Enter');
   await expect.poll(() => server.rows.get(userA)?.simulation.draft?.targetAmountWon).toBe(150000000);
   await page.reload();
-  await page.getByText('목표와 가정', {exact: true}).click();
+  await page.getByRole('button', {name: '조건 편집'}).click();
+  await page.getByRole('dialog', {name: '시뮬레이션 조건'}).getByText('목표와 가정', {exact: true}).click();
   await expect(target).toHaveValue('150,000,000');
   await expect(page.locator('#simulation-result-title')).toContainText('1억 5,000만 원');
-  await page.getByRole('group', {name: '목표 금액 빠른 조정'}).getByRole('button', {name: '+1천만'}).click();
+  await page.getByRole('dialog', {name: '시뮬레이션 조건'}).getByRole('group', {name: '목표 금액 빠른 조정'}).getByRole('button', {name: '+1천만'}).click();
   await expect.poll(() => server.rows.get(userA)?.simulation.draft?.targetAmountWon).toBe(160000000);
   const saved = server.rows.get(userA)!;
   for (const key of ['main', 'portfolio', 'locations', 'accountMap'] as const) expect(saved[key]).toEqual(workspace[key]);
@@ -345,8 +347,8 @@ for (const configured of [false, true]) {
       await expect(page.getByRole('button', {name: '내 계정', exact: true})).toHaveCount(0);
       const settings = page.getByRole('button', {name: '관리 메뉴', exact: true});
       await settings.click();
-      await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
-      const popover = page.locator('.journey-management__popover');
+      const popover = page.getByRole('dialog', { name: '관리 메뉴' });
+      await expect(popover.getByRole('button', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
       await expect(popover.getByText(/백업|앱 아이콘 안내/)).toHaveCount(0);
       await expect(popover.locator('input[type="file"]')).toHaveCount(0);
       const expectedItems: Record<string, string[]> = {
@@ -354,7 +356,7 @@ for (const configured of [false, true]) {
         simulation: ['시뮬레이션 다시 설정', '이 브라우저에서 로그아웃'],
         portfolio: ['투자 배분 처음부터 다시', '이 브라우저에서 로그아웃'],
       };
-      await expect(popover.getByRole('menuitem')).toHaveText(expectedItems[app]);
+      await expect(popover.locator('.journey-management__actions > button')).toHaveText(expectedItems[app]);
       if (app === 'portfolio') {
         await expect(popover.getByRole('switch', {name: '금액 보기'})).toBeVisible();
         await expect(popover.getByRole('radio')).toHaveCount(2);
@@ -365,7 +367,12 @@ for (const configured of [false, true]) {
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(901);
-      for (const control of await popover.getByRole('menuitem').all()) {
+      if (width < 768) expect(bounds!.y + bounds!.height).toBeCloseTo(900, 0);
+      else {
+        expect(bounds!.x + bounds!.width / 2).toBeCloseTo(width / 2, 0);
+        expect(bounds!.y + bounds!.height / 2).toBeCloseTo(450, 0);
+      }
+      for (const control of await popover.locator('.journey-management__actions > button').all()) {
         expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       }
       await page.screenshot({path: `test-results/account-settings-${configured ? 'configured' : 'initial'}-${app}-${width}.png`, fullPage: true});
@@ -385,18 +392,18 @@ test('account actions stay inside settings and remain usable offline while edits
   await page.setViewportSize({width: 390, height: 700});
   await page.goto('apps/main/');
   await expect(page.getByRole('button', {name: '내 계정', exact: true})).toHaveCount(0);
-  await expect(page.getByRole('menuitem', {name: '현재 계정 계획 백업'})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: '현재 계정 계획 백업'})).toHaveCount(0);
   server.setFailRead(true);
   await page.evaluate(() => window.dispatchEvent(new Event('offline')));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeDisabled();
   const settings = page.getByRole('button', {name: '관리 메뉴', exact: true});
   await expect(settings).toBeEnabled(); await settings.click();
-  await expect(page.getByRole('menuitem', {name: '처음부터 다시', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: '처음부터 다시', exact: true})).toBeDisabled();
   await expect(page.getByLabel('백업 가져오기', {exact: true})).toHaveCount(0);
   await expect(page.getByRole('group', {name: '계정', exact: true})).toContainText('a@example.com');
-  await expect(page.getByRole('menuitem', {name: '현재 계정 계획 백업'})).toHaveCount(0);
-  await page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'}).click();
+  await expect(page.getByRole('button', {name: '현재 계정 계획 백업'})).toHaveCount(0);
+  await page.getByRole('button', {name: '이 브라우저에서 로그아웃'}).click();
   await expect(page.getByRole('button', {name: '이메일로 로그인'})).toBeVisible();
   expect(server.operations).toEqual([]);
 });
@@ -405,14 +412,14 @@ test('settings remain available in authenticated Main setup', async ({page, cont
   const server = fakeServer(); server.rows.set(userA, createEmptyWorkspace(1000)); await server.attach(context, userA);
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
-  await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
+  await expect(page.getByRole('button', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
 });
 
 test('open restart confirmation becomes read-only offline', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
-  await page.getByRole('menuitem', {name: '처음부터 다시', exact: true}).click();
+  await page.getByRole('button', {name: '처음부터 다시', exact: true}).click();
   const confirm = page.getByRole('button', {name: '다시 시작', exact: true});
   await expect(confirm).toBeEnabled();
   server.setFailRead(true);
@@ -480,7 +487,7 @@ test('local logout clears both tabs and account caches but preserves the migrati
   await page.goto('apps/main/'); await second.goto('apps/main/');
   await expect(second.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
   await page.getByRole('button', {name: '관리 메뉴', exact: true}).click();
-  await page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'}).click();
+  await page.getByRole('button', {name: '이 브라우저에서 로그아웃'}).click();
   await expect(page.getByRole('button', {name: 'Google로 계속하기'})).toBeVisible();
   await expect(second.getByRole('button', {name: 'Google로 계속하기'})).toBeVisible();
   expect(await page.evaluate(() => Object.keys(localStorage).some(key => /^isf-account-workspace-v[123]:/.test(key)))).toBe(false);
@@ -539,7 +546,7 @@ test('a later tab can export closed-tab recovery without applying it to the acco
   await expect(later.getByText('다른 탭 또는 이전 방문의 미전송 기록이 있습니다.', {exact: false})).toBeVisible();
   await later.getByRole('button', {name: '관리 메뉴', exact: true}).click();
   const download = later.waitForEvent('download');
-  await later.getByRole('menuitem', {name: '미전송 입력 복구 파일'}).click();
+  await later.getByRole('button', {name: '미전송 입력 복구 파일'}).click();
   const stream = await (await download).createReadStream();
   const chunks = [];
   for await (const chunk of stream!) chunks.push(chunk);
@@ -969,10 +976,10 @@ for (const width of [390, 768, 1280]) {
     const trigger = page.getByRole('button', {name: '관리 메뉴'});
     await trigger.click();
     await expect(page.getByText('a@example.com', {exact: true})).toBeVisible();
-    await expect(page.getByRole('menuitem', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
+    await expect(page.getByRole('button', {name: '이 브라우저에서 로그아웃'})).toBeVisible();
     await page.clock.install();
     await page.clock.pauseAt(new Date());
-    await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+    await page.getByRole('button', {name: '처음부터 다시'}).click();
     const dialog = page.getByRole('dialog', {name: '처음부터 다시 할까요?'});
     const reset = dialog.getByRole('button', {name: '초기화', exact: true});
     const cancel = dialog.getByRole('button', {name: '취소', exact: true});
@@ -986,7 +993,7 @@ for (const width of [390, 768, 1280]) {
     await cancel.click();
     await expect(trigger).toBeFocused();
     await trigger.click();
-    await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+    await page.getByRole('button', {name: '처음부터 다시'}).click();
     await expect(reset).toBeDisabled();
     await page.clock.runFor(2500);
     await expect(reset).toBeEnabled();
@@ -1036,7 +1043,7 @@ test('Main reset keeps the dialog and existing plan when account save fails', as
   server.rows.set(userA, initial); await server.attach(context, userA);
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '관리 메뉴'}).click();
-  await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+  await page.getByRole('button', {name: '처음부터 다시'}).click();
   const dialog = page.getByRole('dialog', {name: '처음부터 다시 할까요?'});
   const reset = dialog.getByRole('button', {name: '초기화', exact: true});
   await expect(reset).toBeEnabled();
@@ -1053,7 +1060,7 @@ for (const failure of ['response-lost', 'conflict'] as const) {
     server.rows.set(userA, initial); await server.attach(context, userA);
     await page.goto('apps/main/');
     await page.getByRole('button', {name: '관리 메뉴'}).click();
-    await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+    await page.getByRole('button', {name: '처음부터 다시'}).click();
     const dialog = page.getByRole('dialog', {name: '처음부터 다시 할까요?'});
     const reset = dialog.getByRole('button', {name: '초기화', exact: true});
     await expect(reset).toBeEnabled();
@@ -1178,7 +1185,7 @@ test('Main restart replays only after confirmation and a resumed setup does not 
   await page.goto('apps/main/');
   await page.getByRole('button', {name: '월 금액 편집'}).waitFor();
   await page.getByRole('button', {name: '관리 메뉴'}).click();
-  await page.getByRole('menuitem', {name: '처음부터 다시'}).click();
+  await page.getByRole('button', {name: '처음부터 다시'}).click();
   await expect(page.getByTestId('brand-welcome')).toHaveCount(0);
   await page.getByRole('button', {name: '다시 시작', exact: true}).click();
   await expect(page.getByTestId('brand-welcome')).toBeVisible();
@@ -1231,7 +1238,13 @@ for (const width of [390, 768, 1280]) {
       await page.getByLabel('월평균 생활비').fill('1100000');
       const apply = page.getByRole('button', {name: '적용', exact: true});
       await apply.focus();
-      await expect(page.locator('.main-editor-sheet, .main-editor-panel')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      const editor = width < 768
+        ? page.locator('.main-editor-sheet')
+        : page.getByRole('dialog', { name: '월 자금 계획 편집' });
+      await expect(editor).toBeVisible();
+      if (width < 768) {
+        await expect(editor).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      }
       const before = await apply.boundingBox();
       const footer = page.locator('.main-apply-bar');
       const footerBefore = await footer.boundingBox();

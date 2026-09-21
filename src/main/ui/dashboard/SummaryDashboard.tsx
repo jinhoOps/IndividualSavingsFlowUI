@@ -2,6 +2,7 @@ import { animate } from 'animejs';
 import { ChevronUp } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppContentFrame } from '../../../components/common/AppContentFrame';
+import { ResponsiveDialog } from '../../../components/common/ResponsiveDialog';
 import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../../../components/motion/tokens';
 import { useAnimeScope } from '../../../components/motion/useAnimeScope';
 import { useSheetDismiss } from '../../../components/motion/useSheetDismiss';
@@ -62,14 +63,12 @@ export function SummaryDashboard({
   const editorBackdropRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
+  const submittedEditorRef = useRef(false);
   const isMobile = useMobileEditor();
   const mobileModalOpen = isMobile && editorOpen;
   const modalRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
     revealEditor(root, 'vertical', reducedMotion);
   }, [mobileModalOpen]);
-  const desktopEditorRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
-    revealEditor(root, 'horizontal', reducedMotion);
-  }, [editorOpen, isMobile]);
   const saving = saveStatus === 'saving';
   useSheetDismiss({
     rootRef: modalRef,
@@ -123,7 +122,19 @@ export function SummaryDashboard({
   }, [editorOpen, expenseOpen, remainingOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
 
   useEffect(() => {
-    if (!editorOpen) return;
+    if (!submittedEditorRef.current) return;
+    if (saveStatus === 'error' && issues.length === 0) {
+      submittedEditorRef.current = false;
+      setEditorOpen(false);
+      return;
+    }
+    if (saveStatus !== 'saved' || dirty) return;
+    submittedEditorRef.current = false;
+    setEditorOpen(false);
+  }, [dirty, issues.length, saveStatus]);
+
+  useEffect(() => {
+    if (!editorOpen || !isMobile) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
@@ -131,13 +142,14 @@ export function SummaryDashboard({
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [closingEditor, dirty, editorOpen, saving]);
+  }, [closingEditor, dirty, editorOpen, isMobile, saving]);
 
-  function requestClose() {
-    if (saving || closingEditor !== null) return;
-    if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return;
+  function requestClose(): boolean {
+    if (saving || closingEditor !== null) return false;
+    if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return false;
     if (dirty) onCancel();
     setEditorOpen(false);
+    return true;
   }
 
   function requestSheetDismiss(): boolean {
@@ -153,11 +165,16 @@ export function SummaryDashboard({
     openerRef.current = opener;
     setRequestedFocusPath(focusPath);
     setEditorOpen(true);
-    // The desktop panel can already be open on this field; focus again without
+    // The modal can already be open on this field; focus again without
     // remounting it or discarding any other draft input.
     if (editorOpen && focusPath) {
-      desktopEditorRef.current?.querySelector<HTMLElement>(`[data-validation-path="${focusPath}"]`)?.focus();
+      document.querySelector<HTMLElement>(`[data-validation-path="${focusPath}"]`)?.focus();
     }
+  }
+
+  function applyEditor(): void {
+    submittedEditorRef.current = true;
+    onApply();
   }
 
   function trapModalFocus(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -192,7 +209,7 @@ export function SummaryDashboard({
     >
       <div
         className="main-dashboard__content"
-        aria-hidden={mobileModalOpen || expenseOpen || remainingOpen ? 'true' : undefined}
+        aria-hidden={editorOpen || expenseOpen || remainingOpen ? 'true' : undefined}
         data-testid="dashboard-controls"
         data-exploration-blocked={editorOpen || expenseOpen || remainingOpen || undefined}
         inert={mobileModalOpen || expenseOpen || remainingOpen || undefined}
@@ -265,25 +282,32 @@ export function SummaryDashboard({
                 onChange={onDraftChange}
                 onRequestClose={requestClose}
               />
-              <ApplyBar dirty={editorDirty} saveStatus={saveStatus} onApply={onApply} onCancel={onCancel} />
+              <ApplyBar dirty={editorDirty} saveStatus={saveStatus} onApply={applyEditor} onCancel={onCancel} />
             </div>
           </>
         ) : (
-          <div
-            className="main-editor-panel"
-            ref={desktopEditorRef}
+          <ResponsiveDialog
+            open={editorOpen}
+            labelledBy="cashflow-editor-title"
+            size="form"
+            busy={saving}
+            returnFocusRef={openerRef}
+            onRequestClose={requestClose}
+            onClosed={() => undefined}
           >
+            <div className="main-editor-modal">
             <MainPlanEditor
               draft={draft}
               issues={issues}
               saving={saving}
-              presentation="panel"
+              presentation="content"
               initialFocusPath={editorFocusPath}
               onChange={onDraftChange}
               onRequestClose={requestClose}
             />
-            <ApplyBar dirty={dirty} saveStatus={saveStatus} onApply={onApply} onCancel={onCancel} />
-          </div>
+            <ApplyBar dirty={dirty} saveStatus={saveStatus} onApply={applyEditor} onCancel={onCancel} />
+            </div>
+          </ResponsiveDialog>
         )
       ) : null}
     </AppContentFrame>

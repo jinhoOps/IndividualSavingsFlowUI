@@ -82,7 +82,12 @@ export function TargetAmountControl({
         onBlur={commitInput}
         onKeyDown={(event) => {
           if (event.key === 'Enter') { event.preventDefault(); commitInput(); }
-          if (event.key === 'Escape') { setRaw(formatInput(targetAmountWon)); setError(false); }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            setRaw(formatInput(targetAmountWon));
+            setError(false);
+          }
         }} />
       <span aria-hidden="true">원</span>
     </div>

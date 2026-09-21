@@ -290,19 +290,16 @@
   .expense-assistant[data-sheet-exiting],
   [data-sheet-dismiss-backdrop][data-sheet-exiting] { pointer-events: none; }
 
-  .main-editor-panel {
-    position: fixed;
-    inset-block: 0;
-    right: 0;
-    z-index: 30;
-    display: flex;
-    flex-direction: column;
-    width: min(30rem, calc(100vw - 2rem));
+  .main-editor-modal {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    max-height: calc(100dvh - 48px);
+    overflow: hidden;
+  }
+
+  .main-editor-modal .main-plan-editor {
     overflow-y: auto;
     overscroll-behavior: contain;
-    border-left: 1px solid var(--line);
-    background: var(--panel);
-    box-shadow: var(--shadow-float);
   }
 
   .main-plan-editor {
@@ -433,6 +430,22 @@
 
   @media (min-width: 768px) {
     .main-plan-editor { padding: 1.5rem 1.5rem .75rem; }
+    .main-editor-modal {
+      display: flex;
+      flex-direction: column;
+      height: min(40rem, calc(100dvh - 3rem));
+      min-height: 0;
+    }
+    .main-editor-modal > .main-plan-editor {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .main-editor-modal > .main-apply-bar {
+      position: static;
+      bottom: auto;
+      flex: 0 0 auto;
+    }
     .main-apply-bar { padding-inline: 1.5rem; }
     .cashflow-metric__inspect { column-gap: 1rem; }
   }

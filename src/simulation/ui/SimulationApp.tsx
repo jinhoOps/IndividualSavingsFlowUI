@@ -2,9 +2,11 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
+import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
 import { Surface } from '../../components/common/Surface';
 import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { appPath } from '../../journey/routes';
+import { isPortfolioSamplePreset, portfolioSampleHref } from '../../journey/portfolioSampleIntent';
 import { bootstrapSimulation } from '../application/bootstrap';
 import type { CompoundSimulationDraft } from '../domain/model';
 import { projectCompoundGrowth } from '../domain/projection';
@@ -67,6 +69,8 @@ export function SimulationApp({
   const bufferedAutosave = useRef<{draft: CompoundSimulationDraft; token: number} | null>(null);
   const mounted = useRef(false);
   const latestOperation = useRef(0);
+  const conditionEditorOpenerRef = useRef<HTMLButtonElement>(null);
+  const [conditionEditorOpen, setConditionEditorOpen] = useState(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -270,6 +274,14 @@ export function SimulationApp({
           <>
             <div className="simulation-toolbar">
               <SaveIndicator state={saveState} />
+              <Button
+                ref={conditionEditorOpenerRef}
+                type="button"
+                variant="secondary"
+                onClick={() => setConditionEditorOpen(true)}
+              >
+                조건 편집
+              </Button>
             </div>
             {runtime.durationAdjusted ? (
               <p role="status">기간 범위가 변경되어 30년으로 조정됐어요.</p>
@@ -295,16 +307,59 @@ export function SimulationApp({
                   계산 결과를 표시할 수 없어요. 목표와 가정에서 입력값을 조정해주세요.
                 </p>
               )}
-              <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
-                ...next,
-                updatedAt: now(),
-              })} />
               {resultIsFinite ? <SimulationComparison result={result} /> : null}
             </Surface>
-            <AdvancedSettings draft={resultDraft} onChange={(next) => saveDraft({
-              ...next,
-              updatedAt: now(),
-            })} />
+            <ResponsiveDialog
+              open={conditionEditorOpen}
+              labelledBy="simulation-condition-editor-title"
+              size="form"
+              mobileHeight="full"
+              returnFocusRef={conditionEditorOpenerRef}
+              onRequestClose={() => {
+                setConditionEditorOpen(false);
+                return true;
+              }}
+              onClosed={() => undefined}
+            >
+              <section className="simulation-condition-editor">
+                <header className="simulation-condition-editor__header">
+                  <h2 id="simulation-condition-editor-title">시뮬레이션 조건</h2>
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    aria-label="조건 편집 닫기"
+                    onClick={() => setConditionEditorOpen(false)}
+                  >
+                    닫기
+                  </Button>
+                </header>
+                <div className="simulation-condition-editor__body">
+                  <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
+                    ...next,
+                    updatedAt: now(),
+                  })} />
+                  <AdvancedSettings draft={resultDraft} onChange={(next) => saveDraft({
+                    ...next,
+                    updatedAt: now(),
+                  })} />
+                </div>
+              </section>
+            </ResponsiveDialog>
+            {saveState === 'saved' ? (
+              <section className="simulation-portfolio-entry" aria-labelledby="simulation-portfolio-entry-title">
+                <h2 id="simulation-portfolio-entry-title">
+                  {isPortfolioSamplePreset(resultDraft.expectedAnnualReturnPercent)
+                    ? `연 ${resultDraft.expectedAnnualReturnPercent}%를 가정했다면, 이 구성부터 볼까요?`
+                    : '투자 구성을 살펴볼까요?'}
+                </h2>
+                <a
+                  className="ui-button ui-button--secondary"
+                  href={isPortfolioSamplePreset(resultDraft.expectedAnnualReturnPercent)
+                    ? portfolioSampleHref(resultDraft.expectedAnnualReturnPercent)
+                    : appPath('portfolio')}
+                >포트폴리오 샘플 보기</a>
+              </section>
+            ) : null}
           </>
         ) : (
           <p role="alert">시뮬레이션을 시작할 수 없어요.</p>

@@ -1,0 +1,48 @@
+.responsive-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(var(--responsive-dialog-width), calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-surface-radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-float);
+  color: var(--ink);
+  padding: 0;
+}
+
+.responsive-dialog[data-size='compact'] { --responsive-dialog-width: 27.5rem; }
+.responsive-dialog[data-size='form'] { --responsive-dialog-width: 40rem; }
+.responsive-dialog[data-size='wide'] { --responsive-dialog-width: 67.5rem; }
+
+.responsive-dialog::backdrop {
+  background: rgb(16 34 32 / 45%);
+  backdrop-filter: blur(3px);
+}
+
+.responsive-dialog__surface {
+  display: grid;
+  max-height: calc(100dvh - 48px);
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .responsive-dialog {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: min(92dvh, calc(100dvh - 8px));
+    margin: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 1.5rem 1.5rem 0 0;
+  }
+
+  .responsive-dialog[data-mobile-height='full'] { height: min(100dvh, 100%); }
+
+  .responsive-dialog__surface { max-height: min(92dvh, calc(100dvh - 8px)); }
+}

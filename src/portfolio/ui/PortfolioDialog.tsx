@@ -29,7 +29,7 @@ export function PortfolioDialog({
   onEscape?(): void;
   returnFocusRef: RefObject<HTMLElement | null>;
   className?: string;
-  dataPresentation?: 'sheet' | 'panel';
+  dataPresentation?: 'sheet' | 'modal';
   closeOnBackdrop?: boolean;
   enableSheetDismiss?: boolean;
   open?: boolean;
@@ -58,7 +58,7 @@ export function PortfolioDialog({
   useSheetDismiss({
     rootRef: dialogRef,
     enabled: enableSheetDismiss && dataPresentation === 'sheet',
-    mediaQuery: '(max-width: 768px)',
+    mediaQuery: '(max-width: 767px)',
     blocked: !open,
     isTopmost: () => openDialogs.at(-1) === dialogRef.current,
     onRequestDismiss: onSheetDismiss,
@@ -156,7 +156,7 @@ export function PortfolioDialog({
 
 function revealDialog(
   target: HTMLElement,
-  presentation: 'modal' | 'sheet' | 'panel',
+  presentation: 'modal' | 'sheet',
   distance: number,
   reducedMotion: boolean,
 ): void {
@@ -170,9 +170,7 @@ function revealDialog(
       opacity: [0, 1],
       ...(presentation === 'modal'
         ? { y: [distance, 0] }
-        : presentation === 'sheet'
-          ? { bottom: [-distance, 0] }
-          : { right: [-distance, 0] }),
+        : { bottom: [-distance, 0] }),
       duration: presentation === 'sheet' ? MOTION_DURATION.emphasis : MOTION_DURATION.normal,
       ease: createProductSpring('surface'),
       ...(presentation === 'modal'
@@ -186,7 +184,7 @@ function revealDialog(
 
 function setDialogRevealFinalState(
   target: HTMLElement,
-  presentation: 'modal' | 'sheet' | 'panel',
+  presentation: 'modal' | 'sheet',
 ): void {
   target.style.opacity = '1';
   if (presentation === 'modal') {
@@ -194,14 +192,14 @@ function setDialogRevealFinalState(
     return;
   }
   target.style.removeProperty('transform');
-  target.style.removeProperty(presentation === 'sheet' ? 'bottom' : 'right');
+  target.style.removeProperty('bottom');
 }
 
 function clearPresentedRevealStyles(
   target: HTMLElement,
-  presentation: 'sheet' | 'panel',
+  presentation: 'sheet',
 ): void {
   target.style.removeProperty('opacity');
   target.style.removeProperty('transform');
-  target.style.removeProperty(presentation === 'sheet' ? 'bottom' : 'right');
+  target.style.removeProperty('bottom');
 }

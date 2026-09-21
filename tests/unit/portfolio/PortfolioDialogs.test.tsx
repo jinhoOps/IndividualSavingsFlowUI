@@ -280,44 +280,13 @@ describe('Portfolio confirmation dialogs', () => {
     expect(sheet.style.transform).toBe('');
   });
 
-  it('reveals side panels without a fixed-position containing block and commits reduced motion immediately', () => {
-    const returnFocusRef = { current: null };
-    const { unmount } = render(
-      <PortfolioDialog
-        labelledBy="panel-title"
-        onClose={vi.fn()}
-        returnFocusRef={returnFocusRef}
-        dataPresentation="panel"
-      >
-        <h2 id="panel-title">측면 편집</h2>
-      </PortfolioDialog>,
-    );
-    const panel = screen.getByRole('dialog', { name: '측면 편집' });
-    const panelOptions = animationOptionsFor(panel);
-    expect(panelOptions).toMatchObject({
-      opacity: [0, 1],
-      right: [-MOTION_DISTANCE_PX.reveal, 0],
-      duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
-      onComplete: expect.any(Function),
-    });
-    expect(panelOptions).not.toHaveProperty('x');
-    expect(panel.style.transform).toBe('');
-    expect(panel.style.right).toBe('0px');
-
-    (panelOptions?.onComplete as (() => void) | undefined)?.();
-    expect(panel.style.opacity).toBe('');
-    expect(panel.style.right).toBe('');
-    expect(panel.style.transform).toBe('');
-
-    unmount();
-    animeMocks.animate.mockClear();
+  it('commits reduced-motion sheets immediately', () => {
     animeMocks.state.reducedMotion = true;
     render(
       <PortfolioDialog
         labelledBy="reduced-sheet-title"
         onClose={vi.fn()}
-        returnFocusRef={returnFocusRef}
+        returnFocusRef={{ current: null }}
         dataPresentation="sheet"
       >
         <h2 id="reduced-sheet-title">즉시 하단 편집</h2>
@@ -350,8 +319,8 @@ describe('Portfolio confirmation dialogs', () => {
 
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }));
-    const dialog = screen.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '투자 배분 처음부터 다시' }));
+    const dialog = await screen.findByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' });
     expect(within(dialog).getByRole('button', { name: '취소' })).toHaveFocus();
 
     fireEvent.keyDown(dialog, { key: 'Escape' });
@@ -384,7 +353,7 @@ describe('Portfolio confirmation dialogs', () => {
 
     expect(onPreferencesChange).toHaveBeenCalledWith({ showAmounts: false, sortMode: 'input' });
     expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
-    expect(screen.getByRole('menuitem', { name: '투자 배분 처음부터 다시' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '투자 배분 처음부터 다시' })).toBeVisible();
   });
 });
 

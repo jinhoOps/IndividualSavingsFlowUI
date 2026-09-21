@@ -76,7 +76,43 @@ function firstSaveGate(): {
   };
 }
 
+function openConditionEditor() {
+  fireEvent.click(screen.getByRole('button', { name: '조건 편집' }));
+  return screen.getByRole('dialog', { name: '시뮬레이션 조건' });
+}
+
 describe('SimulationApp', () => {
+  it('keeps result conditions in a separate modal editor', () => {
+    const saved = createDefaultSimulationDraft(source, 456);
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={simulationRepository({ status: 'found', draft: saved, migration: null })}
+    />);
+
+    expect(screen.queryByRole('spinbutton', { name: '기간 숫자' })).not.toBeInTheDocument();
+
+    const editor = openConditionEditor();
+    expect(within(editor).getByRole('spinbutton', { name: '기간 숫자' })).toBeVisible();
+    expect(within(editor).getByText('목표와 가정')).toBeVisible();
+  });
+
+  it('keeps the condition editor open when a target field cancels with Escape', () => {
+    const saved = createDefaultSimulationDraft(source, 456);
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={simulationRepository({ status: 'found', draft: saved, migration: null })}
+    />);
+
+    const editor = openConditionEditor();
+    fireEvent.click(within(editor).getByText('목표와 가정'));
+    const target = within(editor).getByRole('textbox', { name: '목표 금액' });
+    fireEvent.change(target, { target: { value: '123456789' } });
+    fireEvent.keyDown(target, { key: 'Escape' });
+
+    expect(screen.getByRole('dialog', { name: '시뮬레이션 조건' })).toBeVisible();
+    expect(target).toHaveValue('100,000,000');
+  });
+
   it('coalesces cloud autosaves after a 500ms quiet period', async () => {
     vi.useFakeTimers();
     const saved = createDefaultSimulationDraft(source, 456);
@@ -91,7 +127,7 @@ describe('SimulationApp', () => {
       </AccountDraftContext.Provider>,
     );
 
-    const years = screen.getByRole('spinbutton', { name: '기간 숫자' });
+    const years = within(openConditionEditor()).getByRole('spinbutton', { name: '기간 숫자' });
     fireEvent.change(years, { target: { value: '21' } });
     fireEvent.change(years, { target: { value: '22' } });
     expect(repository.save).not.toHaveBeenCalled();
@@ -137,8 +173,9 @@ describe('SimulationApp', () => {
 
     const headline = screen.getByRole('heading', { name: /1억 원을 모으려면/ });
     const committedHeadline = headline.textContent;
-    fireEvent.click(screen.getByText('목표와 가정'));
-    const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
+    const editor = openConditionEditor();
+    fireEvent.click(within(editor).getByText('목표와 가정'));
+    const initialAmount = within(editor).getByRole('textbox', { name: '현재 모아둔 돈' });
     fireEvent.change(initialAmount, { target: { value: '20000000' } });
 
     expect(initialAmount).toHaveValue('20000000');
@@ -163,8 +200,9 @@ describe('SimulationApp', () => {
       now={() => 999}
     />);
 
-    fireEvent.click(screen.getByText('목표와 가정'));
-    const initialAmount = screen.getByRole('textbox', { name: '현재 모아둔 돈' });
+    const editor = openConditionEditor();
+    fireEvent.click(within(editor).getByText('목표와 가정'));
+    const initialAmount = within(editor).getByRole('textbox', { name: '현재 모아둔 돈' });
     expect(initialAmount).toHaveValue('200,000,000');
     fireEvent.change(initialAmount, { target: { value: '300,000,000' } });
     fireEvent.blur(initialAmount);
@@ -408,8 +446,9 @@ describe('SimulationApp', () => {
     );
     expect(screen.queryByRole('img', { name: '기간별 복리 성장 그래프' }))
       .not.toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: '기간 숫자' })).toBeVisible();
-    expect(screen.getByText('목표와 가정')).toBeVisible();
+    const editor = openConditionEditor();
+    expect(within(editor).getByRole('spinbutton', { name: '기간 숫자' })).toBeVisible();
+    expect(within(editor).getByText('목표와 가정')).toBeVisible();
   });
 
   it('explains a migrated duration once while preserving the result', () => {
@@ -438,8 +477,11 @@ describe('SimulationApp', () => {
     />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
-    fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
+    fireEvent.click(screen.getByRole('button', { name: '시뮬레이션 다시 설정' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' }))
+        .getByRole('button', { name: '다시 설정' }),
+    );
 
     await waitFor(() => expect(repository.clear).toHaveBeenCalledOnce());
     expect(await screen.findByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
@@ -463,7 +505,7 @@ describe('SimulationApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
     await act(async () => undefined);
     expect(repository.save).toHaveBeenCalledTimes(1);
-    fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
+    fireEvent.change(within(openConditionEditor()).getByRole('spinbutton', { name: '기간 숫자' }), {
       target: { value: '25' },
     });
     expect(repository.save).toHaveBeenCalledTimes(1);
@@ -507,13 +549,16 @@ describe('SimulationApp', () => {
       now={() => 500}
     />);
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: '기간 숫자' }), {
+    const editor = openConditionEditor();
+    fireEvent.change(within(editor).getByRole('spinbutton', { name: '기간 숫자' }), {
       target: { value: '25' },
     });
     await gated.started;
+    fireEvent.click(within(editor).getByRole('button', { name: '조건 편집 닫기' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '시뮬레이션 조건' })).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
-    const dialog = screen.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '시뮬레이션 다시 설정' }));
+    const dialog = await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
     fireEvent.click(within(dialog).getByRole('button', { name: '다시 설정' }));
 
     expect(dialog).toHaveAttribute('aria-busy', 'true');
@@ -537,8 +582,11 @@ describe('SimulationApp', () => {
     render(<SimulationApp mainSourceRepository={mainRepository(source)} repository={repository} />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
-    fireEvent.click(screen.getByRole('button', { name: '다시 설정' }));
+    fireEvent.click(screen.getByRole('button', { name: '시뮬레이션 다시 설정' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' }))
+        .getByRole('button', { name: '다시 설정' }),
+    );
 
     const dialog = await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('시뮬레이션을 다시 설정하지 못했어요.');
@@ -557,8 +605,8 @@ describe('SimulationApp', () => {
     />);
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }));
-    const dialog = screen.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '시뮬레이션 다시 설정' }));
+    const dialog = await screen.findByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' });
     fireEvent.click(within(dialog).getByRole('button', { name: '다시 설정' }));
 
     expect(dialog).toHaveAttribute('aria-busy', 'true');

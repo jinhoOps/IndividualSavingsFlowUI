@@ -290,22 +290,22 @@ describe('PortfolioItemSheet', () => {
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
 
-  it('uses a desktop side panel from 769px and a sheet through 768px', () => {
+  it('uses a desktop modal from 768px and a sheet through 767px', () => {
     const originalMatchMedia = window.matchMedia;
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: (query: string) => ({
-        matches: query === '(max-width: 768px)' ? false : false,
+        matches: query === '(max-width: 767px)' ? false : false,
         addEventListener: vi.fn(), removeEventListener: vi.fn(),
       }),
     });
     renderSheet();
-    expect(screen.getByRole('dialog', { name: '투자 대상 추가' })).toHaveAttribute('data-presentation', 'panel');
+    expect(screen.getByRole('dialog', { name: '투자 대상 추가' })).toHaveAttribute('data-presentation', 'modal');
     cleanup();
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: (query: string) => ({
-        matches: query === '(max-width: 768px)',
+        matches: query === '(max-width: 767px)',
         addEventListener: vi.fn(), removeEventListener: vi.fn(),
       }),
     });

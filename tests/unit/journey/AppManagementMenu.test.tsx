@@ -3,7 +3,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountManagementContext } from '../../../src/auth/AccountManagementContext';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import { AppManagementMenu, type AppManagementItem } from '../../../src/journey/ui/AppManagementMenu';
 
 const animeMocks = vi.hoisted(() => {
@@ -59,37 +58,34 @@ function buildItems(overrides: {
 }
 
 describe('AppManagementMenu', () => {
-  it('reveals the popover with normal shared motion while state stays immediate', async () => {
-    render(<><AppManagementMenu items={buildItems()} /><button type="button">바깥</button></>);
+  it('opens settings in a modal dialog so its controls do not follow the gear position', () => {
+    render(<AppManagementMenu items={buildItems()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+
+    expect(screen.getByRole('dialog', { name: '관리 메뉴' })).toHaveAttribute('aria-modal', 'true');
+  });
+
+  it('closes the settings dialog with Escape and returns focus to the gear', async () => {
+    render(<AppManagementMenu items={buildItems()} />);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     fireEvent.click(trigger);
-    const popover = document.querySelector<HTMLElement>('.journey-management__popover');
-    expect(popover).not.toBeNull();
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(animationOptionsFor(popover!)).toMatchObject({
-      opacity: [0, 1],
-      y: [-MOTION_DISTANCE_PX.subtle, 0],
-      duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
-    });
-
-    const outside = screen.getByRole('button', { name: '바깥' });
-    fireTouchPointerEvent(outside, 'pointerdown');
+    fireEvent.keyDown(screen.getByRole('dialog', { name: '관리 메뉴' }), { key: 'Escape' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it('commits popover final state before paint under reduced motion', () => {
-    animeMocks.state.reducedMotion = true;
+  it('declares the gear as a dialog launcher while settings are open', () => {
     render(<AppManagementMenu items={buildItems()} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    const popover = document.querySelector<HTMLElement>('.journey-management__popover');
-    expect(popover).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
-    expect(animeMocks.animate).not.toHaveBeenCalled();
+    const trigger = screen.getByRole('button', { name: '관리 메뉴' });
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('omits obsolete help, empty groups, and edge separators', () => {
@@ -100,7 +96,7 @@ describe('AppManagementMenu', () => {
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.queryByText('앱 아이콘 안내')).not.toBeInTheDocument();
     expect(screen.queryByText(/백업/)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('menu')).toHaveLength(1);
+    expect(screen.queryAllByRole('menu')).toHaveLength(0);
     expect(screen.getAllByRole('separator')).toHaveLength(1);
   });
 
@@ -110,9 +106,9 @@ describe('AppManagementMenu', () => {
       { kind: 'action', id: 'logout', label: '이 브라우저에서 로그아웃', onSelect: logout },
     ] }}><AppManagementMenu items={[]} /></AccountManagementContext.Provider>);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '관리 메뉴' })).toBeVisible();
     expect(screen.queryByRole('separator')).not.toBeInTheDocument();
-    const action = screen.getByRole('menuitem', { name: '이 브라우저에서 로그아웃' });
+    const action = screen.getByRole('button', { name: '이 브라우저에서 로그아웃' });
     expect(action).toBeEnabled();
     fireEvent.click(action);
     expect(logout).toHaveBeenCalledOnce();
@@ -123,27 +119,27 @@ describe('AppManagementMenu', () => {
     expect(screen.queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
   });
 
-  it('executes an action, closes the popover, and restores trigger focus', async () => {
+  it('executes an action, closes the settings dialog, and restores trigger focus', async () => {
     const onAction = vi.fn();
     render(<AppManagementMenu items={buildItems({ onAction })} />);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole('menuitem', { name: '설정 적용' }));
+    fireEvent.click(screen.getByRole('button', { name: '설정 적용' }));
     expect(onAction).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it('closes on outside pointer and Escape and restores trigger focus', async () => {
-    render(<><AppManagementMenu items={buildItems()} /><button type="button">바깥</button></>);
+  it('closes on its backdrop and Escape and restores trigger focus', async () => {
+    render(<AppManagementMenu items={buildItems()} />);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     fireEvent.click(trigger);
-    fireEvent.pointerDown(screen.getByRole('button', { name: '바깥' }));
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('dialog', { name: '관리 메뉴' }));
+    expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
     fireEvent.click(trigger);
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('dialog', { name: '관리 메뉴' }), { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
@@ -158,8 +154,6 @@ describe('AppManagementMenu', () => {
     const label = screen.getByText('금액 보기').closest('label')!;
     const toggle = screen.getByRole('switch', { name: '금액 보기' });
 
-    fireEvent.pointerDown(label);
-    fireEvent.blur(trigger, { relatedTarget: document.body });
     fireEvent.click(label);
     toggle.focus();
 
@@ -168,30 +162,13 @@ describe('AppManagementMenu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('does not steal focus when moving to another launcher control', async () => {
-    render(
-      <div className="journey-launcher">
-        <button type="button">앱 더보기</button>
-        <AppManagementMenu items={buildItems()} />
-      </div>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    const more = screen.getByRole('button', { name: '앱 더보기' });
-    fireEvent.pointerDown(more);
-    more.focus();
-
-    expect(screen.queryByRole('menu', { name: '관리 메뉴' })).not.toBeInTheDocument();
-    await new Promise((resolve) => window.setTimeout(resolve, 0));
-    expect(more).toHaveFocus();
-  });
-
   it('confirms danger actions with trapped focus and restores the gear', async () => {
     const onReset = vi.fn();
     render(<AppManagementMenu items={buildItems({ onReset })} />);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
     fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
-    const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    const dialog = await screen.findByRole('dialog', { name: '처음부터 다시 할까요?' });
     const cancel = within(dialog).getByRole('button', { name: '취소' });
     const confirm = within(dialog).getByRole('button', { name: '다시 시작' });
     expect(cancel).toHaveFocus();
@@ -206,12 +183,12 @@ describe('AppManagementMenu', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
 
     fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
-    fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    fireEvent.click(await screen.findByRole('button', { name: '다시 시작' }));
     expect(onReset).toHaveBeenCalledOnce();
   });
 
-  it('uses a neutral presentation while the delayed reset action is disabled', () => {
+  it('uses a neutral presentation while the delayed reset action is disabled', async () => {
     vi.useFakeTimers();
     try {
       render(<AppManagementMenu items={[{
@@ -229,7 +206,11 @@ describe('AppManagementMenu', () => {
       }]} />);
 
       fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-      fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
+      fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
 
       const reset = screen.getByRole('button', { name: '초기화' });
       expect(reset).toBeDisabled();
@@ -251,8 +232,8 @@ describe('AppManagementMenu', () => {
       .mockResolvedValueOnce(true);
     render(<AppManagementMenu items={buildItems({ onReset })} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
-    const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    const dialog = await screen.findByRole('dialog', { name: '처음부터 다시 할까요?' });
     const confirm = within(dialog).getByRole('button', { name: '다시 시작' });
     const cancel = within(dialog).getByRole('button', { name: '취소' });
 
@@ -283,8 +264,8 @@ describe('AppManagementMenu', () => {
     const onReset = vi.fn(() => new Promise<boolean>((resolve) => { settle = resolve; }));
     render(<><AppManagementMenu items={buildItems({ onReset })} /><button type="button">바깥</button></>);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
-    const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    const dialog = await screen.findByRole('dialog', { name: '처음부터 다시 할까요?' });
     fireEvent.click(within(dialog).getByRole('button', { name: '다시 시작' }));
 
     expect(dialog).toHaveFocus();
@@ -302,10 +283,10 @@ describe('AppManagementMenu', () => {
     render(<AppManagementMenu items={[{ kind: 'message', id: 'empty', text: '아직 관리할 설정이 없습니다' }]} />);
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     expect(screen.getByText('아직 관리할 설정이 없습니다')).toBeVisible();
-    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+    expect(screen.queryAllByRole('menu')).toHaveLength(0);
   });
 
-  it('keeps the popover open while interacting with a control group', () => {
+  it('keeps the settings dialog open while interacting with a control group', () => {
     render(
       <AppManagementMenu
         items={[{
@@ -325,19 +306,7 @@ describe('AppManagementMenu', () => {
     fireEvent.click(screen.getByRole('switch', { name: '금액 보기' }));
 
     expect(screen.getByRole('group', { name: '보기 설정' })).toBeVisible();
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '관리 메뉴' })).toBeVisible();
     expect(screen.getByRole('switch', { name: '금액 보기' })).toBeChecked();
   });
 });
-
-function animationOptionsFor(target: Element): Record<string, unknown> | undefined {
-  return animeMocks.animate.mock.calls.find(([candidate]) => candidate === target)?.[1] as
-    | Record<string, unknown>
-    | undefined;
-}
-
-function fireTouchPointerEvent(element: Element, type: string): void {
-  const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperty(event, 'pointerType', { value: 'touch' });
-  fireEvent(element, event);
-}

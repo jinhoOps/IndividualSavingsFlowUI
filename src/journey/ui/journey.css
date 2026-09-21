@@ -158,20 +158,47 @@
   background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
 }
 
-.journey-management__popover {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 7px);
-  right: 0;
+.journey-management__settings {
   display: grid;
-  width: min(17rem, calc(100vw - 64px));
-  max-height: calc(100dvh - 96px);
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: inherit;
+}
+
+.journey-management__settings-header {
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding: .75rem 1rem;
+}
+
+.journey-management__settings-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.journey-management__settings-close {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+
+.journey-management__settings-close:hover,
+.journey-management__settings-close:focus-visible {
+  background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
+  box-shadow: var(--ui-focus-ring);
+}
+
+.journey-management__settings-body {
+  display: grid;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid var(--line);
-  border-radius: var(--ui-control-radius);
-  background: var(--panel);
-  box-shadow: var(--shadow-float);
   padding: .375rem;
 }
 
@@ -206,7 +233,7 @@
   opacity: 1;
 }
 
-.journey-management__popover hr {
+.journey-management__settings-body hr {
   width: 100%;
   border: 0;
   border-top: 1px solid var(--line);

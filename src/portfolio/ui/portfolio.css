@@ -199,7 +199,7 @@
 .portfolio-dialog[data-sheet-exiting] { pointer-events: none; }
 .portfolio-dialog::backdrop { background: rgb(16 34 32 / 35%); }
 .portfolio-item-sheet { inset: auto 0 0; width: min(100%, 32rem); max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top))); margin: 0 auto; padding: 1.25rem 1rem calc(1rem + env(safe-area-inset-bottom)); overflow: hidden; border: 0; border-radius: 1.5rem 1.5rem 0 0; transform: none; }
-.portfolio-item-sheet[data-presentation='panel'] { inset: 0 0 0 auto; width: min(32rem, 42vw); max-height: 100dvh; margin: 0; padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); border-left: 1px solid var(--line); border-radius: 0; }
+.portfolio-item-sheet[data-presentation='modal'] { inset: 50% auto auto 50%; width: min(32rem, calc(100vw - 3rem)); max-height: calc(100dvh - 3rem); margin: 0; padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); border: 1px solid var(--line); border-radius: var(--ui-surface-radius); transform: translate(-50%, -50%); }
 .portfolio-item-sheet::backdrop { animation: portfolio-item-backdrop-in 180ms ease-out both; }
 .portfolio-item-sheet__header { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: .75rem; }
 .portfolio-item-sheet__header h2 { margin: 0; }
@@ -223,7 +223,7 @@
 .portfolio-item-sheet__calculated { justify-self: end; color: var(--muted); font-size: .875rem; }
 .portfolio-item-sheet__actions, .portfolio-item-sheet__discard-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: 1.5rem; }
 .portfolio-item-sheet__actions .ui-button, .portfolio-item-sheet__discard-actions .ui-button { width: 100%; min-height: 48px; }
-.portfolio-edit-surface { inset: 0 0 0 auto; width: min(34rem, 42vw); max-height: 100dvh; padding: 1.5rem 1.5rem calc(1rem + env(safe-area-inset-bottom)); border-radius: 0; border-left: 1px solid var(--line); transform: none; }
+.portfolio-edit-surface { inset: 50% auto auto 50%; width: min(40rem, calc(100vw - 3rem)); max-height: calc(100dvh - 3rem); padding: 1.5rem 1.5rem calc(1rem + env(safe-area-inset-bottom)); transform: translate(-50%, -50%); }
 .portfolio-edit-surface__header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .portfolio-edit-surface__header h2 { margin: 0; }
 .portfolio-edit-surface__header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: .5rem; }
@@ -257,7 +257,7 @@
 
 @keyframes portfolio-item-backdrop-in { from { background: rgb(16 34 32 / 0%); } }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .portfolio-editor, .portfolio-recovery { padding: 1rem; }
   .portfolio-item-sheet[data-presentation='sheet'] { width: min(100%, 32rem); }
   .portfolio-allocation-row__select { padding: 1rem; }
@@ -265,7 +265,7 @@
   .portfolio-setup { padding: 1rem; }
   .portfolio-setup__actions { padding-top: .75rem; border-top: 1px solid var(--line); }
   .portfolio-setup__actions .ui-button:last-child { flex: 1; }
-  .portfolio-edit-surface { inset: auto 0 0; width: 100%; max-height: 88dvh; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 0; border-radius: 1.5rem 1.5rem 0 0; }
+  .portfolio-edit-surface { inset: auto 0 0; width: 100%; max-height: 88dvh; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border: 0; border-radius: 1.5rem 1.5rem 0 0; transform: none; }
   :is(.portfolio-edit-surface, .portfolio-item-sheet) [data-sheet-drag-handle] { position: relative; touch-action: none; cursor: grab; }
   :is(.portfolio-edit-surface, .portfolio-item-sheet) [data-sheet-drag-handle]::before { position: absolute; top: -.5rem; left: 50%; width: 2.5rem; height: .25rem; border-radius: 999px; background: var(--line-strong, var(--line)); content: ''; transform: translateX(-50%); pointer-events: none; }
   :is(.portfolio-edit-surface, .portfolio-item-sheet)[data-sheet-dragging] [data-sheet-drag-handle] { cursor: grabbing; }
@@ -276,15 +276,15 @@
   .portfolio-apply-bar > [role='alert'] { width: 100%; margin: 0; }
 }
 
-.portfolio-edit-surface--examples { inset: 0 0 0 auto; width: min(40rem, calc(100vw - 2rem)); height: 100dvh; max-height: 100dvh; transform: none; }
+.portfolio-edit-surface--examples { inset: 50% auto auto 50%; width: min(60rem, calc(100vw - 3rem)); height: min(54rem, calc(100dvh - 3rem)); max-height: calc(100dvh - 3rem); transform: translate(-50%, -50%); }
 .portfolio-edit-surface--examples > [data-dialog-motion] { flex: 1; }
 @media (min-width: 1100px) {
   .portfolio-edit-surface--examples { width: min(60rem, calc(100vw - 4rem)); }
   .portfolio-example-picker__workspace:has(.portfolio-example-picker__catalog:not([hidden])) { grid-template-columns: 20rem minmax(0, 1fr); gap: 1.5rem; }
   .portfolio-example-picker__catalog { padding-right: 1rem; border-right: 1px solid var(--line); }
 }
-@media (max-width: 768px) {
-  .portfolio-edit-surface--examples { inset: 0; width: 100%; height: 100dvh; max-height: 100dvh; padding-top: max(1rem, env(safe-area-inset-top)); border-radius: 0; }
+@media (max-width: 767px) {
+  .portfolio-edit-surface--examples { inset: 0; width: 100%; height: 100dvh; max-height: 100dvh; padding-top: max(1rem, env(safe-area-inset-top)); border-radius: 0; transform: none; }
 }
 @media (max-width: 480px) {
   .portfolio-example-picker__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }

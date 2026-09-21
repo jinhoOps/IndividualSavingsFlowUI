@@ -131,15 +131,16 @@ test('toggles every result amount immediately and retains the preference after r
   await page.goto('apps/portfolio/');
   const rows = page.locator('.portfolio-allocation-list');
   await expect(rows.locator('.portfolio-allocation-row__amount')).toHaveCount(0);
-  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('switch', { name: '금액 보기' }).check();
-  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: '관리 메뉴' })).toBeHidden();
   for (const amount of ['400,000원', '200,000원', '120,000원', '80,000원']) {
     await expect(rows.getByText(amount, { exact: true })).toBeVisible();
   }
   await page.reload();
   await expect(rows.locator('.portfolio-allocation-row__amount')).toHaveCount(4);
-  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await page.getByRole('switch', { name: '금액 보기' }).uncheck();
   await expect(rows.locator('.portfolio-allocation-row__amount')).toHaveCount(0);
   await expect(page.getByText('이번 달 투자금 800,000원')).toHaveCount(0);
@@ -385,15 +386,15 @@ test('resumes and cancels a draft, validates manual cash, and confirms reset', a
   await page.getByRole('button', { name: '취소' }).click();
   await page.getByRole('button', { name: '변경 버리기' }).click();
 
-  const management = page.getByRole('button', { name: '관리 메뉴' });
+  const management = page.getByRole('button', { name: '관리 메뉴', exact: true });
   await management.click();
-  await page.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }).click();
+  await page.getByRole('button', { name: '투자 배분 처음부터 다시' }).click();
   const resetDialog = page.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' });
   await expect(resetDialog.getByRole('button', { name: '취소' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(management).toBeFocused();
   await management.click();
-  await page.getByRole('menuitem', { name: '투자 배분 처음부터 다시' }).click();
+  await page.getByRole('button', { name: '투자 배분 처음부터 다시' }).click();
   await page.getByRole('dialog', { name: '투자 배분을 처음부터 다시 할까요?' })
     .getByRole('button', { name: '초기화' }).click();
   await expect(page.getByRole('heading', { name: /매달 .*원을 어디에 투자할까요\?/ })).toBeVisible();
@@ -455,14 +456,14 @@ test('shows the source-state summary first and keeps view preferences separate',
     await expect(row).not.toContainText('원');
   }
 
-  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   const amountSwitch = page.getByRole('switch', { name: '금액 보기' });
   const amountLabel = amountSwitch.locator('..');
   const amountLabelBox = await amountLabel.boundingBox();
   if (amountLabelBox === null) throw new Error('금액 보기 라벨이 표시되지 않음');
   await amountLabel.click({ position: { x: amountLabelBox.width - 12, y: amountLabelBox.height / 2 } });
   await expect(amountSwitch).toBeChecked();
-  await expect(page.getByRole('button', { name: '관리 메뉴' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('button', { name: '관리 메뉴', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByText('이번 달 투자금 800,000원')).toBeVisible();
   await page.getByRole('radio', { name: '입력순' }).check();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('isf-portfolio-view-preferences-v1')))
@@ -567,7 +568,7 @@ test('keeps the summary-first ratio list usable across required widths', async (
     expect(indexSegmentBox!.width / barBox!.width).toBeCloseTo(0.5, 1);
     await expect(summary.locator('.portfolio-allocation-row__fill')).toHaveCount(0);
 
-    await page.getByRole('button', { name: '관리 메뉴' }).click();
+    await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
     const inputSort = page.getByRole('radio', { name: '입력순' });
     await inputSort.focus();
     await inputSort.check();
@@ -748,15 +749,14 @@ test('discards a dirty mobile Portfolio editor through its exit after drag confi
   await expect(page.locator('.portfolio-allocation-list')).toContainText('인덱스60%');
 });
 
-test('isolates applied editing as a sheet or panel and restores focus', async ({ page }, testInfo) => {
+test('isolates applied editing as a sheet or centered modal and restores focus', async ({ page }, testInfo) => {
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
 
   for (const viewport of [
     { width: 390, height: 844, mode: 'sheet' },
-    { width: 768, height: 1024, mode: 'sheet' },
-    { width: 769, height: 900, mode: 'panel' },
-    { width: 1280, height: 900, mode: 'panel' },
+    { width: 768, height: 1024, mode: 'modal' },
+    { width: 1280, height: 900, mode: 'modal' },
   ]) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto('apps/portfolio/');
@@ -772,11 +772,13 @@ test('isolates applied editing as a sheet or panel and restores focus', async ({
       }).toBeLessThan(0.5);
     }
     const box = await editor.boundingBox();
-    expect(box!.x + box!.width).toBeCloseTo(viewport.width, 0);
     if (viewport.mode === 'sheet') {
       expect(box!.x).toBe(0);
       expect(box!.width).toBe(viewport.width);
       expect(box!.y + box!.height).toBeCloseTo(viewport.height, 0);
+    } else {
+      expect(box!.x + box!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+      expect(box!.y + box!.height / 2).toBeCloseTo(viewport.height / 2, 0);
     }
     await expect(editor.getByRole('textbox')).toHaveCount(0);
     await expect(editor.getByRole('button', { name: /인덱스 편집.*성장/ })).toBeVisible();
@@ -1053,7 +1055,7 @@ for (const width of [390, 768, 1280]) {
     await page.locator('.portfolio-allocation-row__select').first().click();
     const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
     await expect(editor).toHaveCSS('opacity', '1');
-    if (width <= 768) {
+    if (width < 768) {
       await expect.poll(async () => {
         const box = await editor.boundingBox();
         return box === null ? Infinity : Math.abs(box.y + box.height - 844);
@@ -1200,9 +1202,11 @@ for (const mode of ['setup', 'edit'] as const) {
     await action.click();
     await page.getByRole('button', { name: mode === 'setup' ? '이대로 시작' : '배분 적용', exact: true }).click();
     await expect(page.locator('.portfolio-allocation-row__select').first()).toBeVisible();
-    const workspace = await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!));
-    expect(workspace.portfolio.plans[0].items[0].name).toBe('수정한 인덱스');
-    expect(workspace.main.applied.monthlyInvestmentWon).toBe(200000);
+    await expect.poll(() => page.evaluate(() => {
+      const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
+      return workspace.portfolio.plans[0].items[0].name;
+    })).toBe('수정한 인덱스');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlyInvestmentWon)).toBe(200000);
   });
 }
 

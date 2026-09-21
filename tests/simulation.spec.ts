@@ -49,16 +49,29 @@ for (const viewport of [
     const projection = page.locator('.simulation-projection');
     await expect(projection.getByRole('heading', { name: '5년 동안의 자산 변화' })).toBeVisible();
     await expect(projection.getByRole('img', { name: '기간별 복리 성장 그래프' })).toBeVisible();
-    await expect(projection.getByRole('button', { name: '연 기대수익률 9%' })).toBeVisible();
-    await expect(projection.getByRole('link', { name: '9% 샘플 포트폴리오 보기' }))
+    await expect(page.getByRole('link', { name: '포트폴리오 샘플 보기' }))
       .toHaveAttribute('href', '/IndividualSavingsFlowUI/apps/portfolio/?samplePreset=9');
+    const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    await expect(conditionEditor).toBeVisible();
+    const editorBox = await conditionEditor.boundingBox();
+    expect(editorBox).not.toBeNull();
+    if (viewport.width < 768) {
+      expect(editorBox!.x).toBe(0);
+      expect(editorBox!.width).toBe(viewport.width);
+      expect(editorBox!.y + editorBox!.height).toBeCloseTo(viewport.height, 0);
+    } else {
+      expect(editorBox!.x + editorBox!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+      expect(editorBox!.y + editorBox!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+    }
+    await expect(conditionEditor.getByRole('button', { name: '연 기대수익률 9%' })).toBeVisible();
     await expect(projection.getByText('넣은 돈 대비')).toBeVisible();
     const initialGoalCopy = await page.locator('#simulation-result-title').textContent();
-    await projection.getByRole('spinbutton', { name: '기간 숫자' }).fill('8');
+    await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('8');
     await expect(projection.getByRole('heading', { name: '8년 동안의 자산 변화' })).toBeVisible();
     await expect(page.locator('#simulation-result-title')).toHaveText(initialGoalCopy!);
-    await projection.getByRole('spinbutton', { name: '기간 숫자' }).fill('5');
-    const settings = page.getByRole('region', { name: '목표와 가정', exact: true });
+    await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('5');
+    const settings = conditionEditor.getByRole('region', { name: '목표와 가정', exact: true });
     const summary = settings.locator('summary');
     await expect(page.getByRole('textbox', { name: '목표 금액' })).toBeHidden();
     await expect(summary).toContainText('목표 1억 원 · 시작 0원');
@@ -99,10 +112,12 @@ for (const viewport of [
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft.targetAmountWon)).toBe(160_000_000);
     await page.reload();
     await expect(target).toBeHidden();
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    await expect(conditionEditor).toBeVisible();
     await expect(summary).toContainText('목표 1억 6,000만 원');
     await summary.click();
     await expect(target).toHaveValue('160,000,000');
-    await expect(page.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('5');
+    await expect(conditionEditor.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('5');
     await expect(headline).toContainText('1억 6,000만 원');
     expect(await page.locator('.growth-chart__semantic-path').evaluateAll(paths => paths.map(path => path.getAttribute('d')))).toEqual(originalGraph);
     expect(await page.evaluate(() => {
@@ -122,10 +137,12 @@ for (const viewport of [
     await page.getByRole('button', { name: '기본 목표로' }).click();
     await expect(headline).toHaveText(originalHeadline!);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).simulation.draft.targetAmountWon)).toBe(100_000_000);
-    await expect(page.getByRole('spinbutton', { name: '기준금리', exact: true })).toHaveValue('3');
+    await expect(conditionEditor.getByRole('spinbutton', { name: '기준금리', exact: true })).toHaveValue('3');
     await summary.focus();
     await summary.press('Enter');
-    await expect(page.getByRole('spinbutton', { name: '기준금리', exact: true })).toBeHidden();
+    await expect(conditionEditor.getByRole('spinbutton', { name: '기준금리', exact: true })).toBeHidden();
+    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await expect(conditionEditor).toBeHidden();
     await expect(page.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: '실질', exact: true }).click();
     await expect(page.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -135,8 +152,9 @@ for (const viewport of [
       value.querySelector('.simulation-comparison__semantic-value')?.textContent
         === value.querySelector('.simulation-comparison__visual-value')?.textContent
     )))).toBe(true);
+    await page.getByRole('button', { name: '조건 편집' }).click();
     await summary.click();
-    const controls = page.locator('.simulation-projection, .simulation-calculation-settings').locator('input, button, summary');
+    const controls = conditionEditor.locator('input, button, summary');
     for (const control of await controls.all()) {
       if (!await control.isVisible()) continue;
       const box = await control.boundingBox();
@@ -145,9 +163,11 @@ for (const viewport of [
       expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await settings.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-expanded-${viewport.width}.png`) });
+    await conditionEditor.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-expanded-${viewport.width}.png`) });
     await summary.click();
-    await settings.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-${viewport.width}.png`) });
+    await conditionEditor.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-${viewport.width}.png`) });
+    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await expect(conditionEditor).toBeHidden();
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-full-${viewport.width}.png`), fullPage: true });
   });
 
@@ -157,8 +177,11 @@ for (const viewport of [
     await seedMain(page);
     await openFirstResult(page);
 
-    await page.getByText('목표와 가정').click();
-    const initialAmount = page.getByRole('textbox', { name: '현재 모아둔 돈' });
+    const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    await expect(conditionEditor).toBeVisible();
+    await conditionEditor.getByText('목표와 가정').click();
+    const initialAmount = conditionEditor.getByRole('textbox', { name: '현재 모아둔 돈' });
     await expect(initialAmount).toHaveValue('0');
     const headline = page.getByRole('heading', {
       name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
@@ -194,8 +217,8 @@ for (const viewport of [
       .toBe(committedWorkspace);
 
     const adjustments = ['-5천만', '-1천만', '+1천만', '+5천만']
-      .map((name) => page.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' }).getByRole('button', { name }));
-    const adjustmentControl = page.locator('.simulation-principal-adjustments');
+      .map((name) => conditionEditor.getByRole('group', { name: '현재 모아둔 돈 빠른 조정' }).getByRole('button', { name }));
+    const adjustmentControl = conditionEditor.locator('.simulation-principal-adjustments');
     const inputControl = initialAmount.locator('xpath=..');
     // Measure the final typography before scrolling a control to the viewport edge.
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -308,17 +331,20 @@ for (const viewport of [
       targetAmountWon: 100_000_000,
     });
 
-    const mode = page.getByRole('group', { name: '표시 금액 기준' });
-    await mode.getByRole('button', { name: '실질', exact: true }).click();
-    await expect(mode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(mode.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'false');
     await page.mouse.move(0, 0);
-    await page.locator('.simulation-calculation-settings').screenshot({path: `test-results/shared-controls-simulation-${viewport.width}.png`});
+    await conditionEditor.locator('.simulation-calculation-settings')
+      .screenshot({path: `test-results/shared-controls-simulation-${viewport.width}.png`});
 
     const box = await initialAmount.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.height).toBeGreaterThanOrEqual(44);
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await expect(conditionEditor).toBeHidden();
+    const mode = page.getByRole('group', { name: '표시 금액 기준' });
+    await mode.getByRole('button', { name: '실질', exact: true }).click();
+    await expect(mode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(mode.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'false');
   });
 }
 
@@ -344,19 +370,22 @@ test('guides automatic-goal first run, supports boundary years and keeps Main re
 
   const hero = page.getByRole('heading', { name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/ });
   const headline = await hero.textContent();
-  await page.getByRole('spinbutton', { name: '기간 숫자' }).fill('0');
-  await expect(page.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('0');
+  const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+  await page.getByRole('button', { name: '조건 편집' }).click();
+  await expect(conditionEditor).toBeVisible();
+  await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('0');
+  await expect(conditionEditor.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('0');
   await expect(hero).toHaveText(headline ?? '');
-  await page.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
-  await expect(page.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('30');
+  await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
+  await expect(conditionEditor.getByRole('spinbutton', { name: '기간 숫자' })).toHaveValue('30');
   await expect(hero).toHaveText(headline ?? '');
 
-  await page.getByRole('button', { name: '직접 입력' }).click();
-  await page.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }).fill('8.75');
+  await conditionEditor.getByRole('button', { name: '직접 입력' }).click();
+  await conditionEditor.getByRole('spinbutton', { name: '연 기대수익률 직접 입력' }).fill('8.75');
   await expect(page.getByText(/연 8.75%/)).toBeVisible();
-  await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeHidden();
-  await page.getByText('목표와 가정').click();
-  await expect(page.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
+  await expect(conditionEditor.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeHidden();
+  await conditionEditor.getByText('목표와 가정').click();
+  await expect(conditionEditor.getByText(/백테스트나 금융 자문이 아닙니다/)).toBeVisible();
   expect(await page.evaluate(() => ({
     workspace: JSON.parse(localStorage.getItem('isf-workspace-v5')!),
   }))).toMatchObject({
@@ -431,8 +460,9 @@ test('reloads latest Main values and resets only Simulation from its menu', asyn
   ))).toBe(900_000);
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
-  await page.getByRole('button', { name: '다시 설정' }).click();
+  await page.getByRole('button', { name: '시뮬레이션 다시 설정' }).click();
+  await page.getByRole('dialog', { name: '시뮬레이션을 다시 설정할까요?' })
+    .getByRole('button', { name: '다시 설정' }).click();
   await expect(page.getByRole('heading', { name: '지금 모아둔 투자금이 있나요?' })).toBeVisible();
   expect(await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
@@ -500,7 +530,7 @@ test('keeps a failed reset dialog scrollable, contained, and focused in a short 
   await openFirstResult(page);
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  await page.getByRole('menuitem', { name: '시뮬레이션 다시 설정' }).click();
+  await page.getByRole('button', { name: '시뮬레이션 다시 설정' }).click();
   await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
     workspace.simulation.draft.years = workspace.simulation.draft.years === 20 ? 19 : 20;
@@ -589,12 +619,17 @@ for (const viewport of [
     if (heroBox === null) throw new Error('simulation hero has no bounding box');
     expect(heroBox.y).toBeLessThan(viewport.height);
     expect(heroBox.y + heroBox.height).toBeGreaterThan(0);
-    const years = page.getByRole('spinbutton', { name: '기간 숫자' });
+    const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    await expect(conditionEditor).toBeVisible();
+    const years = conditionEditor.getByRole('spinbutton', { name: '기간 숫자' });
     await expect(years).toHaveValue('5');
     await years.fill('0');
     await expect(hero).toHaveText(headline ?? '');
     await years.fill('3');
     await expect(hero).toHaveText(headline ?? '');
+    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await expect(conditionEditor).toBeHidden();
 
     const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
     const explorer = page.getByRole('application', { name: '그래프 기간 탐색' });
@@ -628,32 +663,6 @@ for (const viewport of [
     expect(comparisonState).toHaveLength(2);
     expect(comparisonState.every(({ semantic, visual }) => semantic === visual)).toBe(true);
 
-    const surfaceStyles = await page.locator([
-      '.simulation-projection',
-      '.simulation-calculation-settings',
-    ].join(',')).evaluateAll((surfaces) => surfaces.map((surface) => {
-      const style = getComputedStyle(surface);
-      return {
-        backgroundColor: style.backgroundColor,
-        borderStyle: style.borderTopStyle,
-        borderWidth: style.borderTopWidth,
-        borderRadius: style.borderTopLeftRadius,
-        boxShadow: style.boxShadow,
-      };
-    }));
-    expect(surfaceStyles).toHaveLength(2);
-    for (const style of surfaceStyles) {
-      expect(style.backgroundColor).toBe('rgb(255, 255, 255)');
-      expect(style.borderStyle).toBe('solid');
-      expect(style.borderWidth).toBe('1px');
-      expect(style.borderRadius).toBe('24px');
-      expect(style.boxShadow).toBe('none');
-    }
-
-    for (const child of await page.locator('.simulation-projection > .growth-chart, .simulation-projection > .simulation-controls').all()) {
-      await expect(child).toHaveCSS('border-left-width', '0px');
-      await expect(child).toHaveCSS('border-radius', '0px');
-    }
     const box = await graph.boundingBox();
     if (box === null) throw new Error('graph has no bounding box');
     await graph.dispatchEvent('pointerdown', {
@@ -705,6 +714,19 @@ for (const viewport of [
     await explorer.press('ArrowRight');
     await expect(explorer.getByRole('status')).toContainText('1개월');
 
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    await expect(conditionEditor).toBeVisible();
+    const editorGroups = conditionEditor.locator('.simulation-controls, .simulation-calculation-settings');
+    await expect(editorGroups).toHaveCount(2);
+    await expect(conditionEditor.locator('.simulation-controls')).toHaveCSS('border-top-width', '0px');
+    await expect(conditionEditor.locator('.simulation-calculation-settings')).toHaveCSS('border-top-width', '1px');
+    const editorUndersized = await conditionEditor.locator('button:visible, input:visible').evaluateAll((controls) => (
+      controls.filter((control) => control.getBoundingClientRect().height < 44).length
+    ));
+    expect(editorUndersized).toBe(0);
+    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await expect(conditionEditor).toBeHidden();
+
     const undersized = await page.locator('button:visible, input:visible').evaluateAll((controls) => (
       controls.filter((control) => control.getBoundingClientRect().height < 44).length
     ));
@@ -716,7 +738,11 @@ test('mobile keeps compact tooltip stable while dragging', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page);
   await openFirstResult(page);
-  await page.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
+  const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+  await page.getByRole('button', { name: '조건 편집' }).click();
+  await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
+  await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+  await expect(conditionEditor).toBeHidden();
 
   const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
   const box = await graph.boundingBox();

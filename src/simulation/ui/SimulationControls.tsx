@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
-import { isPortfolioSamplePreset, portfolioSampleHref } from '../../journey/portfolioSampleIntent';
 import type { CompoundSimulationDraft } from '../domain/model';
 
 const RETURN_PRESETS = [5, 9, 13] as const;
@@ -116,13 +115,6 @@ export function SimulationControls({
             직접 입력
           </Button>
         </div>
-        {!returnError && isPortfolioSamplePreset(draft.expectedAnnualReturnPercent) ? (
-          <a
-            className="simulation-sample-link"
-            href={portfolioSampleHref(draft.expectedAnnualReturnPercent)}
-          >{draft.expectedAnnualReturnPercent}% 샘플 포트폴리오 보기</a>
-        ) : null}
-
         {customReturn ? (
           <div className="simulation-custom-return">
             <Button

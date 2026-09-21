@@ -1,8 +1,6 @@
-import { animate } from 'animejs';
-import { useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useContext, useId, useRef, useState, type ReactNode } from 'react';
 import { AccountManagementContext, AccountProductBoundary } from '../../auth/AccountManagementContext';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
-import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
 
 export interface ManagementConfirmation {
@@ -22,56 +20,30 @@ export type AppManagementItem =
 export function AppManagementMenu({ items }: { items: readonly AppManagementItem[] }) {
   const account = useContext(AccountManagementContext);
   const menuId = useId();
-  const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const internalPointerDownRef = useRef(false);
   const confirmationPendingRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
+  const [confirmationReady, setConfirmationReady] = useState(false);
   const [confirmationFailed, setConfirmationFailed] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
-  const popoverMotionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
-    revealDisclosure(root, reducedMotion);
-  }, [open]);
 
-  function closePopover(restoreFocus = true): void {
+  function closeSettings(): void {
     setOpen(false);
-    if (restoreFocus) window.setTimeout(() => triggerRef.current?.focus(), 0);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    const closeOutside = (event: PointerEvent) => {
-      const root = rootRef.current;
-      const target = event.target as Node;
-      if (root?.contains(target)) return;
-      const movingWithinLauncher = root?.closest('.journey-launcher')?.contains(target) ?? false;
-      closePopover(!movingWithinLauncher);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      closePopover();
-    };
-    document.addEventListener('pointerdown', closeOutside);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOutside);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [open]);
-
   function chooseAction(item: Extract<AppManagementItem, { kind: 'action' }>): void {
-    setOpen(false);
     if (item.confirmation !== undefined) {
       confirmationPendingRef.current = false;
       setConfirmationPending(false);
       setConfirmationFailed(false);
+      setConfirmationReady(false);
       setPending(item);
+      closeSettings();
       return;
     }
     item.onSelect();
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
+    closeSettings();
   }
 
   function confirmAction(action: () => void | boolean | Promise<void | boolean>): void {
@@ -99,7 +71,6 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       <button
         key={item.id}
         type="button"
-        role="menuitem"
         className={`journey-management__row${item.tone === 'danger' ? ' journey-management__danger' : ''}`}
         disabled={item.disabled || readOnly}
         onClick={() => chooseAction(item)}
@@ -113,56 +84,58 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   if (sections.length === 0 && (account?.items.length ?? 0) === 0) return null;
 
   return (
-    <div
-      ref={rootRef}
-      className="journey-management"
-      onBlur={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-        if (!internalPointerDownRef.current) {
-          setOpen(false);
-          return;
-        }
-        window.setTimeout(() => {
-          if (!rootRef.current?.contains(document.activeElement)) setOpen(false);
-        }, 0);
-      }}
-      onPointerDownCapture={() => {
-        internalPointerDownRef.current = true;
-        window.setTimeout(() => { internalPointerDownRef.current = false; }, 0);
-      }}
-    >
+    <div className="journey-management">
       <button
         ref={triggerRef}
         type="button"
         className="journey-launcher__management-trigger"
         aria-label="관리 메뉴"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={menuId}
         onClick={() => {
           setOpen((current) => !current);
         }}
       >
         <GearIcon />
       </button>
-      {open ? (
-        <div ref={popoverMotionRef} id={menuId} className="journey-management__popover">
+      <ResponsiveDialog
+        open={open}
+        labelledBy={menuId}
+        size="compact"
+        mobileHeight="content"
+        returnFocusRef={triggerRef}
+        onRequestClose={() => {
+          closeSettings();
+          return true;
+        }}
+        onClosed={() => {
+          if (pending !== null) setConfirmationReady(true);
+        }}
+      >
+        <section className="journey-management__settings">
+          <header className="journey-management__settings-header">
+            <h2 id={menuId} tabIndex={-1} data-dialog-initial-focus>관리 메뉴</h2>
+            <button type="button" className="journey-management__settings-close" aria-label="관리 메뉴 닫기" onClick={closeSettings}>닫기</button>
+          </header>
+          <div className="journey-management__settings-body">
           {sections.map((section, index) => section.kind === 'control' ? (
             <div key={section.item.id} role="group" className="journey-management__control"><AccountProductBoundary>{section.item.content}</AccountProductBoundary></div>
           ) : (
-            <div key={`menu-${index}`} role="menu" aria-label="관리 메뉴">
+            <div key={`menu-${index}`} className="journey-management__actions">
               {section.items.map(item => renderMenuItem(item, account?.readOnly))}
             </div>
           ))}
           {account === null ? null : <div role="group" aria-label="계정">
             {sections.length > 0 ? <hr /> : null}
             <p className="journey-management__message">계정</p>
-            <div role="menu" aria-label="계정 메뉴">
+            <div className="journey-management__actions">
               {account.items.map(item => item.kind === 'control' ? <div key={item.id}>{item.content}</div> : renderMenuItem(item))}
             </div>
           </div>}
-        </div>
-      ) : null}
-      {pending?.confirmation === undefined ? null : (
+          </div>
+        </section>
+      </ResponsiveDialog>
+      {pending?.confirmation === undefined || !confirmationReady ? null : (
         <AccountProductBoundary>
         <ManagementConfirmationDialog
           confirmation={pending.confirmation}
@@ -182,28 +155,6 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
       )}
     </div>
   );
-}
-
-function revealDisclosure(target: HTMLElement, reducedMotion: boolean): void {
-  if (reducedMotion) {
-    setDisclosureFinalState(target);
-    return;
-  }
-  try {
-    animate(target, {
-      opacity: [0, 1],
-      y: [-MOTION_DISTANCE_PX.subtle, 0],
-      duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
-    });
-  } catch {
-    setDisclosureFinalState(target);
-  }
-}
-
-function setDisclosureFinalState(target: HTMLElement): void {
-  target.style.opacity = '1';
-  target.style.transform = 'translateY(0px)';
 }
 
 type AppManagementMenuEntry = Exclude<AppManagementItem, { kind: 'control' }>;

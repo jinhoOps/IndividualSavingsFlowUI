@@ -461,7 +461,7 @@ for (const viewport of viewports) {
     await page.getByRole('button', { name: '계획 적용' }).click();
     await expect(page.getByRole('heading', { name: '이번 달 자금 흐름' })).toBeVisible();
     await page.getByRole('button', { name: '관리 메뉴' }).click();
-    await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+    await page.getByRole('button', { name: '처음부터 다시' }).click();
     await page.getByRole('dialog', { name: '처음부터 다시 할까요?' })
       .getByRole('button', { name: '다시 시작' })
       .click();

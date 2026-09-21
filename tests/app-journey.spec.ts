@@ -453,7 +453,7 @@ test('mobile dock supports direct taps and history while preserving Main amounts
     await page.goBack();
     await expect(page.getByRole('link', { name: /자금 흐름.*현재 위치/ })).toBeVisible();
     await page.getByRole('button', { name: '관리 메뉴', exact: true }).tap();
-    await expect(page.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: '관리 메뉴' })).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied))
       .toEqual(appliedMain);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -480,7 +480,7 @@ test('keeps each app management menu reachable and contained across viewports', 
     await page.setViewportSize(viewport);
     for (const app of apps) {
       await page.goto(app.path);
-      const trigger = page.getByRole('button', { name: '관리 메뉴' });
+      const trigger = page.getByRole('button', { name: '관리 메뉴', exact: true });
       await expect(trigger).toBeVisible();
       await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       const triggerBox = await trigger.boundingBox();
@@ -489,17 +489,21 @@ test('keeps each app management menu reachable and contained across viewports', 
 
       await trigger.click();
       await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-      const popover = page.locator('.journey-management__popover');
-      const menu = page.getByRole('menu', { name: '관리 메뉴', exact: true });
+      const popover = page.getByRole('dialog', { name: '관리 메뉴', exact: true });
       await expect(popover).toBeVisible();
-      await expect(menu).toBeVisible();
       await expect(popover.getByText('앱 아이콘 안내')).toHaveCount(0);
       await expect(popover.getByText(/백업/)).toHaveCount(0);
       await expect(popover.getByText(app.text)).toBeVisible();
       const popoverBox = await popover.boundingBox();
       expect(popoverBox).not.toBeNull();
-      expect(popoverBox!.x).toBeGreaterThanOrEqual(16);
-      expect(popoverBox!.x + popoverBox!.width).toBeLessThanOrEqual(viewport.width - 16);
+      if (viewport.width < 768) {
+        expect(popoverBox!.x).toBe(0);
+        expect(popoverBox!.x + popoverBox!.width).toBe(viewport.width);
+        expect(popoverBox!.y + popoverBox!.height).toBeCloseTo(viewport.height, 0);
+      } else {
+        expect(popoverBox!.x + popoverBox!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+        expect(popoverBox!.y + popoverBox!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+      }
 
       await page.keyboard.press('Escape');
       await expect(popover).toBeHidden();
@@ -508,7 +512,7 @@ test('keeps each app management menu reachable and contained across viewports', 
 
       await trigger.click();
       await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-      await page.locator('main').click({ position: { x: 1, y: 1 } });
+      await page.mouse.click(8, 8);
       await expect(popover).toBeHidden();
       await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await expect(trigger).toBeFocused();
@@ -532,9 +536,9 @@ test('explains app icons with pointer, keyboard and touch without duplicate mana
   await page.keyboard.press('Escape');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 
-  await page.getByRole('button', { name: '관리 메뉴' }).click();
+  await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
   await expect(page.getByText('앱 아이콘 안내')).toHaveCount(0);
-  await page.locator('main').click({ position: { x: 1, y: 1 } });
+  await page.mouse.click(8, 8);
 
   const portfolioLink = page.getByRole('link', { name: '투자 배분 (Portfolio)' });
   const before = page.url();
@@ -579,13 +583,15 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await expect(overflow.getByRole('link').nth(0)).toContainText('자금 흐름 (Main)');
   await expect(overflow.getByRole('link').nth(1)).toContainText('미래 성장 (Simulation)');
 
-  const gear = page.getByRole('button', { name: '관리 메뉴' });
+  const gear = page.getByRole('button', { name: '관리 메뉴', exact: true });
   await gear.click();
   await expect(overflow).toHaveCount(0);
-  await expect(page.getByRole('menu', { name: '관리 메뉴' })).toBeVisible();
+  const settings = page.getByRole('dialog', { name: '관리 메뉴' });
+  await expect(settings).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
   await more.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('menu', { name: '관리 메뉴' })).toHaveCount(0);
   await expect(overflow).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(overflow).toHaveCount(0);
@@ -595,7 +601,7 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   await more.click();
   await page.locator('main').click({ position: { x: 1, y: 1 } });
   await expect(overflow).toHaveCount(0);
-  await expect(more).toBeFocused();
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
   await narrowLauncher.evaluate((style) => style.remove());
@@ -694,7 +700,9 @@ test('primary action labels meet text contrast in resting and hover states acros
     await page.goto(`apps/${app}/`);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     if (app === 'main') await page.getByRole('button', { name: '미래 성장 보기' }).focus();
-    const actions = page.locator(app === 'main' ? '.main-dashboard__edit, .journey-action' : '.ui-button--primary, .simulation-controls button[aria-pressed="true"], .simulation-amount-mode button[aria-pressed="true"]');
+    const actions = page.locator(app === 'main'
+      ? '.main-dashboard__edit, .journey-action'
+      : '.ui-button--primary, .simulation-toolbar .ui-button, .simulation-controls button[aria-pressed="true"], .simulation-amount-mode button[aria-pressed="true"]');
     expect(await actions.count()).toBeGreaterThan(0);
     for (const action of await actions.all()) {
       await expect(action).toBeVisible();

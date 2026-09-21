@@ -305,10 +305,10 @@ describe('MainApp', () => {
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('app-shell-launcher')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    expect(screen.queryByRole('menuitem', { name: '백업 내보내기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '백업 내보내기' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('백업 가져오기')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
-    fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    fireEvent.click(await screen.findByRole('button', { name: '다시 시작' }));
 
     await expectSetupWelcome();
     await expectSetupWelcome();
@@ -697,8 +697,8 @@ describe('MainApp', () => {
     await screen.findByRole('heading', { name: 'dashboard' });
 
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '처음부터 다시' }));
-    fireEvent.click(screen.getByRole('button', { name: '다시 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '처음부터 다시' }));
+    fireEvent.click(await screen.findByRole('button', { name: '다시 시작' }));
 
     await expectSetupWelcome();
     await expectSetupWelcome();

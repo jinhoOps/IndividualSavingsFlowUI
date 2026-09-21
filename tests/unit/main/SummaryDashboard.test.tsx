@@ -261,13 +261,13 @@ describe('SummaryDashboard', () => {
     expect(screen.getByRole('button', { name: '여윳돈 · 90만 원 · 28.1%' })).toBeVisible();
   });
 
-  it('opens one desktop scalar editor containing the five canonical fields', () => {
+  it('opens one desktop scalar editor in a modal dialog containing the five canonical fields', () => {
     render(<DashboardHarness />);
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
 
     fireEvent.click(opener);
 
-    const editor = screen.getByRole('complementary', { name: '월 자금 계획 편집' });
+    const editor = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     expect(editor).toBeVisible();
     expect(within(editor).getByRole('heading', { name: '월 자금 계획 편집' })).toBeVisible();
     expect(within(editor).getByLabelText('월 실수령액')).toHaveValue('3,200,000');
@@ -308,7 +308,7 @@ describe('SummaryDashboard', () => {
 
     expect(persist).toHaveBeenCalledOnce();
     expect(screen.getByRole('button', { name: '적용' })).toBeDisabled();
-    expect(screen.getByRole('complementary', { name: '월 자금 계획 편집' }))
+    expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' }))
       .toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText(/저장 중/)).not.toBeInTheDocument();
     expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
@@ -322,7 +322,7 @@ describe('SummaryDashboard', () => {
     expect(screen.getByText('저장하지 않은 변경사항이 있습니다.')).toBeVisible();
 
     await act(async () => resolvePersist?.());
-    expect(within(screen.getByRole('region', { name: '월간 핵심 수치' })).getByText('남는 돈').closest('.cashflow-metric')).toHaveTextContent('170만 원');
+    expect(within(screen.getByRole('region', { name: '월간 핵심 수치', hidden: true })).getByText('남는 돈').closest('.cashflow-metric')).toHaveTextContent('170만 원');
     expect(screen.queryByText(/저장 중/)).not.toBeInTheDocument();
     expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
   });
@@ -510,7 +510,7 @@ describe('SummaryDashboard', () => {
     render(<ValidationHarness />);
     fireEvent.click(screen.getByRole('button', { name: '생활비 검증 오류 표시' }));
 
-    expect(screen.getByRole('complementary', { name: '월 자금 계획 편집' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
     expect(screen.getByLabelText('월평균 생활비')).toHaveFocus();
   });
 
@@ -581,6 +581,7 @@ describe('amount editing shortcuts', () => {
       onDraftChange={vi.fn()} onApply={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', {name: '월 저축 금액 편집 · 현재 0원'}));
     expect(screen.getByLabelText('월 저축액')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
     fireEvent.click(screen.getByRole('button', {name: '월 투자 금액 편집 · 현재 0원'}));
     expect(screen.getByLabelText('월 투자액')).toHaveFocus();
   });

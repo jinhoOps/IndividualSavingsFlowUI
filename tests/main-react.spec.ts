@@ -161,9 +161,7 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   for (const height of layout.targets) expect(height).toBeGreaterThanOrEqual(44);
 
   await page.getByRole('button', { name: '월 금액 편집' }).click();
-  const editor = viewport.width < 768
-    ? page.getByRole('dialog')
-    : page.locator('.main-editor-panel');
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
   await expect(editor).toBeVisible();
   await expect.poll(() => editor.evaluate((element) => (
     element.getAnimations().every((animation) => animation.playState === 'finished')
@@ -263,7 +261,7 @@ test('Main restart brand entry preserves the applied plan and writes restart wel
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+  await page.getByRole('button', { name: '처음부터 다시' }).click();
   await page.getByRole('button', { name: '다시 시작' }).click();
 
   const intro = page.getByTestId('brand-welcome');
@@ -297,7 +295,7 @@ test('Main reset action is neutral while its confirmation delay keeps it disable
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+  await page.getByRole('button', { name: '처음부터 다시' }).click();
 
   const reset = page.getByRole('button', { name: '초기화' });
   await expect(reset).toBeDisabled();
@@ -336,7 +334,7 @@ test('Main brand intro reduced motion skips restart animation and preserves the 
   await page.goto('apps/main/');
 
   await page.getByRole('button', { name: '관리 메뉴' }).click();
-  await page.getByRole('menuitem', { name: '처음부터 다시' }).click();
+  await page.getByRole('button', { name: '처음부터 다시' }).click();
   await page.getByRole('button', { name: '다시 시작' }).click();
 
   const welcome = page.getByRole('heading', { name: '한 달 돈의 흐름, 2분이면 확인할 수 있어요.' });
@@ -1298,12 +1296,12 @@ test('dashboard deficit shows all allocations and the income threshold after edi
   await page.goto('apps/main/');
   await page.getByRole('button', { name: '월 금액 편집' }).click();
   await page.getByLabel('월 투자액').fill('1500000');
+  await expect(page.getByText('저장하지 않은 변경사항이 있습니다.')).toBeVisible();
   await page.getByRole('button', { name: '적용' }).click();
   await expect(page.getByRole('img', { name: /월수입/ })).toHaveAccessibleName(/투자 46.9%.*40만 원 초과/);
   await expect(page.locator('[data-segment="remaining"]')).toHaveCSS('width', '0px');
   await expect(page.getByText('기준선: 월수입 100%')).toBeVisible();
   await expect(page.locator('.cashflow-metric[data-deficit="true"]')).toContainText('-40만 원');
-  await page.getByRole('button', { name: '편집기 닫기' }).click();
   for (const width of [390, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await expect.poll(() => page.locator('.cashflow-allocation__chart').evaluate(element => {
@@ -1357,13 +1355,8 @@ for (const width of [390, 767, 768, 1280]) {
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(original);
-      if (width >= 768) {
-        await page.getByLabel('월 실수령액', {exact: true}).focus();
-        await opener.focus();
-        await page.keyboard.press('Enter');
-        await expect(input).toBeFocused();
-      }
       await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog', {name: '월 자금 계획 편집'})).toBeHidden();
       await expect(opener).toBeFocused();
     }
     // General editing still starts at the usual close control, not the last shortcut.
@@ -1372,12 +1365,9 @@ for (const width of [390, 767, 768, 1280]) {
     await page.keyboard.press('Escape');
     await page.getByRole('button', {name: /^월 저축 금액 편집/}).click();
     await page.getByLabel('월 저축액', {exact: true}).fill('400000');
-    if (width >= 768) {
-      await page.getByRole('button', {name: /^월 투자 금액 편집/}).focus();
-      await page.keyboard.press('Enter');
-      await expect(page.getByLabel('월 투자액', {exact: true})).toBeFocused();
-      await expect(page.getByLabel('월 저축액', {exact: true})).toHaveValue('400,000');
-    }
+    await page.getByLabel('월 투자액', {exact: true}).focus();
+    await expect(page.getByLabel('월 투자액', {exact: true})).toBeFocused();
+    await expect(page.getByLabel('월 저축액', {exact: true})).toHaveValue('400,000');
     await page.getByRole('button', {name: '적용', exact: true}).click();
     await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlySavingWon)).toBe(400000);
   });
