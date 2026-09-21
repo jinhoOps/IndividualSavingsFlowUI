@@ -4,7 +4,7 @@
 
 **Goal:** 세 앱의 웹 중앙 모달·모바일 하단 시트·행동 배치를 통일하고, 결과를 읽은 뒤 샘플 탐색과 종합 이미지 보관으로 이어지게 한다.
 **Architecture:** 공통 표면은 표시·focus·종료만, 앱은 draft·검증·저장만 소유한다. 기존 Main 하단 탐색을 Simulation에 확장한다. 이미지 출력은 하나의 확정 workspace snapshot에서 생성하는 읽기 전용 모듈이다.
-**Tech Stack:** React, TypeScript, native dialog, 기존 CSS·Anime.js, SVG/Canvas/PNG, Vitest, Playwright. 새 UI framework·서버·DB migration 없음.
+**Tech Stack:** React, TypeScript, native dialog, 기존 CSS·Anime.js, SVG/Canvas/PNG, Vitest, Playwright. C의 링크 공유에만 Supabase private Storage·공유 전용 migration·Edge Functions·Cron을 추가한다.
 **Spec:** [전체 설계](../specs/2026-09-21-responsive-overlays-and-result-card-design.md).
 **Status:** 계획 제안 / 기준 `7c22487d` / 2026-09-21.
 
@@ -32,7 +32,7 @@
 | --- | --- | --- | --- |
 | A / 최우선 | [모달·설정·행동 배치](2026-09-21-responsive-surfaces.md) | Main/Portfolio 우측 패널 제거, 공통 설정 표면 | 본 설계 방향 |
 | B / 다음 | [Simulation 편집·하단 탐색](2026-09-21-simulation-edit-and-discovery.md) | 조건 편집 sheet/modal, 결과 끝의 Portfolio CTA | A의 공통 dialog |
-| C / 별도 기능 | [3:4 결과 이미지](2026-09-21-financial-result-image.md) | 미리보기·PNG·기기 공유 | A의 공통 dialog, B의 확정 결과 저장 의미 |
+| C / 별도 기능 | [3:4 결과 이미지](2026-09-21-financial-result-image.md), [48시간 링크 공유](2026-09-21-result-image-link-sharing.md) | 하단 저장/공유 버튼·미리보기·PNG·48시간 링크 | A의 공통 dialog, B의 확정 결과 저장 의미 |
 
 A는 B/C 없이 출시 가능한 UX 수정이다. C 때문에 A를 지연시키지 않는다. 단계 내부에서도 공통 shell → Main → Portfolio → 설정 순으로 적용해 한 번에 focus 시스템을 두 개 교체하지 않는다. 동일 저장/focus 파일을 여러 작업자가 동시에 변경하지 않는 직렬 실행을 기본으로 한다.
 
@@ -42,7 +42,7 @@ A는 B/C 없이 출시 가능한 UX 수정이다. C 때문에 A를 지연시키�
 - Simulation은 `조건 편집 → 미리보기 → 적용`으로 통일한다. 결과의 명목/실질만 기존 직접 조작을 유지한다.
 - 5/9/13만 기존 샘플 매핑, 다른 rate는 전체 샘플. 수익률 근접도 계산은 추가하지 않는다.
 - 3:4 이미지의 원화 표시 초기값은 현재 Portfolio 보기 설정을 따르며 export 옵션은 원래 설정을 변경하지 않는다.
-- 종합 카드 1차는 세 앱의 유효한 확정 상태를 요구한다. 13개 지출 상세·공개 공유 링크·템플릿 꾸미기 기능은 추가하지 않는다.
+- 종합 카드 1차는 세 앱의 유효한 확정 상태를 요구한다. Portfolio 하단에 윤곽 없는 `저장하기`/`공유하기`를 둔다. 공개 열람은 생성된 이미지의 48시간 링크로 한정한다. 13개 지출 상세·템플릿 꾸미기는 추가하지 않는다.
 
 ## 최종 결합 검증
 
@@ -53,6 +53,7 @@ A는 B/C 없이 출시 가능한 UX 수정이다. C 때문에 A를 지연시키�
 - [ ] iOS Safari/Android Chrome 실기기 키보드·safe area·share/download, VoiceOver/TalkBack 수동 검증. 미수행은 미검증으로 명시.
 - [ ] Main 적용 → Simulation 조건 취소/적용 → 하단 샘플 열기 → Portfolio 초안 취소/적용 → 카드 저장으로 이어지는 전체 여정 확인.
 - [ ] 카드 PNG 치수·전 항목·계산값·금액 숨김·실패 복구 확인. 원본과 390px 축소 보기 직접 검사.
+- [ ] 공유 생성 인증·비로그인 열람·48시간 경계·캐시 우회·자동 삭제와 재시도·workspace revision 보존 확인. 운영 Cron 실행 증거 없이 공유 배포 완료로 표시하지 않는다.
 - [ ] PRD/README/DESIGN·superseded spec 상태·상대 링크·`git diff --check` 확인.
 - [ ] 제품/UX 담당자가 설계 §8의 짧은 과제로 설명 없이 편집/복귀/샘플/저장을 이해하는지 재확인.
 

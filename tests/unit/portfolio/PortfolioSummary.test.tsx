@@ -98,6 +98,18 @@ const changedAllocation: MaterializedAllocation = {
 };
 
 describe('PortfolioSummary', () => {
+  it('offers unobtrusive save and share actions after the complete allocation', () => {
+    const save = vi.fn();
+    const share = vi.fn();
+    render(<PortfolioSummary investmentWon={800_000} allocation={allocation} preferences={{showAmounts: false, sortMode: 'input'}} onSave={save} onShare={share} />);
+
+    fireEvent.click(screen.getByRole('button', {name: '저장하기'}));
+    fireEvent.click(screen.getByRole('button', {name: '공유하기'}));
+    expect(save).toHaveBeenCalledOnce();
+    expect(share).toHaveBeenCalledOnce();
+    expect(screen.getByText('공유 링크는 2일 뒤에 만료돼요.')).toBeVisible();
+  });
+
   it('leads with the stable ratio and hides every won amount by default', () => {
     const onEdit = vi.fn();
     render(

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** A/B의 확정 저장·공통 dialog 계약을 확인한 뒤 `superpowers:executing-plans`로 실행한다. 이 기능은 read-only export이며 금융 slice를 저장하지 않는다.
 
-**Goal:** Portfolio 결과에서 월 자금 흐름·미래 성장·투자 배분을 1080×1440 PNG로 미리 보고 보관한다.
-**Architecture:** account의 단일 ready snapshot → 일관성 검증 → 금액 포함/제외 출력 모델 → SVG → PNG → 동일 PNG 미리보기/다운로드/공유. 모델·renderer·파일 전달을 분리한다.
-**Tech Stack:** 기존 TypeScript/React, SVG/Canvas/Blob, Web Share API, 기존 금융 계산 함수, Vitest/Playwright. 서버·렌더 서비스·새 이미지 캡처 라이브러리 없음.
+**Goal:** Portfolio 하단의 `저장하기`/`공유하기`로 월 자금 흐름·미래 성장·투자 배분을 1080×1440 PNG로 보관하거나 48시간 링크로 공유한다.
+**Architecture:** account의 단일 ready snapshot → 일관성 검증 → 금액 포함/제외 출력 모델 → SVG → PNG → 동일 PNG 미리보기. 저장은 로컬 다운로드, 공유는 확인한 PNG만 Supabase에 게시해 링크로 전달한다.
+**Tech Stack:** 기존 TypeScript/React, SVG/Canvas/Blob, Web Share API, 기존 금융 계산 함수, Vitest/Playwright. 링크 공유는 Supabase Storage·Edge Functions·Cron을 사용하며 외부 렌더 서비스·새 이미지 캡처 라이브러리는 추가하지 않는다.
 **Spec:** [설계 §6](../specs/2026-09-21-responsive-overlays-and-result-card-design.md), [3:4 배치 구상](../evidence/2026-09-21-responsive-overlays/07-result-card-concept.png).
 
 ## Global Constraints
@@ -118,23 +118,23 @@ expect(bytes.readUInt32BE(20)).toBe(1440);
 - Modify: `src/portfolio/ui/PortfolioApp.tsx`, `PortfolioSummary.tsx`, `portfolio.css`.
 - Test: new `tests/unit/portfolio/PortfolioResultCardPreview.test.tsx`, `tests/unit/journey/saveResultCard.test.ts`; existing `tests/portfolio.spec.ts`, `tests/account-workspace.spec.ts`; new `tests/result-card.spec.ts`.
 
-**Interfaces:** `PortfolioResultCardPreview`에는 `source: ResultCardSource`, `initialIncludeAmounts: boolean`, `returnFocusRef`, `onClose`만 전달한다. 앱 write repository를 전달하지 않는다. `saveResultCard.ts`는 `downloadResultCard(blob, filename)`와 `shareResultCard(blob, filename): Promise<'shared'|'cancelled'|'unsupported'|'error'>`를 제공한다.
+**Interfaces:** `PortfolioResultCardPreview`에는 `source: ResultCardSource`, `initialIncludeAmounts: boolean`, `intent: 'save'|'share'`, 공유 전용 client, `returnFocusRef`, `onClose`를 전달한다. 앱 write repository를 전달하지 않는다. `saveResultCard.ts`는 `downloadResultCard(blob, filename)`를 제공한다. 링크 생성/전달 계약과 추가 파일·검증은 [공유 확장 계획](2026-09-21-result-image-link-sharing.md)을 따른다.
 
-- [ ] Portfolio 결과 아래 `계획 이미지 저장` 진입을 추가한다. missing source 상태에서 왜 생성할 수 없는지와 올바른 앱 링크를 제공한다. initial setup/미적용 상태를 성공 카드로 표현하지 않는다.
-- [ ] 공통 wide dialog에 실제 PNG 미리보기·금액 포함 스위치·필요한 표시명 수정·PNG 저장·가능한 경우 공유를 배치한다. 웹 2열/모바일 한 열, 하단 동작 고정, 원본 보기 제공.
+- [ ] Portfolio 결과 아래 윤곽 없는 `저장하기`/`공유하기` 두 버튼과 `공유 링크는 2일 뒤에 만료돼요.`를 배치한다. missing source 상태에서 왜 생성할 수 없는지와 올바른 앱 링크를 제공한다. initial setup/미적용 상태를 성공 카드로 표현하지 않는다.
+- [ ] 공통 wide dialog에 실제 PNG 미리보기·금액 포함 스위치·필요한 표시명 수정과 진입 의도에 따른 마지막 행동을 배치한다. 웹 2열/모바일 한 열, 하단 동작 고정, 원본 보기 제공. 공유 링크 생성 전 공개 범위와 48시간 만료를 안내한다.
 - [ ] 초기 금액 옵션은 현재 Portfolio preferences에서 가져오되 토글 변경은 session 안에만 둔다. 옵션 변경 → 기존 Blob 무효화 → 새 렌더의 generation token 순으로 처리해 이전 작업의 늦은 완료가 최신 미리보기를 덮어쓰지 않게 한다.
 - [ ] source.subscribe로 revision/계정 준비 상태를 관찰한다. preview 중 달라지면 저장/공유 잠금, `다시 만들기`로 새 snapshot을 명시적으로 읽는다. logout/unmount에서는 Blob URL·이미지·이름 정보를 해제한다.
-- [ ] `navigator.canShare({files})`로 file-share 지원을 판정한다. 지원되지 않는 경우 공유 버튼을 제공하지 않고 PNG 저장을 남긴다. 준비된 File을 버튼 click 안에서 share해 transient activation을 유지한다. AbortError는 cancelled로 반환한다.
+- [ ] 링크 생성 후 별도 `링크 공유` click 안에서 `navigator.share({url})`를 호출한다. 미지원 브라우저에도 `공유하기` 진입과 `링크 복사`를 유지한다. clipboard 실패 시 선택 가능한 URL과 수동 복사를 제공한다. AbortError는 cancelled로 반환한다.
 - [ ] 파일명은 `ISF-plan-YYYY-MM-DD.png`로 고정하고 금융금액/계정 ID를 포함하지 않는다. 다운로드 trigger 뒤에는 `다운로드를 요청했어요` 수준으로 표시한다. OS 사진함 저장 성공을 추정하지 않는다.
 - [ ] 테스트에서 여러 옵션 변경·연속 다운로드·render rejection·share unsupported/reject/cancel·revision update·expired 계정을 검증한다. `URL.revokeObjectURL`이 현재 이미지 사용 중 너무 일찍 호출되지 않는지도 확인한다.
-- [ ] cloud E2E에 `fakeServer`를 사용해 preview 전후 서버 revision/operation log가 동일한지 확인한다. 로컬 fixture PNG test는 인증/계정 source 검증을 대신하지 않는다.
+- [ ] cloud E2E에 `fakeServer`를 사용해 preview·공유 생성 전후 workspace revision/operation log가 동일한지 확인한다. 공유 전용 upload/metadata 요청만 별도로 허용한다. 로컬 fixture PNG test는 인증/계정 source 검증을 대신하지 않는다.
 - [ ] `npm run check`, `npm run test:unit`, `npm run test:e2e -- --reporter=line` 실행. Safari/Android 실기기 파일 저장·공유와 보조기술은 별도 수동 확인한다.
 
 ## Task C4: 제품 계약·인수·인계
 
 **Files:** Product PRD의 Portfolio/Journey/데이터 읽기/Future Product Direction, `DESIGN.md`, `README.md`, 본 총괄 계획, 구현 이후 evidence.
 
-- [ ] PRD에 새 읽기 전용 종합 카드와 지원/미지원 상태를 현재 구현과 일치시켜 등록한다. 과거 폐기된 4앱 카드 계획과 구분한다.
+- [ ] PRD에 새 읽기 전용 종합 카드와 48시간 이미지 공유의 지원/미지원 상태를 현재 구현과 일치시켜 등록한다. 과거 폐기된 4앱 카드 계획과 구분한다. 공유 확장 계획 S1~S4 검증이 끝나기 전 링크 공유를 완료로 표시하지 않는다.
 - [ ] DESIGN에 이미지 비율·색·서체·금액 포함·샘플 가정의 표현, README에 결과 저장과 사용 방법을 추가한다.
 - [ ] 동일 applied 값과 PNG 숫자를 대조하고, 최대 대상/긴 이름/금액 숨김 원본 이미지를 인계 자료로 보관한다. 실제 개인정보 캡처를 evidence로 커밋하지 않는다.
 - [ ] 상대 링크, `git diff --check`, schema/storage write 부재 확인과 총괄 결합 검증을 완료한다. 실기기·사용자 VOC 검증의 수행 여부를 분리해 기록한다.
