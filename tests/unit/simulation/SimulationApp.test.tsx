@@ -109,6 +109,7 @@ describe('SimulationApp', () => {
     expect(within(projection!).queryByRole('group', { name: '표시 금액 기준' })).not.toBeInTheDocument();
     expect(within(projection!).getByText('명목', { exact: true })).toBeVisible();
     const opener = within(projection!).getByRole('button', { name: '조건 편집' });
+    expect(opener.querySelector('svg')).toBeNull();
     expect(comparison).not.toBeNull();
     expect(comparison!.compareDocumentPosition(opener) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 

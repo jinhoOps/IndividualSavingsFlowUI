@@ -37,6 +37,20 @@ async function openFirstResult(page: Page) {
     .toBeVisible();
 }
 
+test('mobile condition editor begins below its resting position', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedMain(page);
+  await openFirstResult(page);
+
+  await page.getByRole('button', { name: '조건 편집' }).click();
+  const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+  await expect.poll(() => conditionEditor.evaluate((element) => {
+    const transform = getComputedStyle(element).transform;
+    if (transform === 'none') return false;
+    return new DOMMatrixReadOnly(transform).m42 > 0;
+  })).toBe(true);
+});
+
 for (const viewport of [
   { name: '390px', width: 390, height: 844 },
   { name: '768px', width: 768, height: 900 },
@@ -63,15 +77,23 @@ for (const viewport of [
     expect(openerBox!.x + openerBox!.width / 2).toBeCloseTo(projectionBox!.x + projectionBox!.width / 2, 0);
     await opener.click();
     await expect(conditionEditor).toBeVisible();
-    const editorBox = await conditionEditor.boundingBox();
-    expect(editorBox).not.toBeNull();
     if (viewport.width < 768) {
+      await expect.poll(async () => {
+        const editorBox = await conditionEditor.boundingBox();
+        return editorBox === null ? null : editorBox.y + editorBox.height;
+      }).toBeCloseTo(viewport.height, 0);
+      const editorBox = await conditionEditor.boundingBox();
+      expect(editorBox).not.toBeNull();
       expect(editorBox!.x).toBe(0);
       expect(editorBox!.width).toBe(viewport.width);
-      expect(editorBox!.y + editorBox!.height).toBeCloseTo(viewport.height, 0);
     } else {
+      await expect.poll(async () => {
+        const editorBox = await conditionEditor.boundingBox();
+        return editorBox === null ? null : editorBox.y + editorBox.height / 2;
+      }).toBeCloseTo(viewport.height / 2, 0);
+      const editorBox = await conditionEditor.boundingBox();
+      expect(editorBox).not.toBeNull();
       expect(editorBox!.x + editorBox!.width / 2).toBeCloseTo(viewport.width / 2, 0);
-      expect(editorBox!.y + editorBox!.height / 2).toBeCloseTo(viewport.height / 2, 0);
     }
     await expect(conditionEditor.getByRole('button', { name: '연 기대수익률 9%' })).toBeVisible();
     const amountModeBox = await conditionEditor.getByRole('group', { name: '표시 금액 기준' }).boundingBox();

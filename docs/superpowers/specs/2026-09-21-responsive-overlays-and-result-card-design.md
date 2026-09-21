@@ -65,13 +65,13 @@
 
 ### 4.3 focus·종료·상태
 
-- 공통 `ResponsiveDialog` 하나가 native dialog, background inert, scroll lock, focus 반환, 모션, sheet drag를 소유한다. Portfolio 전용 저장 판단과 Main controller를 이 컴포넌트로 옮기지 않는다.
+- 공통 `ResponsiveDialog` 하나가 native dialog, background inert, scroll lock, focus 반환과 opt-in 모바일 진입 모션을 소유한다. Portfolio 전용 저장 판단과 Main controller를 이 컴포넌트로 옮기지 않는다.
 - 긴 설정·목록은 제목으로 초기 focus, 특정 금액 행으로 진입한 경우 해당 필드로 focus한다. 모바일에서 일반 열기만으로 키보드를 올리지 않는다.
 - 닫기/X/Escape/backdrop/sheet drag는 앱의 한 `requestClose(reason)`으로 모인다. clean이면 종료, dirty면 확인, saving이면 유지, 오류면 입력과 재시도를 유지한다.
 - 하위 항목 편집은 기존 인라인을 유지한다. 목록 → 샘플/미리보기는 부모와 나란히 패널을 추가하지 않고 같은 표면의 단계 전환을 우선한다.
 - 확인이 필요할 때만 최상위 확인 모달 1개를 허용한다. 부모와 자식의 focus trap을 동시에 작동시키지 않는다. 확인 취소는 부모의 현재 단계·값·스크롤로 돌아간다.
 - sheet drag는 header 여백/손잡이만 허용한다. input, 버튼, slider, 본문 스크롤에서는 시작하지 않는다. 기존 `useSheetDismiss`의 guard·최대 300ms 종료·reduced motion 규칙을 재사용한다.
-- 중앙 modal은 작은 y/opacity 모션, sheet는 실제 높이만큼 아래에서 등장한다. Anime.js 기존 spring 토큰을 사용하고 애니메이션 실패 시 최종 상태를 보장한다.
+- Simulation 조건 sheet는 Main 편집기와 같은 작은 y/opacity Anime.js surface spring으로 아래에서 등장한다. reduced motion·애니메이션 실패·레이아웃을 계산할 수 없는 환경에서는 최종 상태를 보장한다.
 - 모바일 브라우저 Back을 닫기로 쓸 경우 overlay 전용 history state 1개만 추가한다. 확인 취소 시 popstate 재진입 루프 없이 같은 상태를 복구한다. 내부 항목/샘플 뒤로가기와 앱 간 URL 탐색을 구분한다. 구현 계획 A에서 통합 검증한 후 모든 편집기에 같은 helper를 쓴다.
 
 ### 4.4 설정 메뉴 대안 비교
@@ -94,8 +94,8 @@
 
 결과 화면: 목표 도달 요약 → 자산 변화 → 비교 결과 → 그래프 카드 하단 중앙의 조건 편집 → 하단 Portfolio 진입 순서다. 조건 편집 진입점과 명목·실질 위치 조정의 구현·검증 기록은 [실행 계획의 우선 작업](../plans/2026-09-21-simulation-edit-and-discovery.md)에 둔다.
 
-- 모바일과 desktop 모두 그래프·비교 수치 다음, 같은 카드 하단 중앙에 `⌃ 조건 편집` 버튼을 둔다. Main의 quiet 버튼과 같은 투명한 배경·아이콘 표현, 최소 44px 터치 영역, hover/focus 표시를 사용하며 문서와 함께 스크롤된다.
-- 버튼은 모바일에서 하단 시트, desktop에서 중앙 모달을 연다. 닫으면 버튼으로 초점을 돌려준다.
+- 모바일과 desktop 모두 그래프·비교 수치 다음, 같은 카드 하단 중앙에 `조건 편집` 버튼을 둔다. Main의 quiet 버튼과 같은 투명한 배경, 최소 44px 터치 영역, hover/focus 표시를 사용하며 문서와 함께 스크롤된다.
+- 버튼은 모바일에서 Main 편집기와 같은 Anime.js surface spring으로 아래에서 올라오는 하단 시트, desktop에서 정지 상태의 중앙 모달을 연다. 닫으면 버튼으로 초점을 돌려준다.
 - 편집 내용은 제목·닫기 다음 `명목·실질` → `기간·기대수익률` → `시작 자산·목표` → `기준금리·물가` 순서다. 명목·실질 토글은 첫 화면에서 스크롤 없이 보인다. 기존 0~30년, 5/9/13%, 직접 입력/증감, 목표 검증과 기본 목표 복원을 유지한다. 중첩 accordion은 만들지 않는다.
 - 전체 그래프와 별개로 편집 상단에 `N년 뒤 예상액 / 목표까지 기간` 두 숫자를 즉시 미리 보여준다. 배경 결과는 적용된 값으로 유지한다.
 - **새 행동 계약:** 조건 편집은 local edit draft → `취소 / 적용`이다. 서버 저장 성공 후 시트를 닫고 결과를 갱신한다. 이는 현재 조건의 자동 저장에서 의도적으로 바뀌는 지점으로 PRD·DESIGN에 반영한다.

@@ -1,5 +1,7 @@
+import { animate } from 'animejs';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../motion/tokens';
 import './responsive-dialog.css';
 
 export type DialogCloseReason = 'button' | 'escape' | 'backdrop' | 'drag' | 'back';
@@ -9,6 +11,7 @@ export interface ResponsiveDialogProps {
   labelledBy: string;
   size?: 'compact' | 'form' | 'wide';
   mobileHeight?: 'content' | 'full';
+  mobileEntranceMotion?: boolean;
   busy?: boolean;
   returnFocusRef: RefObject<HTMLElement | null>;
   onRequestClose(reason: DialogCloseReason): boolean | Promise<boolean>;
@@ -28,6 +31,7 @@ export function ResponsiveDialog({
   labelledBy,
   size = 'form',
   mobileHeight = 'content',
+  mobileEntranceMotion = false,
   busy = false,
   returnFocusRef,
   onRequestClose,
@@ -37,6 +41,7 @@ export function ResponsiveDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const wasOpenRef = useRef(false);
   const closeRequestPendingRef = useRef(false);
+  const openingMotionRef = useRef<{ cancel?(): void } | null>(null);
   const [requestedClosed, setRequestedClosed] = useState(false);
 
   useEffect(() => {
@@ -51,6 +56,7 @@ export function ResponsiveDialog({
             dialog.setAttribute('open', '');
           }
         }
+        if (mobileEntranceMotion) revealDialog(dialog, openingMotionRef);
         if (!activeDialogs.includes(dialog)) activeDialogs.push(dialog);
         window.requestAnimationFrame(() => {
           if (!dialog.contains(document.activeElement)) focusInitialElement(dialog);
@@ -63,9 +69,10 @@ export function ResponsiveDialog({
       if (wasOpenRef.current) finishClose();
       else if (requestedClosed) setRequestedClosed(false);
     }
-  }, [onClosed, open, requestedClosed, returnFocusRef]);
+  }, [mobileEntranceMotion, onClosed, open, requestedClosed, returnFocusRef]);
 
   useEffect(() => () => {
+    try { openingMotionRef.current?.cancel?.(); } catch { /* best-effort cleanup */ }
     const dialog = dialogRef.current;
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
@@ -88,6 +95,8 @@ export function ResponsiveDialog({
     const dialog = dialogRef.current;
     wasOpenRef.current = false;
     closeRequestPendingRef.current = false;
+    try { openingMotionRef.current?.cancel?.(); } catch { /* best-effort cleanup */ }
+    openingMotionRef.current = null;
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
     setRequestedClosed(true);
@@ -135,6 +144,37 @@ export function ResponsiveDialog({
     </dialog>,
     document.body,
   );
+}
+
+function revealDialog(
+  dialog: HTMLDialogElement,
+  motionRef: { current: { cancel?(): void } | null },
+): void {
+  if (
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    || !window.matchMedia?.('(max-width: 767px)').matches
+    || dialog.getClientRects().length === 0
+  ) {
+    dialog.style.opacity = '1';
+    dialog.style.transform = 'translateY(0px)';
+    return;
+  }
+
+  try {
+    motionRef.current?.cancel?.();
+    motionRef.current = animate(dialog, {
+      opacity: [0, 1],
+      y: [MOTION_DISTANCE_PX.reveal, 0],
+      duration: MOTION_DURATION.normal,
+      ease: createProductSpring('surface'),
+      onComplete: () => {
+        motionRef.current = null;
+      },
+    });
+  } catch {
+    dialog.style.opacity = '1';
+    dialog.style.transform = 'translateY(0px)';
+  }
 }
 
 function removeActiveDialog(dialog: HTMLDialogElement | null): void {

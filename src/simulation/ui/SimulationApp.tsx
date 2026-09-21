@@ -1,5 +1,4 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronUp } from 'lucide-react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
@@ -311,7 +310,6 @@ export function SimulationApp({
                   className="simulation-projection__edit"
                   onClick={() => setConditionEditorOpen(true)}
                 >
-                  <ChevronUp size={18} aria-hidden="true" />
                   조건 편집
                 </Button>
               </div>
@@ -321,6 +319,7 @@ export function SimulationApp({
               labelledBy="simulation-condition-editor-title"
               size="form"
               mobileHeight="full"
+              mobileEntranceMotion
               returnFocusRef={conditionEditorOpenerRef}
               onRequestClose={() => {
                 setConditionEditorOpen(false);
