@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronUp } from 'lucide-react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { Button } from '../../components/common/Button';
@@ -274,14 +275,6 @@ export function SimulationApp({
           <>
             <div className="simulation-toolbar">
               <SaveIndicator state={saveState} />
-              <Button
-                ref={conditionEditorOpenerRef}
-                type="button"
-                variant="secondary"
-                onClick={() => setConditionEditorOpen(true)}
-              >
-                조건 편집
-              </Button>
             </div>
             {runtime.durationAdjusted ? (
               <p role="status">기간 범위가 변경되어 30년으로 조정됐어요.</p>
@@ -297,10 +290,12 @@ export function SimulationApp({
             {resultIsFinite ? <SimulationHero draft={resultDraft} result={result} /> : null}
             <Surface as="section" className="simulation-projection" aria-labelledby="simulation-projection-title">
               <header className="simulation-projection__heading">
-                <h2 id="simulation-projection-title">{resultDraft.years === 0 ? '현재 자산' : `${resultDraft.years}년 동안의 자산 변화`}</h2>
-                <SegmentedControl label="표시 금액 기준" value={resultDraft.amountMode}
-                  options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
-                  onChange={(amountMode) => saveDraft({ ...resultDraft, amountMode, updatedAt: now() })} />
+                <div className="simulation-projection__title">
+                  <h2 id="simulation-projection-title">{resultDraft.years === 0 ? '현재 자산' : `${resultDraft.years}년 동안의 자산 변화`}</h2>
+                  <span className="simulation-projection__amount-mode" aria-label={`표시 금액 기준: ${resultDraft.amountMode === 'nominal' ? '명목' : '실질'}`}>
+                    {resultDraft.amountMode === 'nominal' ? '명목' : '실질'}
+                  </span>
+                </div>
               </header>
               {resultIsFinite ? <GrowthChart result={result} amountMode={resultDraft.amountMode} embedded /> : (
                 <p role="alert" className="simulation-calculation-error">
@@ -308,6 +303,18 @@ export function SimulationApp({
                 </p>
               )}
               {resultIsFinite ? <SimulationComparison result={result} /> : null}
+              <div className="simulation-projection__edit-dock">
+                <Button
+                  ref={conditionEditorOpenerRef}
+                  type="button"
+                  variant="quiet"
+                  className="simulation-projection__edit"
+                  onClick={() => setConditionEditorOpen(true)}
+                >
+                  <ChevronUp size={18} aria-hidden="true" />
+                  조건 편집
+                </Button>
+              </div>
             </Surface>
             <ResponsiveDialog
               open={conditionEditorOpen}
@@ -334,6 +341,13 @@ export function SimulationApp({
                   </Button>
                 </header>
                 <div className="simulation-condition-editor__body">
+                  <SegmentedControl
+                    className="simulation-condition-editor__amount-mode"
+                    label="표시 금액 기준"
+                    value={resultDraft.amountMode}
+                    options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
+                    onChange={(amountMode) => saveDraft({ ...resultDraft, amountMode, updatedAt: now() })}
+                  />
                   <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
                     ...next,
                     updatedAt: now(),

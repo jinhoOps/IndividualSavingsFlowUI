@@ -96,6 +96,30 @@ describe('SimulationApp', () => {
     expect(within(editor).getByText('목표와 가정')).toBeVisible();
   });
 
+  it('puts condition editing after the projection comparison and starts the editor with the amount basis', () => {
+    const saved = createDefaultSimulationDraft(source, 456);
+    render(<SimulationApp
+      mainSourceRepository={mainRepository(source)}
+      repository={simulationRepository({ status: 'found', draft: saved, migration: null })}
+    />);
+
+    const projection = screen.getByRole('heading', { name: '5년 동안의 자산 변화' }).closest('section');
+    expect(projection).not.toBeNull();
+    const comparison = projection!.querySelector('.simulation-comparison');
+    expect(within(projection!).queryByRole('group', { name: '표시 금액 기준' })).not.toBeInTheDocument();
+    expect(within(projection!).getByText('명목', { exact: true })).toBeVisible();
+    const opener = within(projection!).getByRole('button', { name: '조건 편집' });
+    expect(comparison).not.toBeNull();
+    expect(comparison!.compareDocumentPosition(opener) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(opener);
+    const editor = screen.getByRole('dialog', { name: '시뮬레이션 조건' });
+    const amountMode = within(editor).getByRole('group', { name: '표시 금액 기준' });
+    const years = within(editor).getByRole('spinbutton', { name: '기간 숫자' });
+    expect(amountMode.compareDocumentPosition(years) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(amountMode).getByRole('button', { name: '명목' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('keeps the condition editor open when a target field cancels with Escape', () => {
     const saved = createDefaultSimulationDraft(source, 456);
     render(<SimulationApp

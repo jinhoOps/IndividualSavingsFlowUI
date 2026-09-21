@@ -49,10 +49,19 @@ for (const viewport of [
     const projection = page.locator('.simulation-projection');
     await expect(projection.getByRole('heading', { name: '5년 동안의 자산 변화' })).toBeVisible();
     await expect(projection.getByRole('img', { name: '기간별 복리 성장 그래프' })).toBeVisible();
+    await expect(projection.getByRole('group', { name: '표시 금액 기준' })).toHaveCount(0);
+    await expect(projection.getByText('명목', { exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: '포트폴리오 샘플 보기' }))
       .toHaveAttribute('href', '/IndividualSavingsFlowUI/apps/portfolio/?samplePreset=9');
     const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
-    await page.getByRole('button', { name: '조건 편집' }).click();
+    const opener = projection.getByRole('button', { name: '조건 편집' });
+    const projectionBox = await projection.boundingBox();
+    const openerBox = await opener.boundingBox();
+    expect(projectionBox).not.toBeNull();
+    expect(openerBox).not.toBeNull();
+    expect(openerBox!.height).toBeGreaterThanOrEqual(44);
+    expect(openerBox!.x + openerBox!.width / 2).toBeCloseTo(projectionBox!.x + projectionBox!.width / 2, 0);
+    await opener.click();
     await expect(conditionEditor).toBeVisible();
     const editorBox = await conditionEditor.boundingBox();
     expect(editorBox).not.toBeNull();
@@ -65,6 +74,11 @@ for (const viewport of [
       expect(editorBox!.y + editorBox!.height / 2).toBeCloseTo(viewport.height / 2, 0);
     }
     await expect(conditionEditor.getByRole('button', { name: '연 기대수익률 9%' })).toBeVisible();
+    const amountModeBox = await conditionEditor.getByRole('group', { name: '표시 금액 기준' }).boundingBox();
+    const yearsBox = await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).boundingBox();
+    expect(amountModeBox).not.toBeNull();
+    expect(yearsBox).not.toBeNull();
+    expect(amountModeBox!.y).toBeLessThan(yearsBox!.y);
     await expect(projection.getByText('넣은 돈 대비')).toBeVisible();
     const initialGoalCopy = await page.locator('#simulation-result-title').textContent();
     await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('8');
@@ -75,7 +89,8 @@ for (const viewport of [
     const summary = settings.locator('summary');
     await expect(page.getByRole('textbox', { name: '목표 금액' })).toBeHidden();
     await expect(summary).toContainText('목표 1억 원 · 시작 0원');
-    await expect(page.getByRole('button', { name: '명목', exact: true })).toBeVisible();
+    const amountMode = conditionEditor.getByRole('group', { name: '표시 금액 기준' });
+    await expect(amountMode.getByRole('button', { name: '명목', exact: true })).toBeVisible();
     await summary.focus();
     await summary.press('Enter');
     const target = page.getByRole('textbox', { name: '목표 금액' });
@@ -141,12 +156,12 @@ for (const viewport of [
     await summary.focus();
     await summary.press('Enter');
     await expect(conditionEditor.getByRole('spinbutton', { name: '기준금리', exact: true })).toBeHidden();
+    await expect(amountMode.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await amountMode.getByRole('button', { name: '실질', exact: true }).click();
+    await expect(amountMode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await amountMode.getByRole('button', { name: '명목', exact: true }).click();
     await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
     await expect(conditionEditor).toBeHidden();
-    await expect(page.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('button', { name: '실질', exact: true }).click();
-    await expect(page.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('button', { name: '명목', exact: true }).click();
     await page.evaluate(() => document.fonts.ready);
     await expect.poll(() => projection.locator('.simulation-comparison dd').evaluateAll(values => values.every(value => (
       value.querySelector('.simulation-comparison__semantic-value')?.textContent
@@ -168,6 +183,11 @@ for (const viewport of [
     await conditionEditor.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-${viewport.width}.png`) });
     await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
     await expect(conditionEditor).toBeHidden();
+    await expect(opener).toBeFocused();
+    await opener.click();
+    await page.keyboard.press('Escape');
+    await expect(conditionEditor).toBeHidden();
+    await expect(opener).toBeFocused();
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-full-${viewport.width}.png`), fullPage: true });
   });
 
@@ -341,10 +361,12 @@ for (const viewport of [
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
     await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
     await expect(conditionEditor).toBeHidden();
-    const mode = page.getByRole('group', { name: '표시 금액 기준' });
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    const mode = conditionEditor.getByRole('group', { name: '표시 금액 기준' });
     await mode.getByRole('button', { name: '실질', exact: true }).click();
     await expect(mode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(mode.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
   });
 }
 

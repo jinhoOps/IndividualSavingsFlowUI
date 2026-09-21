@@ -702,7 +702,7 @@ test('primary action labels meet text contrast in resting and hover states acros
     if (app === 'main') await page.getByRole('button', { name: '미래 성장 보기' }).focus();
     const actions = page.locator(app === 'main'
       ? '.main-dashboard__edit, .journey-action'
-      : '.ui-button--primary, .simulation-toolbar .ui-button, .simulation-controls button[aria-pressed="true"], .simulation-amount-mode button[aria-pressed="true"]');
+      : '.ui-button--primary, .simulation-projection__edit, .simulation-controls button[aria-pressed="true"]');
     expect(await actions.count()).toBeGreaterThan(0);
     for (const action of await actions.all()) {
       await expect(action).toBeVisible();

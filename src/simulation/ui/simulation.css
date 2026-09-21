@@ -191,6 +191,19 @@
   word-break: keep-all;
 }
 
+.simulation-projection__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.simulation-projection__amount-mode {
+  color: var(--muted);
+  font-size: .8125rem;
+  font-weight: 700;
+}
+
 
 .simulation-projection > .growth-chart {
   padding: 0;
@@ -209,6 +222,20 @@
 .simulation-projection .simulation-comparison div { padding: 0; border: 0; }
 .simulation-projection .simulation-comparison dt { font-size: .8125rem; }
 .simulation-projection .simulation-comparison dd { font-size: clamp(1rem, 3.5vw, 1.375rem); }
+
+.simulation-projection__edit-dock {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.25rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--line);
+}
+
+.simulation-projection__edit {
+  gap: .5rem;
+  min-height: 44px;
+  font-size: .875rem;
+}
 
 .simulation-portfolio-entry {
   display: grid;
@@ -256,6 +283,8 @@
   overscroll-behavior: contain;
   padding: 1.25rem;
 }
+
+.simulation-condition-editor__amount-mode { justify-self: start; }
 
 .simulation-condition-editor .simulation-controls,
 .simulation-condition-editor .simulation-calculation-settings {
