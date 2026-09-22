@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
-import {randomUUID,randomBytes} from 'node:crypto';
+import {randomUUID,randomBytes,createHash} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import sharp from 'sharp';
 const nativeFetch=globalThis.fetch;
@@ -24,6 +24,16 @@ try{
  const token=signed.data.session.access_token;
  sql("update public.result_card_shares set published_at=now()-interval '49 hours',expires_at=now()-interval '1 second' where state='ready' and owner_id in(select id from auth.users where email like 'share-test-%@example.com')");
  await cleanup();
+ const legacyId=randomUUID(),legacyPath=`shares/${legacyId}.png`,legacyBytes=new Uint8Array(1_500_000);
+ legacyBytes.set(image.subarray(0,33));
+ sql("update storage.buckets set file_size_limit=5242880 where id='result-card-shares'");
+ const legacyUpload=await service.storage.from('result-card-shares').upload(legacyPath,legacyBytes,{contentType:'image/png'});if(legacyUpload.error)throw legacyUpload.error;
+ sql(`insert into public.result_card_shares(id,owner_id,request_id,token_hash,object_path,state,published_at,expires_at,upload_settled_at) values('${legacyId}','${owner}','${randomUUID()}','${createHash('sha256').update(legacyId).digest('hex')}','${legacyPath}','ready',now(),now()+interval '48 hours',now()); update storage.buckets set file_size_limit=1000000 where id='result-card-shares';`);
+ const inventory=await service.rpc('reconcile_result_card_storage');if(inventory.error)throw inventory.error;assert.equal(inventory.data.valid,true);
+ assert.equal(sql(`select byte_size from public.result_card_shares where id='${legacyId}'`),'1500000');
+ await cleanup();assert.equal((await service.storage.from('result-card-shares').info(legacyPath)).data?.size,1500000);
+ sql(`update public.result_card_shares set published_at=now()-interval '49 hours',expires_at=now()-interval '1 second' where id='${legacyId}'`);
+ await cleanup();assert.equal((await service.storage.from('result-card-shares').info(legacyPath)).error?.statusCode,'404');
  sql(`update public.result_card_share_policy set creation_enabled=true,capacity_bytes=${image.length},retention_hours=48`);
  const post=async(id,shareToken,png=image)=>fetch(`${local.API_URL}/functions/v1/result-card-share`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'image/png','x-result-card-request-id':id,'x-result-card-token':shareToken},body:png});
  const id=randomUUID(),shareToken=randomBytes(32).toString('base64url');
@@ -48,7 +58,7 @@ try{
  const orphanCleanup=await cleanup();assert.equal(orphanCleanup.deleted,1);
  assert.equal(sql("select count(*) from storage.objects where bucket_id='result-card-shares'"),'0');
  assert.equal(sql("select coalesce(sum(byte_size),0) from public.result_card_shares where state<>'deleted'"),'0');
- console.log(`PASS real local Storage: ${image.length}B PNG, authenticated create, 48h/24h, idempotency, byte cap, 413, private read, expiry, actual deletion and owner deletion`);
+ console.log(`PASS real local Storage: ${image.length}B PNG, authenticated create, 48h/24h, idempotency, byte cap, 413, private read, expiry, actual deletion and owner deletion, legacy 1.5MB preservation/backfill`);
 }finally{
  console.log('cleaning local test account');
  await service.auth.admin.deleteUser(owner);

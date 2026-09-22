@@ -27,9 +27,13 @@ async function fixture(
       remaining: number;
       heartbeat: boolean;
       attempts: number;
+      deadlineObserved: boolean;
+      cursor: string | null;
+      resume: () => Promise<{ remaining: number; attempts: number }>;
     },
   ) => Promise<void>,
   lease = true,
+  slow = false,
 ) {
   const original = fetch;
   const rows = Array.from({ length: count }, (_, i) => ({
@@ -40,7 +44,8 @@ async function fixture(
     upload_settled_at: unsettled ? null : "2026-01-01T00:00:00Z",
   }));
   const present = new Set(rows.map((r) => r.object_path));
-  let heartbeat = false, attempts = 0;
+  let heartbeat = false, attempts = 0, deadlineObserved = false;
+  let cursor: string | null = null;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input)),
       method = init?.method ?? "GET",
@@ -60,11 +65,12 @@ async function fixture(
     }
     if (url.pathname.endsWith("/result_card_share_policy")) {
       if (method === "PATCH") {
+        if ("cleanup_cursor" in body) cursor = body.cleanup_cursor;
         if (body.last_cleanup_success_at) heartbeat = true;
         return Response.json(null);
       }
       return Response.json({
-        cleanup_cursor: null,
+        cleanup_cursor: cursor,
         cleanup_failed: false,
         last_inventory_success_at: new Date().toISOString(),
       });
@@ -88,6 +94,20 @@ async function fixture(
     if (url.pathname.includes("/storage/v1/object/") && method === "DELETE") {
       attempts++;
       const path = body.prefixes[0];
+      if (slow && path === "shares/0.png") {
+        await new Promise((_, reject) => {
+          const timer = setTimeout(
+            () =>
+              reject(new Error("per-request timeout without global deadline")),
+            100,
+          );
+          init?.signal?.addEventListener("abort", () => {
+            clearTimeout(timer);
+            deadlineObserved = true;
+            reject(new Error("global deadline"));
+          }, { once: true });
+        });
+      }
       if (Number(path.match(/\d+/)?.[0]) < failures) {
         return Response.json({ error: "offline" }, { status: 500 });
       }
@@ -115,6 +135,18 @@ async function fixture(
       ),
       heartbeat,
       attempts,
+      deadlineObserved,
+      cursor,
+      resume: async () => {
+        await handle(request());
+        return {
+          remaining: rows.filter((r) => r.state !== "deleted").reduce(
+            (n, r) => n + r.byte_size,
+            0,
+          ),
+          attempts,
+        };
+      },
     });
   } finally {
     globalThis.fetch = original;
@@ -155,4 +187,35 @@ Deno.test("missing configured secret never authenticates empty header", async ()
     401,
   );
   Deno.env.set("RESULT_CARD_CLEANUP_SECRET", "cleanup-test");
+});
+
+Deno.test("global deadline checkpoints the failed row so the next run reaches later files", async () => {
+  const originalTimer = globalThis.setTimeout;
+  globalThis.setTimeout = ((
+    callback: (...args: unknown[]) => void,
+    delay?: number,
+    ...args: unknown[]
+  ) =>
+    originalTimer(
+      callback,
+      delay === 45_000 ? 10 : delay,
+      ...args,
+    )) as typeof setTimeout;
+  try {
+    await fixture(
+      2,
+      0,
+      false,
+      async (r) => {
+        assertEquals(r.deadlineObserved, true);
+        assertEquals(r.cursor, "00000000-0000-4000-8000-000000000000");
+        assertEquals(r.remaining, 200);
+        assertEquals(await r.resume(), { remaining: 100, attempts: 2 });
+      },
+      true,
+      true,
+    );
+  } finally {
+    globalThis.setTimeout = originalTimer;
+  }
 });

@@ -6,13 +6,24 @@ export const required = (key: string): string => {
   if (!value) throw new Error("Missing server configuration");
   return value;
 };
-export function serviceClient() {
+export function serviceClient(signal?: AbortSignal) {
   return createClient(
     required("SUPABASE_URL"),
     required("SUPABASE_SERVICE_ROLE_KEY"),
     {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { fetch: timedFetch },
+      global: {
+        fetch: (input, init) =>
+          timedFetch(input, {
+            ...init,
+            signal: signal
+              ? AbortSignal.any([
+                signal,
+                ...(init?.signal ? [init.signal] : []),
+              ])
+              : init?.signal,
+          }),
+      },
     },
   );
 }

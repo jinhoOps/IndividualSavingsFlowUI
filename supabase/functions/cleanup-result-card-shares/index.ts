@@ -6,7 +6,10 @@ export async function handleRequest(request: Request): Promise<Response> {
     request.method !== "POST" || !secret ||
     request.headers.get("x-result-card-cleanup") !== secret
   ) return json({ code: "unauthorized" }, 401);
-  const service = serviceClient();
+  const control = serviceClient();
+  const deadline = new AbortController();
+  const service = serviceClient(deadline.signal);
+  let timer: ReturnType<typeof setTimeout> | undefined;
   let generation: string | null = null;
   const result = {
     processed: 0,
@@ -16,10 +19,11 @@ export async function handleRequest(request: Request): Promise<Response> {
     complete: false,
   };
   try {
-    const claim = await service.rpc("claim_result_card_cleanup");
+    const claim = await control.rpc("claim_result_card_cleanup");
     if (claim.error) throw claim.error;
     generation = claim.data;
     if (!generation) return json({ ...result, skipped: true });
+    timer = setTimeout(() => deadline.abort(), 45_000);
     const started = performance.now();
     const policy = await service.from("result_card_share_policy").select("*")
       .eq("id", 1).single();
@@ -28,7 +32,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       failedPass: boolean = policy.data.cleanup_failed;
     const now = new Date().toISOString(),
       pendingBefore = new Date(Date.now() - 15 * 60_000).toISOString();
-    while (performance.now() - started < 45_000) {
+    while (!deadline.signal.aborted && performance.now() - started < 45_000) {
       let query = service.from("result_card_shares").select(
         "id,object_path,upload_settled_at,state",
       ).neq("state", "deleted")
@@ -37,14 +41,20 @@ export async function handleRequest(request: Request): Promise<Response> {
         ).order("id").limit(100);
       if (cursor) query = query.gt("id", cursor);
       const batch = await query;
-      if (batch.error) throw batch.error;
+      if (batch.error) {
+        result.failed++;
+        failedPass = true;
+        break;
+      }
       if (batch.data.length === 0) {
         result.complete = true;
         cursor = null;
         break;
       }
       for (const row of batch.data) {
-        if (performance.now() - started >= 45_000) break;
+        if (deadline.signal.aborted || performance.now() - started >= 45_000) {
+          break;
+        }
         cursor = row.id;
         result.processed++;
         try {
@@ -86,6 +96,16 @@ export async function handleRequest(request: Request): Promise<Response> {
         }
       }
     }
+    const progress: Record<string, unknown> = {
+      cleanup_cursor: cursor,
+      cleanup_failed: result.complete ? false : failedPass,
+    };
+    const saved = await control.from("result_card_share_policy").update(
+      progress,
+    ).eq("id", 1).eq("cleanup_generation", generation);
+    if (saved.error) throw saved.error;
+    // Cursor is durable before optional maintenance; reserve time outside the work deadline.
+    if (deadline.signal.aborted) return json(result, 503);
     const tombstones = await service.from("result_card_shares").delete().eq(
       "state",
       "deleted",
@@ -97,17 +117,6 @@ export async function handleRequest(request: Request): Promise<Response> {
       result.failed++;
       failedPass = true;
     }
-    const progress: Record<string, unknown> = {
-      cleanup_cursor: cursor,
-      cleanup_failed: result.complete ? false : failedPass,
-    };
-    if (result.complete && !failedPass) {
-      progress.last_cleanup_success_at = new Date().toISOString();
-    }
-    const saved = await service.from("result_card_share_policy").update(
-      progress,
-    ).eq("id", 1).eq("cleanup_generation", generation);
-    if (saved.error) throw saved.error;
     // Reconcile before the 24h freshness deadline; daily Cron can also request it.
     const body = await request.text();
     const inventoryRequested = body
@@ -136,12 +145,19 @@ export async function handleRequest(request: Request): Promise<Response> {
       new Date(Date.now() - 7 * 86400_000).toISOString(),
     );
     if (pruned.error) throw pruned.error;
+    if (result.complete && !failedPass) {
+      const healthy = await control.from("result_card_share_policy").update({
+        last_cleanup_success_at: new Date().toISOString(),
+      }).eq("id", 1).eq("cleanup_generation", generation);
+      if (healthy.error) throw healthy.error;
+    }
     return json(result, result.failed ? 503 : 200);
   } catch {
     return json({ ...result, code: "cleanup_failed" }, 503);
   } finally {
+    clearTimeout(timer);
     if (generation) {
-      await service.from("result_card_share_policy").update({
+      await control.from("result_card_share_policy").update({
         cleanup_lease_until: null,
       }).eq("id", 1).eq("cleanup_generation", generation);
     }
