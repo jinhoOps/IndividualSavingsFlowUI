@@ -182,7 +182,7 @@ for (const viewport of [
     await amountMode.getByRole('button', { name: '실질', exact: true }).click();
     await expect(amountMode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await amountMode.getByRole('button', { name: '명목', exact: true }).click();
-    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await conditionEditor.getByRole('button', { name: '닫기' }).click();
     await expect(conditionEditor).toBeHidden();
     await page.evaluate(() => document.fonts.ready);
     await expect.poll(() => projection.locator('.simulation-comparison dd').evaluateAll(values => values.every(value => (
@@ -203,7 +203,7 @@ for (const viewport of [
     await conditionEditor.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-expanded-${viewport.width}.png`) });
     await summary.click();
     await conditionEditor.screenshot({ animations: 'disabled', path: testInfo.outputPath(`simulation-settings-${viewport.width}.png`) });
-    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await conditionEditor.getByRole('button', { name: '닫기' }).click();
     await expect(conditionEditor).toBeHidden();
     await expect(opener).toBeFocused();
     await opener.click();
@@ -381,14 +381,14 @@ for (const viewport of [
     expect(box).not.toBeNull();
     expect(box!.height).toBeGreaterThanOrEqual(44);
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
-    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await conditionEditor.getByRole('button', { name: '닫기' }).click();
     await expect(conditionEditor).toBeHidden();
     await page.getByRole('button', { name: '조건 편집' }).click();
     const mode = conditionEditor.getByRole('group', { name: '표시 금액 기준' });
     await mode.getByRole('button', { name: '실질', exact: true }).click();
     await expect(mode.getByRole('button', { name: '실질', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(mode.getByRole('button', { name: '명목', exact: true })).toHaveAttribute('aria-pressed', 'false');
-    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await conditionEditor.getByRole('button', { name: '닫기' }).click();
   });
 }
 
@@ -672,7 +672,7 @@ for (const viewport of [
     await expect(hero).toHaveText(headline ?? '');
     await years.fill('3');
     await expect(hero).toHaveText(headline ?? '');
-    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await conditionEditor.getByRole('button', { name: '닫기' }).click();
     await expect(conditionEditor).toBeHidden();
 
     const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
@@ -768,7 +768,7 @@ for (const viewport of [
       controls.filter((control) => control.getBoundingClientRect().height < 44).length
     ));
     expect(editorUndersized).toBe(0);
-    await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+    await conditionEditor.getByRole('button', { name: '닫기' }).click();
     await expect(conditionEditor).toBeHidden();
 
     const undersized = await page.locator('button:visible, input:visible').evaluateAll((controls) => (
@@ -785,7 +785,7 @@ test('mobile keeps compact tooltip stable while dragging', async ({ page }) => {
   const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
   await page.getByRole('button', { name: '조건 편집' }).click();
   await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
-  await conditionEditor.getByRole('button', { name: '조건 편집 닫기' }).click();
+  await conditionEditor.getByRole('button', { name: '닫기' }).click();
   await expect(conditionEditor).toBeHidden();
 
   const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
