@@ -158,7 +158,7 @@ for (const viewport of VIEWPORTS) {
       JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
     await expectFinalMainAllocation(page.locator('.cashflow-allocation'), MAIN_ALLOCATION_AFTER_EDIT);
-    await page.getByRole('button', { name: '편집기 닫기' }).click();
+    await expect(page.getByRole('dialog', { name: '월 자금 계획 편집' })).toHaveCount(0);
     await expect(mainEditTrigger).toBeFocused();
     await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
     await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('80만 원');
@@ -173,6 +173,7 @@ for (const viewport of VIEWPORTS) {
     })).toBeVisible();
     await expectFinalSimulationPaths(graph);
     await screenshot(page, testInfo.outputPath.bind(testInfo), `simulation-${viewport.width}-before.png`);
+    await page.getByRole('button', { name: '조건 편집' }).click();
     const years = page.getByRole('spinbutton', { name: '기간 숫자' });
     await years.focus();
     await years.fill('25');
@@ -182,6 +183,7 @@ for (const viewport of VIEWPORTS) {
     await expect(years).toBeFocused();
     await expect(page.getByRole('heading', {
       name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/,
+      includeHidden: true,
     })).toBeVisible();
     await expectFinalSimulationPaths(graph);
     await expectNoDocumentOverflow(page);
@@ -388,6 +390,7 @@ async function captureReducedMotionFinals(page: Page, width: number): Promise<vo
   expect(mainState.activeAnimations).toBe(0);
 
   await openWithWorkspace(page, 'apps/simulation/', WORKSPACE);
+  await page.getByRole('button', { name: '조건 편집' }).click();
   const years = page.getByRole('spinbutton', { name: '기간 숫자' });
   await years.fill('24');
   const reducedSimulationFirstRead = await readSimulationState(page.locator('.growth-chart'));

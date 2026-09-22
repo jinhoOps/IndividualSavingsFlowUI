@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Button } from '../../components/common/Button';
+import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import type { PortfolioDraft } from '../domain/model';
 import type { PortfolioSampleSelection } from '../domain/samplePreset';
-import { AllocationEditor } from './AllocationEditor';
+import { AllocationEditor, type AllocationEditorItemNavigation } from './AllocationEditor';
 import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioEditorSummary } from './PortfolioEditorSummary';
-import { PortfolioDialog } from './PortfolioDialog';
 import { PortfolioExamplePicker, type PortfolioExampleNavigation } from './PortfolioExamplePicker';
 
 export function PortfolioEditSurface({
@@ -49,7 +51,8 @@ export function PortfolioEditSurface({
   onSampleIntentOpened?(): void;
 }) {
   const [cashError, setCashError] = useState<string | null>(null);
-  const [examplePickerOpen, setExamplePickerOpen] = useState(false);
+  const [stage, setStage] = useState<'allocation' | 'item' | 'examples'>('allocation');
+  const [itemMode, setItemMode] = useState<'add' | 'edit'>('edit');
   const [exampleVisited, setExampleVisited] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [cashDirty, setCashDirty] = useState(false);
@@ -57,125 +60,132 @@ export function PortfolioEditSurface({
   const [editorGeneration, setEditorGeneration] = useState(0);
   const pickerRef = useRef<PortfolioExampleNavigation>(null);
   const sampleTriggerRef = useRef<HTMLButtonElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const discardTriggerRef = useRef<HTMLElement | null>(null);
-  const pendingSheetDismissRef = useRef<((approved: boolean) => void) | null>(null);
+  const pendingCloseRef = useRef<((approved: boolean) => void) | null>(null);
+  const itemNavigationRef = useRef<AllocationEditorItemNavigation>(null);
   const sampleIntentOpenedRef = useRef(false);
-  const [presentation, setPresentation] = useState<'sheet' | 'modal'>(() => (
-    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches
-      ? 'sheet'
-      : 'modal'
-  ));
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const media = window.matchMedia('(max-width: 767px)');
-    const update = () => setPresentation(media.matches ? 'sheet' : 'modal');
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-
-  useEffect(() => {
-    if (!openExamples || examplePickerOpen || sampleIntentOpenedRef.current) return;
+    if (!openExamples || stage === 'examples' || sampleIntentOpenedRef.current) return;
     sampleIntentOpenedRef.current = true;
     setExampleVisited(true);
-    setExamplePickerOpen(true);
+    setStage('examples');
     onSampleIntentOpened?.();
-  }, [examplePickerOpen, onSampleIntentOpened, openExamples]);
+  }, [onSampleIntentOpened, openExamples, stage]);
 
   useEffect(() => () => {
-    pendingSheetDismissRef.current?.(false);
-    pendingSheetDismissRef.current = null;
+    pendingCloseRef.current?.(false);
+    pendingCloseRef.current = null;
   }, []);
 
-  function requestClose(): void {
-    if (applying || itemEditing) return;
+  function requestClose(): boolean | Promise<boolean> {
+    if (applying) return false;
+    if (stage === 'item') {
+      itemNavigationRef.current?.requestClose();
+      return false;
+    }
+    if (stage === 'examples') {
+      if (!pickerRef.current?.hasChanges) {
+        pickerRef.current?.back();
+        return false;
+      }
+      discardTriggerRef.current = document.activeElement as HTMLElement | null;
+      setConfirmDiscard(true);
+      return new Promise((resolve) => { pendingCloseRef.current = resolve; });
+    }
+    if (itemEditing) return false;
     if (dirty || cashDirty || cashError || fieldError || pickerRef.current?.hasChanges) {
       discardTriggerRef.current = document.activeElement as HTMLElement | null;
       setConfirmDiscard(true);
-    } else onCancel();
-  }
-
-  function requestSheetDismiss(): boolean | Promise<boolean> {
-    if (applying || itemEditing) return false;
-    if (dirty || cashDirty || cashError || fieldError || pickerRef.current?.hasChanges) {
-      discardTriggerRef.current = closeButtonRef.current;
-      setConfirmDiscard(true);
-      return new Promise(resolve => { pendingSheetDismissRef.current = resolve; });
+      return new Promise((resolve) => { pendingCloseRef.current = resolve; });
     }
-    return onSheetDismiss?.() !== false;
+    return true;
   }
 
   function cancelDiscard(): void {
     setConfirmDiscard(false);
-    const resolve = pendingSheetDismissRef.current;
-    pendingSheetDismissRef.current = null;
+    const resolve = pendingCloseRef.current;
+    pendingCloseRef.current = null;
     resolve?.(false);
   }
 
   function discardChanges(): void {
     setConfirmDiscard(false);
-    const resolve = pendingSheetDismissRef.current;
-    pendingSheetDismissRef.current = null;
-    if (!resolve) {
-      onCancel();
-      return;
-    }
-    if (onSheetDismiss === undefined) {
-      onCancel();
-      resolve(false);
-      return;
-    }
-    resolve(onSheetDismiss() !== false);
+    const resolve = pendingCloseRef.current;
+    pendingCloseRef.current = null;
+    if (resolve) resolve(true);
+    else onCancel();
   }
 
   function closeExamples(): void {
-    setExamplePickerOpen(false);
+    setStage('allocation');
     requestAnimationFrame(() => sampleTriggerRef.current?.focus());
   }
 
   return (
     <>
-      <PortfolioDialog
-        className={`portfolio-edit-surface${examplePickerOpen ? ' portfolio-edit-surface--examples' : ''}`}
-        dataPresentation={presentation}
-        labelledBy={examplePickerOpen ? 'portfolio-example-picker-title' : 'portfolio-edit-title'}
-        closeOnBackdrop={!itemEditing}
-        enableSheetDismiss={!examplePickerOpen}
-        onSheetDismiss={requestSheetDismiss}
-        onSheetDismissed={onSheetDismissed}
-        onClose={requestClose}
-        onEscape={() => {
-          if (applying) return;
-          if (examplePickerOpen) pickerRef.current?.back();
-          else requestClose();
-        }}
+      <ResponsiveDialog
+        open
+        className={`portfolio-edit-surface${stage === 'examples' ? ' portfolio-edit-surface--examples' : ''}`}
+        labelledBy="portfolio-edit-title"
+        size={stage === 'examples' ? 'wide' : 'form'}
+        mobileHeight={stage === 'examples' ? 'full' : 'content'}
+        mobileEntranceMotion
+        busy={applying}
         returnFocusRef={returnFocusRef}
+        onRequestClose={() => requestClose()}
+        onClosed={() => {
+          onCancel();
+          onSheetDismissed?.();
+          requestAnimationFrame(() => {
+            document.querySelector<HTMLElement>('[data-return-focus-id="portfolio-edit"]')?.focus();
+          });
+        }}
       >
-        <div className="portfolio-edit-surface__editor" hidden={examplePickerOpen}>
-          <header className="portfolio-edit-surface__header" data-sheet-drag-handle>
-            <h2 id="portfolio-edit-title">투자 배분 수정</h2>
-            <div className="portfolio-edit-surface__header-actions">
-              <Button
-                type="button"
-              variant="quiet"
-              ref={closeButtonRef}
-              data-dialog-initial-focus
-                aria-label="편집기 닫기"
-                disabled={applying}
-                onClick={requestClose}
-              >
-                닫기
-              </Button>
-            </div>
-          </header>
-          {showSaving ? <p role="status">저장 중</p> : null}
-          <PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />
-          <div className="portfolio-edit-surface__body">
-            <Button ref={sampleTriggerRef} type="button" variant="quiet" className="portfolio-edit-surface__samples"
-              disabled={itemEditing}
-              onClick={() => { setExampleVisited(true); setExamplePickerOpen(true); }}>샘플로 구성하기</Button>
+        <AccountProductBoundary><ResponsiveDialogLayout
+          title={stage === 'item' ? `투자 대상 ${itemMode === 'add' ? '추가' : '수정'}` : stage === 'examples' ? '샘플로 구성하기' : '투자 배분 수정'}
+          titleId="portfolio-edit-title"
+          eyebrow={stage === 'examples' ? '포트폴리오 샘플' : '월 투자 배분'}
+          layout="edit"
+          onBack={stage === 'item'
+            ? () => itemNavigationRef.current?.requestClose()
+            : stage === 'examples' ? () => pickerRef.current?.back() : undefined}
+          onClose={() => undefined}
+          context={<PortfolioEditorSummary draft={draft} investmentWon={investmentWon} />}
+          contextHidden={stage !== 'allocation'}
+          status={showSaving ? <p role="status">저장 중</p> : undefined}
+          bodyClassName="portfolio-edit-surface__body"
+          footer={stage === 'allocation' && !itemEditing && dirty ? (
+            <PortfolioApplyBar
+              dirty
+              saveError={saveError}
+              fieldError={cashError ?? fieldError}
+              applying={applying}
+              showAmounts={showAmounts}
+              draft={draft}
+              investmentWon={investmentWon}
+              onCancel={() => { void requestClose(); }}
+              onApply={onApply}
+            />
+          ) : undefined}
+        >
+          {stage === 'examples' && exampleVisited ? <PortfolioExamplePicker
+            embedded
+            draft={draft} investmentWon={investmentWon} now={now} onAction={(action) => {
+              onAction(action);
+              if (action.type === 'draft-replaced') {
+                setCashError(null);
+                setCashDirty(false);
+                setEditorGeneration((generation) => generation + 1);
+              }
+            }}
+            onClose={closeExamples} active navigationRef={pickerRef}
+            initialSample={initialSample}
+          /> : (
+            <>
+              {stage === 'allocation' ? <Button ref={sampleTriggerRef} type="button" variant="quiet" className="portfolio-edit-surface__samples"
+                disabled={itemEditing}
+                onClick={() => { setExampleVisited(true); setStage('examples'); }}>샘플로 구성하기</Button> : null}
             <AllocationEditor
               key={editorGeneration}
               draft={draft}
@@ -185,49 +195,42 @@ export function PortfolioEditSurface({
               fieldError={fieldError}
               onCashErrorChange={setCashError}
               onCashDirtyChange={setCashDirty}
-              onItemEditingChange={setItemEditing}
+              onItemEditingChange={(editing, mode) => {
+                setItemEditing(editing);
+                if (editing) {
+                  setItemMode(mode ?? 'edit');
+                  setStage('item');
+                } else setStage('allocation');
+              }}
+              itemNavigationRef={itemNavigationRef}
               presentation="edit"
               showSummary={false}
             />
-          </div>
-          <footer className="portfolio-edit-surface__footer">
-            {!examplePickerOpen && !itemEditing && dirty ? (
-              <PortfolioApplyBar
-                dirty
-                saveError={saveError}
-                fieldError={cashError ?? fieldError}
-                applying={applying}
-                showAmounts={showAmounts}
-                draft={draft}
-                investmentWon={investmentWon}
-                onCancel={requestClose}
-                onApply={onApply}
-              />
-            ) : null}
-          </footer>
-        </div>
-        {exampleVisited ? <PortfolioExamplePicker
-          draft={draft} investmentWon={investmentWon} now={now} onAction={(action) => {
-            onAction(action);
-            if (action.type === 'draft-replaced') {
-              setCashError(null);
-              setCashDirty(false);
-              setEditorGeneration((generation) => generation + 1);
-            }
-          }}
-          onClose={closeExamples} onDismiss={requestClose} active={examplePickerOpen} navigationRef={pickerRef}
-          initialSample={initialSample}
-        /> : null}
-      </PortfolioDialog>
-      {confirmDiscard ? <PortfolioDialog labelledBy="portfolio-discard-title" returnFocusRef={discardTriggerRef}
-        onClose={cancelDiscard}>
-        <h2 id="portfolio-discard-title">변경사항을 버릴까요?</h2>
-        <p>적용하지 않은 배분과 샘플 구성을 버리고 닫습니다.</p>
-        <div className="portfolio-item-sheet__discard-actions">
-          <Button type="button" variant="secondary" data-dialog-initial-focus onClick={cancelDiscard}>계속 수정</Button>
-          <Button type="button" variant="primary" onClick={discardChanges}>변경 버리기</Button>
-        </div>
-      </PortfolioDialog> : null}
+            </>
+          )}
+        </ResponsiveDialogLayout></AccountProductBoundary>
+      </ResponsiveDialog>
+      {confirmDiscard ? <ResponsiveDialog open labelledBy="portfolio-discard-title" returnFocusRef={discardTriggerRef}
+        size="compact" onRequestClose={() => true} onClosed={cancelDiscard}>
+        <AccountProductBoundary><ResponsiveDialogLayout title="변경사항을 버릴까요?" titleId="portfolio-discard-title" layout="confirm"
+          onClose={cancelDiscard} closeInitialFocus={false}
+          footer={<PortfolioDiscardActions onContinue={cancelDiscard} onDiscard={discardChanges} />}>
+          <p>적용하지 않은 배분과 샘플 구성을 버리고 닫습니다.</p>
+        </ResponsiveDialogLayout></AccountProductBoundary>
+      </ResponsiveDialog> : null}
     </>
+  );
+}
+
+function PortfolioDiscardActions({ onContinue, onDiscard }: { onContinue(): void; onDiscard(): void }) {
+  const requestDialogClose = useResponsiveDialogClose();
+  return (
+    <div className="portfolio-item-sheet__discard-actions">
+      <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
+        onContinue();
+        requestDialogClose?.('button');
+      }}>계속 수정</Button>
+      <Button type="button" variant="primary" onClick={onDiscard}>변경 버리기</Button>
+    </div>
   );
 }

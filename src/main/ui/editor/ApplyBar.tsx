@@ -5,16 +5,17 @@ import { Button } from '../common/Button';
 export interface ApplyBarProps {
   dirty: boolean;
   saveStatus: MainState['saveStatus'];
+  embedded?: boolean;
   onApply(): void;
   onCancel(): void;
 }
 
-export function ApplyBar({ dirty, saveStatus, onApply, onCancel }: ApplyBarProps) {
+export function ApplyBar({ dirty, saveStatus, embedded = false, onApply, onCancel }: ApplyBarProps) {
   const saving = saveStatus === 'saving';
   const failed = saveStatus === 'error';
   return (
-    <footer
-      className="main-apply-bar"
+    <div
+      className={`main-apply-bar${embedded ? ' main-apply-bar--embedded' : ''}`}
       aria-busy={saving ? 'true' : undefined}
       aria-label="변경 적용"
     >
@@ -34,6 +35,6 @@ export function ApplyBar({ dirty, saveStatus, onApply, onCancel }: ApplyBarProps
       <Button type="button" variant="primary" disabled={!dirty || saving} onClick={onApply}>
         {failed ? '다시 시도' : '적용'}
       </Button>
-    </footer>
+    </div>
   );
 }

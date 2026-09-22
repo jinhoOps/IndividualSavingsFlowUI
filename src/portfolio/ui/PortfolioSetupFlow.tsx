@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAnimatedProgress } from '../../components/motion/useAnimatedProgress';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { createProductSpring } from '../../components/motion/tokens';
 import { Button } from '../../components/common/Button';
+import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { Surface } from '../../components/common/Surface';
 import type {
   PortfolioAction,
@@ -13,7 +16,6 @@ import type { PortfolioSampleSelection } from '../domain/samplePreset';
 import { validateApplicableDraft } from '../domain/validation';
 import { AllocationEditor } from './AllocationEditor';
 import { PortfolioExamplePicker, type PortfolioExampleNavigation } from './PortfolioExamplePicker';
-import { PortfolioDialog } from './PortfolioDialog';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
 
 export interface PortfolioSetupFlowProps {
@@ -110,17 +112,21 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
             onItemEditingChange={setItemEditing}
             presentation="setup"
           />
-          {exampleVisited ? <PortfolioDialog open={examplePickerOpen}
+          {exampleVisited ? <ResponsiveDialog open={examplePickerOpen}
             className="portfolio-edit-surface portfolio-edit-surface--examples" labelledBy="portfolio-example-picker-title"
-            returnFocusRef={sampleTriggerRef} closeOnBackdrop
-            onEscape={() => pickerRef.current?.back()}
-            onClose={() => {
+            size="wide" mobileHeight="full" mobileEntranceMotion returnFocusRef={sampleTriggerRef}
+            onRequestClose={() => {
               if (pickerRef.current?.hasChanges) {
                 discardTriggerRef.current = document.activeElement as HTMLElement;
                 setDiscardExample(true);
-              } else setExamplePickerOpen(false);
-            }}>
-            <PortfolioExamplePicker draft={props.draft} investmentWon={props.investmentWon}
+                return false;
+              }
+              return true;
+            }}
+            onClosed={() => setExamplePickerOpen(false)}>
+            <AccountProductBoundary><ResponsiveDialogLayout title="샘플로 구성하기" titleId="portfolio-example-picker-title"
+              eyebrow="포트폴리오 샘플" layout="edit" onBack={() => pickerRef.current?.back()} onClose={() => undefined}>
+              <PortfolioExamplePicker embedded draft={props.draft} investmentWon={props.investmentWon}
               now={props.now} onAction={(action) => {
                 props.onAction(action);
                 if (action.type === 'draft-replaced') {
@@ -129,16 +135,18 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
                 }
               }} active={examplePickerOpen} navigationRef={pickerRef}
               onClose={() => setExamplePickerOpen(false)} initialSample={props.initialSample} />
-          </PortfolioDialog> : null}
-          {discardExample ? <PortfolioDialog labelledBy="portfolio-example-discard-title" returnFocusRef={discardTriggerRef}
-            onClose={() => setDiscardExample(false)}>
-            <h2 id="portfolio-example-discard-title">선택한 구성을 버릴까요?</h2>
-            <p>선택한 구성을 버리고 배분 설정으로 돌아갑니다.</p>
-            <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => setDiscardExample(false)}>계속 살펴보기</Button>
-            <Button type="button" variant="primary" onClick={() => {
-              setDiscardExample(false); setExamplePickerOpen(false); setExampleVisited(false);
-            }}>구성 버리기</Button>
-          </PortfolioDialog> : null}
+            </ResponsiveDialogLayout></AccountProductBoundary>
+          </ResponsiveDialog> : null}
+          {discardExample ? <ResponsiveDialog open labelledBy="portfolio-example-discard-title" returnFocusRef={discardTriggerRef}
+            size="compact" onRequestClose={() => true} onClosed={() => setDiscardExample(false)}>
+            <AccountProductBoundary><ResponsiveDialogLayout title="선택한 구성을 버릴까요?" titleId="portfolio-example-discard-title" layout="confirm"
+              onClose={() => setDiscardExample(false)} closeInitialFocus={false}
+              footer={<PortfolioExampleDiscardActions onContinue={() => setDiscardExample(false)} onDiscard={() => {
+                setDiscardExample(false); setExamplePickerOpen(false); setExampleVisited(false);
+              }} />}>
+              <p>선택한 구성을 버리고 배분 설정으로 돌아갑니다.</p>
+            </ResponsiveDialogLayout></AccountProductBoundary>
+          </ResponsiveDialog> : null}
         </div>
       ) : null}
 
@@ -168,6 +176,17 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
       )}
     </Surface>
   );
+}
+
+function PortfolioExampleDiscardActions({ onContinue, onDiscard }: { onContinue(): void; onDiscard(): void }) {
+  const requestDialogClose = useResponsiveDialogClose();
+  return <div className="portfolio-item-sheet__discard-actions">
+    <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
+      onContinue();
+      requestDialogClose?.('button');
+    }}>계속 살펴보기</Button>
+    <Button type="button" variant="primary" onClick={onDiscard}>구성 버리기</Button>
+  </div>;
 }
 
 function PortfolioSetupReview({

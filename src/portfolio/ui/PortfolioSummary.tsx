@@ -230,6 +230,7 @@ export function PortfolioSummary({
                 aria-describedby={`${summaryId}-${item.id}-values`}
                 aria-description={onEdit ? '배분 수정 열기' : undefined}
                 aria-haspopup={onEdit ? 'dialog' : undefined}
+                data-return-focus-id={onEdit ? 'portfolio-edit' : undefined}
                 aria-pressed={onEdit ? undefined : selectedItemId === item.id}
                 onFocus={() => setFocusedItemId(item.id)}
                 onBlur={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}

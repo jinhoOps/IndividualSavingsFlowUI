@@ -1,8 +1,10 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { Surface } from '../../components/common/Surface';
 import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { appPath } from '../../journey/routes';
@@ -321,25 +323,16 @@ export function SimulationApp({
               mobileHeight="full"
               mobileEntranceMotion
               returnFocusRef={conditionEditorOpenerRef}
-              onRequestClose={() => {
-                setConditionEditorOpen(false);
-                return true;
-              }}
-              onClosed={() => undefined}
+              onRequestClose={() => true}
+              onClosed={() => setConditionEditorOpen(false)}
             >
-              <section className="simulation-condition-editor">
-                <header className="simulation-condition-editor__header">
-                  <h2 id="simulation-condition-editor-title">시뮬레이션 조건</h2>
-                  <Button
-                    type="button"
-                    variant="quiet"
-                    aria-label="조건 편집 닫기"
-                    onClick={() => setConditionEditorOpen(false)}
-                  >
-                    닫기
-                  </Button>
-                </header>
-                <div className="simulation-condition-editor__body">
+              <AccountProductBoundary><ResponsiveDialogLayout
+                title="시뮬레이션 조건"
+                titleId="simulation-condition-editor-title"
+                eyebrow="미래 성장"
+                layout="edit"
+                onClose={() => undefined}
+                context={
                   <SegmentedControl
                     className="simulation-condition-editor__amount-mode"
                     label="표시 금액 기준"
@@ -347,6 +340,9 @@ export function SimulationApp({
                     options={[{ value: 'nominal', label: '명목' }, { value: 'real', label: '실질' }]}
                     onChange={(amountMode) => saveDraft({ ...resultDraft, amountMode, updatedAt: now() })}
                   />
+                }
+              >
+                <div className="simulation-condition-editor">
                   <SimulationControls draft={resultDraft} onChange={(next) => saveDraft({
                     ...next,
                     updatedAt: now(),
@@ -356,7 +352,7 @@ export function SimulationApp({
                     updatedAt: now(),
                   })} />
                 </div>
-              </section>
+              </ResponsiveDialogLayout></AccountProductBoundary>
             </ResponsiveDialog>
             {saveState === 'saved' ? (
               <section className="simulation-portfolio-entry" aria-labelledby="simulation-portfolio-entry-title">

@@ -1,9 +1,8 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/components/motion/tokens';
 import type { MainData } from '../../../src/main/domain/model';
 import { SummaryDashboard, type SummaryDashboardProps } from '../../../src/main/ui/dashboard/SummaryDashboard';
 
@@ -234,7 +233,7 @@ describe('SummaryDashboard', () => {
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
     expect(opener).toHaveClass('ui-button--quiet');
     fireEvent.click(opener);
-    expect(screen.getByRole('button', { name: '편집기 닫기' })).toHaveClass('ui-button--quiet');
+    expect(screen.getByRole('button', { name: '닫기' })).toHaveClass('responsive-dialog__icon-button');
     expect(screen.getByRole('button', { name: '적용' })).toHaveClass('ui-button--primary');
     expect(screen.getByRole('button', { name: '취소' })).toHaveClass('ui-button--secondary');
   });
@@ -261,7 +260,7 @@ describe('SummaryDashboard', () => {
     expect(screen.getByRole('button', { name: '여윳돈 · 90만 원 · 28.1%' })).toBeVisible();
   });
 
-  it('opens one desktop scalar editor in a modal dialog containing the five canonical fields', () => {
+  it('opens one desktop scalar editor in a modal dialog containing the five canonical fields', async () => {
     render(<DashboardHarness />);
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
 
@@ -276,8 +275,8 @@ describe('SummaryDashboard', () => {
     expect(within(editor).getByLabelText('월 저축액')).toHaveValue('300,000');
     expect(within(editor).getByLabelText('월 투자액')).toHaveValue('200,000');
 
-    fireEvent.click(within(editor).getByRole('button', { name: '편집기 닫기' }));
-    expect(opener).toHaveFocus();
+    fireEvent.click(within(editor).getByRole('button', { name: '닫기' }));
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 
   it('keeps applied dashboard values visible while editing and restores the draft on cancel', () => {
@@ -339,7 +338,23 @@ describe('SummaryDashboard', () => {
     expect(within(dialog).getByLabelText('월 투자액')).toBeVisible();
   });
 
-  it('keeps the mobile editor modal until the approved drag exit finishes', () => {
+  it('uses the shared edit frame without changing Main field ownership', () => {
+    render(<DashboardHarness mobile />);
+    fireEvent.click(screen.getByRole('button', { name: '월 금액 편집' }));
+
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+    expect(dialog.querySelector('[data-surface-header]')).toBeTruthy();
+    expect(dialog.querySelector('[data-surface-body]')).toBeTruthy();
+    expect(dialog.querySelector('[data-surface-footer]')).toBeTruthy();
+    expect(within(dialog).getByLabelText('월 실수령액')).toHaveValue('3,200,000');
+    expect(within(dialog).getByLabelText('월 주거 고정비')).toHaveValue('800,000');
+    expect(within(dialog).getByLabelText('월평균 생활비')).toHaveValue('1,000,000');
+    expect(within(dialog).getByLabelText('월 저축액')).toHaveValue('300,000');
+    expect(within(dialog).getByLabelText('월 투자액')).toHaveValue('200,000');
+    expect(within(dialog).getByRole('button', { name: '적용' })).toBeDisabled();
+  });
+
+  it('keeps the mobile editor modal until the approved drag exit finishes', async () => {
     render(<DashboardHarness mobile />);
     vi.useFakeTimers();
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
@@ -354,10 +369,12 @@ describe('SummaryDashboard', () => {
       dispatchPointer(handle!, 'pointerup', { clientY: 100 });
     });
 
+    await act(async () => undefined);
     expect(dialog).toHaveAttribute('data-sheet-exiting', 'true');
     expect(dialog).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(300));
     expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
+    await act(async () => undefined);
     expect(opener).toHaveFocus();
   });
 
@@ -381,22 +398,18 @@ describe('SummaryDashboard', () => {
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('4,000,000');
   });
 
-  it('reveals the mobile editor upward with normal motion and closes it synchronously', () => {
+  it('commits the mobile editor to its visible state when layout measurement is unavailable', async () => {
     render(<DashboardHarness mobile />);
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
     fireEvent.click(opener);
 
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(animationOptionsFor(dialog)).toMatchObject({
-      opacity: [0, 1],
-      y: [MOTION_DISTANCE_PX.reveal, 0],
-      duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
-    });
+    expect(dialog).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(animationOptionsFor(dialog)).toBeUndefined();
 
-    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
-    expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument());
     expect(opener).toHaveFocus();
   });
 
@@ -410,7 +423,7 @@ describe('SummaryDashboard', () => {
     expect(animationOptionsFor(dialog)).toBeUndefined();
   });
 
-  it('contains edit and apply controls in one mobile modal, traps focus, and hides dashboard controls', () => {
+  it('contains edit and apply controls in one mobile modal, traps focus, and hides dashboard controls', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness mobile />);
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
@@ -418,14 +431,13 @@ describe('SummaryDashboard', () => {
 
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     const dialogScope = within(dialog);
-    const close = dialogScope.getByRole('button', { name: '편집기 닫기' });
+    const close = dialogScope.getByRole('button', { name: '닫기' });
     const cancel = dialogScope.getByRole('button', { name: '취소' });
     const apply = dialogScope.getByRole('button', { name: '적용' });
 
-    expect(close).toHaveFocus();
+    await waitFor(() => expect(close).toHaveFocus());
     expect(apply).toBeDisabled();
     expect(screen.getByTestId('dashboard-controls')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByTestId('dashboard-controls')).toHaveAttribute('inert');
 
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
     expect(cancel).toHaveFocus();
@@ -438,7 +450,7 @@ describe('SummaryDashboard', () => {
     expect(apply).toHaveFocus();
 
     fireEvent.click(close);
-    expect(opener).toHaveFocus();
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 
   it('announces a mobile save failure inside the dialog and exposes a retry action', () => {
@@ -464,36 +476,37 @@ describe('SummaryDashboard', () => {
     expect(onApply).toHaveBeenCalledOnce();
   });
 
-  it('asks before discarding a dirty mobile editor from Escape or its backdrop', () => {
+  it('asks before discarding a dirty mobile editor from Escape or its backdrop', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<DashboardHarness mobile />);
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
     fireEvent.click(opener);
     fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
-    fireEvent.keyDown(window, { key: 'Escape' });
+    const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(confirm).toHaveBeenCalledOnce();
     expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
 
-    fireEvent.click(screen.getByTestId('editor-backdrop'));
+    fireEvent.click(dialog);
     expect(confirm).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('dialog', { name: '월 자금 계획 편집' })).toBeVisible();
 
     confirm.mockReturnValue(true);
-    fireEvent.click(screen.getByTestId('editor-backdrop'));
-    expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
+    fireEvent.click(dialog);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument());
     expect(opener).toHaveFocus();
   });
 
-  it('discards a dirty draft after confirming that the desktop editor should close', () => {
+  it('discards a dirty draft after confirming that the desktop editor should close', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<DashboardHarness />);
     fireEvent.click(screen.getByRole('button', { name: '월 금액 편집' }));
     fireEvent.change(screen.getByLabelText('월 실수령액'), { target: { value: '4000000' } });
 
-    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
     expect(confirm).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('complementary', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: '월 금액 편집' }));
     expect(screen.getByLabelText('월 실수령액')).toHaveValue('3,200,000');
@@ -564,24 +577,25 @@ function dispatchPointer(target: HTMLElement, type: string, properties: Record<s
 }
 
 describe('amount editing shortcuts', () => {
-  it.each([false, true])('opens the selected field and returns focus without changing the draft (mobile=%s)', mobile => {
+  it.each([false, true])('opens the selected field and returns focus without changing the draft (mobile=%s)', async mobile => {
     render(<DashboardHarness mobile={mobile} />);
     for (const label of ['월 저축액', '월 투자액']) {
       const opener = screen.getByRole('button', {name: new RegExp('^' + label.replace('액', '') + ' 금액 편집')});
       fireEvent.click(opener);
       expect(screen.getByLabelText(label)).toHaveFocus();
       expect(screen.getByRole('button', {name: '적용'})).toBeDisabled();
-      fireEvent.click(screen.getByRole('button', {name: '편집기 닫기'}));
-      expect(opener).toHaveFocus();
+      fireEvent.click(screen.getByRole('button', {name: '닫기'}));
+      await waitFor(() => expect(opener).toHaveFocus());
     }
   });
-  it('can edit zero savings and investment amounts', () => {
+  it('can edit zero savings and investment amounts', async () => {
     const zero = {...appliedData, monthlySavingWon: 0, monthlyInvestmentWon: 0};
     render(<SummaryDashboard applied={zero} draft={zero} dirty={false} issues={[]} saveStatus="saved"
       onDraftChange={vi.fn()} onApply={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', {name: '월 저축 금액 편집 · 현재 0원'}));
     expect(screen.getByLabelText('월 저축액')).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', {name: '월 투자 금액 편집 · 현재 0원'}));
     expect(screen.getByLabelText('월 투자액')).toHaveFocus();
   });

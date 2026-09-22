@@ -83,7 +83,7 @@ function MetricRow({ id, label, chartLabel, valueWon, incomeWon, context, select
         >{content}</button>
       ) : <div className="cashflow-metric__inspect">{content}</div>}
       {onValueAction ? <>
-        <button type="button" className="cashflow-metric__assistant" aria-label={`${onEdit ? label + ' 금액 편집' : id === 'consumption' ? '지출 계산 도우미' : '남는 돈 분배 도우미'} · 현재 ${formatDashboardWon(valueWon)}`} onClick={event => onValueAction(event.currentTarget)}>
+        <button type="button" className="cashflow-metric__assistant" data-return-focus-id={id} aria-label={`${onEdit ? label + ' 금액 편집' : id === 'consumption' ? '지출 계산 도우미' : '남는 돈 분배 도우미'} · 현재 ${formatDashboardWon(valueWon)}`} onClick={event => onValueAction(event.currentTarget)}>
           <strong className="cashflow-metric__value"><AnimatedMetricValue valueWon={valueWon} /></strong>
           <span className="cashflow-metric__assistant-hint">{onEdit ? '금액 편집' : id === 'consumption' ? '항목별로 계산' : valueWon > 0 ? '저축·투자에 나누기' : '배분 상태 확인'}</span>
         </button>

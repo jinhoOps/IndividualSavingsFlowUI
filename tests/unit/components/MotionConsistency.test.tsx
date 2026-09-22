@@ -36,19 +36,19 @@ it('continues setup progress from the visible fraction when steps change quickly
   rerender(<PortfolioSetupFlow {...props} step="welcome" />);
   expect(parseFloat(fill.style.width)).toBeCloseTo(100 / 3);
 });
-it('uses the same reveal for the remaining-money assistant sharing the panel styles', () => {
+it('uses the shared edit frame for the remaining-money assistant', () => {
   render(<RemainingAllocationDialog applied={{ schemaVersion: 2, updatedAt: 1, monthlyNetIncomeWon: 3_200_000,
     monthlyHousingWon: 800_000, monthlyLivingWon: 1_000_000, monthlySavingWon: 300_000, monthlyInvestmentWon: 200_000 }}
     dirty={false} saveStatus="idle" onDraftChange={() => {}} onApply={() => {}} onCancel={() => {}} onClose={() => {}} />);
-  expect(anime.animate.mock.calls.find(([target]) => target === screen.getByRole('dialog'))?.[1])
-    .toMatchObject({ opacity: [0, 1], y: [8, 0], duration: 180 });
+  const dialog = screen.getByRole('dialog', { name: '남는 돈 분배' });
+  expect(dialog.querySelector('[data-surface-layout="edit"]')).toBeTruthy();
+  expect(dialog.querySelector('[data-surface-body]')).toBeTruthy();
+  expect(dialog.querySelector('[data-surface-footer]')).toBeTruthy();
 });
-it.each([false, true])('reveals the expense assistant without delaying heading focus (reduced=%s)', reduced => {
-  anime.reduced = reduced;
+it('uses the shared edit frame for the expense assistant', () => {
   render(<ExpenseAssistantDialog repository={{ load: () => null, save: vi.fn() }} onClose={() => {}} onApplied={() => {}} />);
-  const dialog = screen.getByRole('dialog');
-  expect(screen.getByRole('heading', { level: 2 })).toHaveFocus();
-  const reveals = anime.animate.mock.calls.filter(([target]) => target === dialog);
-  if (reduced) expect(reveals).toHaveLength(0);
-  else expect(reveals[0]?.[1]).toMatchObject({ opacity: [0, 1], y: [8, 0], duration: 180 });
+  const dialog = screen.getByRole('dialog', { name: '지출 계산 도우미' });
+  expect(dialog.querySelector('[data-surface-layout="edit"]')).toBeTruthy();
+  expect(dialog.querySelector('[data-surface-body]')).toBeTruthy();
+  expect(dialog.querySelector('[data-surface-footer]')).toBeTruthy();
 });

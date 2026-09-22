@@ -115,6 +115,10 @@ describe('SimulationApp', () => {
 
     fireEvent.click(opener);
     const editor = screen.getByRole('dialog', { name: '시뮬레이션 조건' });
+    expect(editor.querySelector('[data-surface-layout="edit"]')).toBeTruthy();
+    expect(editor.querySelector('[data-surface-context]')).toBeTruthy();
+    expect(editor.querySelector('[data-surface-body]')).toBeTruthy();
+    expect(within(editor).getByRole('button', { name: '닫기' })).toBeVisible();
     const amountMode = within(editor).getByRole('group', { name: '표시 금액 기준' });
     const years = within(editor).getByRole('spinbutton', { name: '기간 숫자' });
     expect(amountMode.compareDocumentPosition(years) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -579,7 +583,7 @@ describe('SimulationApp', () => {
       target: { value: '25' },
     });
     await gated.started;
-    fireEvent.click(within(editor).getByRole('button', { name: '조건 편집 닫기' }));
+    fireEvent.click(within(editor).getByRole('button', { name: '닫기' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '시뮬레이션 조건' })).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
     fireEvent.click(screen.getByRole('button', { name: '시뮬레이션 다시 설정' }));

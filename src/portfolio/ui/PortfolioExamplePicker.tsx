@@ -37,6 +37,7 @@ export function PortfolioExamplePicker({
   onClose,
   onDismiss,
   active = true,
+  embedded = false,
   navigationRef,
   initialSample,
 }: {
@@ -47,6 +48,7 @@ export function PortfolioExamplePicker({
   onClose(): void;
   onDismiss?(): void;
   active?: boolean;
+  embedded?: boolean;
   navigationRef?: Ref<PortfolioExampleNavigation>;
   initialSample?: PortfolioSampleSelection;
 }) {
@@ -189,15 +191,16 @@ export function PortfolioExamplePicker({
   }
 
   return (
-    <section className="portfolio-example-picker" aria-labelledby="portfolio-example-picker-title" hidden={!active}
+    <section className="portfolio-example-picker" aria-labelledby={embedded ? undefined : 'portfolio-example-picker-title'}
+      aria-label={embedded ? '샘플로 구성하기' : undefined} hidden={!active}
       data-detail={detailPage || mode === 'direct' ? 'true' : 'false'} data-wide={wide ? 'true' : 'false'}>
-      <header className="portfolio-example-picker__header">
+      {embedded ? null : <header className="portfolio-example-picker__header">
         <Button type="button" variant="quiet" onClick={back}>
           {confirmationCandidate ? '구성 상세' : !wide && (detailPage || mode === 'direct') ? '샘플 목록' : '배분 편집'}
         </Button>
         <h2 id="portfolio-example-picker-title" ref={headingRef} tabIndex={-1} data-dialog-initial-focus>샘플로 구성하기</h2>
         {onDismiss ? <Button type="button" variant="quiet" aria-label="편집기 닫기" onClick={onDismiss}>닫기</Button> : null}
-      </header>
+      </header>}
       <SegmentedControl label="배분 시작 방식 선택" value={mode}
         options={[{ value: 'examples', label: '샘플 선택' }, { value: 'direct', label: '직접 조합' }]}
         onChange={chooseMode} className="portfolio-example-picker__mode" />

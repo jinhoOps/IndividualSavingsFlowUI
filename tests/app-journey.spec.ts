@@ -494,6 +494,7 @@ test('keeps each app management menu reachable and contained across viewports', 
       await expect(popover.getByText('앱 아이콘 안내')).toHaveCount(0);
       await expect(popover.getByText(/백업/)).toHaveCount(0);
       await expect(popover.getByText(app.text)).toBeVisible();
+      await expect.poll(() => readMotionState(popover)).toEqual({ opacity: 1, x: 0, y: 0 });
       const popoverBox = await popover.boundingBox();
       expect(popoverBox).not.toBeNull();
       if (viewport.width < 768) {
@@ -649,7 +650,11 @@ test('keeps the Main mobile editor modal synchronous under reduced motion', asyn
   const dialog = page.getByRole('dialog', { name: '월 자금 계획 편집' });
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute('aria-modal', 'true');
-  await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
+  expect(await dialog.evaluate((element) => element.matches(':modal'))).toBe(true);
+  // Native showModal() makes the background inert without an inert attribute.
+  await page.getByRole('button', { name: '월 금액 편집', includeHidden: true })
+    .evaluate((element) => (element as HTMLElement).focus());
+  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
   expect(await readMotionState(dialog)).toEqual({ opacity: 1, x: 0, y: 0 });
   const bounds = await dialog.boundingBox();
   expect(bounds).not.toBeNull();

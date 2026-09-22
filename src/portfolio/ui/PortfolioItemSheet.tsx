@@ -1,14 +1,16 @@
-import { useContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useContext, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref, type RefObject } from 'react';
 import { Trash2 } from 'lucide-react';
 import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
+import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
 import type { Classification, ClassificationOrigin } from '../domain/model';
 import { formatAllocationPercent } from './format';
-import { PortfolioDialog } from './PortfolioDialog';
 
 const QUICK_TARGET_NAMES = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'] as const;
 export interface PortfolioItemSheetValue {
@@ -25,9 +27,15 @@ export interface PortfolioItemSheetProps {
   investmentWon: number;
   returnFocusRef: RefObject<HTMLElement | null>;
   inline?: boolean;
+  inlineStage?: boolean;
+  navigationRef?: Ref<PortfolioItemSheetNavigation>;
   onComplete(value: PortfolioItemSheetValue): string | void;
   onRemove?(): void;
   onClose(): void;
+}
+
+export interface PortfolioItemSheetNavigation {
+  requestClose(): void;
 }
 
 export function PortfolioItemSheet({
@@ -37,6 +45,8 @@ export function PortfolioItemSheet({
   investmentWon,
   returnFocusRef,
   inline = false,
+  inlineStage = false,
+  navigationRef,
   onComplete,
   onRemove,
   onClose,
@@ -52,15 +62,11 @@ export function PortfolioItemSheet({
   const [amountTouched, setAmountTouched] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const [presentation, setPresentation] = useState<'sheet' | 'modal'>(() => (
-    typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches
-      ? 'sheet'
-      : 'modal'
-  ));
   const nameInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const discardReturnFocusRef = useRef<HTMLElement | null>(null);
-  const pendingSheetDismissRef = useRef<((approved: boolean) => void) | null>(null);
+  const pendingCloseRef = useRef<((approved: boolean) => void) | null>(null);
+  const inlineCloseRequestedRef = useRef(false);
   const pendingCaretRef = useRef<number | null>(null);
   const amountWon = parseWonInput(amount);
   const normalizedName = normalizePortfolioName(name);
@@ -85,58 +91,64 @@ export function PortfolioItemSheet({
     pendingCaretRef.current = null;
   });
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const media = window.matchMedia('(max-width: 767px)');
-    const update = () => setPresentation(media.matches ? 'sheet' : 'modal');
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
+  useLayoutEffect(() => {
+    if (!inline) nameInputRef.current?.focus();
+  }, [inline]);
 
   useEffect(() => {
     if (inline) nameInputRef.current?.focus();
   }, [inline]);
 
   useEffect(() => () => {
-    pendingSheetDismissRef.current?.(false);
-    pendingSheetDismissRef.current = null;
+    pendingCloseRef.current?.(false);
+    pendingCloseRef.current = null;
   }, []);
 
-  function requestClose(): void {
+  function requestSurfaceClose(): boolean | Promise<boolean> {
     if (dirty) {
       discardReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : nameInputRef.current;
       setConfirmDiscard(true);
-    }
-    else {
-      session?.recordRecoveryDraft(recoveryKey, null);
-      onClose();
-    }
-  }
-
-  function requestSheetDismiss(): boolean | Promise<boolean> {
-    if (dirty) {
-      discardReturnFocusRef.current = nameInputRef.current;
-      setConfirmDiscard(true);
-      return new Promise(resolve => { pendingSheetDismissRef.current = resolve; });
+      return new Promise((resolve) => { pendingCloseRef.current = resolve; });
     }
     session?.recordRecoveryDraft(recoveryKey, null);
     return true;
   }
 
+  function requestInlineClose(): void {
+    const approved = requestSurfaceClose();
+    if (typeof approved === 'object') {
+      inlineCloseRequestedRef.current = true;
+      void approved.then((allowed) => {
+        if (allowed && inlineCloseRequestedRef.current) {
+          inlineCloseRequestedRef.current = false;
+          onClose();
+        }
+      });
+    } else if (approved) onClose();
+  }
+
+  useImperativeHandle(navigationRef, () => ({ requestClose: requestInlineClose }));
+
   function cancelDiscard(): void {
     setConfirmDiscard(false);
-    const resolve = pendingSheetDismissRef.current;
-    pendingSheetDismissRef.current = null;
+    inlineCloseRequestedRef.current = false;
+    const resolve = pendingCloseRef.current;
+    pendingCloseRef.current = null;
     resolve?.(false);
   }
 
   function discardChanges(): void {
     session?.recordRecoveryDraft(recoveryKey, null);
     setConfirmDiscard(false);
-    const resolve = pendingSheetDismissRef.current;
-    pendingSheetDismissRef.current = null;
-    if (resolve) resolve(true);
+    const resolve = pendingCloseRef.current;
+    pendingCloseRef.current = null;
+    if (resolve) {
+      if (inlineCloseRequestedRef.current) {
+        inlineCloseRequestedRef.current = false;
+        onClose();
+      }
+      resolve(true);
+    }
     else onClose();
   }
 
@@ -153,20 +165,13 @@ export function PortfolioItemSheet({
     amountInputRef.current?.focus();
   }
 
-  const formContent = (
-    <>
-        <header className="portfolio-item-sheet__header" data-sheet-drag-handle>
-          <h2 id="portfolio-item-sheet-title">{title}</h2>
-          {mode === 'edit' && onRemove ? (
-            <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={() => {
-              session?.recordRecoveryDraft(recoveryKey, null);
-              onRemove();
-            }}>
-              <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
-            </button>
-          ) : null}
-        </header>
-        <div className="portfolio-item-sheet__fields">
+  const removeItem = () => {
+    session?.recordRecoveryDraft(recoveryKey, null);
+    onRemove?.();
+  };
+
+  const fields = (
+    <div className="portfolio-item-sheet__fields">
           <div className="portfolio-item-sheet__identity">
             <label>
               <span>투자 대상 이름</span>
@@ -257,71 +262,135 @@ export function PortfolioItemSheet({
               setAmount(formatWonInput(adjustWon(amountWon, deltaWon)));
             }}
           />
-        </div>
-        <footer className="portfolio-item-sheet__actions">
-          <p>배분 초안에 반영돼요</p>
-          <Button type="button" variant="secondary" onClick={requestClose}>취소</Button>
-          <Button
-            type="button"
-            variant="primary"
-            disabled={nameError !== null || amountError !== null}
-            onClick={() => {
-              const error = onComplete({ name: name.trim(), amountWon, classification, classificationOrigin });
-              if (error) {
-                setCommitError(error);
-                setAmountTouched(true);
-                amountInputRef.current?.focus();
-                return;
-              }
-              session?.recordRecoveryDraft(recoveryKey, null);
-            }}
-          >완료</Button>
-        </footer>
-    </>
+    </div>
+  );
+
+  const complete = () => {
+    const error = onComplete({ name: name.trim(), amountWon, classification, classificationOrigin });
+    if (error) {
+      setCommitError(error);
+      setAmountTouched(true);
+      amountInputRef.current?.focus();
+      return;
+    }
+    session?.recordRecoveryDraft(recoveryKey, null);
+  };
+
+  const actions = (inlineActions: boolean) => (
+    <PortfolioItemActions
+      inline={inlineActions}
+      disabled={nameError !== null || amountError !== null}
+      requestInlineClose={requestInlineClose}
+      onComplete={complete}
+    />
   );
 
   return (
     <>
       {inline ? (
-        <section className="portfolio-item-form" aria-labelledby="portfolio-item-sheet-title"
+        <section className="portfolio-item-form" aria-labelledby={inlineStage ? undefined : 'portfolio-item-sheet-title'}
+          aria-label={inlineStage ? title : undefined}
           onKeyDown={(event) => {
             if (event.key !== 'Escape') return;
             event.preventDefault();
             event.stopPropagation();
-            requestClose();
+            requestInlineClose();
           }}>
-          {formContent}
+          {inlineStage ? null : <header className="portfolio-item-sheet__header">
+            <h2 id="portfolio-item-sheet-title">{title}</h2>
+            {mode === 'edit' && onRemove ? <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={removeItem}>
+              <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
+            </button> : null}
+          </header>}
+          {inlineStage && mode === 'edit' && onRemove ? <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={removeItem}>
+            <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
+          </button> : null}
+          {fields}
+          {actions(true)}
         </section>
       ) : (
-        <PortfolioDialog
+        <ResponsiveDialog
+          open
           labelledBy="portfolio-item-sheet-title"
-          onClose={requestClose}
           returnFocusRef={returnFocusRef}
           className="portfolio-item-sheet"
-          dataPresentation={presentation}
-          closeOnBackdrop
-          enableSheetDismiss={true}
-          onSheetDismiss={requestSheetDismiss}
-          onSheetDismissed={onClose}
+          onRequestClose={requestSurfaceClose}
+          onClosed={onClose}
         >
-          {formContent}
-        </PortfolioDialog>
+          <AccountProductBoundary><ResponsiveDialogLayout
+            title={title}
+            titleId="portfolio-item-sheet-title"
+            layout="edit"
+            onClose={onClose}
+            closeInitialFocus={false}
+            context={mode === 'edit' && onRemove ? <button type="button" className="portfolio-item-sheet__remove" aria-label="투자 대상 삭제" onClick={removeItem}>
+              <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
+            </button> : undefined}
+            footer={actions(false)}
+          >
+            {fields}
+          </ResponsiveDialogLayout></AccountProductBoundary>
+        </ResponsiveDialog>
       )}
       {confirmDiscard ? (
-        <PortfolioDialog
+        <ResponsiveDialog
+          open
           labelledBy="portfolio-item-discard-title"
-          onClose={cancelDiscard}
           returnFocusRef={discardReturnFocusRef}
+          size="compact"
+          onRequestClose={() => true}
+          onClosed={cancelDiscard}
         >
-          <h2 id="portfolio-item-discard-title">입력 내용을 버릴까요?</h2>
-          <p>완료하지 않은 변경 내용이 사라집니다.</p>
-          <div className="portfolio-item-sheet__discard-actions">
-            <Button type="button" variant="secondary" data-dialog-initial-focus onClick={cancelDiscard}>계속 입력</Button>
-            <Button type="button" variant="primary" onClick={discardChanges}>버리기</Button>
-          </div>
-        </PortfolioDialog>
+          <AccountProductBoundary><ResponsiveDialogLayout
+            title="입력 내용을 버릴까요?"
+            titleId="portfolio-item-discard-title"
+            layout="confirm"
+            onClose={cancelDiscard}
+            closeInitialFocus={false}
+            footer={<PortfolioItemDiscardActions onContinue={cancelDiscard} onDiscard={discardChanges} />}
+          >
+            <p>완료하지 않은 변경 내용이 사라집니다.</p>
+          </ResponsiveDialogLayout></AccountProductBoundary>
+        </ResponsiveDialog>
       ) : null}
     </>
+  );
+}
+
+function PortfolioItemActions({
+  inline,
+  disabled,
+  requestInlineClose,
+  onComplete,
+}: {
+  inline: boolean;
+  disabled: boolean;
+  requestInlineClose(): void;
+  onComplete(): void;
+}) {
+  const requestDialogClose = useResponsiveDialogClose();
+  return (
+    <div className="portfolio-item-sheet__actions">
+      <p>배분 초안에 반영돼요</p>
+      <Button type="button" variant="secondary" onClick={() => {
+        if (inline) requestInlineClose();
+        else requestDialogClose?.('button');
+      }}>취소</Button>
+      <Button type="button" variant="primary" disabled={disabled} onClick={onComplete}>완료</Button>
+    </div>
+  );
+}
+
+function PortfolioItemDiscardActions({ onContinue, onDiscard }: { onContinue(): void; onDiscard(): void }) {
+  const requestDialogClose = useResponsiveDialogClose();
+  return (
+    <div className="portfolio-item-sheet__discard-actions">
+      <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
+        onContinue();
+        requestDialogClose?.('button');
+      }}>계속 입력</Button>
+      <Button type="button" variant="primary" onClick={onDiscard}>버리기</Button>
+    </div>
   );
 }
 

@@ -25,7 +25,6 @@ describe('MainPlanEditor', () => {
         saving={false}
         initialFocusPath="monthlyLivingWon"
         onChange={vi.fn()}
-        onRequestClose={vi.fn()}
       />,
     );
 

@@ -97,7 +97,7 @@ describe('AllocationEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: '버리기' }));
       expect(screen.queryByRole('region', { name: '투자 대상 추가' })).not.toBeInTheDocument();
       expect(onAction).not.toHaveBeenCalled();
-      await waitFor(() => expect(add).toHaveFocus());
+      await waitFor(() => expect(screen.getByRole('button', { name: '투자 대상 추가' })).toHaveFocus());
     });
 
     it('restores automatic classification and returns focus to the selected row', async () => {

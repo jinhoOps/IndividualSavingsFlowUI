@@ -205,25 +205,7 @@
   .cashflow-metric__assistant:hover { background: rgb(15 118 110 / 6%); }
   .cashflow-metric__assistant:focus-visible { outline: 2px solid var(--tone-accent); outline-offset: 2px; }
 
-  .expense-assistant__backdrop { position: fixed; inset: 0; z-index: 45; background: rgb(15 23 42 / 40%); backdrop-filter: blur(4px); }
-  .expense-assistant {
-    position: fixed;
-    z-index: 50;
-    inset-block: 0;
-    right: 0;
-    width: min(32rem, 100%);
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    color: var(--ink);
-    box-shadow: -12px 0 48px rgb(15 23 42 / 8%);
-  }
-  .expense-assistant__header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .5rem; }
-  .expense-assistant__header > span { display: flex; align-items: center; gap: .5rem; color: var(--tone-accent); font-size: .875rem; font-weight: 700; }
-  .expense-assistant__header > button { padding: 0; width: 44px; }
-  .expense-assistant__body { flex: 1; min-height: 0; overflow-y: auto; padding: .5rem 1.5rem 1.5rem; }
-  .expense-assistant h2 { margin: .75rem 0; font-size: 1.5rem; font-weight: 700; line-height: 1.5; word-break: keep-all; letter-spacing: -.025em; }
-  .expense-assistant h2:focus { outline: none; }
+  .expense-assistant__content h3, .remaining-allocation h3 { margin: .75rem 0; color: var(--ink); font-size: 1.375rem; font-weight: 700; line-height: 1.5; word-break: keep-all; letter-spacing: -.025em; }
   .expense-assistant__progress { display: flex; align-items: center; gap: .5rem; font-size: .875rem; }
   .expense-assistant__progress button { width: 44px; padding: 0; margin-left: -.75rem; }
   .expense-assistant__muted, .expense-assistant__hint { color: var(--muted); }
@@ -234,7 +216,7 @@
   .expense-assistant__amount input { width: 100%; min-width: 0; min-height: 52px; border: 0; border-radius: 0; outline-offset: 4px; padding: 0; background: transparent; font-size: 2rem; font-family: var(--font-display); text-align: right; color: var(--ink); }
   .expense-assistant__amount span { color: var(--muted); }
   .expense-assistant__adjustments { margin-top: .75rem; }
-  .expense-assistant__footer { position: relative; flex: 0 0 auto; border-top: 1px solid var(--line); padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom)); }
+  .expense-assistant__footer { position: relative; }
   .expense-assistant__total { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .75rem; }
   .expense-assistant__total span { color: var(--muted); font-size: .875rem; }
   .expense-assistant__total strong { font-family: var(--font-display); font-size: 1.5rem; text-align: right; overflow-wrap: anywhere; }
@@ -244,7 +226,6 @@
   .expense-assistant__review button { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border: 0; border-bottom: 1px solid var(--line); background: transparent; min-height: 48px; padding: .625rem 0; font-size: .875rem; text-align: left; }
   .expense-assistant__review button > span:last-child { color: var(--tone-accent); text-align: right; }
   .expense-assistant__error { color: var(--status-error); font-size: .875rem; line-height: 1.6; }
-  .remaining-allocation h2 { margin: .25rem 0 .5rem; font-size: 1.375rem; }
   .remaining-allocation__available { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem .75rem; padding: .875rem 0; }
   .remaining-allocation__available > span { color: var(--muted); font-size: .875rem; }
   .remaining-allocation__available > strong { font-size: 1.5rem; font-family: var(--font-display); overflow-wrap: anywhere; }
@@ -258,13 +239,6 @@
   .remaining-allocation__input > span { color: var(--muted); }
   .remaining-allocation__preview { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; margin: .5rem 0 0; color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
   .remaining-allocation__preview strong { color: var(--ink); }
-  @media (max-width: 767px) {
-    .expense-assistant { top: auto; max-height: 92dvh; height: min(42rem, 92dvh); border-radius: 1.5rem 1.5rem 0 0; }
-    .remaining-allocation, .expense-assistant--explained { height: min(46rem, 92dvh); }
-    .expense-assistant__body { padding-inline: 1.25rem; }
-    .expense-assistant__footer { padding-inline: 1.25rem; }
-  }
-
   .main-journey-entry { min-width: 0; position: relative; scroll-margin-bottom: 2rem; }
   .main-journey-entry[data-revealed="false"] { height: 0; }
   .main-journey-entry__content { padding: 1.5rem 0 .5rem; text-align: center; animation: editor-in 240ms ease-out; }
@@ -273,99 +247,11 @@
   .main-journey-entry .journey-action { gap: .5rem; }
   @media (max-width: 767px) { .main-journey-entry { scroll-margin-bottom: calc(5rem + env(safe-area-inset-bottom)); } }
 
-  .main-editor-sheet {
-    position: fixed;
-    inset-inline: 0;
-    bottom: 0;
-    z-index: 40;
-    max-height: 88dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    border-radius: 24px 24px 0 0;
-    background: var(--panel);
-    box-shadow: var(--shadow-float);
-  }
-
-  .main-editor-sheet[data-sheet-exiting],
-  .expense-assistant[data-sheet-exiting],
-  [data-sheet-dismiss-backdrop][data-sheet-exiting] { pointer-events: none; }
-
-  .main-editor-modal {
-    display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
-    max-height: calc(100dvh - 48px);
-    overflow: hidden;
-  }
-
-  .main-editor-modal .main-plan-editor {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
   .main-plan-editor {
     display: grid;
     align-content: start;
     gap: 1.5rem;
     min-width: 0;
-    padding: 1.5rem 1rem .75rem;
-  }
-
-  .main-plan-editor--panel { flex: 1; }
-
-  .main-plan-editor__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: .5rem;
-  }
-
-  @media (max-width: 767px) {
-    .main-editor-sheet .main-plan-editor__header,
-    .expense-assistant__header[data-sheet-drag-handle] {
-      position: relative;
-      touch-action: none;
-      padding-top: 1.25rem;
-      cursor: grab;
-    }
-    .main-editor-sheet .main-plan-editor__header::before,
-    .expense-assistant__header[data-sheet-drag-handle]::before {
-      position: absolute;
-      top: .5rem;
-      left: 50%;
-      width: 2.5rem;
-      height: .25rem;
-      border-radius: 999px;
-      background: var(--line-strong, var(--line));
-      content: '';
-      transform: translateX(-50%);
-      pointer-events: none;
-    }
-    [data-sheet-dragging] .main-plan-editor__header,
-    [data-sheet-dragging] .expense-assistant__header[data-sheet-drag-handle] { cursor: grabbing; }
-  }
-
-  .main-plan-editor__header h2 {
-    margin: .25rem 0 0;
-    color: var(--ink);
-    font-size: 1.375rem;
-    font-weight: 700;
-    line-height: 1.4;
-    word-break: keep-all;
-  }
-
-  .main-plan-editor__header p {
-    margin: .5rem 0 0;
-    color: var(--muted);
-    font-size: .875rem;
-    line-height: 1.5;
-    word-break: keep-all;
-  }
-
-  .main-plan-editor__close {
-    flex: 0 0 44px;
-    width: 44px;
-    padding: 0;
-    color: var(--muted);
   }
 
   .main-plan-editor__fields { display: grid; }
@@ -427,25 +313,9 @@
   }
 
   .main-apply-bar__status--error { color: var(--status-error); }
+  .main-apply-bar--embedded { position: static; z-index: auto; border: 0; padding: 0; background: transparent; }
 
   @media (min-width: 768px) {
-    .main-plan-editor { padding: 1.5rem 1.5rem .75rem; }
-    .main-editor-modal {
-      display: flex;
-      flex-direction: column;
-      height: min(40rem, calc(100dvh - 3rem));
-      min-height: 0;
-    }
-    .main-editor-modal > .main-plan-editor {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto;
-    }
-    .main-editor-modal > .main-apply-bar {
-      position: static;
-      bottom: auto;
-      flex: 0 0 auto;
-    }
     .main-apply-bar { padding-inline: 1.5rem; }
     .cashflow-metric__inspect { column-gap: 1rem; }
   }
