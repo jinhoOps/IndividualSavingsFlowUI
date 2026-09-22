@@ -1,5 +1,5 @@
 import { animate } from 'animejs';
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../motion/tokens';
 import { useSheetDismiss } from '../motion/useSheetDismiss';
@@ -17,7 +17,18 @@ export interface ResponsiveDialogProps {
   returnFocusRef: RefObject<HTMLElement | null>;
   onRequestClose(reason: DialogCloseReason): boolean | Promise<boolean>;
   onClosed(): void;
-  children: ReactNode;
+  children: ReactNode | ((actions: ResponsiveDialogActions) => ReactNode);
+}
+
+export interface ResponsiveDialogActions {
+  requestClose(reason: DialogCloseReason): void;
+}
+
+const ResponsiveDialogCloseContext = createContext<((reason: DialogCloseReason) => void) | null>(null);
+
+/** Lets shared content route its close button through the dialog's guarded close contract. */
+export function useResponsiveDialogClose(): ((reason: DialogCloseReason) => void) | null {
+  return useContext(ResponsiveDialogCloseContext);
 }
 
 const activeDialogs: HTMLDialogElement[] = [];
@@ -95,10 +106,25 @@ export function ResponsiveDialog({
     unlockBodyScroll(bodyLockedRef);
   }, []);
 
-  function requestClose(reason: DialogCloseReason, closeImmediately = true): Promise<boolean> {
-    if (busy || closeRequestPendingRef.current) return Promise.resolve(false);
+  function requestClose(reason: DialogCloseReason, closeImmediately = true): boolean | Promise<boolean> {
+    if (busy || closeRequestPendingRef.current) return false;
     closeRequestPendingRef.current = true;
-    return Promise.resolve(onRequestClose(reason)).then(
+    let approval: boolean | Promise<boolean>;
+    try {
+      approval = onRequestClose(reason);
+    } catch {
+      closeRequestPendingRef.current = false;
+      return false;
+    }
+    if (typeof approval !== 'object' || approval === null || typeof approval.then !== 'function') {
+      if (!approval) {
+        closeRequestPendingRef.current = false;
+        return false;
+      }
+      if (closeImmediately) finishClose();
+      return true;
+    }
+    return Promise.resolve(approval).then(
       (approved) => {
         if (!approved) {
           closeRequestPendingRef.current = false;
@@ -125,10 +151,12 @@ export function ResponsiveDialog({
     removeActiveDialog(dialog);
     unlockBodyScroll(bodyLockedRef);
     setRequestedClosed(true);
+    const trigger = returnFocusRef.current;
     queueMicrotask(() => {
-      const trigger = returnFocusRef.current;
-      if (trigger?.isConnected) trigger.focus();
       onClosed();
+      window.setTimeout(() => {
+        if (document.querySelector('dialog[open]') === null && trigger?.isConnected) trigger.focus();
+      }, 0);
     });
   }
 
@@ -166,7 +194,13 @@ export function ResponsiveDialog({
       }}
       onKeyDown={handleKeyDown}
     >
-      <div className="responsive-dialog__surface">{children}</div>
+      <ResponsiveDialogCloseContext.Provider value={(reason) => { void requestClose(reason); }}>
+        <div className="responsive-dialog__surface">
+          {typeof children === 'function'
+            ? children({ requestClose: (reason) => { void requestClose(reason); } })
+            : children}
+        </div>
+      </ResponsiveDialogCloseContext.Provider>
     </dialog>,
     document.body,
   );
@@ -258,7 +292,7 @@ function focusInitialElement(dialog: HTMLDialogElement): void {
 
 function trapFocus(event: KeyboardEvent<HTMLDialogElement>, dialog: HTMLDialogElement): void {
   const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector))
-    .filter((element) => !element.hasAttribute('inert') && element.offsetParent !== null);
+    .filter(isVisibleFocusable);
   if (focusable.length === 0) {
     event.preventDefault();
     dialog.focus();
@@ -266,6 +300,11 @@ function trapFocus(event: KeyboardEvent<HTMLDialogElement>, dialog: HTMLDialogEl
   }
   const first = focusable[0];
   const last = focusable.at(-1)!;
+  if (!focusable.includes(document.activeElement as HTMLElement)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+    return;
+  }
   if (event.shiftKey && document.activeElement === first) {
     event.preventDefault();
     last.focus();
@@ -273,4 +312,10 @@ function trapFocus(event: KeyboardEvent<HTMLDialogElement>, dialog: HTMLDialogEl
     event.preventDefault();
     first.focus();
   }
+}
+
+function isVisibleFocusable(element: HTMLElement): boolean {
+  if (element.closest('[hidden], [inert]') !== null) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden';
 }

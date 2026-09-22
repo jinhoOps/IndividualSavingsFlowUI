@@ -1144,7 +1144,7 @@ test('closes the clean mobile cashflow editor from a downward header drag', asyn
 
     await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
     const exitPositions = await page.evaluate(async () => {
-      const sheet = document.querySelector<HTMLElement>('.main-editor-sheet');
+      const sheet = document.querySelector<HTMLElement>('dialog[data-presentation="sheet"]');
       const positions: number[] = [];
       for (let frame = 0; frame < 12 && sheet?.isConnected; frame += 1) {
         positions.push(sheet.getBoundingClientRect().top);
@@ -1168,7 +1168,7 @@ test('saves a dirty expense assistant draft before animating a drag dismissal', 
 
   const trigger = page.getByRole('button', { name: /지출 계산 도우미/ });
   await trigger.click();
-  const sheet = page.getByRole('dialog', { name: '매달 월세로 얼마를 내나요?' });
+  const sheet = page.getByRole('dialog', { name: '지출 계산 도우미' });
   await sheet.getByLabel('월세 금액').fill('500000');
   await sheet.evaluate(element => {
     const browser = window as Window & { __sheetExitObserved?: boolean };
@@ -1209,7 +1209,7 @@ test('keeps dirty expense answers visible when saving a drag dismissal fails', a
 
   const trigger = page.getByRole('button', { name: /지출 계산 도우미/ });
   await trigger.click();
-  const sheet = page.getByRole('dialog', { name: '매달 월세로 얼마를 내나요?' });
+  const sheet = page.getByRole('dialog', { name: '지출 계산 도우미' });
   await sheet.getByLabel('월세 금액').fill('500000');
   await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
@@ -1237,7 +1237,7 @@ test('confirms a dirty remaining allocation before animating a drag dismissal', 
 
   const trigger = page.getByRole('button', { name: /남는 돈 분배 도우미/ });
   await trigger.click();
-  const sheet = page.getByRole('dialog', { name: '남는 돈을 더 모아볼까요?' });
+  const sheet = page.getByRole('dialog', { name: '남는 돈 분배' });
   await sheet.getByRole('button', { name: '저축에 전부' }).click();
   const confirmPromise = page.waitForEvent('dialog');
   const handle = sheet.locator('[data-sheet-drag-handle]');
@@ -1275,7 +1275,7 @@ test('returns a short mobile cashflow editor drag without more than 4px overshoo
 
   expect(await editor.getAttribute('data-sheet-exiting')).toBeNull();
   const positions = await page.evaluate(async () => {
-    const sheet = document.querySelector<HTMLElement>('.main-editor-sheet');
+    const sheet = document.querySelector<HTMLElement>('dialog[data-presentation="sheet"]');
     const samples: number[] = [];
     for (let frame = 0; frame < 24 && sheet?.isConnected; frame += 1) {
       samples.push(sheet.getBoundingClientRect().top);
@@ -1361,8 +1361,9 @@ for (const width of [390, 767, 768, 1280]) {
     }
     // General editing still starts at the usual close control, not the last shortcut.
     await page.getByRole('button', {name: '월 금액 편집', exact: true}).click();
-    await expect(page.getByRole('button', {name: '편집기 닫기'})).toBeFocused();
+    await expect(page.getByRole('button', {name: '닫기'})).toBeFocused();
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', {name: '월 자금 계획 편집'})).toBeHidden();
     await page.getByRole('button', {name: /^월 저축 금액 편집/}).click();
     await page.getByLabel('월 저축액', {exact: true}).fill('400000');
     await page.getByLabel('월 투자액', {exact: true}).focus();

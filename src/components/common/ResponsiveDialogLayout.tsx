@@ -1,5 +1,6 @@
 import { ArrowLeft, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useResponsiveDialogClose } from './ResponsiveDialog';
 
 export interface ResponsiveDialogLayoutProps {
   title: ReactNode;
@@ -28,6 +29,7 @@ export function ResponsiveDialogLayout({
   layout = 'edit',
 }: ResponsiveDialogLayoutProps) {
   const bodyLabel = typeof title === 'string' ? `${title} 내용` : '대화 상자 내용';
+  const requestDialogClose = useResponsiveDialogClose();
 
   return (
     <section className="responsive-dialog__layout" data-surface-layout={layout}>
@@ -41,7 +43,10 @@ export function ResponsiveDialogLayout({
             {eyebrow ? <p className="responsive-dialog__eyebrow">{eyebrow}</p> : null}
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button className="responsive-dialog__icon-button" type="button" aria-label="닫기" onClick={onClose}>
+          <button className="responsive-dialog__icon-button" type="button" aria-label="닫기" data-dialog-initial-focus onClick={() => {
+            if (requestDialogClose) requestDialogClose('button');
+            else onClose();
+          }}>
             <X size={20} aria-hidden="true" />
           </button>
         </div>

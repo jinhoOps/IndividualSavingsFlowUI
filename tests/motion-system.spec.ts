@@ -158,7 +158,7 @@ for (const viewport of VIEWPORTS) {
       JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.applied.monthlyLivingWon
     ))).toBe(1_100_000);
     await expectFinalMainAllocation(page.locator('.cashflow-allocation'), MAIN_ALLOCATION_AFTER_EDIT);
-    await page.getByRole('button', { name: '편집기 닫기' }).click();
+    await page.getByRole('button', { name: '닫기' }).click();
     await expect(mainEditTrigger).toBeFocused();
     await expect(page.locator('.cashflow-metric').filter({ hasText: '월 지출' })).toContainText('190만 원');
     await expect(page.locator('.cashflow-metric').filter({ hasText: '남는 돈' })).toContainText('80만 원');

@@ -1,22 +1,24 @@
-import { useContext, useEffect, useRef, useState } from 'react';
-import { useAssistantReveal } from '../common/useAssistantReveal';
-import { ArrowLeft, X } from 'lucide-react';
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
 import { SegmentedControl } from '../../../components/common/SegmentedControl';
+import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
 import { AccountDraftContext, AccountWriteRecoveryContext, useAccountRecovery, useInitialRecovery } from '../../../auth/AccountDraftContext';
 import { createExpenseDraft, expenseAnswersComplete, expenseTotals, EXPENSE_ITEMS, parseExpenseDraft, type ExpenseAssistantDraft } from '../../domain/expenseAssistant';
 import type { MainData } from '../../domain/model';
 import type { ExpenseAssistantRepository } from '../../infrastructure/expenseAssistantRepository';
 import { Button } from '../common/Button';
 import { SavingOverlay } from '../common/SavingOverlay';
-import { useSheetDismiss } from '../../../components/motion/useSheetDismiss';
 import { formatDashboardWon } from './CashflowSummary';
 
-export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
+export function ExpenseAssistantDialog({ repository, returnFocusRef, onClose, onApplied }: {
   repository: ExpenseAssistantRepository;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   onClose(): void;
   onApplied(data: MainData): void;
 }) {
+  const fallbackFocusRef = useRef<HTMLElement | null>(null);
   const session = useContext(AccountDraftContext);
   const recoverWrite = useContext(AccountWriteRecoveryContext);
   const recovered = useInitialRecovery('main-expense', parseExpenseDraft);
@@ -31,17 +33,10 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   const [error, setError] = useState(initial.error);
   const [invalidAmount, setInvalidAmount] = useState(false);
   const [returnToReview, setReturnToReview] = useState(() => expenseAnswersComplete((recovered ?? initial.draft).answers));
-  const dialogRef = useAssistantReveal();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(persisted);
-  useSheetDismiss({
-    rootRef: dialogRef,
-    enabled: true,
-    mediaQuery: '(max-width: 767px)',
-    blocked: busy,
-    onRequestDismiss: requestSheetDismiss,
-    onDismissed: onClose,
-  });
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
   useAccountRecovery('main-expense', draft, dirty, !initial.error);
   const index = EXPENSE_ITEMS.findIndex(item => item.id === draft.step);
   const item = index < 0 ? null : EXPENSE_ITEMS[index];
@@ -51,7 +46,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
   const totals = expenseTotals(draft.answers);
   const answered = EXPENSE_ITEMS.filter(({ id }) => draft.answers[id] !== null).length;
 
-  useEffect(() => { setInvalidAmount(false); headingRef.current?.focus(); }, [draft.step]);
+  useLayoutEffect(() => { setInvalidAmount(false); headingRef.current?.focus(); }, [draft.step]);
   useEffect(() => {
     if (!dirty) return;
     const protect = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -59,16 +54,16 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     return () => window.removeEventListener('beforeunload', protect);
   }, [dirty]);
 
-  async function save(next: ExpenseAssistantDraft, complete = false, close = false): Promise<boolean> {
+  async function save(next: ExpenseAssistantDraft, complete = false): Promise<boolean> {
     if (busyRef.current || initial.error) return false;
     busyRef.current = true;
     setBusy(true); setError('');
     try {
       const result = await repository.save(next, complete);
       setDraft(result.assistant.draft); setPersisted(result.assistant.draft);
+      dirtyRef.current = false;
       session?.recordRecoveryDraft('main-expense', null);
       if (complete) onApplied(result.data);
-      if (complete || close) onClose();
       return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '답변을 저장하지 못했습니다. 다시 시도해주세요.');
@@ -76,17 +71,10 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     } finally { busyRef.current = false; setBusy(false); }
   }
 
-  function close() {
-    if (busyRef.current) return;
-    if (session && (session.pending || session.status === 'offline')) onClose();
-    else if (dirty && !initial.error) void save(draft, false, true);
-    else onClose();
-  }
-
-  function requestSheetDismiss(): boolean | Promise<boolean> {
+  function requestClose(_reason: DialogCloseReason): boolean | Promise<boolean> {
     if (busyRef.current) return false;
     if (session && (session.pending || session.status === 'offline')) return true;
-    if (dirty && !initial.error) return save(draft);
+    if (dirtyRef.current && !initial.error) return save(draft);
     return true;
   }
   function next(none = false) {
@@ -101,30 +89,33 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
     void save(nextDraft);
   }
 
-  function trap(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (dialogRef.current?.hasAttribute('data-sheet-exiting')) {
-      if (event.key === 'Tab' || event.key === 'Escape') event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
-    if (event.key !== 'Tab') return;
-    const controls = [...dialogRef.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled)')]
-      .filter(element => element.getBoundingClientRect().width > 0);
-    if (!controls.length) { event.preventDefault(); return; }
-    if (event.shiftKey && (document.activeElement === controls[0] || document.activeElement === headingRef.current)) {
-      event.preventDefault(); controls.at(-1)!.focus();
-    } else if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0].focus(); }
-  }
-
-  return <>
-    <div className="expense-assistant__backdrop" aria-hidden="true" onClick={close} />
-    <div className={`expense-assistant${item && 'example' in item ? ' expense-assistant--explained' : ''}`} role="dialog" aria-modal="true" aria-labelledby="expense-assistant-title" aria-busy={busy} ref={dialogRef} onKeyDown={trap}>
-      <header className="expense-assistant__header" data-sheet-drag-handle>
-        <span>지출 계산 도우미</span>
-        <Button type="button" variant="quiet" aria-label="도우미 닫기" disabled={busy} onClick={close}><X size={22} aria-hidden="true" /></Button>
-      </header>
-      <div className="expense-assistant__body">
+  return <ResponsiveDialog open labelledBy="expense-assistant-title" size="form" busy={busy} mobileEntranceMotion
+    returnFocusRef={returnFocusRef ?? fallbackFocusRef} onRequestClose={requestClose} onClosed={onClose}>
+    {({ requestClose: closeDialog }) => <ResponsiveDialogLayout title="지출 계산 도우미" titleId="expense-assistant-title"
+      eyebrow={item ? `답변 ${index + 1} / ${EXPENSE_ITEMS.length}` : `답변 ${answered}개 / ${EXPENSE_ITEMS.length}`}
+      onClose={() => undefined}
+      status={error ? <div className="expense-assistant__error" role="alert"><p>{error}</p>
+        {recoverWrite && session?.pending && ['save_expense_draft', 'apply_expense'].includes(session.pending.operation) && (session.status === 'uncertain' || session.status === 'conflict') ?
+          <Button type="button" variant="secondary" disabled={busy} onClick={async () => {
+            if (busyRef.current) return;
+            busyRef.current = true; setBusy(true);
+            try { await recoverWrite(session.status === 'conflict'); }
+            finally { busyRef.current = false; setBusy(false); }
+          }}>{session.status === 'conflict' ? '최신 상태에서 다시 적용' : '저장 결과 다시 확인'}</Button> : null}
+      </div> : undefined}
+      footer={<div className="expense-assistant__footer">
+        <SavingOverlay saving={busy} />
+        <div className="expense-assistant__total"><span>{item ? '지금까지 월평균' : '월 지출 합계'}</span><strong>{totals ? formatDashboardWon(totals.totalWon) : '금액 범위 초과'}</strong></div>
+        {!item && totals ? <p className="expense-assistant__hint">주거 {formatDashboardWon(totals.housingWon)} · 생활 {formatDashboardWon(totals.livingWon)}<br />직접 입력한 주거비와 생활비를 이 합계로 바꿔요.</p> : null}
+        {item ? <div className="expense-assistant__actions">
+          <Button type="button" variant="secondary" disabled={busy || !!initial.error} onClick={() => next(true)}>없어요</Button>
+          <Button type="button" variant="primary" disabled={busy || invalidAmount || !totals || !!initial.error} onClick={() => next()}>{returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
+        </div> : <Button className="expense-assistant__apply" type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={async () => {
+          if (await save(draft, true)) closeDialog('button');
+        }}>이 금액으로 반영</Button>}
+      </div>}
+    >
+      <div className={`expense-assistant__content${item && 'example' in item ? ' expense-assistant--explained' : ''}`}>
         {item ? <>
           <div className="expense-assistant__progress">
             <Button type="button" variant="quiet" aria-label="이전 질문" disabled={busy || (index === 0 && !returnToReview)} onClick={() => {
@@ -133,7 +124,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
             }}><ArrowLeft size={18} aria-hidden="true" /></Button>
             <span>{item.group === 'fixed' ? '고정비' : '변동비'} <span className="expense-assistant__muted">· {index + 1} / {EXPENSE_ITEMS.length}</span></span>
           </div>
-          <h2 id="expense-assistant-title" tabIndex={-1} ref={headingRef}>{item.question}</h2>
+          <h3 tabIndex={-1} ref={headingRef}>{item.question}</h3>
           <p className="expense-assistant__hint" id="expense-question-hint">{item.hint}</p>
           {'example' in item ? <p className="expense-assistant__example" id="expense-question-example">{item.example}</p> : null}
           <SegmentedControl className="expense-assistant__period" label="금액 기준" value={period} disabled={busy}
@@ -164,8 +155,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
               } });
             }} />
         </> : <>
-          <p className="main-eyebrow">답변 {answered}개 / {EXPENSE_ITEMS.length}개</p>
-          <h2 id="expense-assistant-title" tabIndex={-1} ref={headingRef}>{expenseAnswersComplete(draft.answers) ? '한 달 지출을 확인해보세요' : '남은 항목도 채워볼까요?'}</h2>
+          <h3 tabIndex={-1} ref={headingRef}>{expenseAnswersComplete(draft.answers) ? '한 달 지출을 확인해보세요' : '남은 항목도 채워볼까요?'}</h3>
           <p className="expense-assistant__hint">금액을 누르면 해당 답변을 바꿀 수 있어요.</p>
           <div className="expense-assistant__review">
             {EXPENSE_ITEMS.map(entry => {
@@ -176,25 +166,7 @@ export function ExpenseAssistantDialog({ repository, onClose, onApplied }: {
             })}
           </div>
         </>}
-        {error ? <div className="expense-assistant__error" role="alert"><p>{error}</p>
-          {recoverWrite && session?.pending && ['save_expense_draft', 'apply_expense'].includes(session.pending.operation) && (session.status === 'uncertain' || session.status === 'conflict') ?
-            <Button type="button" variant="secondary" disabled={busy} onClick={async () => {
-              if (busyRef.current) return;
-              busyRef.current = true; setBusy(true);
-              try { await recoverWrite(session.status === 'conflict'); }
-              finally { busyRef.current = false; setBusy(false); }
-            }}>{session.status === 'conflict' ? '최신 상태에서 다시 적용' : '저장 결과 다시 확인'}</Button> : null}
-        </div> : null}
       </div>
-      <footer className="expense-assistant__footer">
-        <SavingOverlay saving={busy} />
-        <div className="expense-assistant__total"><span>{item ? '지금까지 월평균' : '월 지출 합계'}</span><strong>{totals ? formatDashboardWon(totals.totalWon) : '금액 범위 초과'}</strong></div>
-        {!item && totals ? <p className="expense-assistant__hint">주거 {formatDashboardWon(totals.housingWon)} · 생활 {formatDashboardWon(totals.livingWon)}<br />직접 입력한 주거비와 생활비를 이 합계로 바꿔요.</p> : null}
-        {item ? <div className="expense-assistant__actions">
-          <Button type="button" variant="secondary" disabled={busy || !!initial.error} onClick={() => next(true)}>없어요</Button>
-          <Button type="button" variant="primary" disabled={busy || invalidAmount || !totals || !!initial.error} onClick={() => next()}>{returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
-        </div> : <Button className="expense-assistant__apply" type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={() => void save(draft, true)}>이 금액으로 반영</Button>}
-      </footer>
-    </div>
-  </>;
+    </ResponsiveDialogLayout>}
+  </ResponsiveDialog>;
 }

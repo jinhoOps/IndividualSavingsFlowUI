@@ -32,6 +32,12 @@
 .responsive-dialog__layout {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'header'
+    'context'
+    'body'
+    'status'
+    'footer';
   min-height: 0;
   max-height: inherit;
   overflow: hidden;
@@ -43,13 +49,14 @@
 .responsive-dialog__footer { flex-shrink: 0; }
 
 .responsive-dialog__header {
+  grid-area: header;
   padding: .25rem 1.25rem 0;
   border-bottom: 1px solid var(--line);
 }
 
 .responsive-dialog__drag-handle {
   width: 2.5rem;
-  height: 1.5rem;
+  height: 2.75rem;
   margin: 0 auto;
   touch-action: none;
   cursor: grab;
@@ -58,7 +65,7 @@
 
 .responsive-dialog__drag-handle::before {
   position: absolute;
-  top: .625rem;
+  top: 1.25rem;
   left: 50%;
   width: 2.5rem;
   height: .25rem;
@@ -101,10 +108,13 @@
 .responsive-dialog__icon-button:hover { background: var(--panel-muted, rgb(0 0 0 / 5%)); }
 .responsive-dialog__icon-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
+.responsive-dialog__context { grid-area: context; }
+.responsive-dialog__status { grid-area: status; }
 .responsive-dialog__context,
 .responsive-dialog__status { padding: .875rem 1.25rem; border-bottom: 1px solid var(--line); }
 
 .responsive-dialog__body {
+  grid-area: body;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -112,9 +122,21 @@
 }
 
 .responsive-dialog__footer {
+  grid-area: footer;
   padding: .875rem 1.25rem calc(.875rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: var(--panel);
+}
+
+@media (min-width: 768px) {
+  .responsive-dialog[data-size='form'] {
+    height: min(46rem, calc(100dvh - 48px));
+  }
+
+  .responsive-dialog[data-size='form'] .responsive-dialog__surface,
+  .responsive-dialog[data-size='form'] .responsive-dialog__layout {
+    height: 100%;
+  }
 }
 
 @media (max-width: 767px) {

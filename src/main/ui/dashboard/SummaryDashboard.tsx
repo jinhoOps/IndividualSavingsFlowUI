@@ -1,11 +1,8 @@
-import { animate } from 'animejs';
 import { ChevronUp } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppContentFrame } from '../../../components/common/AppContentFrame';
-import { ResponsiveDialog } from '../../../components/common/ResponsiveDialog';
-import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../../../components/motion/tokens';
-import { useAnimeScope } from '../../../components/motion/useAnimeScope';
-import { useSheetDismiss } from '../../../components/motion/useSheetDismiss';
+import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
 import type { MainState } from '../../application/mainReducer';
 import type { MainData } from '../../domain/model';
 import type { ValidationResult } from '../../domain/validation';
@@ -55,36 +52,12 @@ export function SummaryDashboard({
   const [requestedFocusPath, setRequestedFocusPath] = useState(initialFocusPath);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [remainingOpen, setRemainingOpen] = useState(false);
-  const [closingEditor, setClosingEditor] = useState<{
-    draft: MainData;
-    dirty: boolean;
-    issues: ValidationResult['issues'];
-  } | null>(null);
-  const editorBackdropRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
   const submittedEditorRef = useRef(false);
-  const isMobile = useMobileEditor();
-  const mobileModalOpen = isMobile && editorOpen;
-  const modalRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
-    revealEditor(root, 'vertical', reducedMotion);
-  }, [mobileModalOpen]);
   const saving = saveStatus === 'saving';
-  useSheetDismiss({
-    rootRef: modalRef,
-    backdropRef: editorBackdropRef,
-    enabled: mobileModalOpen,
-    blocked: saving || closingEditor !== null,
-    isTopmost: () => editorOpen && !expenseOpen && !remainingOpen,
-    onRequestDismiss: requestSheetDismiss,
-    onDismissed: () => {
-      setEditorOpen(false);
-      setClosingEditor(null);
-    },
-  });
   const firstIssuePath = issues[0]?.path;
-  const editorFocusPath = (closingEditor?.issues[0]?.path as keyof MainData | undefined)
-    ?? (firstIssuePath as keyof MainData | undefined)
+  const editorFocusPath = (firstIssuePath as keyof MainData | undefined)
     ?? requestedFocusPath;
   const initialFocusConsumed = useRef(false);
 
@@ -116,10 +89,19 @@ export function SummaryDashboard({
 
     if (openerRef.current !== null) {
       if (openerRef.current.isConnected) openerRef.current.focus();
-      else summaryHeadingRef.current?.focus();
+      else {
+        const returnFocusId = openerRef.current.dataset.returnFocusId;
+        window.setTimeout(() => {
+          const replacement = returnFocusId
+            ? document.querySelector<HTMLElement>(`[data-return-focus-id="${returnFocusId}"]`)
+            : null;
+          if (replacement !== null) replacement.focus();
+          else summaryHeadingRef.current?.focus();
+        }, 0);
+      }
       openerRef.current = null;
     }
-  }, [editorOpen, expenseOpen, remainingOpen, firstIssuePath, initialFocusPath, isMobile, validationAttempt]);
+  }, [editorOpen, expenseOpen, remainingOpen, firstIssuePath, initialFocusPath, validationAttempt]);
 
   useEffect(() => {
     if (!submittedEditorRef.current) return;
@@ -133,29 +115,9 @@ export function SummaryDashboard({
     setEditorOpen(false);
   }, [dirty, issues.length, saveStatus]);
 
-  useEffect(() => {
-    if (!editorOpen || !isMobile) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      requestClose();
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [closingEditor, dirty, editorOpen, isMobile, saving]);
-
-  function requestClose(): boolean {
-    if (saving || closingEditor !== null) return false;
+  function requestClose(_reason: DialogCloseReason): boolean {
+    if (saving) return false;
     if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return false;
-    if (dirty) onCancel();
-    setEditorOpen(false);
-    return true;
-  }
-
-  function requestSheetDismiss(): boolean {
-    if (saving || closingEditor !== null || !mobileModalOpen) return false;
-    if (dirty && !window.confirm('저장하지 않은 변경사항을 버릴까요?')) return false;
-    setClosingEditor({ draft, dirty, issues });
     if (dirty) onCancel();
     return true;
   }
@@ -177,30 +139,6 @@ export function SummaryDashboard({
     onApply();
   }
 
-  function trapModalFocus(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (closingEditor !== null) {
-      if (event.key === 'Tab' || event.key === 'Escape') event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    if (event.key !== 'Tab' || modalRef.current === null) return;
-    const focusable = getFocusableElements(modalRef.current);
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  const editorDraft = closingEditor?.draft ?? draft;
-  const editorDirty = closingEditor?.dirty ?? dirty;
-  const editorIssues = closingEditor?.issues ?? issues;
-
   return (
     <AppContentFrame
       className="main-dashboard"
@@ -212,7 +150,7 @@ export function SummaryDashboard({
         aria-hidden={editorOpen || expenseOpen || remainingOpen ? 'true' : undefined}
         data-testid="dashboard-controls"
         data-exploration-blocked={editorOpen || expenseOpen || remainingOpen || undefined}
-        inert={mobileModalOpen || expenseOpen || remainingOpen || undefined}
+        inert={expenseOpen || remainingOpen || undefined}
       >
         <header className="main-dashboard__header">
           <p className="main-eyebrow">자금 흐름</p>
@@ -239,16 +177,16 @@ export function SummaryDashboard({
             setRemainingOpen(true);
           } : undefined} />
           <div className="main-dashboard__edit-dock" data-editor-open={editorOpen || expenseOpen || remainingOpen || undefined}>
-            <Button type="button" variant="quiet" className="main-dashboard__edit" disabled={saving} onClick={(event) => openEditor(event.currentTarget)}><ChevronUp size={18} aria-hidden="true" />월 금액 편집</Button>
+          <Button type="button" variant="quiet" className="main-dashboard__edit" data-return-focus-id="main-editor" disabled={saving} onClick={(event) => openEditor(event.currentTarget)}><ChevronUp size={18} aria-hidden="true" />월 금액 편집</Button>
           </div>
         </Surface>
 
         {journeyEntry === undefined ? null : journeyEntry}
       </div>
 
-      {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
+      {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} returnFocusRef={openerRef} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
 
-      {remainingOpen ? <RemainingAllocationDialog applied={applied} dirty={dirty} saveStatus={saveStatus}
+      {remainingOpen ? <RemainingAllocationDialog applied={applied} dirty={dirty} saveStatus={saveStatus} returnFocusRef={openerRef}
         onDraftChange={onDraftChange} onApply={onApply} onCancel={onCancel} onClose={() => setRemainingOpen(false)} /> : null}
 
       {!editorOpen && !remainingOpen && dirty ? (
@@ -261,108 +199,34 @@ export function SummaryDashboard({
       ) : null}
 
       {editorOpen ? (
-        isMobile ? (
-          <>
-            <div ref={editorBackdropRef} className="fixed inset-0 z-30 bg-slate-950/45 backdrop-blur-sm" aria-hidden="true" data-testid="editor-backdrop" data-sheet-dismiss-backdrop onClick={requestClose} />
-            <div
-              className="main-editor-sheet"
-              aria-labelledby="cashflow-editor-title"
-              aria-modal="true"
-              aria-busy={closingEditor !== null ? 'true' : undefined}
-              onKeyDown={trapModalFocus}
-              ref={modalRef}
-              role="dialog"
-            >
-              <MainPlanEditor
-                draft={editorDraft}
-                issues={editorIssues}
-                saving={saving || closingEditor !== null}
-                presentation="content"
-                initialFocusPath={editorFocusPath}
-                onChange={onDraftChange}
-                onRequestClose={requestClose}
-              />
-              <ApplyBar dirty={editorDirty} saveStatus={saveStatus} onApply={applyEditor} onCancel={onCancel} />
-            </div>
-          </>
-        ) : (
-          <ResponsiveDialog
-            open={editorOpen}
-            labelledBy="cashflow-editor-title"
-            size="form"
-            busy={saving}
-            returnFocusRef={openerRef}
-            onRequestClose={requestClose}
-            onClosed={() => undefined}
+        <ResponsiveDialog
+          open={editorOpen}
+          labelledBy="cashflow-editor-title"
+          size="form"
+          busy={saving}
+          mobileEntranceMotion
+          returnFocusRef={openerRef}
+          onRequestClose={requestClose}
+          onClosed={() => setEditorOpen(false)}
+        >
+          <ResponsiveDialogLayout
+            title="월 자금 계획 편집"
+            titleId="cashflow-editor-title"
+            eyebrow="월간 계획"
+            context={<p className="m-0 text-sm text-slate-600">한 달 기준 금액을 입력해 주세요.</p>}
+            onClose={() => undefined}
+            footer={<ApplyBar dirty={dirty} saveStatus={saveStatus} embedded onApply={applyEditor} onCancel={onCancel} />}
           >
-            <div className="main-editor-modal">
             <MainPlanEditor
               draft={draft}
               issues={issues}
               saving={saving}
-              presentation="content"
               initialFocusPath={editorFocusPath}
               onChange={onDraftChange}
-              onRequestClose={requestClose}
             />
-            <ApplyBar dirty={dirty} saveStatus={saveStatus} onApply={applyEditor} onCancel={onCancel} />
-            </div>
-          </ResponsiveDialog>
-        )
+          </ResponsiveDialogLayout>
+        </ResponsiveDialog>
       ) : null}
     </AppContentFrame>
   );
-}
-
-function revealEditor(
-  target: HTMLElement,
-  direction: 'vertical' | 'horizontal',
-  reducedMotion: boolean,
-): void {
-  if (reducedMotion) {
-    setEditorRevealFinalState(target, direction);
-    return;
-  }
-  try {
-    animate(target, {
-      opacity: [0, 1],
-      ...(direction === 'vertical'
-        ? { y: [MOTION_DISTANCE_PX.reveal, 0] }
-        : { x: [MOTION_DISTANCE_PX.reveal, 0] }),
-      duration: MOTION_DURATION.normal,
-      ease: createProductSpring('surface'),
-    });
-  } catch {
-    setEditorRevealFinalState(target, direction);
-  }
-}
-
-function setEditorRevealFinalState(
-  target: HTMLElement,
-  direction: 'vertical' | 'horizontal',
-): void {
-  target.style.opacity = '1';
-  target.style.transform = direction === 'vertical' ? 'translateY(0px)' : 'translateX(0px)';
-}
-
-function useMobileEditor(): boolean {
-  const query = '(max-width: 767px)';
-  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(query).matches === true);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || window.matchMedia === undefined) return;
-    const mediaQuery = window.matchMedia(query);
-    const update = () => setMobile(mediaQuery.matches);
-    update();
-    mediaQuery.addEventListener?.('change', update);
-    return () => mediaQuery.removeEventListener?.('change', update);
-  }, []);
-
-  return mobile;
-}
-
-function getFocusableElements(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-  )).filter((element) => !element.hasAttribute('aria-hidden'));
 }

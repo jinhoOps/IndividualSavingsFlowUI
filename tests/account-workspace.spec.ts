@@ -683,7 +683,7 @@ test('expense assistant advances blank and explicit zero answers while preservin
   await expect(dialog.getByLabel('보험료 금액')).toBeVisible();
   expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.maintenance).toEqual({amountWon: 0, period: 'year'});
   expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
-  await dialog.getByRole('button', {name: '도우미 닫기'}).click();
+  await dialog.getByRole('button', {name: '닫기'}).click();
   await page.reload(); await open();
   await expect(dialog.getByLabel('보험료 금액')).toBeVisible();
   expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.insurance).toBeNull();
@@ -721,7 +721,7 @@ test('expense assistant remembers each answer, replaces rough totals only on com
     await expect.poll(() => server.operations.filter(op => op === 'save_expense_draft').length).toBe(index + 1);
     expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
     if (index === 0) {
-      await dialog.getByRole('button', {name: '도우미 닫기'}).click();
+      await dialog.getByRole('button', {name: '닫기'}).click();
       await page.reload(); await open();
       await expect(dialog.getByLabel('주거 대출 이자 금액')).toHaveValue('');
       expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.rent?.amountWon).toBe(600000);
@@ -751,13 +751,13 @@ test('expense assistant remembers each answer, replaces rough totals only on com
   await page.getByRole('button', {name: '월 금액 편집'}).click();
   await page.getByLabel('월평균 생활비').fill('2000000');
   await page.getByRole('button', {name: '적용', exact: true}).click();
-  await page.getByRole('button', {name: '편집기 닫기'}).click();
+  await expect(page.getByRole('dialog', {name: '월 자금 계획 편집'})).toHaveCount(0);
   await open();
   await expect(dialog.getByRole('heading', {name: '한 달 지출을 확인해보세요'})).toBeVisible();
   await dialog.getByRole('button', {name: '식비 답변 수정'}).click();
   await expect(dialog.getByLabel('식비 금액')).toHaveValue('400,000');
   await dialog.getByLabel('식비 금액').fill('450000');
-  await dialog.getByRole('button', {name: '도우미 닫기'}).click();
+  await dialog.getByRole('button', {name: '닫기'}).click();
   await open();
   await expect(dialog.getByLabel('식비 금액')).toHaveValue('450,000');
   await dialog.getByRole('button', {name: '내역으로', exact: true}).click();
@@ -782,7 +782,7 @@ for (const width of [390, 768, 1280]) {
     }
     await expense.click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading')).toBeFocused();
+    await expect(dialog.getByRole('heading', {name: '매달 월세로 얼마를 내나요?'})).toBeFocused();
     await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
     // Anime.js drives requestAnimationFrame; Element.getAnimations only sees CSS/WAAPI.
     await expect(dialog).toHaveCSS('opacity', '1');
@@ -794,7 +794,7 @@ for (const width of [390, 768, 1280]) {
     await page.keyboard.press('Shift+Tab');
     await expect(dialog.getByRole('button', {name: '다음', exact: true})).toBeFocused();
     await page.keyboard.press('Tab');
-    await expect(dialog.getByRole('button', {name: '도우미 닫기'})).toBeFocused();
+    await expect(dialog.getByRole('button', {name: '닫기'})).toBeFocused();
     const adjustments = dialog.getByRole('group', {name: '금액 빠른 조정'});
     const amount = dialog.getByLabel('월세 금액');
     await expect(adjustments.getByRole('button')).toHaveText(['-50만', '-10만', '+10만', '+50만']);
@@ -836,18 +836,18 @@ for (const width of [390, 768, 1280]) {
     await amount.fill('600000');
     await page.keyboard.press('Escape');
     await expect(expense).toBeFocused();
-    await edit.click(); await expect(page.getByRole('button', {name: '편집기 닫기'})).toBeFocused();
+    await edit.click(); await expect(page.getByRole('button', {name: '닫기'})).toBeFocused();
     await page.keyboard.press('Escape'); await expect(edit).toBeFocused();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expense.click();
     for (let step = 1; step <= 6; step++) {
       await dialog.getByRole('button', {name: '다음', exact: true}).click();
       if (step !== 2 && step !== 6) continue;
-      await expect(dialog.getByRole('heading')).toBeFocused();
+      await expect(dialog.locator('h3')).toBeFocused();
       const hint = dialog.locator('#expense-question-hint');
       await expect(hint).toContainText(step === 2 ? '공용관리비(일반관리비)만 입력해주세요.' : '전기·도시가스·상하수도요금과 소득세·재산세·자동차세');
       await expect(hint).toContainText(step === 2 ? '고지서에 함께 나와도 빼고, 뒤의 공과금에서 따로 입력해요.' : '관리비 고지서에 포함된 사용요금도 여기에 입력해요.');
-      await expect(dialog.getByRole('heading')).toContainText('수도·전기·가스');
+      await expect(dialog.locator('h3')).toContainText('수도·전기·가스');
       const example = dialog.locator('#expense-question-example');
       await expect(example).toContainText(step === 2 ? '여기에는 12만 원만 입력해요.' : '공용관리비 12만 원은 다시 더하지 않아요.');
       await expect(dialog.locator('#expense-answer')).toHaveAttribute('aria-describedby', /expense-question-example/);
@@ -918,11 +918,11 @@ for (const width of [390, 768, 1280]) {
     expect((await opener.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await opener.click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading')).toBeFocused();
+    await expect(dialog.getByRole('heading', {name: '남는 돈을 더 모아볼까요?'})).toBeFocused();
     await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
     await expect(dialog.getByRole('button', {name: '이렇게 나누기'})).toBeDisabled();
     await page.keyboard.press('Shift+Tab'); await expect(dialog.getByRole('button', {name: '나중에'})).toBeFocused();
-    await page.keyboard.press('Tab'); await expect(dialog.getByRole('button', {name: '분배 도우미 닫기'})).toBeFocused();
+    await page.keyboard.press('Tab'); await expect(dialog.getByRole('button', {name: '닫기'})).toBeFocused();
     expect(server.operations).toEqual([]);
     await dialog.getByRole('button', {name: '저축에 전부'}).click();
     await expect(dialog.getByLabel('저축에 추가')).toHaveValue('900,000');
@@ -973,7 +973,7 @@ for (const width of [390, 768, 1280]) {
     await expect(dialog).toHaveCount(0); await expect(opener).toBeFocused();
     expect(server.rows.get(userA)?.main.applied?.monthlySavingWon).toBe(1000000);
     await opener.click();
-    await expect(dialog.getByRole('heading')).toHaveText('지금은 나눌 돈이 없어요');
+    await expect(dialog.locator('h3')).toHaveText('지금은 나눌 돈이 없어요');
     await expect(dialog.locator('input')).toHaveCount(0);
     await dialog.getByRole('button', {name: '확인', exact: true}).click();
     await expect(opener).toBeFocused();
@@ -1322,7 +1322,7 @@ for (const width of [390, 768, 1280]) {
       const apply = page.getByRole('button', {name: '적용', exact: true});
       await apply.focus();
       const editor = width < 768
-        ? page.locator('.main-editor-sheet')
+        ? page.locator('dialog[data-presentation="sheet"]')
         : page.getByRole('dialog', { name: '월 자금 계획 편집' });
       await expect(editor).toBeVisible();
       if (width < 768) {
