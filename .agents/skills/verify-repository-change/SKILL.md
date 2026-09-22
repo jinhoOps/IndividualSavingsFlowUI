@@ -67,7 +67,6 @@ Read:
 
 - `AGENTS.md`
 - `docs/superpowers/specs/2026-08-20-repository-codex-harness-design.md`
-- `docs/superpowers/plans/2026-08-20-repository-codex-harness.md` when present
 - relevant official Codex documentation when using Codex product features
 
 Verify:

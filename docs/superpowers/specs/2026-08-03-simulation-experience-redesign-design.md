@@ -1,5 +1,7 @@
 # Simulation 결과 중심 경험 재설계
 
+> **기간 예외 보존:** 금액 표시 정밀도·Main 동기화·오류 복구 규칙. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 > **부분 대체:** 상시 `저장됨` indicator 계약은 [Anime.js 공통 모션 시스템 설계](2026-08-12-animejs-motion-system-design.md)가 대체한다. 저장 실패·복구와 나머지 Simulation 계약은 유지한다.
 
 ## 문서 상태

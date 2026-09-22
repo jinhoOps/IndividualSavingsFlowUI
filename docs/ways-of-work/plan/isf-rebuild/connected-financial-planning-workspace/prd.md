@@ -11,11 +11,9 @@ ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략�
 **Epic:** 현재 Main 기준선 확립과 안전한 신규 앱 확장
 
 - [Design Contract](../../../../../DESIGN.md)
+- [최근 설계·필수 보존 스펙](../../../../superpowers/README.md)
 - [Account Map 제거 설계](../../../../superpowers/specs/2026-09-15-account-map-retirement-design.md) — 현재 제거·호환성 경계
-- [과거 Connected Account Map Workspace Design](../../../../superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)
-- [과거 Account Map Purpose-Node Flow Design](../../../../superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)
 - [과거 Account Map Planned Account Flow Design](../../../../superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md) — 과거 UI·보존 데이터 의미의 기록
-- [Shared Workspace Foundation Plan](../../../../superpowers/plans/2026-08-06-shared-workspace-foundation.md)
 - [Journey Snapshot 폐기 설계](../../../../superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
 - [Portfolio 투자 배분 설계](../../../../superpowers/specs/2026-08-03-portfolio-allocation-design.md)
 
@@ -116,7 +114,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 
 ## 8. Functional Requirements
 
-공유 저장 기반의 구현 이력은 [Shared Workspace Foundation Plan](../../../../superpowers/plans/2026-08-06-shared-workspace-foundation.md)에 있으며, Account Map의 현재 경계는 [제거 설계](../../../../superpowers/specs/2026-09-15-account-map-retirement-design.md)가 과거 기능 명세를 대체한다.
+공유 저장 기반의 구현 이력은 [Shared Workspace Foundation Plan](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/plans/2026-08-06-shared-workspace-foundation.md)에 있으며, Account Map의 현재 경계는 [제거 설계](../../../../superpowers/specs/2026-09-15-account-map-retirement-design.md)가 과거 기능 명세를 대체한다.
 
 ### 계정 인증 — 2026-09-08 임시 로그인 추가 승인
 
@@ -306,7 +304,7 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 - [x] Account Map과 shared workspace의 승인된 기능 명세와 단계별 disposition이 있다.
 - [x] Portfolio의 기존 `투자 위치` UI와 shared location command 진입점을 제거하고 보존 데이터 회귀를 입증한다.
 - [x] Phase B Account Map 상세 명세에서 계좌·보관처 관리와 Portfolio 비연결 경계를 승인한다.
-- [x] Phase 4의 분류된 legacy runtime 삭제와 Task 8의 최종 전체 검증은 v1/v2 conversion·raw source preservation·reference search·type/unit/E2E/build·반응형 QA [evidence](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)와 함께 기록되어 있다.
+- [x] Phase 4의 분류된 legacy runtime 삭제와 Task 8의 최종 전체 검증은 v1/v2 conversion·raw source preservation·reference search·type/unit/E2E/build·반응형 QA [evidence](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)와 함께 기록되어 있다.
 
 ### 계정 저장 rollout gate
 
@@ -340,7 +338,7 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 2. 이 투자 여력을 오래 유지하면 어떤 차이가 생기는가? — Simulation
 3. 선택한 방향을 매달 무엇에 투자할 것인가? — Portfolio
 
-기존 Phase C의 4개 앱 연결 결과 카드 계획은 Account Map 제거로 대체되었다. Main·Simulation·Portfolio의 연결 결과 카드는 별도 후속 설계가 필요하다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8의 [최종 전체 검증](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 이 상태를 통과로 기록했다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
+기존 Phase C의 4개 앱 연결 결과 카드 계획은 Account Map 제거로 대체되었다. Main·Simulation·Portfolio의 연결 결과 카드는 별도 후속 설계가 필요하다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8의 [최종 전체 검증](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 이 상태를 통과로 기록했다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
 
 2026-09-21 후속 요청으로 Portfolio 결과 하단의 윤곽 없는 `저장하기`/`공유하기`와 세 앱 종합 이미지의 48시간 공유 링크를 구현한다. 저장은 로컬 PNG, 공유는 확인한 PNG만 Supabase private Storage에 게시하는 방식이다. 공유 생성은 로그인 필요, 링크 열람은 로그인 없이 가능하며 서버 시각으로 48시간 뒤 차단하고 파일을 정기 삭제한다. 원본 workspace와 schema v5·protocol 5·백업 계약은 변경하지 않는다. [이미지 계획](../../../../superpowers/plans/2026-09-21-financial-result-image.md)과 [공유 확장 계획](../../../../superpowers/plans/2026-09-21-result-image-link-sharing.md)을 따른다. 원격 migration·Edge Function·Cron이 운영에 적용되기 전에는 링크 공유를 배포 완료 기능으로 표시하지 않는다.
 

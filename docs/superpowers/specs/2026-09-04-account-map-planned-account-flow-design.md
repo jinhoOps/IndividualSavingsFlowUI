@@ -1,8 +1,11 @@
 # Account Map Planned Account Flow Design
 
+> **기간 예외 보존:** 지원 종료된 Account Map의 보존 데이터 의미·v4 호환성. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+> Account Map UI는 지원 종료됐다. 이 문서는 보존 데이터의 의미·호환성을 위한 참조이며 화면 구현의 기준이 아니다.
+
 **Date:** 2026-09-04
 
-**Status:** Implemented and verified on 2026-09-07. Final execution evidence is recorded in the [implementation plan](../plans/2026-09-04-account-map-planned-account-flow.md).
+**Status:** Implemented and verified on 2026-09-07. Final execution evidence is recorded in the [implementation plan](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/plans/2026-09-04-account-map-planned-account-flow.md).
 
 **Scope:** Replace the current purpose-to-location explanation map with a Main-assisted, explicitly confirmed monthly account-flow graph. Add planned many-to-many transfers between accounts, a remainder-routing rule, touch-first flow inspection, reusable financial-location editing, and a Main-owned edit overlay that visually remains inside Account Map without transferring Main ownership.
 
@@ -10,9 +13,9 @@
 
 This design supersedes the presentation and relationship semantics in:
 
-- [Account Map Meaningful Layout Design](2026-08-25-account-map-meaningful-layout-design.md)
-- the map, interaction, setup, and editing clauses of [Account Map Purpose-Node Flow Design](2026-08-13-account-map-purpose-node-flow-design.md)
-- the Account Map clauses in [Connected Account Map Workspace Design](2026-08-06-connected-account-map-workspace-design.md) where they describe purpose-to-location links as the only supported relationship
+- [Account Map Meaningful Layout Design](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-08-25-account-map-meaningful-layout-design.md)
+- the map, interaction, setup, and editing clauses of [Account Map Purpose-Node Flow Design](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-08-13-account-map-purpose-node-flow-design.md)
+- the Account Map clauses in [Connected Account Map Workspace Design](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-08-06-connected-account-map-workspace-design.md) where they describe purpose-to-location links as the only supported relationship
 
 The Product PRD and `DESIGN.md` have been updated in the same implementation to describe planned account-to-account transfers and the Main-owned edit overlay. They remain the canonical product and UI contracts.
 

@@ -1,5 +1,7 @@
 # Anime.js 공통 모션 시스템 설계
 
+> **기간 예외 보존:** 공통 Anime.js 수명·취소·reduced motion 계약. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 **상태:** 대화 승인, 검토 반영 후 문서 재검토 대기
 **작성일:** 2026-08-12
 **대상:** Main, Simulation, Portfolio, Account Map 준비 화면과 공통 앱 런처
@@ -100,7 +102,7 @@ Anime.js는 필요한 하위 모듈만 import한다. 일반 hover, focus, presse
 
 ### 5.3 Main 최초 조립과 처음부터 다시
 
-최초 설정에는 적용된 계획이 없지만 `처음부터 다시`는 취소·복구를 위해 현재 적용 계획을 유지한 채 복사한 draft로 setup을 진행한다. 두 경로는 데이터 상태가 아니라 initial setup 경험을 공유하므로 welcome부터 review까지 같은 전체 모션 시퀀스를 사용한다. `처음부터 다시`를 일반 수정 흐름으로 취급하지 않는다. Main 진입 앞의 별도 브랜드 인트로는 [Main 브랜드 웰컴 인트로 설계](2026-08-13-main-brand-welcome-intro-design.md)를 따른다.
+최초 설정에는 적용된 계획이 없지만 `처음부터 다시`는 취소·복구를 위해 현재 적용 계획을 유지한 채 복사한 draft로 setup을 진행한다. 두 경로는 데이터 상태가 아니라 initial setup 경험을 공유하므로 welcome부터 review까지 같은 전체 모션 시퀀스를 사용한다. `처음부터 다시`를 일반 수정 흐름으로 취급하지 않는다. Main 진입 앞의 별도 브랜드 인트로는 [Main 브랜드 웰컴 인트로 설계](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-08-13-main-brand-welcome-intro-design.md)를 따른다.
 
 review의 조립은 하나의 지속적인 시각 모델을 사용한다.
 
@@ -250,8 +252,8 @@ review의 조립은 하나의 지속적인 시각 모델을 사용한다.
 
 이 설계는 다음 기존 문서의 일부 계약만 대체한다. 여기에 명시하지 않은 상호작용, 표, focus, 저장 복구와 제품 경계는 기존 문서대로 유지한다.
 
-- [Cashflow Progress Review Design](2026-07-29-cashflow-progress-review-design.md)의 적자 segment 재정규화와 container 내부 pressure overflow
-- [Overflow Liquid and Restart Focus Design](2026-07-30-overflow-liquid-and-restart-focus-design.md)의 `5:1` 길이 압축, 최대 10% gutter, 연속 liquid·droplet 표현
+- [Cashflow Progress Review Design](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-07-29-cashflow-progress-review-design.md)의 적자 segment 재정규화와 container 내부 pressure overflow
+- [Overflow Liquid and Restart Focus Design](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-07-30-overflow-liquid-and-restart-focus-design.md)의 `5:1` 길이 압축, 최대 10% gutter, 연속 liquid·droplet 표현
 - [Simulation Experience Redesign](2026-08-03-simulation-experience-redesign-design.md)의 상시 `저장됨` indicator
 
 ## 13. 비목표

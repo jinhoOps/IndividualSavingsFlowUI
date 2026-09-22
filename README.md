@@ -103,7 +103,7 @@ Account Map의 과거 Phase B 구현과 운영 검증은 이력으로 보존하�
 
 레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
 
-Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8의 최종 전체 검증은 통과했고, 정확한 명령·참조 감사·반응형 QA 결과는 [Phase 4 disposition](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)에 기록되어 있습니다.
+Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8의 최종 전체 검증은 통과했고, 정확한 명령·참조 감사·반응형 QA 결과는 [Phase 4 disposition](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)에 기록되어 있습니다.
 
 후속 정리에서는 미사용 글로벌 CSS, 예전 시세 생성·문서 변환 스크립트와 검사 출력물을 제거했습니다. 삭제 근거와 현재 저장 호환성 보존 범위는 [잔여 자산 정리 기록](docs/superpowers/plans/2026-09-08-entry-focus-and-legacy-residue.md)에 정리합니다.
 
@@ -196,7 +196,7 @@ Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfol
 
 - **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 운영 DB·Pages 배포와 등록한 Google 테스트 계정의 실제 왕복은 검증했습니다. 일반 Google 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
 - **연결 결과 이미지**: Account Map을 제외한 Main·Simulation·Portfolio의 적용 결과를 3:4 PNG로 보관하는 구현을 추가했습니다. 2026-09-22 저장 예산·Supabase 함수·Cron을 적용했습니다. 검증한 범위와 실제 48시간 관찰의 구분은 [운영 기록](docs/superpowers/evidence/2026-09-22-result-card-storage-budget.md)을 따릅니다.
-- **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
+- **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
 - **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture
 - 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
@@ -208,12 +208,10 @@ Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfol
 
 - [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
 - [Agent Guide](AGENTS.md)
+- [Superpowers 최근 자료·필수 스펙·보관 기준](docs/superpowers/README.md)
 - [Design Contract](DESIGN.md)
-- [Product Direction and Documentation Spec](docs/superpowers/specs/2026-07-29-product-direction-and-documentation-design.md)
 - [Journey Snapshot Retirement Spec](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
-- [과거 Connected Account Map Workspace Design](docs/superpowers/specs/2026-08-06-connected-account-map-workspace-design.md)
 - [과거 Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)
-- [Shared Workspace Foundation Plan](docs/superpowers/plans/2026-08-06-shared-workspace-foundation.md)
 - [Account Flow Decision History](docs/adr/0002-account-flow-belongs-to-portfolio-boundary.md)
 
 ## 데이터와 주의사항

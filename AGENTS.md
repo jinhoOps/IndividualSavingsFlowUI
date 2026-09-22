@@ -114,6 +114,8 @@ Orca가 새 작업 트리에서 실행하는 기존 `npm install`은 `postinstal
 
 ## Canonical Documents
 
+- [Superpowers 문서 보관 기준·필수 스펙](docs/superpowers/README.md)
+
 - [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
 - [README](README.md)
 - [DESIGN](DESIGN.md)

@@ -14,7 +14,7 @@
 | 구 schema, whole-workspace backup, 계정 cache·미전송 복구 | 검증·변환·원문 보존 계약 및 호환성 테스트 유지 |
 | DB migration·RPC | 변경하거나 운영 데이터 삭제하지 않음; 구 클라이언트와 복구 호환 경계로 유지 |
 
-Main·Simulation·Portfolio 저장은 기존 계좌지도와 위치 데이터를 보존한다. 새로운 계좌지도 UI나 독립 저장은 제공하지 않는다. 데이터 형식/파서가 `src/account-map/domain`에 남더라도 제품 runtime이 아니라 workspace 호환성 코드다. 과거 문서와 migration 기록은 삭제하지 않는다.
+Main·Simulation·Portfolio 저장은 기존 계좌지도와 위치 데이터를 보존한다. 새로운 계좌지도 UI나 독립 저장은 제공하지 않는다. 데이터 형식/파서가 `src/account-map/domain`에 남더라도 제품 runtime이 아니라 workspace 호환성 코드다. DB migration 기록은 보존한다. 과거 문서는 2026-09-22 사용자 지시에 따른 [보관 기준](../README.md)에 따라 필수 데이터 스펙을 유지하고, 완료된 계획·검증 기록은 Git 이력으로 보존한다.
 
 ## 검증과 위험
 

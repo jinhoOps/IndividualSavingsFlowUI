@@ -22,7 +22,7 @@
 - 로그인 화면 390px·768px·1280px 스크린샷을 직접 확인했다. 스크린샷은 `test-results/cloud-login-*.png`이며 Git에 포함하지 않는다.
 - 수정 문서의 상대 링크와 `git diff --check` 통과.
 
-SQL·저장 모델과 PWA 캐싱 규칙은 변경하지 않았다. 이번 작업에서 DB integration 및 실제 service worker 런타임 검증을 반복하지 않았으며 기존 결과는 [2026-09-07 기록](2026-09-07-supabase-account-workspace.md)을 따른다.
+SQL·저장 모델과 PWA 캐싱 규칙은 변경하지 않았다. 이번 작업에서 DB integration 및 실제 service worker 런타임 검증을 반복하지 않았으며 기존 결과는 [2026-09-07 기록](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-07-supabase-account-workspace.md)을 따른다.
 
 ## 당시 실제 프로젝트 확인과 미완료 항목
 

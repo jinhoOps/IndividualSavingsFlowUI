@@ -2,7 +2,7 @@
 
 **Status: Task 5 verification passed within the documented Chromium/local-harness scope.** The invalid-raw-cash finding is resolved and independently reverified; real-device/zoom/PWA limits remain listed below.
 
-Task 5 verifies the [approved design](../../specs/2026-09-16-portfolio-editor-hierarchy-design.md) and [implementation plan](../../plans/2026-09-16-portfolio-editor-hierarchy.md). Final tested production commit: `57bc23ecec610e21df5c9d326265014dd9b28b90`, including cash-validation fixes `1c780797`, `11341b70`, and `57bc23ec`. Initial evidence used baseline `fdc68ec5f42a68ba1e257cd87bcb1ea9a8eb1b16`. The initial Task 5 test change replaces the retired inline gold textbox with row selection → item amount → 완료 in [motion-system.spec.ts](../../../../tests/motion-system.spec.ts); its amount, applied-state, motion, sorting, accessibility and reduced-motion assertions remain intact. No production source, shared component, storage contract or dependency change is included.
+Task 5 verifies the [approved design](../../specs/2026-09-16-portfolio-editor-hierarchy-design.md). Final tested production commit: `57bc23ecec610e21df5c9d326265014dd9b28b90`, including cash-validation fixes `1c780797`, `11341b70`, and `57bc23ec`. Initial evidence used baseline `fdc68ec5f42a68ba1e257cd87bcb1ea9a8eb1b16`. The initial Task 5 test change replaces the retired inline gold textbox with row selection → item amount → 완료 in [motion-system.spec.ts](../../../../tests/motion-system.spec.ts); its amount, applied-state, motion, sorting, accessibility and reduced-motion assertions remain intact. No production source, shared component, storage contract or dependency change is included.
 
 ## Commands and results
 
@@ -32,9 +32,9 @@ The comparison fixture is the same 800,000원 source-state fixture used before i
 
 | Actual viewport | Before | Clean after | Dirty after | Error after |
 | --- | --- | --- | --- | --- |
-| 390×844 | [before](before-390-edit.png) | [clean](after-390-clean.png) | [dirty](after-390-dirty.png) | [error](after-390-error.png) |
-| 768×1024 | [before](before-768-edit.png) | [clean](after-768-clean.png) | [dirty](after-768-dirty.png) | [error](after-768-error.png) |
-| 1280×900 | [before](before-1280-edit.png) | [clean](after-1280-clean.png) | [dirty](after-1280-dirty.png) | [error](after-1280-error.png) |
+| 390×844 | 원본 미보관 | [clean](after-390-clean.png) | [dirty](after-390-dirty.png) | [error](after-390-error.png) |
+| 768×1024 | 원본 미보관 | [clean](after-768-clean.png) | [dirty](after-768-dirty.png) | [error](after-768-error.png) |
+| 1280×900 | 원본 미보관 | [clean](after-1280-clean.png) | [dirty](after-1280-dirty.png) | [error](after-1280-error.png) |
 
 Visual comparison: 390px previously exposed only the first full inline form and part of the next. It now shows the title, monthly amount, growth/stability summary, all three targets, cash and add action in the first screen. Dirty state reserves space for its status and actions. At 768px the same hierarchy remains a bottom sheet; desktop is a right panel with the inert result visible behind it. No measured document/dialog/body horizontal overflow; the clean three-target row and add controls have at least 44px height. Error text is beside its field and completion remains disabled until valid.
 
@@ -73,4 +73,4 @@ Additional final evidence: [corrected cash](final-390-cash-corrected.png), [setu
 
 Relative links in this document resolve. Its current-product claims were compared with [PRD](../../../ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), [README](../../../../README.md), [DESIGN](../../../../DESIGN.md), and the approved spec. Main remains the owner of the five monthly amounts; Portfolio owns only its aggregate plan/draft. Retired Account Map UI remains absent while retained storage survives.
 
-Only Chromium was exercised. Cloud tests use the fake Supabase RPC boundary, not live production accounts. Actual virtual keyboard, physical touch, real 200% browser zoom and PWA offline build verification remain explicit manual/release checks. Before images and the pre-existing untracked implementation plan are preserved, not staged by Task 5. The existing `package-lock.json` change is excluded.
+Only Chromium was exercised. Cloud tests use the fake Supabase RPC boundary, not live production accounts. Actual virtual keyboard, physical touch, real 200% browser zoom and PWA offline build verification remain explicit manual/release checks. The original report said the before images and implementation plan were left untracked by Task 5. The 2026-09-22 documentation audit found neither in Git history nor the retained local execution archive; their broken links have been removed. Final after-image evidence remains available. The existing `package-lock.json` change is excluded.

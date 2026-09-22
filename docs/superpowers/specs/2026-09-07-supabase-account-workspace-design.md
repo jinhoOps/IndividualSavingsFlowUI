@@ -1,5 +1,7 @@
 # Supabase 계정별 Workspace 저장 설계
 
+> **기간 예외 보존:** 계정 격리·동기화·미전송 복구·read-only 이전 기반 계약. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 현재 세대 안내: 이 문서의 schema v3·backup format v2 설명은 최초 설계/적용 당시 기준이다. 최신 main과의 통합은 승인된 [workspace v4 통합 설계](2026-09-08-supabase-workspace-v4-integration-design.md)를 우선한다. 정적 웹·계정 격리·앱 소유권 계약은 유지하며 v4 RPC, 캐시 세대와 이전 계약만 후속 설계로 전환한다.
 
 상태: 구현 및 운영 DB 적용 완료 — 2026-09-07 사용자가 이 설계에 따른 개발과 커밋을 요청했고, 2026-09-08 Supabase 직접 적용을 승인했다. 실제 임시 계정 로그인·두 브라우저 저장과 계정 격리를 검증했다. Google 실제 왕복·Pages 배포는 아직 미수행이며 [운영 안내](../../supabase-account-setup.md)의 rollout gate로 구분한다.

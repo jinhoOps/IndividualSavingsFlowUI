@@ -6,7 +6,7 @@ Individual Savings Flow는 복잡한 금융 계산을 접근 가능한 계정별
 
 이 문서의 현재 지원 UI 계약은 Main, Simulation, aggregate-first Portfolio에 적용됩니다. Account Map UI와 전용 Main overlay는 제거되었으며 과거 화면·상호작용은 새 UI의 기준이 아닙니다. 기존 `apps/account-map/`과 `apps/account-map/index.html`은 Main으로 이동합니다. [Account Map 제거 설계](docs/superpowers/specs/2026-09-15-account-map-retirement-design.md)를 따릅니다.
 
-schema v5 단일 workspace와 whole-workspace backup은 유지하며 `workspace.accountMap`과 `workspace.locations`는 기존 데이터의 저장·복구 호환성을 위해 보존합니다. 서버 protocol 5와 계정 캐시·미전송 입력 복구 계약도 유지합니다. v4/v3는 read-only migration/rollback source입니다. [v5 운영 적용](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [Phase 4 legacy retirement 최종 전체 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 각 시점의 이력입니다. 기존 Phase C의 4개 앱 연결 결과 카드 계획은 대체되었으며 후속 설계 전에는 현재 UI 계약으로 취급하지 않습니다.
+schema v5 단일 workspace와 whole-workspace backup은 유지하며 `workspace.accountMap`과 `workspace.locations`는 기존 데이터의 저장·복구 호환성을 위해 보존합니다. 서버 protocol 5와 계정 캐시·미전송 입력 복구 계약도 유지합니다. v4/v3는 read-only migration/rollback source입니다. [v5 운영 적용](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [Phase 4 legacy retirement 최종 전체 검증](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 각 시점의 이력입니다. 기존 Phase C의 4개 앱 연결 결과 카드 계획은 대체되었으며 후속 설계 전에는 현재 UI 계약으로 취급하지 않습니다.
 
 ## Experience Principles
 

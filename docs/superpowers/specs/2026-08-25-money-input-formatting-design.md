@@ -1,5 +1,7 @@
 # Current Product Money Input Formatting Design
 
+> **기간 예외 보존:** 숫자 입력·IME·paste·커서와 저장값 보존 계약. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 **Date:** 2026-08-25
 
 **Status:** Approved

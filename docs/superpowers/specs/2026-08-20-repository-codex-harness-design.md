@@ -1,5 +1,7 @@
 # Repository Codex Harness Design
 
+> **기간 예외 보존:** 저장소 검증 스킬이 직접 참조하는 CI·에이전트 규칙. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 ## Revision
 
 2026-08-20 cleanup: the repository does not use API-key based Codex GitHub Action review. The harness keeps deterministic CI, `AGENTS.md` review rules, and repository-local skills. Codex Cloud or human-triggered review may consume `AGENTS.md` `Code Review Rules`, but this repository does not define `.github/workflows/codex-review.yml`, `.github/codex/prompts/review.md`, or any OpenAI API key requirement.

@@ -1,10 +1,12 @@
 # Journey Snapshot 폐기 설계
 
+> **기간 예외 보존:** 폐기된 전달 데이터·저장 키를 재도입하지 않는 계약. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 ## 목적
 
 Main, Simulation과 Portfolio가 모두 현재 Main 데이터 또는 자체 저장소를 직접 읽으므로 중간 `JourneySnapshot` 저장 계약을 폐기한다. 앱 연결은 URL 탐색만 담당하고 데이터 연결은 각 상세 앱의 명시적인 read adapter가 담당한다.
 
-이 결정은 `2026-07-29-app-journey-entry-design.md`의 snapshot 전달 설계와 이후 역사 문서의 관련 부분을 현재 제품 기준에서 대체한다. 역사 문서는 결정 경위로 보존하며 신규 구현 근거로 사용하지 않는다.
+이 결정은 [과거 앱 여정 설계](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-07-29-app-journey-entry-design.md)의 snapshot 전달 설계와 이후 역사 문서의 관련 부분을 현재 제품 기준에서 대체한다. 역사 문서는 결정 경위로 보존하며 신규 구현 근거로 사용하지 않는다.
 
 ## 현재 문제
 

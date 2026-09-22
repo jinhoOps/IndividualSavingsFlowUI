@@ -59,7 +59,7 @@
 - 실패는 `tests/main-react.spec.ts:1327`의 로컬 repository Main 화면 편집기 viewport 경계 검사(`:635`)다. 이 경로는 Supabase를 사용하지 않는다. `npx playwright test tests/main-react.spec.ts:1327 --project=chromium --repeat-each=3 --reporter=list --output=/tmp/isf-main-responsive.GO1qZu --trace=on` 재검증은 3회 모두 통과했고 각 실행에서 390px·768px·1280px를 확인했다. 최초 실패 원인은 확정하지 못했으며 관련 UI/테스트 코드는 변경하지 않았다. 후속 재현 시 Main UI/QA 담당자가 위 명령부터 확인한다.
 - 수정 문서 상대 링크 70개, `git diff --check` 통과. DB 비밀번호·임시 로그인 비밀번호가 변경 파일이나 `.env.local`에 포함되지 않았음을 확인했다. 기존 사용자의 `package-lock.json` 변경은 보존하고 커밋에서 제외했다.
 
-전체 단위 테스트·production build·실제 PWA 런타임은 이번 SQL/운영 작업에서 다시 실행하지 않았다. 이전 결과는 [임시 로그인 구현 검증](2026-09-08-temporary-password-login.md)과 [계정 저장 개발 검증](2026-09-07-supabase-account-workspace.md)을 따르며 위 재실행 결과와 구분한다.
+전체 단위 테스트·production build·실제 PWA 런타임은 이번 SQL/운영 작업에서 다시 실행하지 않았다. 이전 결과는 [임시 로그인 구현 검증](2026-09-08-temporary-password-login.md)과 [계정 저장 개발 검증](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-07-supabase-account-workspace.md)을 따르며 위 재실행 결과와 구분한다.
 
 ## 운영 후속과 제한
 

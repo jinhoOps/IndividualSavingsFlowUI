@@ -8,7 +8,9 @@
 
 **Scope:** Portfolio 최초 설정의 `배분` 단계와 적용 계획의 `배분 수정` 집중 편집 surface. 결과 대시보드, 계산·draft/applied·서버 저장 계약은 바꾸지 않는다.
 
-**Binding context:** [Product PRD](../../ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), [DESIGN](../../../DESIGN.md), [implementation plan](../plans/2026-09-16-portfolio-editor-hierarchy.md). 이 문서는 [Focused Mobile UX](2026-08-11-portfolio-focused-mobile-ux-design.md)의 대상 편집 표현·행동과 반응형 편집 surface 범위를 대체한다. 결과의 summary-first 계약은 [Summary-First UX](2026-08-10-portfolio-summary-first-ux-design.md)를 유지한다.
+**Binding context:** [Product PRD](../../ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), [DESIGN](../../../DESIGN.md). 이 문서는 [Focused Mobile UX](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-08-11-portfolio-focused-mobile-ux-design.md)의 대상 편집 표현·행동과 반응형 편집 surface 범위를 대체한다. 결과의 summary-first 계약은 [Summary-First UX](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/specs/2026-08-10-portfolio-summary-first-ux-design.md)를 유지한다.
+
+> 2026-09-22 문서 점검: 당시 implementation plan은 Git에 포함되지 않아 저장소에서 확인할 수 없다. 구현·검증 근거는 [09-16 검증 기록](../evidence/2026-09-16-portfolio-editor/verification.md)을 따른다.
 
 ## Product boundary
 

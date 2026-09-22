@@ -1,5 +1,7 @@
 # Phase 4 Legacy Retirement Design
 
+> **기간 예외 보존:** 구 데이터·백업 변환·원문 보존과 폐기 근거. 최신 제품·UI·저장 세대는 [문서 안내](../README.md)와 PRD를 우선한다. 아래에는 설계 당시의 기록도 포함된다.
+
 **Date:** 2026-09-02
 
 **Status:** Approved
