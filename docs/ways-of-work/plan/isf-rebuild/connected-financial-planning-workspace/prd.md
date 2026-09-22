@@ -341,6 +341,8 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 
 기존 Phase C의 4개 앱 연결 결과 카드 계획은 Account Map 제거로 대체되었다. Main·Simulation·Portfolio의 연결 결과 카드는 별도 후속 설계가 필요하다. Phase 4는 대체 증거와 전체 참조 검색을 거쳐 분류된 legacy runtime과 테스트를 제거했고, standalone old keys와 retired journey snapshot은 foreign record로 남긴다. Task 8의 [최종 전체 검증](../../../../superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)은 이 상태를 통과로 기록했다. hidden trophy room은 금융 workspace와 backup에서 분리된 별도 후속 설계다.
 
+2026-09-21 후속 요청으로 Portfolio 결과 하단의 윤곽 없는 `저장하기`/`공유하기`와 세 앱 종합 이미지의 48시간 공유 링크를 구현한다. 저장은 로컬 PNG, 공유는 확인한 PNG만 Supabase private Storage에 게시하는 방식이다. 공유 생성은 로그인 필요, 링크 열람은 로그인 없이 가능하며 서버 시각으로 48시간 뒤 차단하고 파일을 정기 삭제한다. 원본 workspace와 schema v5·protocol 5·백업 계약은 변경하지 않는다. [이미지 계획](../../../../superpowers/plans/2026-09-21-financial-result-image.md)과 [공유 확장 계획](../../../../superpowers/plans/2026-09-21-result-image-link-sharing.md)을 따른다. 원격 migration·Edge Function·Cron이 운영에 적용되기 전에는 링크 공유를 배포 완료 기능으로 표시하지 않는다.
+
 거래별 지출 기록, 가구 병합, 과거 비교와 주거 구매력은 발견 단계의 후보다. 별도 문제 검증과 PRD 승인 전에는 구현 범위나 완료 요구사항으로 취급하지 않는다.
 
 ## 13. Success Signals

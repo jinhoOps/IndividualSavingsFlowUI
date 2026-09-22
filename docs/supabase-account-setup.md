@@ -149,3 +149,15 @@ v5 쓰기가 시작된 이후 v4 before-image를 그대로 복원하면 새 답�
 ## 2026-09-11 Main 초기화 RPC
 
 `202609110001_main_setup_reset.sql`을 운영에 적용했다. schema v5를 유지하며 기존 행을 변경하지 않고 명시적 초기화만 별도 RPC로 허용한다. 일반 Main 저장은 계속 지출 도우미 내역을 보존한다. [통합 검증·원본 보관 기록](superpowers/evidence/2026-09-11-planning-release.md)을 따른다. 이미 적용된 운영 DB에 migration을 재실행하지 않는다.
+
+## 2026-09-21 결과 이미지 공유 적용
+
+이 절은 `result_card_shares` migration과 두 Edge Function 원본을 포함한 PR의 **운영 적용 절차**다. 이 문서를 갱신한 시점에는 원격 migration·함수·Cron을 적용하거나 실제 공유 링크를 만들지 않았다. 정적 앱만 먼저 배포하면 `저장하기`는 동작하지만 `공유하기`는 서버가 준비될 때까지 성공으로 표시해서는 안 된다.
+
+1. 기존 workspace 데이터와 migration 이력을 백업한 뒤 [result-card migration](../supabase/migrations/202609210001_result_card_shares.sql)을 기존 Supabase migration 절차로 한 번만 적용한다. 이 migration은 workspace schema·RPC·backup을 변경하지 않고 private `result-card-shares` bucket과 공유 메타데이터만 만든다.
+2. `RESULT_CARD_ALLOWED_ORIGINS`에 정확한 정적 앱 origin(현재 `https://jinhoops.github.io`)과 필요한 개발 origin만 쉼표로 등록한다. `RESULT_CARD_CLEANUP_SECRET`에는 충분히 긴 난수 값을 등록한다. service-role key와 cleanup secret은 `VITE_*`, GitHub 공개 변수, 정적 빌드와 브라우저에 절대 넣지 않는다.
+3. `result-card-share`와 `cleanup-result-card-shares`를 배포한다. 전자는 로그인 없는 `GET` 열람도 한 endpoint에서 처리하므로 Edge gateway JWT 검증을 끄고 배포하되, 함수 내부의 `POST`는 Bearer JWT를 `auth.getUser()`로 반드시 다시 검증한다. cleanup도 gateway 대신 전용 secret을 검증하므로 같은 방식으로 배포한다. 이 이유 없이 `--no-verify-jwt`를 다른 함수에 적용하지 않는다.
+4. 5분마다 `POST /functions/v1/cleanup-result-card-shares`를 호출하는 Supabase Scheduler/Cron을 등록하고 `x-result-card-cleanup`에 위 secret을 서버 측에서만 넣는다. 48시간이 지난 `ready` 파일과 15분이 지난 `pending` 파일을 Storage API로 지운 뒤 metadata를 삭제해야 한다. scheduler 실패·Storage 삭제 실패는 다음 주기에 재시도하게 두며, token·이미지·금융 수치를 운영 로그에 남기지 않는다.
+5. 적용 뒤 로그인한 생성, 로그인 없는 fragment 링크 열람, private Storage/table 직접 접근 거부, 만료 직전/직후 새 열람 차단, cleanup 뒤 파일·metadata 제거를 별도 테스트 계정과 이미지로 확인한다. workspace revision과 모든 slice가 생성 전후 동일한지도 비교한다. 실제 48시간 만료·삭제 증거를 남기기 전에는 운영 rollout 완료로 표시하지 않는다.
+
+공유 URL의 token은 fragment에만 두며 private Storage URL·signed URL·workspace JSON을 사용자에게 주지 않는다. 이미 수신자가 내려받거나 메신저가 보관한 이미지 사본은 회수할 수 없다. 상세 계약과 테스트 범위는 [결과 이미지 링크 공유 계획](superpowers/plans/2026-09-21-result-image-link-sharing.md)을 따른다.

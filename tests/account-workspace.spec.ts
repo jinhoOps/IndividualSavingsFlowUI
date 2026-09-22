@@ -33,6 +33,7 @@ function planWithExpenseHistory(): WorkspaceDocument {
 function fakeServer() {
   const rows = new Map<string, WorkspaceDocument>();
   const receipts = new Map<string, unknown>();
+  const shares = new Map<string, {png: Buffer; expiresAt: string}>();
   let failRead = false;
   let readBarrier: Promise<void> | null = null;
   let writeBarrier: Promise<void> | null = null;
@@ -65,6 +66,25 @@ function fakeServer() {
         await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({id: user})}); return;
       }
       if (!user) {await route.fulfill({status: 401, body: '{}'}); return;}
+      if (url.pathname === '/functions/v1/result-card-share') {
+        if (route.request().method() === 'POST') {
+          const token = route.request().headers()['x-result-card-token'];
+          const png = route.request().postDataBuffer();
+          if (route.request().headers()['content-type'] !== 'image/png' || !token || !png?.length) {
+            await route.fulfill({status: 400, json: {error: 'invalid'}}); return;
+          }
+          const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+          shares.set(token, {png, expiresAt});
+          await route.fulfill({status: 201, json: {token, expiresAt}}); return;
+        }
+        const token = route.request().headers()['x-result-card-share'];
+        const share = token ? shares.get(token) : undefined;
+        if (!share) {await route.fulfill({status: 410}); return;}
+        await route.fulfill({status: 200, contentType: 'image/png', body: share.png, headers: {
+          'access-control-expose-headers': 'x-result-card-expires-at', 'cache-control': 'no-store',
+          'x-result-card-expires-at': share.expiresAt,
+        }}); return;
+      }
       const current = rows.get(user);
       if (url.pathname === '/rest/v1/user_workspaces') {
         await readBarrier;
@@ -93,7 +113,7 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, attach, holdWrites() {
+  return {rows, operations, shares, attach, holdWrites() {
     let release!: () => void;
     writeBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {writeBarrier = null; release();};
@@ -102,6 +122,69 @@ function fakeServer() {
     readBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {readBarrier = null; release();};
   }, setFailRead(value: boolean) {failRead = value;}, setFailWrite(value: boolean) {failWrite = value;}, loseNextResponse() {loseResponse = true;}};
+}
+
+function resultCardPlan(): WorkspaceDocument {
+  const workspace = plan();
+  workspace.simulation.draft = {
+    schemaVersion: 3,
+    source: {monthlySavingsWon: 300000, monthlyInvestmentWon: 200000, mainUpdatedAt: 1000},
+    initialInvestmentWon: 15000000, targetAmountWon: 100000000, years: 5,
+    expectedAnnualReturnPercent: 9, baseRatePercent: 3, inflationOffsetPercentPoints: -0.25,
+    amountMode: 'nominal', updatedAt: 1001,
+  };
+  workspace.portfolio.plans = [{
+    schemaVersion: 2, scope: {type: 'aggregate'},
+    items: [{id: 'index', name: '글로벌 인덱스', shareUnits: 700000, order: 0, classification: 'growth', classificationOrigin: 'automatic'}],
+    cashShareUnits: 300000, cashMode: 'automatic', syncedInvestmentWon: 200000, appliedAt: 1002, updatedAt: 1002,
+  }];
+  return workspace;
+}
+
+for (const width of [390, 768, 1280]) {
+  test(`creates and opens a 48-hour result-card link without changing the workspace at ${width}px`, async ({page, context}) => {
+    const server = fakeServer();
+    const workspace = resultCardPlan();
+    server.rows.set(userA, structuredClone(workspace));
+    await server.attach(context, userA);
+    await page.setViewportSize({width, height: 900});
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.goto('apps/portfolio/');
+
+    await page.getByRole('button', {name: '저장하기'}).click();
+    const saveDialog = page.getByRole('dialog', {name: '계획 이미지 저장'});
+    await expect(saveDialog).toBeVisible();
+    await expect(saveDialog.getByRole('button', {name: '이미지 저장'})).toBeEnabled({timeout: 10_000});
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      saveDialog.getByRole('button', {name: '이미지 저장'}).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^ISF-plan-\d{4}-\d{2}-\d{2}\.png$/);
+    expect(server.shares.size).toBe(0);
+    await saveDialog.getByRole('button', {name: '닫기', exact: true}).click();
+
+    await page.getByRole('button', {name: '공유하기'}).click();
+    const dialog = page.getByRole('dialog', {name: '계획 이미지 공유'});
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('switch', {name: '금액 포함'})).toBeVisible();
+    await expect(dialog.getByText('공유 링크는 생성 후 2일 뒤에 만료돼요.')).toBeVisible();
+    await expect(dialog.getByRole('button', {name: '공유 링크 만들기'})).toBeEnabled({timeout: 10_000});
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+    await dialog.getByRole('button', {name: '공유 링크 만들기'}).click();
+    const link = dialog.getByRole('textbox', {name: '공유 링크'});
+    await expect(link).toBeVisible();
+    const url = await link.inputValue();
+    expect(new URL(url).hash).toMatch(/^#[A-Za-z0-9_-]{32,}$/);
+    expect(server.operations).toEqual([]);
+    expect(server.rows.get(userA)).toEqual(workspace);
+    expect(server.shares.size).toBe(1);
+
+    await page.goto(url);
+    await expect(page.getByRole('img', {name: '공유된 나의 자금 계획 이미지'})).toBeVisible();
+    await expect(page.getByText(/까지 볼 수 있어요/)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
 }
 
 for (const width of [390, 768, 1280]) {

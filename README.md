@@ -61,6 +61,8 @@ Main에 적용된 계획이 있으면 화면 최하단에서 추가 스크롤·�
 
 선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화합니다.
 
+적용된 Main·Simulation·Portfolio 결과가 같은 기준일 때, 목록 아래 `저장하기`와 `공유하기`로 1080×1440 PNG를 미리 볼 수 있습니다. 저장은 브라우저 다운로드만 요청합니다. 공유는 확인한 고정 PNG만 업로드해 로그인 없이 열리는 링크를 만들며, 링크는 서버 시각 기준 48시간 뒤 새 열람이 차단됩니다. 금액 포함 스위치는 이미지에만 적용되고 workspace를 바꾸지 않습니다. 운영에서 공유를 켜려면 [결과 이미지 공유 적용 절차](docs/supabase-account-setup.md#2026-09-21-결과-이미지-공유-적용)가 먼저 완료되어야 합니다.
+
 ## 공유 인프라
 
 현재 세 앱은 다음 기반을 공유합니다.
@@ -193,7 +195,7 @@ Node 25 이상에서 실험적 Web Storage가 jsdom과 충돌하면 단위 테�
 Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio는 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
 
 - **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 운영 DB·Pages 배포와 등록한 Google 테스트 계정의 실제 왕복은 검증했습니다. 일반 Google 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
-- **연결 결과 카드**: 기존 Phase C의 4개 앱 연결 계획은 Account Map 제거로 대체되며, 3개 앱 기준의 후속 설계가 필요합니다.
+- **연결 결과 이미지**: Account Map을 제외한 Main·Simulation·Portfolio의 적용 결과를 3:4 PNG로 보관하는 구현을 추가했습니다. 48시간 링크 공유는 별도 Supabase migration·Edge Function·Cron 적용과 실제 운영 검증이 끝난 뒤에만 공개합니다.
 - **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
 - **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room
 - 한국어 은행·카드 알림 텍스트 기반 지출 capture

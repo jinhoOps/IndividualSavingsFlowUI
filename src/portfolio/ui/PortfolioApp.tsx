@@ -40,6 +40,7 @@ import { PortfolioApplyBar } from './PortfolioApplyBar';
 import { PortfolioEditSurface } from './PortfolioEditSurface';
 import { PortfolioManagementMenu } from './PortfolioManagementMenu';
 import { PortfolioSummary } from './PortfolioSummary';
+import { PortfolioResultCardPreview } from './PortfolioResultCardPreview';
 import { PortfolioSetupFlow } from './PortfolioSetupFlow';
 
 export function PortfolioApp({
@@ -103,7 +104,9 @@ export function PortfolioApp({
   const [preferences, setPreferences] = useState<PortfolioViewPreferences>(
     () => preferencesRepository.load(),
   );
+  const [resultCardIntent, setResultCardIntent] = useState<'save' | 'share' | null>(null);
   const editTriggerRef = useRef<HTMLButtonElement>(null);
+  const resultCardTriggerRef = useRef<HTMLButtonElement>(null);
   const resultControlsRef = useRef<HTMLDivElement>(null);
   const delayedApply = useDelayedPending(applyPending, 600);
   const delayedAutomaticSaving = useDelayedPending(
@@ -394,6 +397,14 @@ export function PortfolioApp({
                     editTriggerRef.current = event.currentTarget;
                     dispatchState({ type: 'edit-opened' });
                   }}
+                  onSave={(event) => {
+                    resultCardTriggerRef.current = event.currentTarget;
+                    setResultCardIntent('save');
+                  }}
+                  onShare={(event) => {
+                    resultCardTriggerRef.current = event.currentTarget;
+                    setResultCardIntent('share');
+                  }}
                 />
               </div>
               {state.view === 'edit' || closingEdit !== null ? (
@@ -424,6 +435,14 @@ export function PortfolioApp({
                   onSampleIntentOpened={consumeSampleIntent}
                 />
               ) : null}
+              {resultCardIntent !== null ? <PortfolioResultCardPreview
+                open
+                intent={resultCardIntent}
+                session={accountSession}
+                initialIncludeAmounts={preferences.showAmounts}
+                returnFocusRef={resultCardTriggerRef}
+                onClose={() => setResultCardIntent(null)}
+              /> : null}
             </>
           ) : (
             <>

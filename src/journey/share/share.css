@@ -1,0 +1,5 @@
+.shared-result-page { display: grid; min-height: 100dvh; place-items: center; padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+.shared-result-page__card { display: grid; width: min(100%, 42rem); gap: 1rem; text-align: center; }
+.shared-result-page__card img { display: block; width: 100%; height: auto; border-radius: var(--ui-control-radius); box-shadow: var(--shadow-float); }
+.shared-result-page__card h1, .shared-result-page__card p { margin: 0; }
+.shared-result-page__card .ui-button { justify-self: center; }

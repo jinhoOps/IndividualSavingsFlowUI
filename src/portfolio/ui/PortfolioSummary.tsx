@@ -1,4 +1,5 @@
 import { animate } from 'animejs';
+import { Download, Share2 } from 'lucide-react';
 import { useId, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Surface } from '../../components/common/Surface';
 import {
@@ -41,11 +42,15 @@ export function PortfolioSummary({
   allocation,
   preferences,
   onEdit,
+  onSave,
+  onShare,
 }: {
   investmentWon: number;
   allocation: MaterializedAllocation;
   preferences: PortfolioViewPreferences;
   onEdit?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onSave?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onShare?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   const summaryId = useId();
   const cashShareUnits = Math.round(allocation.cashPercentage * 10_000);
@@ -257,6 +262,19 @@ export function PortfolioSummary({
           );
         })}
       </ul>
+      {onSave !== undefined && onShare !== undefined ? (
+        <footer className="portfolio-result-actions" aria-label="계획 이미지">
+          <div>
+            <button type="button" className="portfolio-result-actions__button" onClick={onSave}>
+              <Download aria-hidden="true" size={18} />저장하기
+            </button>
+            <button type="button" className="portfolio-result-actions__button" onClick={onShare}>
+              <Share2 aria-hidden="true" size={18} />공유하기
+            </button>
+          </div>
+          <p>공유 링크는 2일 뒤에 만료돼요.</p>
+        </footer>
+      ) : null}
     </Surface>
   );
 }
