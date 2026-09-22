@@ -60,6 +60,12 @@
 - 실제 Edge Runtime에서 미소비 POST 오류 응답이 지연되어 본문을 1MB 한도로 읽은 뒤 인증한다. 상한 초과 때 스트림을 취소한다. 최대 저장 바이트 제한과 JWT 요구는 유지된다.
 - cleanup cursor는 변경 가능한 만료 시각 대신 UUID 순서다. 도구는 npx Deno/Supabase CLI를 사용하며 제품 의존성은 추가하지 않았다. footer는 실제 기존 파일 `PortfolioSummary.tsx`에서 수정했다.
 
+## 통합과 로컬 정리
+
+- PR #20을 `b9980c07`로 병합했다. PR CI 통과, 병합 결과와 PR head의 파일 내용 일치, 로컬 main fast-forward를 확인했다.
+- Orca 하위 작업공간과 해당 터미널, 임시 운영 자격 증명·브라우저 변수·로컬 시험 secret을 제거했다. 사용자 workspace 백업은 비공개 위치에 보존했다.
+- 로컬 시험 Supabase 종료 시 OrbStack Docker API가 응답하지 않았다. 시험 CLI 프로세스는 종료했으나 **로컬 컨테이너·volume 제거는 미확인**이다. Docker가 응답하면 `npx --yes supabase stop --project-id result-card-storage-budget --no-backup`으로 이 시험 프로젝트만 정리한다. 운영 Supabase와 무관하다.
+
 ## 남은 확인
 
 - 서버가 반환한 48시간 기한과 시간 이동에 따른 만료·삭제는 검증했다. **실제로 48시간을 기다린 관찰은 미완료**다. 현재 생성한 사용자 링크의 이후 정리 기록으로 확인할 수 있다.
