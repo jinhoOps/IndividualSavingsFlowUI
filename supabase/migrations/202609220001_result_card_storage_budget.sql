@@ -13,7 +13,7 @@ alter table public.result_card_shares add column upload_settled_at timestamptz;
 alter table public.result_card_shares add column deleted_at timestamptz;
 alter table public.result_card_shares add constraint result_card_shares_state_check check(state in ('pending','ready','deleting','deleted'));
 update public.result_card_shares set upload_settled_at=published_at where state='ready';
-alter table public.result_card_shares add constraint result_card_shares_ready_check check(state <> 'ready' or (published_at is not null and expires_at > published_at and upload_settled_at is not null));
+alter table public.result_card_shares add constraint result_card_shares_ready_check check(state <> 'ready' or (published_at is not null and expires_at is not null and expires_at > published_at and upload_settled_at is not null));
 -- Existing ready rows completed an upload under the previous contract.
 -- Add ready constraint after setting their settlement marker.
 create index result_card_shares_owner_created on public.result_card_shares(owner_id,created_at);
@@ -30,11 +30,7 @@ create table public.result_card_share_policy (
  cleanup_cursor uuid,
  cleanup_failed boolean not null default false,
  cleanup_lease_until timestamptz,
- cleanup_generation uuid,
- inventory_cursor text,
- inventory_started_at timestamptz,
- inventory_bytes bigint not null default 0,
- inventory_failed boolean not null default false
+ cleanup_generation uuid
 );
 insert into public.result_card_share_policy(id) values(1);
 alter table public.result_card_share_policy enable row level security;
@@ -101,4 +97,41 @@ end $$;
 
 revoke all on function public.reserve_result_card_share(uuid,uuid,text,text,bigint),public.publish_result_card_share(uuid),public.finish_result_card_delete(uuid),public.claim_result_card_cleanup() from public,anon,authenticated;
 grant execute on function public.reserve_result_card_share(uuid,uuid,text,text,bigint),public.publish_result_card_share(uuid),public.finish_result_card_delete(uuid),public.claim_result_card_cleanup() to service_role;
+
+create table public.result_card_share_runs (
+ id bigint generated always as identity primary key,
+ created_at timestamptz not null default clock_timestamp(),
+ mode text not null check(mode in ('cleanup','inventory')),
+ summary jsonb not null
+);
+alter table public.result_card_share_runs enable row level security;
+revoke all on public.result_card_share_runs from public,anon,authenticated;
+grant select,insert,delete on public.result_card_share_runs to service_role;
+grant usage on sequence public.result_card_share_runs_id_seq to service_role;
+
+-- Read-only Storage metadata reconciliation, in one locked DB transaction.
+-- Actual file removal must always use the Storage API.
+create function public.reconcile_result_card_storage() returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
+declare invalid boolean; actual_bytes bigint; other_bytes bigint; charged bigint; result jsonb;
+begin
+ perform 1 from public.result_card_share_policy where id=1 for update;
+ update public.result_card_shares r set byte_size=(o.metadata->>'size')::bigint
+ from storage.objects o where o.bucket_id='result-card-shares' and o.name=r.object_path and r.byte_size is null and (o.metadata->>'size') ~ '^[1-9][0-9]*$';
+ select exists(select 1 from storage.objects o left join public.result_card_shares r on r.object_path=o.name
+ where o.bucket_id='result-card-shares' and (r.id is null or r.state='deleted' or o.metadata->>'size' is null or not ((o.metadata->>'size') ~ '^[1-9][0-9]*$') or (case when o.metadata->>'size' ~ '^[0-9]+$' then (o.metadata->>'size')::bigint end) is distinct from r.byte_size))
+ or exists(select 1 from public.result_card_shares r where r.state<>'deleted' and (r.byte_size is null or (r.state='ready' and not exists(select 1 from storage.objects o where o.bucket_id='result-card-shares' and o.name=r.object_path))))
+ or exists(select 1 from storage.objects where metadata->>'size' is null or not ((metadata->>'size') ~ '^[0-9]+$')) into invalid;
+ select coalesce(sum(case when metadata->>'size' ~ '^[0-9]+$' then (metadata->>'size')::bigint else 0 end) filter(where bucket_id='result-card-shares'),0),
+ coalesce(sum(case when metadata->>'size' ~ '^[0-9]+$' then (metadata->>'size')::bigint else 0 end) filter(where bucket_id<>'result-card-shares'),0) into actual_bytes,other_bytes from storage.objects;
+ select coalesce(sum(byte_size),0) into charged from public.result_card_shares where state<>'deleted';
+ update public.result_card_share_policy set inventory_valid=not invalid,
+ last_inventory_success_at=case when not invalid then clock_timestamp() else last_inventory_success_at end,
+ capacity_bytes=least(capacity_bytes,greatest(0,400000000-other_bytes)) where id=1;
+ result:=jsonb_build_object('valid',not invalid,'actualBytes',actual_bytes,'otherBytes',other_bytes,'chargedBytes',charged);
+ insert into public.result_card_share_runs(mode,summary) values('inventory',result);
+ delete from public.result_card_share_runs where created_at<clock_timestamp()-interval '7 days';
+ return result;
+end $$;
+revoke all on function public.reconcile_result_card_storage() from public,anon,authenticated;
+grant execute on function public.reconcile_result_card_storage() to service_role;
 commit;

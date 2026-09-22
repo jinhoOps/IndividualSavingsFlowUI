@@ -15,8 +15,8 @@ const rpc=q=>JSON.parse(sql(q));
 const reset=()=>sql(`truncate public.result_card_shares; update public.result_card_share_policy set capacity_bytes=1000000, creation_enabled=true, inventory_valid=true,last_cleanup_success_at=now(),last_inventory_success_at=now(),retention_hours=48 where id=1`);
 try {
  docker(['run','-d','--rm','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust','postgres:17']);
- for(let i=0;i<100;i++){try{docker(['exec',container,'pg_isready','-U','postgres']);break;}catch{await new Promise(r=>setTimeout(r,100));}}
- sql(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); insert into auth.users values('${owner}'); create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
+ for(let i=0;i<100;i++){try{if(!docker(['logs',container]).includes('PostgreSQL init process complete'))throw new Error('initializing');docker(['exec',container,'pg_isready','-U','postgres']);break;}catch{await new Promise(r=>setTimeout(r,100));}}
+ sql(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key); insert into auth.users values('${owner}'); create schema storage; create table storage.objects(bucket_id text,name text,metadata jsonb,primary key(bucket_id,name)); create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
  sql(await readFile(new URL('../supabase/migrations/202609210001_result_card_shares.sql',import.meta.url),'utf8'));
  const migration=await readFile(new URL('../supabase/migrations/202609220001_result_card_storage_budget.sql',import.meta.url),'utf8').catch(()=>null);
  if(migration) sql(migration);
@@ -58,5 +58,12 @@ try {
  sql(`delete from auth.users where id='${owner}'`);
  assert.equal(sql(`select owner_id is null and byte_size=100 from public.result_card_shares where id='${pending.id}'`),'t');
  for(const role of ['anon','authenticated']) assert.throws(()=>sql(`set role ${role}; ${reserve()}`),/permission denied/);
+ reset();
+ assert.equal(sql("select to_regprocedure('public.reconcile_result_card_storage()') is not null"),'t','inventory RPC must exist');
+ sql("insert into storage.objects values('result-card-shares','unknown.png','{\"size\":100}')");
+ assert.equal(rpc('select public.reconcile_result_card_storage()').valid,false);
+ assert.equal(rpc(reserve()).status,'cleanup_unhealthy');
+ sql('truncate storage.objects');
+ assert.equal(rpc('select public.reconcile_result_card_storage()').valid,true);
  console.log('PASS: reservation concurrency, 1MB cap, retry identity, 20/day, health, 24/48h, expiry, unsettled deletion, owner deletion, service-only access');
 } finally { docker(['rm','-f',container]); }
