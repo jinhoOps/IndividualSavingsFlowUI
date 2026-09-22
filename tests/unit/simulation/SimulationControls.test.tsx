@@ -14,6 +14,16 @@ const draft = createDefaultSimulationDraft({
 }, 456);
 
 describe('SimulationControls', () => {
+  it('keeps raw invalid return input protected when the custom-input button is pressed again', () => {
+    render(<SimulationControls draft={draft} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', {name: '직접 입력'}));
+    fireEvent.change(screen.getByRole('spinbutton', {name: '연 기대수익률 직접 입력'}), {target: {value: '31'}});
+    fireEvent.click(screen.getByRole('button', {name: '직접 입력'}));
+    const event = new Event('beforeunload', {cancelable: true});
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it('selects expected-return presets and changes custom return by 0.25%p', () => {
     const onChange = vi.fn();
     render(<SimulationControls draft={draft} onChange={onChange} />);

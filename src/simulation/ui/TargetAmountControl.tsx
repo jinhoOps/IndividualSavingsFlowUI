@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import {useUncommittedInput} from '../../auth/useUncommittedInput';
 import { RotateCcw } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
@@ -26,6 +27,8 @@ export function TargetAmountControl({
 }) {
   const [raw, setRaw] = useState(() => formatInput(targetAmountWon));
   const [error, setError] = useState(false);
+  const parsedInput = parseInput(raw);
+  useUncommittedInput(raw !== formatInput(targetAmountWon) && (parsedInput === null || parsedInput !== targetAmountWon));
   const automaticTarget = targetForInitialInvestment(initialInvestmentWon);
   const isDefault = automaticTarget !== null && targetAmountWon === automaticTarget;
 

@@ -189,14 +189,15 @@ export function ResponsiveDialog({
     const trigger = returnFocusRef.current;
     onClosed();
     if (trigger?.isConnected) trigger.focus();
-    window.requestAnimationFrame(() => {
+    const restoreUnclaimedFocus = () => {
+      const active = document.activeElement;
+      const unclaimed = active === null || active === document.body || active === document.documentElement
+        || active === trigger || (active !== null && dialog?.contains(active));
       const topmost = activeDialogs.at(-1);
-      if (trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
-    });
-    window.setTimeout(() => {
-      const topmost = activeDialogs.at(-1);
-      if (trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
-    }, 0);
+      if (unclaimed && trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
+    };
+    window.requestAnimationFrame(restoreUnclaimedFocus);
+    window.setTimeout(restoreUnclaimedFocus, 0);
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDialogElement>): void {

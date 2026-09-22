@@ -55,7 +55,8 @@ export function PortfolioResultCardPreview({
     staleRef.current = false;
     requestId.current = crypto.randomUUID();
     shareToken.current = newShareToken();
-    setPng(null); setPreviewUrl(null); setShareUrl(null); setExpiresAt(null); setNotice('');
+    // Keep the current image's space while regenerating so the footer cannot jump under a tap.
+    setPng(null); setShareUrl(null); setExpiresAt(null); setNotice('');
     const workspace = session?.snapshot;
     if (!workspace || session?.status !== 'ready' || session.pending !== null) {
       setBuild({kind: 'blocked', reason: 'main-required'});
@@ -148,7 +149,10 @@ export function PortfolioResultCardPreview({
       {previewUrl ? <img className="result-card-preview__image" src={previewUrl} alt="저장하거나 공유할 나의 자금 계획 이미지" /> : null}
       {build?.kind === 'blocked' ? <p role="alert">{blockedCopy}</p> : null}
       {!previewUrl && build?.kind === 'ready' && !notice ? <p role="status">이미지를 준비하고 있어요.</p> : null}
-      <label className="result-card-preview__amounts"><span><strong>금액 포함</strong><small>공유할 이미지에 원화 금액을 표시합니다.</small></span><input type="checkbox" role="switch" checked={includeAmounts} disabled={sharing} onChange={event => setIncludeAmounts(event.target.checked)} /></label>
+      <label className="result-card-preview__amounts"><span><strong>금액 포함</strong><small>공유할 이미지에 원화 금액을 표시합니다.</small></span><input type="checkbox" role="switch" checked={includeAmounts} disabled={sharing} onChange={event => {
+        setPng(null);
+        setIncludeAmounts(event.target.checked);
+      }} /></label>
       {intent === 'share' ? <p className="result-card-preview__privacy">링크를 가진 사람은 누구나 이 이미지를 볼 수 있어요.<br />공유 링크는 생성 후 2일 뒤에 만료돼요.</p> : null}
       {stale ? <p role="alert">계획이 변경됐어요. 미리보기를 닫고 다시 만들어 주세요.</p> : null}
       {notice ? <p role={notice.includes('못했') ? 'alert' : 'status'}>{notice}</p> : null}

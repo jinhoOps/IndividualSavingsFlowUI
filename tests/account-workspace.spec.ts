@@ -3,6 +3,17 @@ import {withExpenseDraft} from '../src/main/infrastructure/expenseAssistantRepos
 import {expect, test, type BrowserContext} from '@playwright/test';
 import {createEmptyWorkspace, type WorkspaceDocument} from '../src/workspace/domain/model';
 import {workspacePayload} from '../src/workspace/infrastructure/workspaceRemote';
+import {buildResultCardModel} from '../src/journey/result-card/model';
+import {renderResultCardSvg} from '../src/journey/result-card/renderResultCardSvg';
+import {writeFile} from 'node:fs/promises';
+
+async function preventsLeaving(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const event = new Event('beforeunload', {cancelable: true});
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+}
 
 const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -142,7 +153,7 @@ function resultCardPlan(): WorkspaceDocument {
 }
 
 for (const width of [390, 768, 1280]) {
-  test(`creates and opens a 48-hour result-card link without changing the workspace at ${width}px`, async ({page, context}) => {
+  test(`creates and opens a 48-hour result-card link without changing the workspace at ${width}px`, async ({page, context}, testInfo) => {
     const server = fakeServer();
     const workspace = resultCardPlan();
     server.rows.set(userA, structuredClone(workspace));
@@ -171,6 +182,12 @@ for (const width of [390, 768, 1280]) {
     await expect(dialog.getByRole('button', {name: '공유 링크 만들기'})).toBeEnabled({timeout: 10_000});
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
+    expect(await preventsLeaving(page)).toBe(false);
+    await dialog.getByRole('switch', {name: '금액 포함'}).click();
+    await expect(dialog.getByRole('button', {name: '공유 링크 만들기'})).toBeEnabled();
+    expect(await preventsLeaving(page)).toBe(false);
+    await page.screenshot({path: testInfo.outputPath('share-preview.png')});
+
     await dialog.getByRole('button', {name: '공유 링크 만들기'}).click();
     const link = dialog.getByRole('textbox', {name: '공유 링크'});
     await expect(link).toBeVisible();
@@ -184,6 +201,55 @@ for (const width of [390, 768, 1280]) {
     await expect(page.getByRole('img', {name: '공유된 나의 자금 계획 이미지'})).toBeVisible();
     await expect(page.getByText(/까지 볼 수 있어요/)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  });
+}
+
+for (const includeAmounts of [true, false]) {
+  test(`result-card text keeps natural glyphs and separate rows (amounts: ${includeAmounts})`, async ({page, context}, testInfo) => {
+    const workspace = resultCardPlan();
+    workspace.portfolio.plans![0]!.items = Array.from({length: 10}, (_, index) => ({
+      id: `asset-${index}`, name: index === 0 ? '금' : index === 1 ? 'SCHD' : '아주 긴 투자 대상 이름과 글로벌 인덱스 펀드',
+      shareUnits: 90000, order: index, classification: 'stable', classificationOrigin: 'automatic',
+    }));
+    workspace.portfolio.plans![0]!.cashShareUnits = 100000;
+    const built = buildResultCardModel(workspace, {includeAmounts});
+    expect(built.kind).toBe('ready');
+    if (built.kind !== 'ready') throw new Error('card fixture');
+    const svg = renderResultCardSvg(built.model);
+    const server = fakeServer();
+    server.rows.set(userA, workspace);
+    await server.attach(context, userA);
+    await page.goto('apps/portfolio/');
+    await page.setViewportSize({width: 1080, height: 1440});
+    await page.setContent(`<style>body{margin:0}</style>${svg}`);
+    await page.screenshot({path: testInfo.outputPath('card.png')});
+    const boxes = await page.locator('svg text').evaluateAll(elements => elements.map(element => {
+      const box = (element as SVGGraphicsElement).getBBox();
+      return {text: element.textContent, className: element.getAttribute('class'), x: box.x, y: box.y, width: box.width, height: box.height};
+    }));
+    const gold = boxes.find(box => box.text === '금')!;
+    expect(gold.width).toBeLessThan(40);
+    for (const box of boxes) {
+      expect(box.x, box.text!).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, box.text!).toBeLessThanOrEqual(1080);
+      expect(box.y + box.height, box.text!).toBeLessThanOrEqual(1440);
+    }
+    for (let i = 0; i < boxes.length; i++) {
+      for (const next of boxes.slice(i + 1)) {
+        const box = boxes[i]!;
+        const overlap = box.x < next.x + next.width && box.x + box.width > next.x
+          && box.y < next.y + next.height && box.y + box.height > next.y;
+        expect(overlap, `${box.text} overlaps ${next.text}`).toBe(false);
+      }
+    }
+    const png = await page.evaluate(async svg => {
+      const modulePath = '/IndividualSavingsFlowUI/src/journey/result-card/files.ts';
+      const {renderResultCardPng} = await import(modulePath);
+      return Array.from(new Uint8Array(await (await renderResultCardPng(svg)).arrayBuffer()));
+    }, svg);
+    const output = testInfo.outputPath('exported-card.png');
+    await writeFile(output, Buffer.from(png));
+    await testInfo.attach('exported-card.png', {path: output, contentType: 'image/png'});
   });
 }
 
@@ -392,9 +458,12 @@ test('simulation target edits persist through the account save path without chan
   const conditions = page.getByRole('dialog', {name: '시뮬레이션 조건'});
   await conditions.getByText('목표와 가정', {exact: true}).click();
   const target = conditions.getByRole('textbox', {name: '목표 금액'});
+  expect(await preventsLeaving(page)).toBe(false);
   await target.fill('150000000');
+  expect(await preventsLeaving(page)).toBe(true);
   await target.press('Enter');
   await expect.poll(() => server.rows.get(userA)?.simulation.draft?.targetAmountWon).toBe(150000000);
+  await expect.poll(() => preventsLeaving(page)).toBe(false);
   await page.reload();
   await page.getByRole('button', {name: '조건 편집'}).click();
   await page.getByRole('dialog', {name: '시뮬레이션 조건'}).getByText('목표와 가정', {exact: true}).click();
@@ -406,6 +475,48 @@ test('simulation target edits persist through the account save path without chan
   for (const key of ['main', 'portfolio', 'locations', 'accountMap'] as const) expect(saved[key]).toEqual(workspace[key]);
   expect(saved.simulation.draft).toMatchObject({...workspace.simulation.draft, targetAmountWon: 160000000, updatedAt: expect.any(Number)});
   expect(server.operations).toEqual(['save_simulation', 'save_simulation']);
+});
+
+test('Main leave guard protects actual edits and pending or failed saves, then releases after success', async ({page, context}) => {
+  const server = fakeServer();
+  server.rows.set(userA, plan());
+  await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: '월 금액 편집'}).click();
+  expect(await preventsLeaving(page)).toBe(false);
+  const living = page.getByLabel('월평균 생활비');
+  await living.fill('1100000');
+  expect(await preventsLeaving(page)).toBe(true);
+  await living.fill('1000000');
+  expect(await preventsLeaving(page)).toBe(false);
+  await living.fill('1200000');
+  const release = server.holdWrites();
+  server.setFailWrite(true);
+  await page.getByRole('button', {name: '적용', exact: true}).click();
+  expect(await preventsLeaving(page)).toBe(true);
+  release();
+  await expect(page.getByRole('button', {name: '저장 결과 다시 확인'})).toBeVisible();
+  expect(await preventsLeaving(page)).toBe(true);
+  server.setFailWrite(false);
+  await page.getByRole('button', {name: '저장 결과 다시 확인'}).click();
+  await expect.poll(() => preventsLeaving(page)).toBe(false);
+  await expect.poll(() => server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1200000);
+});
+
+test('uncommitted remaining-money input is protected and discarding it restores clean browsing', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, plan()); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: /^남는 돈 분배 도우미 · 현재/}).click();
+  const dialog = page.getByRole('dialog', {name: '남는 돈 분배'});
+  expect(await preventsLeaving(page)).toBe(false);
+  await dialog.getByLabel('저축에 추가').fill('9999999');
+  await expect(dialog.getByRole('button', {name: '이렇게 나누기'})).toBeDisabled();
+  expect(await preventsLeaving(page)).toBe(true);
+  page.once('dialog', confirm => confirm.accept());
+  await dialog.getByRole('button', {name: '나중에'}).click();
+  await expect(dialog).not.toBeVisible();
+  expect(await preventsLeaving(page)).toBe(false);
+  expect(server.operations).toEqual([]);
 });
 
 for (const configured of [false, true]) {
@@ -1442,6 +1553,33 @@ for (const failure of ['save-failure', 'conflict'] as const) {
     await expect(page.getByLabel('금액', {exact: true})).toHaveValue('110,000');
   });
 }
+
+test('Portfolio viewing stays clean and server-saved edits no longer block leaving', async ({page, context}) => {
+  const server = fakeServer(); server.rows.set(userA, portfolioEditorPlan()); await server.attach(context, userA);
+  await page.setViewportSize({width: 390, height: 844});
+  await page.emulateMedia({reducedMotion: 'reduce'});
+  await page.goto('apps/portfolio/');
+  await page.locator('.portfolio-allocation-row__select').first().click();
+  const editor = page.getByRole('dialog', {name: '투자 배분 수정'});
+  expect(await preventsLeaving(page)).toBe(false);
+  await editor.getByRole('button', {name: '샘플로 구성하기'}).click();
+  await page.getByRole('button', {name: 'VOO 70 · 금 30', exact: true}).click();
+  expect(await preventsLeaving(page)).toBe(false);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeVisible();
+  await editor.getByRole('button', {name: /인덱스 편집/}).click();
+  const item = page.getByRole('region', {name: '투자 대상 수정'});
+  const amount = item.getByLabel('금액', {exact: true});
+  expect(await preventsLeaving(page)).toBe(false);
+  await amount.fill('110000');
+  expect(await preventsLeaving(page)).toBe(true);
+  await item.getByRole('button', {name: '완료'}).click();
+  await expect.poll(() => server.operations.includes('save_portfolio')).toBe(true);
+  await expect.poll(() => preventsLeaving(page)).toBe(false);
+  await page.reload();
+  expect(await preventsLeaving(page)).toBe(false);
+});
 
 test('Portfolio editor recovers unsent item input and retains offline locks in portaled dialogs', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, portfolioEditorPlan()); await server.attach(context, userA);

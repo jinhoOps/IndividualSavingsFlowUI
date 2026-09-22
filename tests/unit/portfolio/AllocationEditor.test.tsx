@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PortfolioAction } from '../../../src/portfolio/application/portfolioReducer';
-import { setItemAmount } from '../../../src/portfolio/domain/allocation';
+import { setCashAmount, setItemAmount } from '../../../src/portfolio/domain/allocation';
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { AllocationEditor } from '../../../src/portfolio/ui/AllocationEditor';
 import { PortfolioApplyBar } from '../../../src/portfolio/ui/PortfolioApplyBar';
@@ -14,6 +14,22 @@ const draft = setItemAmount(createCashOnlyDraft(200_000, 1), {
 }, 120_000);
 
 describe('AllocationEditor', () => {
+  it('clears consumed cash input even when stored shares round the amount by one won', () => {
+    const initial = createCashOnlyDraft(3000000, 1);
+    const props = {investmentWon: 3000000, onAction: vi.fn(), now: () => 2};
+    const {rerender} = render(<AllocationEditor {...props} draft={initial} />);
+    const cash = screen.getByRole('textbox', {name: '현금 금액'});
+    fireEvent.change(cash, {target: {value: '10000'}});
+    const before = new Event('beforeunload', {cancelable: true});
+    window.dispatchEvent(before);
+    expect(before.defaultPrevented).toBe(true);
+    fireEvent.blur(cash);
+    rerender(<AllocationEditor {...props} draft={setCashAmount(initial, 10000)} />);
+    const after = new Event('beforeunload', {cancelable: true});
+    window.dispatchEvent(after);
+    expect(after.defaultPrevented).toBe(false);
+  });
+
   it('keeps the item form inside the editor surface instead of opening a nested dialog', () => {
     render(<AllocationEditor draft={draft} investmentWon={200_000}
       onAction={vi.fn()} now={() => 2} presentation="edit" />);

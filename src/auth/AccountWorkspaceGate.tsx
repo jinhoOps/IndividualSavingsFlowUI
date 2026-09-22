@@ -290,7 +290,6 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
       }}>최신 저장 계획 보기</button>
     </section>}
     <fieldset key={`${runtime.user.id}:${runtime.generation}:${appGeneration}`}
-      onInputCapture={() => workspace.markEdited()} onChangeCapture={() => workspace.markEdited()}
       className="account-product">
       <AccountWriteRecoveryContext.Provider value={retry}><AccountDraftContext.Provider value={workspace}>{children(workspace)}</AccountDraftContext.Provider></AccountWriteRecoveryContext.Provider>
     </fieldset>

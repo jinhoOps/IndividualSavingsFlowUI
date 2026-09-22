@@ -10,6 +10,18 @@ import { PortfolioExamplePicker, type PortfolioExampleNavigation } from '../../.
 afterEach(cleanup);
 
 describe('PortfolioExamplePicker', () => {
+  it('allows sample browsing and restored ratios without a discard warning', () => {
+    const navigationRef = createRef<PortfolioExampleNavigation>();
+    render(<PortfolioExamplePicker draft={createCashOnlyDraft(200_000, 1)} investmentWon={200_000}
+      now={() => 2} onAction={vi.fn()} onClose={vi.fn()} navigationRef={navigationRef} />);
+    fireEvent.click(screen.getByRole('button', {name: 'VOO 70 · 금 30'}));
+    expect(navigationRef.current?.hasChanges).toBe(false);
+    fireEvent.click(screen.getByRole('button', {name: '주력 비율 5% 높이기'}));
+    expect(navigationRef.current?.hasChanges).toBe(true);
+    fireEvent.click(screen.getByRole('button', {name: '샘플 비율로 되돌리기'}));
+    expect(navigationRef.current?.hasChanges).toBe(false);
+  });
+
   it('preselects the 5% sample as SCHD 50 and gold 50 without marking the picker dirty', () => {
     const navigationRef = createRef<PortfolioExampleNavigation>();
     render(<PortfolioExamplePicker draft={createCashOnlyDraft(200_000, 1)} investmentWon={200_000}

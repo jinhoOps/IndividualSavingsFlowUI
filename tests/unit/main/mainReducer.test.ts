@@ -27,6 +27,22 @@ function dashboardState(applied: MainData): MainState {
 }
 
 describe('mainReducer', () => {
+  it('does not treat unchanged amounts or reverting to the applied amounts as dirty', () => {
+    const applied = appliedData();
+    const initial = dashboardState(applied);
+    expect(mainReducer(initial, {type: 'replace-draft', draft: {...applied}}).dirty).toBe(false);
+    const edited = mainReducer(initial, {type: 'replace-draft', draft: {...applied, monthlySavingWon: 600000}});
+    expect(edited.dirty).toBe(true);
+    expect(mainReducer(edited, {type: 'replace-draft', draft: {...applied, updatedAt: applied.updatedAt + 1}}).dirty).toBe(false);
+  });
+
+  it('protects a setup edit back to applied amounts until the setup save is acknowledged', () => {
+    const applied = appliedData();
+    const setup: MainState = {...dashboardState(applied), mode: 'setup', setupStep: 'income',
+      draft: {...applied, monthlyNetIncomeWon: 4000000}};
+    expect(mainReducer(setup, {type: 'replace-draft', draft: {...applied}}).dirty).toBe(true);
+  });
+
   it('edits only the v2 draft and cancel restores applied data', () => {
     const applied = appliedData();
     const initial = dashboardState(applied);

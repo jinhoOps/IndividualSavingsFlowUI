@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import {useUncommittedInput} from '../../auth/useUncommittedInput';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
 import { Surface } from '../../components/common/Surface';
@@ -31,6 +32,8 @@ export function AdvancedSettings({
   const [baseError, setBaseError] = useState(false);
   const [offsetError, setOffsetError] = useState(false);
   const [initialError, setInitialError] = useState(false);
+  useUncommittedInput(baseError || offsetError || initialError
+    || parseMoneyInput(initialRaw) !== draft.initialInvestmentWon);
 
   useEffect(() => setBaseRaw(String(draft.baseRatePercent)), [draft.baseRatePercent]);
   useEffect(

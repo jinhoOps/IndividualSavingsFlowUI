@@ -41,6 +41,42 @@ function fixture() {
 }
 
 describe('account workspace session', () => {
+  it('protects restored local recovery drafts before any further input', async () => {
+    localStorage.clear();
+    const {session, remote} = fixture();
+    await session.refresh();
+    session.recordRecoveryDraft('main', {typed: '1300000'});
+    session.dispose();
+    const restored = new AccountWorkspaceSession(remote, 'project:user-a', {userId: 'user-a', storage: localStorage});
+    await restored.refresh();
+    expect(restored.localEdits).toBe(true);
+    restored.recordRecoveryDraft('main', null);
+    expect(restored.localEdits).toBe(false);
+  });
+
+  it('keeps newer edits when an earlier save finishes and clears them when that draft is saved', async () => {
+    localStorage.clear();
+    const {session, remote} = fixture();
+    await session.refresh();
+    const first = {schemaVersion: 2 as const, updatedAt: 1000, monthlyNetIncomeWon: 3000000,
+      monthlyHousingWon: 500000, monthlyLivingWon: 500000, monthlySavingWon: 500000, monthlyInvestmentWon: 500000};
+    const next = {...first, monthlySavingWon: 600000};
+    let release!: () => void;
+    const barrier = new Promise<void>(resolve => {release = resolve;});
+    const write = remote.write;
+    remote.write = async (...args) => {await barrier; return write(...args);};
+    session.recordRecoveryDraft('main', first);
+    const saving = session.scope('main').update(0, w => ({...w, main: {...w.main, applied: first}}));
+    session.recordRecoveryDraft('main', next);
+    release();
+    await saving;
+    expect(session.localEdits).toBe(true);
+    expect(session.readRecoveryDraft('main')).toEqual(next);
+    await session.scope('main').update(1, w => ({...w, main: {...w.main, applied: next}}));
+    expect(session.localEdits).toBe(false);
+    expect(session.pending).toBeNull();
+  });
+
   it('reset clears only Main recovery drafts after server success and survives a cached pending retry', async () => {
     localStorage.clear();
     const {session, remote, setCurrent} = fixture();

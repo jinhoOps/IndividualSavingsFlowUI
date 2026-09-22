@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import {useUncommittedInput} from '../../auth/useUncommittedInput';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/Surface';
 import type { CompoundSimulationDraft } from '../domain/model';
@@ -16,6 +17,9 @@ export function SimulationControls({
   const [returnRaw, setReturnRaw] = useState(String(draft.expectedAnnualReturnPercent));
   const [yearsError, setYearsError] = useState(false);
   const [returnError, setReturnError] = useState(false);
+  useUncommittedInput(yearsError || returnError
+    || yearsRaw === '' || Number(yearsRaw) !== draft.years
+    || returnRaw === '' || Number(returnRaw) !== draft.expectedAnnualReturnPercent);
   const [customReturn, setCustomReturn] = useState(
     !RETURN_PRESETS.includes(draft.expectedAnnualReturnPercent as 5 | 9 | 13),
   );

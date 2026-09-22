@@ -34,11 +34,11 @@ export class AccountWorkspaceSession {
   status: AccountWorkspaceStatus = 'loading';
   cacheFailed = false;
   externalRevision = 0;
-  localEdits = false;
+  get localEdits(): boolean { return this.hasRecoveryDrafts() || this.transientEdits.size > 0; }
+  private readonly transientEdits = new Set<symbol>();
   private disposed = false;
   private locked = false;
   private busy = false;
-  private editGeneration = 0;
   private refreshGeneration = 0;
   private accountMapScopeUsed = false;
   private incoming: WorkspaceDocument | null = null;
@@ -60,13 +60,17 @@ export class AccountWorkspaceSession {
     return () => {this.listeners.delete(listener);};
   };
   private emit(): void { if (!this.disposed) this.listeners.forEach(listener => listener()); }
-  markEdited(): void {this.localEdits = true; this.editGeneration++;}
+  setTransientEdit(key: symbol, dirty: boolean): void {
+    if (this.transientEdits.has(key) === dirty) return;
+    if (dirty) this.transientEdits.add(key);
+    else this.transientEdits.delete(key);
+    this.emit();
+  }
   recordRecoveryDraft(key: string, value: unknown | null): void {
     if (!key) return;
     if (value === null) {
       if (!Object.hasOwn(this.recoveryDrafts, key)) return;
       delete this.recoveryDrafts[key];
-      this.localEdits = this.hasRecoveryDrafts();
     }
     else {
       const baseRevision = this.snapshot?.revision ?? 0;
@@ -82,7 +86,6 @@ export class AccountWorkspaceSession {
       if (previous?.baseRevision === baseRevision && sameJson(previous.value, next)) return;
       this.recoveryDrafts[key] = {baseRevision, value: next};
     }
-    if (value !== null) this.localEdits = true;
     this.persist();
     this.emit();
   }
@@ -255,7 +258,7 @@ export class AccountWorkspaceSession {
     return this.sendPending();
   }
   discardPending(): void {
-    this.pending = null; this.localEdits = this.hasRecoveryDrafts();
+    this.pending = null;
     if (this.incoming && (!this.snapshot || this.incoming.revision > this.snapshot.revision)) this.snapshot = this.incoming;
     this.incoming = null;
     this.status = this.snapshot ? 'ready' : 'empty'; this.persist(); this.emit();
@@ -265,7 +268,6 @@ export class AccountWorkspaceSession {
     if (!pending || this.disposed) return {status: 'unavailable'};
     this.refreshGeneration++;
     this.busy = true; this.status = 'saving'; this.persist(); this.emit();
-    const editGeneration = this.editGeneration;
     try {
       const result = await this.remote.write(pending.operation, pending.expectedRevision, structuredClone(pending.payload), pending.mutationId);
       if (this.disposed || this.locked) return {status: 'unavailable'};
@@ -279,7 +281,6 @@ export class AccountWorkspaceSession {
         this.initializationExists = true;
         this.pending = null;
         this.status = 'ready';
-        if (this.editGeneration === editGeneration) this.localEdits = this.hasRecoveryDrafts();
         return {status: 'conflict', currentRevision: this.snapshot!.revision};
       }
       if (result.status === 'conflict') {
@@ -294,7 +295,6 @@ export class AccountWorkspaceSession {
       }
       this.pending = null; this.status = 'ready'; this.rawRemote = null;
       this.clearCoveredRecoveryDrafts(pending);
-      if (this.editGeneration === editGeneration) this.localEdits = this.hasRecoveryDrafts();
       return {status: 'saved', workspace: structuredClone(this.snapshot!)};
     } catch (error) {
       if (this.disposed || this.locked) return {status: 'unavailable'};
@@ -314,6 +314,7 @@ export class AccountWorkspaceSession {
   }
   dispose(clearCache = false): void {
     this.disposed = true;
+    this.transientEdits.clear();
     if (clearCache) this.cache.clear();
     this.refreshGeneration++;
     this.snapshot = null; this.pending = null; this.recoveryDrafts = {}; this.rawRemote = null; this.listeners.clear();
@@ -345,7 +346,6 @@ export class AccountWorkspaceSession {
     for (const key of Object.keys(this.recoveryDrafts)) {
       if (isAccountMapRecoveryKey(key)) delete this.recoveryDrafts[key];
     }
-    this.localEdits = this.hasRecoveryDrafts();
   }
 
   private isAccountMapWrite(pending: PendingWorkspaceWrite | null): boolean {
