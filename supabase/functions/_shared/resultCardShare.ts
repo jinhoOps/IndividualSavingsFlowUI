@@ -56,9 +56,6 @@ export function json(
   return new Response(JSON.stringify(body), { status, headers });
 }
 export async function readLimitedPng(request: Request): Promise<Uint8Array> {
-  if (Number(request.headers.get("content-length")) > MAX_RESULT_CARD_BYTES) {
-    throw json({ code: "image_too_large" }, 413);
-  }
   const reader = request.body?.getReader();
   if (!reader) throw json({ code: "invalid_image" }, 400);
   let timer: ReturnType<typeof setTimeout> | undefined;

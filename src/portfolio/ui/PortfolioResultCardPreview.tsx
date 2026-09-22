@@ -8,7 +8,7 @@ import type { AccountWorkspaceSession } from '../../workspace/infrastructure/acc
 import { downloadResultCard, renderResultCardPng } from '../../journey/result-card/files';
 import { buildResultCardModel, type ResultCardBuild } from '../../journey/result-card/model';
 import { renderResultCardSvg } from '../../journey/result-card/renderResultCardSvg';
-import { createResultCardShareClient } from '../../journey/result-card/shareClient';
+import { createResultCardShareClient, ResultCardShareError } from '../../journey/result-card/shareClient';
 import { resultCardShareUrl } from '../../journey/result-card/shareUrl';
 
 type Intent = 'save' | 'share';
@@ -117,6 +117,11 @@ export function PortfolioResultCardPreview({
       const url = resultCardShareUrl(window.location.origin, import.meta.env.BASE_URL, result.token);
       setShareUrl(url); setExpiresAt(result.expiresAt);
     } catch (error) {
+      if (generation.current !== currentGeneration) return;
+      if (error instanceof ResultCardShareError && error.code === 'share_expired') {
+        requestId.current = crypto.randomUUID();
+        shareToken.current = newShareToken();
+      }
       setNotice(error instanceof Error ? error.message : '공유 링크를 만들지 못했습니다.');
     } finally { if (generation.current === currentGeneration) setSharing(false); }
   }
@@ -143,6 +148,7 @@ export function PortfolioResultCardPreview({
       footerClassName="result-card-preview__footer"
       onClose={() => requestClose('button')}
       footer={<>
+        {intent === 'share' ? <Button type="button" variant="secondary" disabled={!ready || sharing} onClick={save}>이미지 저장</Button> : null}
         {intent === 'save' ? <Button type="button" variant="primary" disabled={!ready} onClick={save}>이미지 저장</Button> : <Button type="button" variant="primary" disabled={!ready || sharing || shareUrl !== null} onClick={() => void createShare()}>{sharing ? '링크 만드는 중…' : '공유 링크 만들기'}</Button>}
       </>}
     >
@@ -153,7 +159,7 @@ export function PortfolioResultCardPreview({
         setPng(null);
         setIncludeAmounts(event.target.checked);
       }} /></label>
-      {intent === 'share' ? <p className="result-card-preview__privacy">링크를 가진 사람은 누구나 이 이미지를 볼 수 있어요.<br />공유 링크는 생성 후 2일 뒤에 만료돼요.</p> : null}
+      {intent === 'share' ? <p className="result-card-preview__privacy">링크를 가진 사람은 누구나 이 이미지를 볼 수 있어요.<br />공유 링크는 최대 2일 동안 열 수 있어요. 정확한 만료 시각은 생성 후 표시돼요.</p> : null}
       {stale ? <p role="alert">계획이 변경됐어요. 미리보기를 닫고 다시 만들어 주세요.</p> : null}
       {notice ? <p role={notice.includes('못했') ? 'alert' : 'status'}>{notice}</p> : null}
       {shareUrl ? <section className="result-card-preview__link" aria-label="공유 링크"><strong>{expiresAt ? `${new Date(expiresAt).toLocaleString('ko-KR')}까지 볼 수 있어요.` : '공유 링크를 만들었어요.'}</strong><input aria-label="공유 링크" value={shareUrl} readOnly /><div><Button type="button" variant="secondary" onClick={() => void copyLink()}><Copy size={18} aria-hidden="true" />링크 복사</Button><Button type="button" variant="primary" onClick={() => void shareLink()}><Share2 size={18} aria-hidden="true" />링크 공유</Button></div></section> : null}

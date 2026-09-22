@@ -1,0 +1,56 @@
+// Real local Supabase only: no remote URL, credential or project arguments accepted.
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFile} from 'node:fs/promises';
+import {randomUUID,randomBytes} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
+import sharp from 'sharp';
+const nativeFetch=globalThis.fetch;
+globalThis.fetch=(input,init)=>nativeFetch(input,{...init,signal:AbortSignal.timeout(20_000)});
+const local=JSON.parse(execFileSync('npx',['--yes','supabase','status','-o','json'],{encoding:'utf8',stdio:['ignore','pipe','pipe']}));
+assert.equal(local.API_URL,'http://127.0.0.1:54321');
+const service=createClient(local.API_URL,local.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const env=await readFile(new URL('../supabase/.env.local',import.meta.url),'utf8');
+const secret=env.match(/^RESULT_CARD_CLEANUP_SECRET=(.+)$/m)?.[1];assert.ok(secret);
+const sql=query=>execFileSync('docker',['exec','supabase_db_result-card-storage-budget','psql','-U','postgres','-Atqc',query],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+const cleanup=async()=>{const r=await fetch(`${local.API_URL}/functions/v1/cleanup-result-card-shares`,{method:'POST',headers:{'x-result-card-cleanup':secret}});const data=await r.json();assert.equal(r.status,200,JSON.stringify(data));return data;};
+const image=await sharp({create:{width:1080,height:1440,channels:4,background:'#f3f2eb'}}).png().toBuffer();
+const email=`share-test-${randomUUID()}@example.com`,password=randomBytes(32).toString('base64url');
+const created=await service.auth.admin.createUser({email,password,email_confirm:true});if(created.error)throw created.error;
+const owner=created.data.user.id;
+try{
+ const login=createClient(local.API_URL,local.ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+ const signed=await login.auth.signInWithPassword({email,password});if(signed.error)throw signed.error;
+ const token=signed.data.session.access_token;
+ sql("update public.result_card_shares set published_at=now()-interval '49 hours',expires_at=now()-interval '1 second' where state='ready' and owner_id in(select id from auth.users where email like 'share-test-%@example.com')");
+ await cleanup();
+ sql(`update public.result_card_share_policy set creation_enabled=true,capacity_bytes=${image.length},retention_hours=48`);
+ const post=async(id,shareToken,png=image)=>fetch(`${local.API_URL}/functions/v1/result-card-share`,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'image/png','x-result-card-request-id':id,'x-result-card-token':shareToken},body:png});
+ const id=randomUUID(),shareToken=randomBytes(32).toString('base64url');
+ const first=await post(id,shareToken);assert.equal(first.status,201,await first.clone().text());const share=await first.json();
+ assert.ok(Date.parse(share.expiresAt)-Date.now()>47.9*3600_000);
+ const retry=await post(id,shareToken);assert.deepEqual(await retry.json(),share);
+ const full=await post(randomUUID(),randomBytes(32).toString('base64url'));assert.equal(full.status,503);assert.equal((await full.json()).code,'capacity_reached');
+ console.log('verified first upload, retry and capacity; checking oversized body');
+ assert.equal((await post(randomUUID(),randomBytes(32).toString('base64url'),new Uint8Array(1_000_001))).status,413);
+ assert.equal((await fetch(`${local.API_URL}/functions/v1/result-card-share`,{method:'POST',body:new Uint8Array(1_000_001)})).status,413);
+ console.log('verified 413; checking anonymous read');
+ const read=await fetch(`${local.API_URL}/functions/v1/result-card-share`,{headers:{'x-result-card-share':shareToken}});assert.equal(read.status,200);assert.equal(read.headers.get('cache-control'),'no-store');assert.equal((await read.arrayBuffer()).byteLength,image.length);
+ const object=sql(`select object_path from public.result_card_shares where request_id='${id}'`);
+ const direct=await fetch(`${local.API_URL}/storage/v1/object/public/result-card-shares/${object}`);assert.notEqual(direct.status,200);
+ sql(`update public.result_card_share_policy set capacity_bytes=400000000,retention_hours=24`);
+ const second=await post(randomUUID(),randomBytes(32).toString('base64url'));assert.equal(second.status,201);const share24=await second.json();assert.ok(Date.parse(share24.expiresAt)-Date.now()<24.01*3600_000);
+ sql(`update public.result_card_shares set published_at=now()-interval '49 hours',expires_at=now()-interval '1 second' where request_id='${id}'`);
+ const expired=await fetch(`${local.API_URL}/functions/v1/result-card-share`,{headers:{'x-result-card-share':shareToken}});assert.equal(expired.status,410);
+ const removed=await cleanup();assert.equal(removed.deleted,1);
+ assert.equal((await service.storage.from('result-card-shares').info(object)).error?.statusCode,'404');
+ const userDeleted=await service.auth.admin.deleteUser(owner);if(userDeleted.error)throw userDeleted.error;
+ const orphanCleanup=await cleanup();assert.equal(orphanCleanup.deleted,1);
+ assert.equal(sql("select count(*) from storage.objects where bucket_id='result-card-shares'"),'0');
+ assert.equal(sql("select coalesce(sum(byte_size),0) from public.result_card_shares where state<>'deleted'"),'0');
+ console.log(`PASS real local Storage: ${image.length}B PNG, authenticated create, 48h/24h, idempotency, byte cap, 413, private read, expiry, actual deletion and owner deletion`);
+}finally{
+ console.log('cleaning local test account');
+ await service.auth.admin.deleteUser(owner);
+ sql('update public.result_card_share_policy set creation_enabled=false,retention_hours=48,capacity_bytes=400000000');
+}

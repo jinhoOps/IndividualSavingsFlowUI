@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. 사용자에게서 받은 Native 실행 선호를 유지한다. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**상태:** 검토용 계획. 체크박스는 모두 미실행이며 운영 변경 승인을 대신하지 않는다.
+**상태:** 2026-09-22 사용자가 구현과 운영 적용을 승인했다. 실행 중 판단은 아래 변경 기록과 evidence를 따른다.
 **Goal:** 공유 이미지의 예약·실제 파일·정리를 연결하여 500MB 운영 예산 안에서 신규 업로드를 제한한다.
 **Architecture:** 단일 정책 행 잠금 아래 바이트·일일 횟수를 원자적으로 예약한다. 기존 private bucket과 두 Edge Function을 확장하고, 실제 파일 삭제가 확인되어야 용량을 반환한다. 클라이언트는 서버 오류와 정확한 만료 시각을 표시한다.
 **Tech Stack:** PostgreSQL migration/RPC, Supabase Storage/Edge Functions/Cron, Deno tests, React/TypeScript, Vitest, Playwright, Docker PostgreSQL 17.
@@ -150,7 +150,7 @@ if (remainingBytes !== initialBytes) throw new Error('failed deletion released c
 **Files:**
 - Modify: `src/journey/result-card/shareClient.ts`
 - Modify: `src/portfolio/ui/PortfolioResultCardPreview.tsx`
-- Modify: `src/portfolio/ui/PortfolioResultActions.tsx`
+- Modify: `src/portfolio/ui/PortfolioSummary.tsx`
 - Modify: `src/journey/share/SharedResultPage.tsx`
 - Modify: `tests/unit/journey/resultCardShareClient.test.ts`, `tests/account-workspace.spec.ts`
 - Modify: `DESIGN.md`(승인된 설계대로 구현된 시점에 기간 안내 갱신)
@@ -197,3 +197,12 @@ const unavailable = '지금은 공유 링크를 만들 수 없어요. 이미지�
 - 설계 §2/3 → Task 1/2, §4 → Task 3/5, §5 → Task 4, §6 → Task 5.
 - Review Focus 5건에 각 담당 작업의 실패 테스트를 배정했다.
 - 현재는 문서 작성만 했다. 새 RPC·runner·함수 테스트는 이 계획에서 만들 대상이며 이미 실행 가능한 결과물로 취급하지 않는다.
+
+## 실행 중 변경 기록
+
+- inventory는 페이지별 Storage 목록 대신 service 전용 RPC에서 `storage.objects`를 읽기 전용으로 대조한다. 일관된 snapshot과 예약 잠금으로 페이지 이동 중 파일 추가·삭제로 인한 누락을 방지한다. 삭제는 여전히 Storage API만 사용한다.
+- cleanup은 변경 가능한 만료 시각 대신 UUID 순서의 cursor로 계속 진행하고 전체 순회 후 실패분을 재방문한다.
+- 실제 Edge Runtime에서 미소비 POST 조기 오류 응답이 지연되어, 본문을 제한된 스트림으로 읽은 뒤 PNG·JWT·헤더를 검사한다. 1MB 제한은 유지한다.
+- 별도 PortfolioResultActions 파일이 없어 기존 PortfolioSummary의 문구를 갱신한다.
+- 전역 CLI 설치 대신 `npx --yes deno`/`npx --yes supabase`를 사용하며 제품 의존성을 추가하지 않는다.
+- 로컬 실제 Storage 검증은 `node scripts/test-result-card-storage-live.mjs`로 재현한다. localhost만 허용하며 운영 URL을 받지 않는다.

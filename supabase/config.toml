@@ -1,4 +1,4 @@
-project_id = "isf-result-card-storage-test"
+project_id = "result-card-storage-budget"
 
 [db]
 major_version = 17

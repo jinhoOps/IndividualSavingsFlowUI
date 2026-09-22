@@ -16,7 +16,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     return json({ code: "method_not_allowed" }, 405, headers);
   } catch (error) {
     if (error instanceof Response) {
-      return new Response(error.body, { status: error.status, headers });
+      return json(await error.json(), error.status, headers);
     }
     return json({ code: "unavailable" }, 503, headers);
   }
@@ -27,6 +27,8 @@ async function createShare(
   request: Request,
   headers: Headers,
 ): Promise<Response> {
+  // Consume a bounded body before an early response: Edge Runtime otherwise stalls unread POSTs.
+  const png = await readLimitedPng(request);
   const user = await authenticatedUser(request);
   if (!user) return json({ code: "unauthorized" }, 401, headers);
   const requestId = request.headers.get("x-result-card-request-id") ?? "",
@@ -37,7 +39,7 @@ async function createShare(
     !/^[A-Za-z0-9_-]{32,128}$/.test(token) ||
     request.headers.get("content-type")?.split(";")[0] !== "image/png"
   ) return json({ code: "invalid" }, 400, headers);
-  const png = await readLimitedPng(request), service = serviceClient();
+  const service = serviceClient();
   const { data: reservation, error } = await service.rpc(
     "reserve_result_card_share",
     {

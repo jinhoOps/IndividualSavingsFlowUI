@@ -39,3 +39,22 @@ describe('result card share client', () => {
       .rejects.toThrow('공유 링크를 만들지 못했습니다.');
   });
 });
+
+it.each([
+  [413, 'image_too_large', '이미지가 커서 링크로 공유할 수 없어요. 이미지로 저장해 주세요.'],
+  [503, 'capacity_reached', '지금은 공유 링크를 만들 수 없어요. 이미지로 저장해 주세요.'],
+  [503, 'cleanup_unhealthy', '지금은 공유 링크를 만들 수 없어요. 이미지로 저장해 주세요.'],
+  [202, 'share_pending', '공유 링크를 준비하고 있어요. 잠시 뒤 다시 시도해 주세요.'],
+  [410, 'share_expired', '이전 공유 요청이 끝났어요. 새 링크를 만들어 주세요.'],
+])('maps status %s/%s to an actionable message', async (status, code, message) => {
+  const client = createResultCardShareClient({supabaseUrl: 'https://example.supabase.co', accessToken: async () => 'jwt',
+    fetcher: async () => Response.json({code}, {status})});
+  await expect(client.create(new Blob(['png'], {type:'image/png'}), 'id', 'a'.repeat(43), new AbortController().signal))
+    .rejects.toMatchObject({code, message});
+});
+it('keeps an oversized local image out of the share request', async () => {
+  const fetcher=vi.fn();
+  const client=createResultCardShareClient({supabaseUrl:'https://example.supabase.co',accessToken:async()=>'jwt',fetcher});
+  await expect(client.create(new Blob([new Uint8Array(1_000_001)], {type:'image/png'}), 'id', 'a'.repeat(43), new AbortController().signal)).rejects.toMatchObject({code:'image_too_large'});
+  expect(fetcher).not.toHaveBeenCalled();
+});

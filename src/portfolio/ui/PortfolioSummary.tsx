@@ -273,7 +273,7 @@ export function PortfolioSummary({
               <Share2 aria-hidden="true" size={18} />공유하기
             </button>
           </div>
-          <p>공유 링크는 2일 뒤에 만료돼요.</p>
+          <p>공유 링크는 최대 2일 동안 열 수 있어요.</p>
         </footer>
       ) : null}
     </Surface>

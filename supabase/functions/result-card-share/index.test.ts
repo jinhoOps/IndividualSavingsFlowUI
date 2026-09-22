@@ -136,3 +136,25 @@ Deno.test("storage failure leaves the charged reservation unpublished", async ()
     assertEquals(calls.some((c) => c.startsWith("DELETE")), false);
   }, true);
 });
+
+Deno.test("rejecting an oversized upload cancels its request stream", async () => {
+  const { readLimitedPng } = await import("../_shared/resultCardShare.ts");
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(1_000_001));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const input = new Request("https://local.test", {
+    method: "POST",
+    headers: { "content-length": "1000001" },
+    body,
+  });
+  try {
+    await readLimitedPng(input);
+  } catch { /* size rejection */ }
+  assertEquals(cancelled, true);
+});

@@ -107,7 +107,7 @@ describe('PortfolioSummary', () => {
     fireEvent.click(screen.getByRole('button', {name: '공유하기'}));
     expect(save).toHaveBeenCalledOnce();
     expect(share).toHaveBeenCalledOnce();
-    expect(screen.getByText('공유 링크는 2일 뒤에 만료돼요.')).toBeVisible();
+    expect(screen.getByText('공유 링크는 최대 2일 동안 열 수 있어요.')).toBeVisible();
   });
 
   it('leads with the stable ratio and hides every won amount by default', () => {

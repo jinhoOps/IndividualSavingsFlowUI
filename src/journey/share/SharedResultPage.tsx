@@ -16,24 +16,52 @@ export function SharedResultPage() {
     if (!token) { setState({kind: 'expired'}); return; }
     let released = false;
     let objectUrl: string | null = null;
-    const controller = new AbortController();
-    void (async () => {
+    let controller: AbortController | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let generation = 0;
+    const releaseImage = () => {
+      clearTimeout(timer);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
+    };
+    async function load() {
+      const current = ++generation;
+      controller?.abort();
+      controller = new AbortController();
+      releaseImage();
+      setState({kind: 'loading'});
       try {
         const config = readSupabaseConfig(import.meta.env);
         const response = await fetch(`${config.url}/functions/v1/result-card-share`, {
-          headers: {'x-result-card-share': token}, signal: controller.signal, cache: 'no-store',
+          headers: {'x-result-card-share': token!}, signal: controller.signal, cache: 'no-store',
         });
-        if (response.status === 404 || response.status === 410) { if (!released) setState({kind: 'expired'}); return; }
+        if (released || generation !== current) return;
+        if (response.status === 404 || response.status === 410) { setState({kind: 'expired'}); return; }
         if (!response.ok) throw new Error('response');
+        const expiresAt = response.headers.get('x-result-card-expires-at');
+        const deadline = expiresAt ? Date.parse(expiresAt) : NaN;
+        if (!Number.isFinite(deadline)) throw new Error('expiry');
         const image = await response.blob();
+        if (released || generation !== current) return;
+        if (deadline <= Date.now()) { setState({kind: 'expired'}); return; }
         if (image.type !== 'image/png' || image.size === 0) throw new Error('image');
         objectUrl = URL.createObjectURL(image);
-        if (!released) setState({kind: 'ready', imageUrl: objectUrl, expiresAt: response.headers.get('x-result-card-expires-at')});
+        setState({kind: 'ready', imageUrl: objectUrl, expiresAt});
+        timer = setTimeout(() => {
+          releaseImage();
+          setState({kind: 'expired'});
+        }, Math.min(deadline - Date.now(), 2_147_483_647));
       } catch (error) {
-        if (!released && (error as {name?: string}).name !== 'AbortError') setState({kind: 'error'});
+        if (!released && generation === current && (error as {name?: string}).name !== 'AbortError') setState({kind: 'error'});
       }
-    })();
-    return () => { released = true; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    }
+    const onVisibility = () => { if (document.visibilityState === 'visible') void load(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    void load();
+    return () => {
+      released = true; generation++; controller?.abort(); releaseImage();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   return <main className="shared-result-page">
