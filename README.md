@@ -1,224 +1,146 @@
-# IndividualSavings Flow UIUX
+# ISF · Individual Savings Flow
 
-개인 재무 흐름을 입력하고 장기 투자 전략과 배분 계획으로 연결하는 정적 웹 앱입니다. Main, Simulation, Portfolio 세 앱이 하나의 Supabase 계정 workspace를 사용합니다.
+월 수입을 지출·저축·투자로 나누고, 미래 자산과 투자 비중을 이어서 계획하는 웹 앱입니다.
 
-- **Main**: 월 실수령액, 지출, 저축, 투자와 남는 돈을 보여주고 월간 계획을 저장합니다.
-- **Simulation**: Main의 월 저축·투자를 기준으로 장기 복리 성장과 전부 저축 기준선을 비교합니다.
-- **Portfolio**: 최신 Main 투자금을 투자 대상과 현금에 배분하고 안정 비중과 배분 결과를 보여줍니다.
+**[앱 열기 →](https://jinhoops.github.io/IndividualSavingsFlowUI/)**
 
-2026-09-15 Account Map 앱을 제거했습니다. 기존 `apps/account-map/`과 `apps/account-map/index.html`은 Main으로 이동하며, 저장된 계좌지도·금융 위치 데이터와 백업·복구 호환성은 유지합니다. [제거 설계](docs/superpowers/specs/2026-09-15-account-map-retirement-design.md)를 참고하세요.
+현재 테스트 운영 중이며, 등록된 Google 테스트 계정 또는 사전 발급된 이메일 계정으로 이용할 수 있습니다. 앱 내 회원가입은 제공하지 않습니다.
 
-배포 페이지: https://jinhoops.github.io/IndividualSavingsFlowUI/
+## 이렇게 사용해요
 
-## 제품 컨셉
+### 1. Main — 이번 달 돈 배분하기
 
-ISF는 단순히 수입과 지출을 기록하는 도구가 아닙니다. 지금 들어오는 돈이 생활비, 저축과 투자로 어떻게 나뉘는지 이해하고, 현재 선택을 장기 계획과 실제 실행으로 연결해 가기 위한 개인 재무 플래닝 도구입니다.
+월 실수령액, 주거비, 생활비, 저축액, 투자액을 입력합니다. 지출·저축·투자의 비중과 남는 돈을 함께 확인하고, 금액을 눌러 수정할 수 있습니다.
 
-현재는 월간 현금흐름을 정리하는 Main, N년 후 기대 자산을 비교하는 Simulation, 최신 Main 투자금을 전체 기준으로 배분하는 Portfolio를 제공합니다.
+- 지출이 막막하면 **항목별로 계산**에서 고정비·변동비 13개 항목을 정리합니다. 입력한 답변은 다음에도 이어서 사용할 수 있습니다.
+- 남는 돈은 **저축·투자에 나누기**로 전부 또는 일부를 배분합니다.
+- 설정 중 나가더라도 저장된 단계부터 이어갈 수 있습니다.
 
-여기서 보여주는 미래 값은 확정된 예측이나 수익 보장이 아닙니다. 사용자가 입력한 현재 상황과 가정을 바탕으로 여러 선택지를 비교하고 더 나은 질문을 만들기 위한 계획용 시나리오입니다.
+### 2. Simulation — 이 계획을 오래 유지하면?
 
-## 프로젝트 목표
+Main의 월 저축·투자에 시작 자산, 기간, 기대수익률을 더해 자산 변화를 살펴봅니다. 전부 저축했을 때와 비교하고, 그래프에서 시점별 금액을 확인할 수 있습니다.
 
-ISF의 세 앱은 다음 질문에 답합니다.
+그래프 아래 **조건 편집**에서 목표 금액과 가정을 바꾸거나 명목·실질 금액을 전환합니다. 결과 아래로 더 내려가면 선택한 기대수익률에 연결된 Portfolio 샘플을 볼 수 있습니다.
 
-- 내 월 수입은 어디로 흘러가는가?
-- 생활비, 저축과 투자 비중은 현재 계획에 맞는가?
-- **Simulation**: 정한 월 저축·투자가 장기 복리로 얼마나 커지는가?
-- **Portfolio**: 선택한 전략을 어떤 투자 대상으로 배분할 것인가?
+### 3. Portfolio — 매달 무엇에 얼마나 투자할지
 
-사용자가 입력한 데이터를 브라우저 안에서 계산하고 시각화하며, 로그인한 Supabase 계정의 workspace를 저장합니다. Google과 임시 이메일·비밀번호 로그인은 같은 사용자 ID와 저장 계약을 사용합니다. 별도 앱 서버나 은행 연동은 없습니다.
+Main에서 정한 월 투자금을 최대 10개 투자 대상과 현금으로 나눕니다. 샘플로 시작하거나 직접 대상을 추가하고, 각 금액에 따른 비중을 확인한 뒤 적용합니다.
 
-## 현재 제품
+결과는 비율 중심으로 표시됩니다. 톱니 메뉴에서 금액 표시와 정렬을 바꿀 수 있습니다. 편집 창은 모바일에서 아래로부터 열리고, 넓은 화면에서는 중앙에 열립니다.
 
-### Main
+세 화면은 앱 아이콘으로 오갈 수 있습니다. 월 수입·지출·저축·투자 금액은 Main에서 수정하며, Simulation과 Portfolio는 그 금액을 이어받습니다.
 
-Main은 월 실수령액, 지출, 저축, 투자와 남는 돈을 한눈에 보여줍니다.
+## 결과를 이미지로 저장하고 공유하기
 
-처음에는 월 실수령액, 주거 고정비, 평균 생활비, 저축, 투자를 빠르게 입력합니다. 각 단계에서 현재 계획과 남는 돈을 바로 확인하고, 마지막 확인 화면에서 지출, 저축, 투자, 남는 돈의 비율을 살펴본 뒤 계획을 적용합니다. 적용 후에는 대시보드에서 같은 수치를 확인하고 수정할 수 있습니다.
+세 앱의 결과를 적용한 뒤 Portfolio 아래의 **저장하기** 또는 **공유하기**를 누릅니다.
 
-Main에서 다루는 주요 내용:
+- 월간 배분·미래 자산·투자 비중을 **3:4 세로형 PNG** 한 장으로 미리 보고 저장합니다.
+- 이미지에 금액을 포함할지 선택할 수 있습니다. 이 선택은 내 계획을 바꾸지 않습니다.
+- 공유 링크는 로그인 없이 열 수 있고, **기본 48시간** 동안 유효합니다. 정확한 만료 시각은 링크를 만들 때 표시됩니다.
+- 공유되는 이미지는 만든 시점의 결과입니다. 이후 계획을 수정해도 기존 링크의 이미지는 바뀌지 않습니다.
+- 링크를 만들 수 없는 경우에도 이미지를 기기에 저장할 수 있습니다.
 
-- 월간 현금흐름 요약
-- 2분 빠른 설정과 중간 이탈 후 재개
-- 지출, 저축, 투자, 남는 돈의 금액과 비율
-- 월 실수령액과 월간 계획 수치 편집
-- 지출 금액을 눌러 고정비·변동비 13개 항목을 계산하고, 기억한 답변의 합계로 주거비·생활비 대체
-- 남는 돈 금액을 눌러 저축·투자에 전부 또는 일부를 나누고, 반영 전후와 남겨둘 돈 확인
-- Supabase 계정 저장과 미전송 입력 복구
+## 저장과 기기 이용
 
-### Simulation
+계획은 로그인한 계정에 저장되어 다른 기기에서도 이어서 사용할 수 있습니다. 저장에 실패하거나 다른 기기에서 먼저 수정한 경우에는 현재 입력을 유지하고 복구 방법을 안내합니다.
 
-Main에 적용된 계획이 있으면 화면 최하단에서 추가 스크롤·스와이프 또는 키보드 Tab으로 `미래 성장 보기`를 드러낼 수 있습니다. 버튼을 누르면 Simulation으로 URL 탐색만 수행합니다. 런처에서도 이동할 수 있습니다. 최초에는 시작 자산, 시작 자산이 2억 원 이상일 때의 조건부 목표 금액, 예상 연 수익률을 한 가지씩 설정하고, 이후에는 결과로 바로 진입합니다. Simulation은 진입할 때마다 계정 workspace의 최신 Main slice를 읽되 Main 원본은 변경하지 않습니다.
+오프라인에서는 마지막으로 불러온 계획을 읽기 전용으로 볼 수 있습니다. 계정 정보와 저장 상태는 톱니 메뉴에서 확인합니다.
 
-기간은 현재를 뜻하는 0년부터 30년까지 조정합니다. 결과는 한국식 정수 금액, 전체 폭 성장 그래프와 전부 저축 비교를 제공하며 pointer·touch·keyboard로 연도별 상세를 확인할 수 있습니다.
+시뮬레이션과 샘플은 입력한 가정을 비교하기 위한 계획 도구입니다. 백테스트 결과나 수익률 보장이 아니며, 은행·증권 계좌 연결, 실시간 시세와 실제 매매 기능은 제공하지 않습니다.
 
-런처는 Main, Simulation, Portfolio를 한 줄 아이콘으로 표시합니다. 현재 앱은 선택선으로 구분합니다. 아이콘의 한글·영문 명칭은 hover, keyboard focus, 모바일 길게 누르기로 확인할 수 있습니다.
+## 개발·운영 참고
 
-### Portfolio
+<details>
+<summary>개발 의도와 제품 원칙</summary>
 
-최신 Main 투자금을 workspace에서 읽어 최대 10개 자유 이름 투자 대상과 현금에 배분합니다. 최초에는 시작·배분·검토의 안내 흐름을 거치고 이후에는 결과로 바로 진입합니다. 각 대상은 성장·안정 분류와 자동 추천·사용자 지정 출처를 소유합니다. 결과에서는 원화 금액을 기본으로 숨긴 채 안정 비중과 가장 큰 배분 대상을 요약하고, 모든 대상을 잇는 100% 가로 막대와 대응 이름·비율 목록을 보여줍니다. 관리 메뉴에서 행 전체를 눌러 전체 금액 표시와 비율순·입력순 정렬을 바꿀 수 있습니다. 배분 단계와 `배분 수정`에서는 7개 샘플 또는 주력·보조 자산 직접 조합을 초안의 출발점으로 사용할 수 있으며, 기존 초안을 바꿀 때는 확인합니다. `배분 수정`은 모바일·태블릿에서 하단 sheet, 데스크톱에서 우측 panel로 열립니다. 현재 UI는 `전체 기준` 적용 계획과 초안만 편집하며 Main을 수정하지 않습니다.
+월간 계획 → 장기 변화 → 투자 배분을 같은 금액 기준으로 이어서 살펴볼 수 있도록 만들었습니다.
 
-선택한 투자 방향을 종목·자산별 적립 금액과 비중으로 구체화합니다.
+- **결과 먼저:** 현재 상태를 숫자와 도표로 보여주고, 필요한 때 편집기를 엽니다.
+- **입력 책임 구분:** 다섯 월간 금액과 지출 도우미 답변은 Main이 관리합니다. Simulation과 Portfolio는 자신의 조건·배분만 수정합니다.
+- **초안과 적용 구분:** 편집 중인 값과 결과에 적용한 계획을 구분합니다. 서버 저장이 확정된 초안은 페이지 이탈을 막지 않습니다.
+- **같은 편집 경험:** 모바일 바텀시트와 웹 중앙 모달이 제목·본문·상태·하단 버튼 배치, 닫기와 초점 복귀 규칙을 공유합니다.
+- **한국어 금액 표현:** 화면에서는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
 
-적용된 Main·Simulation·Portfolio 결과가 같은 기준일 때, 목록 아래 `저장하기`와 `공유하기`로 1080×1440 PNG를 미리 볼 수 있습니다. 저장은 브라우저 다운로드만 요청합니다. 공유는 확인한 고정 PNG만 업로드해 로그인 없이 열리는 링크를 만들며, 기본 48시간 뒤 서버가 열람을 차단합니다. 운영 정책에 따라 새 링크만 24시간으로 바꿀 수 있으며 화면에는 정확한 만료 시각이 표시됩니다. 파일당 1MB·전체 예약 400MB 제한과 5분 정리를 사용하고 링크 생성 실패 시에도 기기 저장은 가능합니다. 금액 포함 스위치는 이미지에만 적용되고 workspace를 바꾸지 않습니다. 운영에서 공유를 켜려면 [결과 이미지 공유 적용 절차](docs/supabase-account-setup.md#2026-09-21-결과-이미지-공유-적용)가 먼저 완료되어야 합니다.
+세부 요구사항은 [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md), UI·접근성 기준은 [DESIGN](DESIGN.md)을 따릅니다.
 
-## 공유 인프라
+</details>
 
-현재 세 앱은 다음 기반을 공유합니다.
+<details>
+<summary>로컬 실행과 검증 명령</summary>
 
-- 세 목적지 앱 런처와 현재 위치 표시
-- 계정당 하나의 Supabase JSONB workspace(schema v5)와 앱별 typed slice adapter
-- RLS 계정 격리, 서버 revision 검사와 mutation receipt를 사용한 동시 저장·중복 재시도 보호
-- 기존 whole-workspace 백업의 검증·복원 호환성과 미전송 입력 복구
-- 모든 slice와 참조를 먼저 검증한 뒤 한 번에 교체하는 atomic restore
-- URL 기반 앱 탐색과 workspace Main slice를 읽는 앱별 read-only adapter
-- Vite PWA가 소유하는 PWA 매니페스트와 배포 서비스워커
-- 공통 디자인 토큰과 버튼·패널 스타일
-
-금융 데이터 원본은 로그인한 계정의 서버 workspace입니다. 브라우저에는 계정별 마지막 snapshot과 미전송 입력을 복구용으로 보관합니다. 오프라인 재방문은 읽기 전용이며, 열린 화면은 focus·online 복귀 또는 visible 상태의 30초 조회로 최신화합니다. 다른 기기가 먼저 저장했으면 입력을 유지하고 명시적으로 재적용합니다. Portfolio의 금액 표시·정렬 같은 보기 설정은 금융 workspace와 별개의 브라우저 설정입니다.
-
-현재 코드는 [지출 도우미 설계](docs/superpowers/specs/2026-09-10-main-expense-assistant-design.md)의 workspace v5를 사용합니다. 기존 [v4 통합](docs/superpowers/specs/2026-09-08-supabase-workspace-v4-integration-design.md) 위에 Main 항목별 답변을 추가하고 모든 RPC에 protocol 5를 요구합니다. Account Map 제거 후에도 `workspace.accountMap`과 `workspace.locations`, schema v5, 서버 protocol 5와 기존 DB migration·RPC를 보존합니다. 계정 캐시는 `isf-account-workspace-v3`이며 구 v2/v1 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 보관합니다.
-
-브라우저 현재 키는 `isf-workspace-v5`이며 명시적 가져오기 후보입니다. 없을 때만 v4 → v3 → 유효한 retired v1/v2 원본 `isf-workspace-v1` 순으로 읽기 전용 변환합니다. invalid 최신 원본에서는 과거 버전으로 fallback하지 않고 원본·foreign record를 변경하거나 삭제하지 않습니다. 일반 톱니 메뉴의 백업 내보내기·가져오기는 제거했습니다. 초기 브라우저 이전·저장 오류 복구용 backup format 4/workspace v5와 기존 format 3/2/1 parser·converter는 유지합니다. 미전송 입력은 별도의 복구 파일로 제공합니다.
-
-톱니 메뉴는 앱별 보기 설정·다시 설정과 계정 정보·로그아웃을 제공합니다. 중복된 `앱 아이콘 안내`는 제거하고 개별 아이콘 툴팁은 유지합니다. 브라우저 계획 이전과 미전송 입력 복구는 해당 데이터가 있을 때만 표시합니다. [메뉴 정리 검증](docs/superpowers/evidence/2026-09-10-management-menu-cleanup.md)을 참고하세요.
-
-## 제품 원칙
-
-- **요약 먼저**: 기본 화면은 입력 폼보다 현재 상태와 다음 행동을 먼저 보여줍니다.
-- **작고 명확한 입력 계약**: Main은 다섯 월간 금액과 지출 계산용 보조 답변을 소유합니다.
-- **명시적 저장**: 큰 편집은 적용 전까지 draft로 유지합니다.
-- **계정별 원본**: 서버 저장 확정 후 성공을 표시하고, 로컬 원본과 미전송 입력은 구분해 보존합니다.
-- **한국어 금액 UX**: 사용자는 만 원·억 원 단위로 읽고 내부 계산과 저장은 원 단위를 유지합니다.
-- **시각화 중심**: 현재 Main의 월 자금 구성과 향후 앱별 시각화는 숫자의 관계를 설명해야 합니다.
-- **명시적 연결**: 앱 이동은 URL만 사용하고 Simulation·Portfolio가 같은 workspace의 최신 Main slice를 읽습니다. Main 금액은 Main UI에서 수정합니다.
-- **책임 분리**: 각 앱은 자신의 draft/applied 상태만 쓰고 다른 제품 slice에는 암묵적으로 write-back하지 않습니다.
-
-## Legacy Migration Status
-
-Account Map의 과거 Phase B 구현과 운영 검증은 이력으로 보존하며 현재 지원 상태를 뜻하지 않습니다. [v4 통합 기록](docs/superpowers/evidence/2026-09-08-supabase-workspace-v4-integration.md), [v5 운영 기록](docs/superpowers/evidence/2026-09-10-expense-assistant-production-rollout.md)과 [Google 연결 기록](docs/superpowers/evidence/2026-09-10-google-oauth-linking.md)은 각 배포 당시의 증거입니다. Google OAuth는 테스트 모드이며 일반 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다.
-
-아직 이관하지 않은 기능이나 데이터 호환성 지식이 남아 있는 레거시 코드는 임시로 보존합니다.
-
-레거시는 지원되는 사용자 경로나 신규 기능의 기반이 아닙니다. 각 기능을 목록화하고 현재 제품에 필요한지 판정한 뒤, 필요한 기능은 현재 책임 경계로 이관하고 불필요한 기능은 폐기 근거를 기록합니다. 사용자 동작과 구버전 저장 데이터의 호환성을 검증하고 모든 runtime·route·selector·storage·test 참조를 제거한 후 레거시 구현을 삭제합니다.
-
-Phase 4에서 구 Main runtime, storage bridge, shared browser layer와 구 서비스워커를 삭제했습니다. `shared/brand/mainBrandGeometry.js`만 이전 shared browser tree에서 남은 파일이며 현재 Main brand icon이 사용합니다. 구 저장 키 문자열은 read-only migration/rollback 경계, 음성 참조 검사와 fixture에만 남습니다. Task 8의 최종 전체 검증은 통과했고, 정확한 명령·참조 감사·반응형 QA 결과는 [Phase 4 disposition](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)에 기록되어 있습니다.
-
-후속 정리에서는 미사용 글로벌 CSS, 예전 시세 생성·문서 변환 스크립트와 검사 출력물을 제거했습니다. 삭제 근거와 현재 저장 호환성 보존 범위는 [잔여 자산 정리 기록](docs/superpowers/plans/2026-09-08-entry-focus-and-legacy-residue.md)에 정리합니다.
-
-## 실행하기
-
-필요 조건:
-
-- Node.js 22 이상 권장
-- npm
-
-설치:
+Node.js 22 이상과 npm을 사용합니다.
 
 ```bash
 npm install
+cp .env.example .env.local
 ```
 
-개발 서버:
-
-`.env.example`을 참고해 `.env.local`에 Supabase URL과 공개 publishable key를 설정합니다. DB 비밀번호·service-role/secret key는 넣지 않습니다. 임시 이메일·비밀번호 로그인은 관리자가 사전 준비한 계정으로 사용하며, 회원가입이나 계정 자동 생성은 제공하지 않습니다. 임시 계정 준비와 Google provider·callback 등록은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다. 로그인 비밀번호는 화면에서 입력하고 소스·환경변수·정적 빌드에 넣지 않습니다. 연결 설정이 없으면 제품 대신 설정 오류를 표시하며 production build도 실패합니다.
+`.env.local`에 Supabase URL과 공개 publishable key를 설정한 뒤 실행합니다. DB 비밀번호·service-role/secret key·로그인 비밀번호는 이 파일이나 정적 빌드에 넣지 않습니다. 연결 설정이 없으면 제품 진입과 production build가 차단됩니다.
 
 ```bash
 npm run dev
 ```
 
-타입 체크:
+| 목적 | 명령 |
+| --- | --- |
+| 타입 검사 | `npm run check` |
+| CI 검사·단위 테스트 | `npm run check:ci` |
+| 전체 E2E | `npm run test:e2e -- --reporter=list` |
+| Main 회귀 | `npx playwright test tests/main-react.spec.ts` |
+| 앱 이동·계정 회귀 | `npx playwright test tests/app-journey.spec.ts tests/account-workspace.spec.ts --reporter=list` |
+| 프로덕션 빌드 | `npm run build` |
 
-```bash
-npm run check
-```
+계정 흐름은 Playwright `--project=cloud`, 로컬 데이터 호환성과 제품 회귀는 테스트 전용 entry의 `--project=chromium`으로 검증합니다. Production entry에는 인증 우회가 없습니다.
 
-전체 E2E 테스트:
+Docker 실행 후 `node scripts/test-workspace-db.mjs`로 DB 권한·트랜잭션을 검증할 수 있습니다. 이 명령은 운영 DB에 접속하지 않습니다. Node 25 이상에서 Web Storage와 jsdom이 충돌하면 단위 테스트에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정합니다.
 
-```bash
-npm run test:e2e -- --reporter=list
-```
+인증·callback 등록과 운영 적용은 [Supabase 운영 안내](docs/supabase-account-setup.md), 변경별 필수 검증은 [Agent Guide](AGENTS.md)를 따릅니다.
 
-빌드:
+</details>
 
-```bash
-npm run build
-```
+<details>
+<summary>구현 구조·데이터 보존·이미지 운영</summary>
 
-## 개발 구조
+Vite 기반 정적 멀티페이지 앱이며 React, TypeScript, Tailwind CSS, Anime.js를 사용합니다. Vite PWA가 매니페스트와 배포 서비스워커를 관리합니다.
 
-이 저장소는 Vite 기반 정적 멀티페이지 앱입니다. 현재 Main, Simulation, Portfolio는 React·TypeScript·Tailwind CSS로 구성됩니다.
+### 계정과 저장
 
-큰 책임 경계:
+- Supabase 계정당 하나의 JSONB workspace(schema v5)를 사용합니다. RLS로 계정을 격리하고 revision 검사·mutation receipt로 동시 저장과 중복 재시도를 보호합니다.
+- 각 앱은 자신의 slice만 저장합니다. 앱 이동은 URL 탐색이며 Simulation·Portfolio는 최신 Main을 읽기 전용으로 참조합니다.
+- 서버 workspace가 원본입니다. 브라우저는 계정별 마지막 snapshot과 미전송 입력을 복구용으로 보관합니다. 보기 설정은 금융 workspace와 별도로 저장합니다.
+- 브라우저 이전은 `isf-workspace-v5` → v4 → v3 → 유효한 retired v1/v2 순으로 후보를 읽습니다. 존재하지만 잘못된 최신 원본에서 과거 버전으로 우회하지 않으며 원본을 변경·삭제하지 않습니다.
+- 계정 캐시는 `isf-account-workspace-v3`입니다. 구 캐시의 미전송 요청은 자동 재전송하지 않고 복구 원문으로 보관합니다.
+- 일반 메뉴에는 수동 백업 기능이 없습니다. 초기 이전·오류 복구용 backup format 4/workspace v5와 구 format 3/2/1의 검증·변환은 유지하며, 모든 slice와 참조 검증 후 한 번에 복원합니다.
 
-- **입력과 정규화**: 사용자 입력과 current workspace/backup payload의 exact validation
-- **draft와 상태**: 편집 중 상태, dirty 판정, 적용과 취소
-- **현재 계산**: Main 월간 현금흐름, 잔액과 적자
-- **현재 시각화**: Main 요약 카드와 월 자금 구성
-- **저장과 공유**: 단일 revisioned workspace, 앱 slice adapter, 공유 금융 위치와 whole-workspace JSON
-- **앱 연결**: URL로 이동하는 Main → Simulation → Portfolio 상세 화면
-- **공통 UI**: 앱 런처, Main 데이터 허브, 피드백, 테마와 PWA
+### 지원 종료 기능의 호환성
 
-## 검증 기준
+Account Map UI는 제거됐고 구 URL은 Main으로 연결됩니다. `workspace.accountMap`·`workspace.locations`, schema v5·서버 protocol 5, DB migration·RPC와 백업·복구 호환성은 보존합니다. 현재 앱의 저장으로 보존 데이터를 변경하지 않습니다. [Account Map 제거 설계](docs/superpowers/specs/2026-09-15-account-map-retirement-design.md)를 따릅니다.
 
-최소 정적 검증:
+과거 runtime과 저장 bridge의 제거 근거는 [필수 스펙·Git 이력 안내](docs/superpowers/README.md)에서 조회할 수 있습니다. 과거 기능은 신규 제품의 구현 기준으로 사용하지 않습니다.
 
-```bash
-npm run check
-```
+### 결과 이미지 운영
 
-사용자 흐름을 변경했다면 관련 Playwright 테스트를 실행합니다.
+기기 저장은 로컬 PNG 다운로드입니다. 공유는 사용자가 확인한 1080×1440 PNG만 private Storage에 업로드하며 원본 workspace를 공개하지 않습니다.
 
-```bash
-npm run test:e2e -- --reporter=list
-```
+신규 파일 최대 1MB, 전체 예약 400MB, 기본 보관 48시간, 정리 주기 5분을 적용합니다. 운영 정책은 새 링크에 한해 24시간으로 변경할 수 있으며 기존 만료 시각은 유지합니다. 실제 파일 삭제 확인 후에만 용량을 반환합니다.
 
-Main의 빠른 설정이나 대시보드를 수정했다면 focused 회귀를 먼저 확인할 수 있습니다.
+2026-09-22 DB·함수·Cron 적용과 자동 정리 실행을 확인했습니다. 실제 48시간 경과 관찰을 포함한 검증 범위·미완료 항목은 [운영 기록](docs/superpowers/evidence/2026-09-22-result-card-storage-budget.md), 변경·장애 대응은 [운영 안내](docs/supabase-account-setup.md)를 따릅니다.
 
-```bash
-npx playwright test tests/main-react.spec.ts
-```
+</details>
 
-세 앱의 이동과 폐기된 Account Map URL의 Main 연결 회귀는 다음 명령으로 실행합니다.
+<details>
+<summary>개발 문서와 향후 검토 항목</summary>
 
-```bash
-npx playwright test tests/app-journey.spec.ts tests/account-workspace.spec.ts --reporter=list
-```
+- [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md): 제품 범위·요구사항·인수 조건
+- [DESIGN](DESIGN.md): UI·반응형·접근성 계약
+- [Agent Guide](AGENTS.md): 작업 경계와 검증 절차
+- [최근 계획·필수 스펙·보관 기준](docs/superpowers/README.md)
+- [아키텍처 결정 기록](docs/adr/)
+- [Supabase 운영 안내](docs/supabase-account-setup.md)
 
-계정 흐름은 `npx playwright test --project=cloud`, 기존 로컬 데이터 호환성과 제품 회귀는 테스트 전용 entry의 `--project=chromium`으로 검증합니다. 인증 우회는 production entry에 없습니다. DB 권한·트랜잭션 검증은 Docker 실행 후 `node scripts/test-workspace-db.mjs`로 수행하며 운영 DB에는 접속하지 않습니다.
+일반 Google 사용자 공개는 후속 운영 범위입니다. 지출 알림 텍스트 입력, 가구 계획, 과거 지출 비교, 부동산 구매력 계획과 별도 trophy room은 향후 검토 항목이며 현재 제공 기능이 아닙니다. 우선순위와 승인 범위는 PRD에서 관리합니다.
 
-Node 25 이상에서 실험적 Web Storage가 jsdom과 충돌하면 단위 테스트에 `NODE_OPTIONS=--no-experimental-webstorage`를 지정합니다.
-
-## 현재 로드맵
-
-Phase A shared workspace foundation과 Main, Simulation, aggregate-first Portfolio는 현재 기준선입니다. 다음 단계는 이 기준선을 보존하며 별도 계획으로 진행합니다.
-
-- **계정 저장 구현**: 정적 배포를 유지하는 [Google 로그인·Supabase 계정별 workspace 저장](docs/superpowers/specs/2026-09-07-supabase-account-workspace-design.md)과 2026-09-08 승인된 임시 이메일·비밀번호 로그인. 운영 DB·Pages 배포와 등록한 Google 테스트 계정의 실제 왕복은 검증했습니다. 일반 Google 사용자 공개와 남은 운영 검증은 [운영 안내](docs/supabase-account-setup.md)의 별도 rollout 항목입니다.
-- **연결 결과 이미지**: Account Map을 제외한 Main·Simulation·Portfolio의 적용 결과를 3:4 PNG로 보관하는 구현을 추가했습니다. 2026-09-22 저장 예산·Supabase 함수·Cron을 적용했습니다. 검증한 범위와 실제 48시간 관찰의 구분은 [운영 기록](docs/superpowers/evidence/2026-09-22-result-card-storage-budget.md)을 따릅니다.
-- **Phase 4 완료**: 분류된 legacy runtime·compatibility path·test 삭제, v1/v2 migration evidence와 [repository-wide 최종 검증](https://github.com/jinhoOps/IndividualSavingsFlowUI/blob/abe6bccf1ffa4b41db26376a9754eab6aca5f265/docs/superpowers/evidence/2026-09-02-phase4-legacy-test-disposition.md)을 기록함
-- **별도 후속**: 금융 workspace·backup과 분리된 hidden trophy room
-- 한국어 은행·카드 알림 텍스트 기반 지출 capture
-- 두 사람의 Main 데이터를 이용한 가구 병합 미리보기
-- 과거 snapshot 대비 현재 지출 비교
-- 가구 소득·부채·DSR·LTV 기반 부동산 구매력 계획
-- 필요한 레거시 기능의 현재 모듈 이관과 검증 후 제거
-
-## 제품 문서
-
-- [Product PRD](docs/ways-of-work/plan/isf-rebuild/connected-financial-planning-workspace/prd.md)
-- [Agent Guide](AGENTS.md)
-- [Superpowers 최근 자료·필수 스펙·보관 기준](docs/superpowers/README.md)
-- [Design Contract](DESIGN.md)
-- [Journey Snapshot Retirement Spec](docs/superpowers/specs/2026-08-03-journey-snapshot-retirement-design.md)
-- [과거 Account Map Planned Account Flow Design](docs/superpowers/specs/2026-09-04-account-map-planned-account-flow-design.md)
-- [Account Flow Decision History](docs/adr/0002-account-flow-belongs-to-portfolio-boundary.md)
-
-## 데이터와 주의사항
-
-ISF는 금융기관 연동, 실시간 시세 연동, 법적 금융 자문을 제공하지 않습니다. 모든 결과는 사용자가 입력한 가정에 기반한 계획용 추정입니다.
-
-대출, 세금, 투자와 부동산 의사결정에는 실제 금융기관 조건과 전문가 검토가 필요합니다.
+</details>
 
 ## 라이선스
 
