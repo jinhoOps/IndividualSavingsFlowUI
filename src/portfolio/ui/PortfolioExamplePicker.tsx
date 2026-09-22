@@ -63,7 +63,6 @@ export function PortfolioExamplePicker({
   const [error, setError] = useState<string | null>(null);
   const [wide, setWide] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1100px)').matches);
   const [detailPage, setDetailPage] = useState(false);
-  const [selectionTouched, setSelectionTouched] = useState(false);
   const initialSampleAppliedRef = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -87,6 +86,9 @@ export function PortfolioExamplePicker({
     previewLegs,
   ]);
   const hasExistingAllocation = draft.items.length > 0 || draft.cashMode === 'manual';
+  const originalLegs = initialSample?.exampleId === selectedExampleId ? initialSample.legs : selectedExample?.legs;
+  const hasChanges = (adjustedExampleLegs !== null && JSON.stringify(adjustedExampleLegs) !== JSON.stringify(originalLegs))
+    || leadAssetId !== '' || assistants.some(Boolean) || leadPercentage !== (initialSample?.leadPercentage ?? 70);
 
   useEffect(() => {
     setConfirmationCandidate(null);
@@ -136,9 +138,10 @@ export function PortfolioExamplePicker({
     } else onClose();
   }
 
+  useUncommittedInput(active && hasChanges);
   useImperativeHandle(navigationRef, () => ({
     back,
-    hasChanges: selectionTouched || leadAssetId !== '' || assistants.some(Boolean),
+    hasChanges,
   }));
 
   function chooseMode(nextMode: 'examples' | 'direct'): void {
@@ -157,7 +160,6 @@ export function PortfolioExamplePicker({
       ? selectedExampleLegs
       : selectedExample.legs;
     setAdjustedExampleLegs(rebalanceLead(baseLegs, nextLeadPercentage));
-    setSelectionTouched(true);
     setConfirmationCandidate(null);
     setError(null);
   }
@@ -234,7 +236,6 @@ export function PortfolioExamplePicker({
                         setDetailPage(true);
                         setSelectedExampleId(example.id);
                         if (selectedExampleId !== example.id) setAdjustedExampleLegs(null);
-                        setSelectionTouched(true);
                         setConfirmationCandidate(null);
                         setError(null);
                       }}
@@ -272,7 +273,6 @@ export function PortfolioExamplePicker({
                 {adjustedExampleLegs === null ? null : (
                   <Button type="button" variant="quiet" onClick={() => {
                     setAdjustedExampleLegs(initialSample?.exampleId === selectedExample.id ? initialSample.legs : null);
-                    setSelectionTouched(true);
                   }}>샘플 비율로 되돌리기</Button>
                 )}
               </section>
@@ -289,7 +289,6 @@ export function PortfolioExamplePicker({
                     onChange={(event) => {
                       const next = event.currentTarget.value as PortfolioAssetId | '';
                       setLeadAssetId(next);
-                      setSelectionTouched(true);
                       setAssistants((current) => current.map((id) => id === next ? '' : id));
                     }}
                   >
@@ -298,7 +297,6 @@ export function PortfolioExamplePicker({
                   </select>
                 </label>
                 <LeadPercentageControl value={leadPercentage} onChange={(value) => {
-                  setSelectionTouched(true);
                   setLeadPercentage(value);
                 }} />
                 <label>
@@ -307,7 +305,6 @@ export function PortfolioExamplePicker({
                     aria-label="보조 투자 대상 1"
                     value={assistants[0]}
                     onChange={(event) => {
-                      setSelectionTouched(true);
                       setAssistant(0, event.currentTarget.value as PortfolioAssetId | '');
                     }}
                   >
@@ -323,7 +320,6 @@ export function PortfolioExamplePicker({
                         aria-label="보조 투자 대상 2"
                         value={assistants[1]}
                         onChange={(event) => {
-                          setSelectionTouched(true);
                           setAssistant(1, event.currentTarget.value as PortfolioAssetId | '');
                         }}
                       >
@@ -332,13 +328,11 @@ export function PortfolioExamplePicker({
                       </select>
                     </label>
                     <Button type="button" variant="quiet" onClick={() => {
-                      setSelectionTouched(true);
                       setAssistants((current) => [current[0]]);
                     }}>보조 대상 2 제거</Button>
                   </>
                 ) : (
                   <Button type="button" variant="quiet" disabled={assistants[0] === ''} onClick={() => {
-                    setSelectionTouched(true);
                     setAssistants((current) => [...current, '']);
                   }}>
                     보조 대상 하나 더 추가
@@ -534,3 +528,4 @@ function exampleErrorMessage(error: string): string {
   if (error === 'invalid-investment') return 'Main의 월 투자금을 먼저 확인해 주세요.';
   return '이 구성은 현재 투자금으로 만들 수 없어요. 다시 선택해 주세요.';
 }
+import {useUncommittedInput} from '../../auth/useUncommittedInput';

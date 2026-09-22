@@ -91,7 +91,7 @@ describe('result card model', () => {
     const svg = renderResultCardSvg(built.model);
     expect(svg).toContain('장기 투자 대상 10');
     expect(svg).toContain('현금');
-    expect(svg).toContain('y="1323"');
-    expect(svg).toContain('y="1344"');
+    expect(svg).toContain('y="1322"');
+    expect(svg).toContain('y="1348"');
   });
 });

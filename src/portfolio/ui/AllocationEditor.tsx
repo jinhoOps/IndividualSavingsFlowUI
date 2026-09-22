@@ -50,6 +50,11 @@ export function AllocationEditor({
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
   const [rawValues, setRawValues] = useState<Record<string, string>>({});
+  useUncommittedInput(Object.entries(rawValues).some(([id, raw]) => {
+    const savedAmount = id === 'cash' ? allocation.cashAmountWon
+      : allocation.items.find(item => item.id === id)?.amountWon;
+    return savedAmount !== undefined && parseWonInput(raw) !== savedAmount;
+  }));
   const [cashError, setCashError] = useState<string | null>(null);
   const activeFieldError = cashError ?? fieldError;
   const [cashExpanded, setCashExpanded] = useState(false);
@@ -406,7 +411,7 @@ export function AllocationEditor({
               }
               updateCashError(null);
               onAction({ type: 'draft-cash-changed', amountWon, now: now() });
-              setRawValues((current) => ({ ...current, cash: formatWonInput(amountWon, { zeroDisplay: 'zero' }) }));
+              setRawValues(({cash: _cash, ...rest}) => rest);
             }}
           />
           </label>
@@ -559,3 +564,4 @@ function errorMessage(code: string): string {
   };
   return messages[code] ?? '입력값을 확인해 주세요.';
 }
+import {useUncommittedInput} from '../../auth/useUncommittedInput';

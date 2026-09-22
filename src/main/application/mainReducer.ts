@@ -30,7 +30,7 @@ export function mainReducer(state: MainState, action: MainAction): MainState {
       return {
         ...state,
         draft: cloneMainData(action.draft),
-        dirty: true,
+        dirty: state.mode === 'setup' || state.applied === null || !sameAmounts(action.draft, state.applied),
         saveStatus: 'idle',
       };
     case 'cancel-draft':
@@ -75,4 +75,12 @@ export function mainReducer(state: MainState, action: MainAction): MainState {
 
 export function cloneMainData(data: MainData): MainData {
   return { ...data };
+}
+
+function sameAmounts(left: MainData, right: MainData): boolean {
+  return left.monthlyNetIncomeWon === right.monthlyNetIncomeWon
+    && left.monthlyHousingWon === right.monthlyHousingWon
+    && left.monthlyLivingWon === right.monthlyLivingWon
+    && left.monthlySavingWon === right.monthlySavingWon
+    && left.monthlyInvestmentWon === right.monthlyInvestmentWon;
 }

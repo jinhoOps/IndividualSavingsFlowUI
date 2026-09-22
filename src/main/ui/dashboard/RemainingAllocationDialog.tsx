@@ -1,5 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { AccountDraftContext, AccountWriteRecoveryContext } from '../../../auth/AccountDraftContext';
+import {useUncommittedInput} from '../../../auth/useUncommittedInput';
 import { AccountProductBoundary } from '../../../auth/AccountManagementContext';
 import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
@@ -38,6 +39,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, returnFo
   const proposal = allocateRemaining(base, savingWon, investmentWon);
   const total = savingWon + investmentWon;
   const error = inputError || (!proposal ? '추가할 금액이 남는 돈보다 많아요. 금액을 줄여주세요.' : '');
+  useUncommittedInput(error !== '');
 
   useLayoutEffect(() => { headingRef.current?.focus(); }, []);
   useEffect(() => {
@@ -51,8 +53,6 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, returnFo
     setInputError(''); setSavingWon(saving); setInvestmentWon(investment);
     const next = allocateRemaining(base, saving, investment);
     if (next) onDraftChange(next);
-    // Register even an initially rejected edit so cancel clears account edit tracking.
-    else if (!dirty) onDraftChange(base);
   }
 
   function requestClose(_reason: DialogCloseReason): boolean {
