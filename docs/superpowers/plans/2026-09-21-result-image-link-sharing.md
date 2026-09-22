@@ -4,6 +4,8 @@
 **기준 문서:** [전체 설계 §5.4/6](../specs/2026-09-21-responsive-overlays-and-result-card-design.md), [이미지 생성 C1~C4](2026-09-21-financial-result-image.md), [총괄 계획](2026-09-21-responsive-experience.md).
 **목표:** Portfolio를 세 앱 결과의 마지막 보관·공유 지점으로 사용한다. 같은 3:4 이미지를 기기에 저장하거나, 로그인 없이 열리는 48시간 링크로 전달한다.
 
+**2026-09-22 후속 설계(미구현):** 500MB 이미지 예산 요청에 따른 [저장 용량·자동 삭제 설계](../specs/2026-09-22-result-card-storage-budget-design.md)와 [실행 계획](2026-09-22-result-card-storage-budget.md)을 작성했다. 승인·구현 후 이 문서의 파일당 5MiB, 예약·정리와 기간 안내 계약을 대체한다. 현재 운영 적용 상태가 바뀌었다는 뜻은 아니다.
+
 ## 1. 사용자 경험과 디자인
 
 기존 [이미지 디자인 예시](../evidence/2026-09-21-responsive-overlays/07-result-card-concept.png)의 종이색 배경, 월 자금 → 미래 자산 → 투자 배분 순서를 유지한다. 이미지 안에 앱 버튼을 넣지 않는다.

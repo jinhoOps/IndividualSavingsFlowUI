@@ -154,6 +154,8 @@ v5 쓰기가 시작된 이후 v4 before-image를 그대로 복원하면 새 답�
 
 이 절은 `result_card_shares` migration과 두 Edge Function 원본을 포함한 PR의 **운영 적용 절차**다. 이 문서를 갱신한 시점에는 원격 migration·함수·Cron을 적용하거나 실제 공유 링크를 만들지 않았다. 정적 앱만 먼저 배포하면 `저장하기`는 동작하지만 `공유하기`는 서버가 준비될 때까지 성공으로 표시해서는 안 된다.
 
+2026-09-22의 500MB 예산 요청은 [저장 예산 설계](superpowers/specs/2026-09-22-result-card-storage-budget-design.md)와 [실행 계획](superpowers/plans/2026-09-22-result-card-storage-budget.md)으로 검토 중이다. 아래 기존 절차만으로 전체 용량 제한이나 삭제 장애 시 생성 중지가 제공되지는 않는다. 신규 운영 활성화 시 이 후속 설계의 적용 여부와 전체 bucket 사용량을 함께 확인한다.
+
 1. 기존 workspace 데이터와 migration 이력을 백업한 뒤 [result-card migration](../supabase/migrations/202609210001_result_card_shares.sql)을 기존 Supabase migration 절차로 한 번만 적용한다. 이 migration은 workspace schema·RPC·backup을 변경하지 않고 private `result-card-shares` bucket과 공유 메타데이터만 만든다.
 2. `RESULT_CARD_ALLOWED_ORIGINS`에 정확한 정적 앱 origin(현재 `https://jinhoops.github.io`)과 필요한 개발 origin만 쉼표로 등록한다. `RESULT_CARD_CLEANUP_SECRET`에는 충분히 긴 난수 값을 등록한다. service-role key와 cleanup secret은 `VITE_*`, GitHub 공개 변수, 정적 빌드와 브라우저에 절대 넣지 않는다.
 3. `result-card-share`와 `cleanup-result-card-shares`를 배포한다. 전자는 로그인 없는 `GET` 열람도 한 endpoint에서 처리하므로 Edge gateway JWT 검증을 끄고 배포하되, 함수 내부의 `POST`는 Bearer JWT를 `auth.getUser()`로 반드시 다시 검증한다. cleanup도 gateway 대신 전용 secret을 검증하므로 같은 방식으로 배포한다. 이 이유 없이 `--no-verify-jwt`를 다른 함수에 적용하지 않는다.
