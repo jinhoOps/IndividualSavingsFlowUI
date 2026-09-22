@@ -25,6 +25,7 @@
 
 .responsive-dialog__surface {
   display: grid;
+  inline-size: 100%;
   max-height: calc(100dvh - 48px);
   min-height: 0;
 }
@@ -133,13 +134,26 @@
     height: min(46rem, calc(100dvh - 48px));
   }
 
+  .responsive-dialog[data-size='wide'] {
+    height: min(54rem, calc(100dvh - 48px));
+  }
+
   .responsive-dialog[data-size='form'] .responsive-dialog__surface,
-  .responsive-dialog[data-size='form'] .responsive-dialog__layout {
+  .responsive-dialog[data-size='form'] .responsive-dialog__layout,
+  .responsive-dialog[data-size='wide'] .responsive-dialog__surface,
+  .responsive-dialog[data-size='wide'] .responsive-dialog__layout {
     height: 100%;
   }
 }
 
 @media (max-width: 767px) {
+  @media (prefers-reduced-motion: no-preference) {
+    .responsive-dialog[data-mobile-entrance='true'] {
+      opacity: 0;
+      transform: translateY(100dvh);
+    }
+  }
+
   .responsive-dialog {
     inset: auto 0 0;
     width: 100%;
@@ -155,6 +169,10 @@
   .responsive-dialog__surface { max-height: min(92dvh, calc(100dvh - 8px)); }
 
   .responsive-dialog[data-mobile-height='full'] { height: min(92dvh, calc(100dvh - 8px)); }
+  .responsive-dialog[data-mobile-height='full'] .responsive-dialog__surface,
+  .responsive-dialog[data-mobile-height='full'] .responsive-dialog__layout { height: 100%; }
+
+  .responsive-dialog__body { max-height: calc(92dvh - 12rem); }
 
   .responsive-dialog__header { padding-right: max(1.25rem, env(safe-area-inset-right)); padding-left: max(1.25rem, env(safe-area-inset-left)); }
   .responsive-dialog__context,

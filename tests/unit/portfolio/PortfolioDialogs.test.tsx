@@ -7,6 +7,7 @@ import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../../src/c
 import { createCashOnlyDraft } from '../../../src/portfolio/domain/allocation';
 import { PortfolioApplyBar } from '../../../src/portfolio/ui/PortfolioApplyBar';
 import { PortfolioDialog } from '../../../src/portfolio/ui/PortfolioDialog';
+import { PortfolioEditSurface } from '../../../src/portfolio/ui/PortfolioEditSurface';
 import { AccountManagementContext, AccountProductBoundary } from '../../../src/auth/AccountManagementContext';
 import { PortfolioManagementMenu } from '../../../src/portfolio/ui/PortfolioManagementMenu';
 
@@ -50,6 +51,41 @@ afterEach(() => {
 });
 
 describe('Portfolio confirmation dialogs', () => {
+  it('edits an item inside one shared surface with a back action', () => {
+    const draft = {
+      ...createCashOnlyDraft(200_000, 1),
+      items: [{
+        id: 'index', name: '미국 인덱스', order: 0, shareUnits: 600_000,
+        classification: 'growth' as const, classificationOrigin: 'automatic' as const,
+      }],
+      cashShareUnits: 400_000,
+    };
+
+    render(<PortfolioEditSurface
+      draft={draft}
+      investmentWon={200_000}
+      dirty={false}
+      saveError={false}
+      applying={false}
+      showSaving={false}
+      fieldError={null}
+      returnFocusRef={{ current: null }}
+      onAction={vi.fn()}
+      onCancel={vi.fn()}
+      onApply={vi.fn()}
+      showAmounts
+      now={() => 2}
+    />);
+
+    const dialog = screen.getByRole('dialog', { name: '투자 배분 수정' });
+    expect(dialog.querySelector('[data-surface-layout="edit"]')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: /미국 인덱스 편집/ }));
+
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: '투자 대상 이름' })).toHaveValue('미국 인덱스');
+  });
+
   it('preserves the account offline lock when a dialog escapes its parent DOM', () => {
     const content = <AccountProductBoundary><PortfolioDialog labelledBy="offline-title" onClose={vi.fn()} returnFocusRef={{ current: null }}>
       <h2 id="offline-title">계정 편집</h2><input aria-label="입력" /><button>완료</button>
@@ -165,14 +201,15 @@ describe('Portfolio confirmation dialogs', () => {
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
     expect(screen.getByRole('complementary', { name: '배분 변경' })).toHaveClass('ui-surface');
-    expect(dialog).toHaveClass('ui-surface');
+    expect(dialog).toHaveClass('responsive-dialog');
+    expect(dialog.querySelector('[data-surface-layout="confirm"]')).toBeTruthy();
     const cancel = within(dialog).getByRole('button', { name: '계속 수정' });
     const confirm = within(dialog).getByRole('button', { name: '배분 적용' });
     expect(cancel).toHaveFocus();
 
     confirm.focus();
     fireEvent.keyDown(dialog, { key: 'Tab' });
-    expect(cancel).toHaveFocus();
+    expect(within(dialog).getByRole('button', { name: '닫기' })).toHaveFocus();
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
     expect(confirm).toHaveFocus();
 

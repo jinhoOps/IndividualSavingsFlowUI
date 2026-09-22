@@ -1,5 +1,5 @@
 import { animate, remove as removeAnimations } from 'animejs';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { createProductSpring } from './tokens';
 
 const ACTIVATION_DISTANCE_PX = 8;
@@ -58,7 +58,7 @@ export function useSheetDismiss({
     return () => media.removeEventListener?.('change', update);
   }, [mediaQuery]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = rootRef.current;
     if (root === null || !enabled || !matchesMedia) return undefined;
     const handle = root.querySelector<HTMLElement>('[data-sheet-drag-handle]');

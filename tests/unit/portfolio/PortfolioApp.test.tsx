@@ -127,8 +127,9 @@ describe('PortfolioApp', () => {
     fireEvent.click(editor, { clientX: -1, clientY: -1 });
     expect(screen.getByRole('dialog', { name: '변경사항을 버릴까요?' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '계속 수정' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '변경사항을 버릴까요?' })).not.toBeInTheDocument());
     expect(editor).toHaveTextContent('110,000원');
-    fireEvent.click(screen.getByRole('button', { name: '편집기 닫기' }));
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
     fireEvent.click(screen.getByRole('button', { name: '변경 버리기' }));
     await waitFor(() => expect(trigger).toHaveFocus());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -151,9 +152,9 @@ describe('PortfolioApp', () => {
     expect(editor).toBeVisible();
     const discard = screen.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
     const keep = within(discard).getByRole('button', { name: '계속 입력' });
-    expect(keep).toHaveFocus();
+    await waitFor(() => expect(keep).toHaveFocus());
     fireEvent.keyDown(keep, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: '입력 내용을 버릴까요?' })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '입력 내용을 버릴까요?' })).not.toBeInTheDocument());
     expect(name).toHaveValue('새 이름');
     await waitFor(() => expect(name).toHaveFocus());
     const amount = screen.getByLabelText('금액');
@@ -197,16 +198,17 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     fireEvent.change(screen.getByLabelText('투자 대상 이름'), { target: { value: '새 인덱스' } });
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
-    expect(cash).toHaveValue('900,000');
-    expect(cash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    const updatedCash = screen.getByLabelText('현금 금액');
+    expect(updatedCash).toHaveValue('900,000');
+    expect(updatedCash).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
     const apply = screen.getByRole('button', { name: '적용' });
     expect(apply).toBeDisabled();
     fireEvent.click(apply);
     expect(screen.queryByRole('dialog', { name: '투자 배분을 적용할까요?' })).not.toBeInTheDocument();
     expect(repository.applied?.items[0].shareUnits).toBe(600_000);
 
-    fireEvent.change(cash, { target: { value: '90000' } });
-    fireEvent.blur(cash);
+    fireEvent.change(updatedCash, { target: { value: '90000' } });
+    fireEvent.blur(updatedCash);
     expect(apply).toBeEnabled();
     fireEvent.click(apply);
     fireEvent.click(screen.getByRole('button', { name: '배분 적용' }));
@@ -583,7 +585,9 @@ describe('PortfolioApp', () => {
 
     expect(screen.getByTestId('portfolio-result-controls')).toHaveTextContent('안정 40%');
     expect(screen.getByRole('region', { name: '현재 배분 요약' })).toHaveTextContent('안정 45%');
-    expect(anime.animate).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ duration: 260 }));
+    await waitFor(() => expect(anime.animate).toHaveBeenCalledWith(
+      expect.any(HTMLElement), expect.objectContaining({ duration: 260 }),
+    ));
 
     fireEvent.click(screen.getByRole('button', { name: '적용' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' }))

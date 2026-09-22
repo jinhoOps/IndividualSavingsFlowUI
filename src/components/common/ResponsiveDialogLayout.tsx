@@ -8,9 +8,13 @@ export interface ResponsiveDialogLayoutProps {
   eyebrow?: ReactNode;
   onBack?: () => void;
   onClose: () => void;
+  closeInitialFocus?: boolean;
   context?: ReactNode;
+  contextHidden?: boolean;
   status?: ReactNode;
   footer?: ReactNode;
+  bodyClassName?: string;
+  footerClassName?: string;
   children: ReactNode;
   layout?: 'edit' | 'step' | 'settings' | 'preview' | 'confirm';
 }
@@ -22,9 +26,13 @@ export function ResponsiveDialogLayout({
   eyebrow,
   onBack,
   onClose,
+  closeInitialFocus = true,
   context,
+  contextHidden = false,
   status,
   footer,
+  bodyClassName,
+  footerClassName,
   children,
   layout = 'edit',
 }: ResponsiveDialogLayoutProps) {
@@ -43,7 +51,8 @@ export function ResponsiveDialogLayout({
             {eyebrow ? <p className="responsive-dialog__eyebrow">{eyebrow}</p> : null}
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button className="responsive-dialog__icon-button" type="button" aria-label="닫기" data-dialog-initial-focus onClick={() => {
+          <button className="responsive-dialog__icon-button" type="button" aria-label="닫기"
+            data-dialog-initial-focus={closeInitialFocus ? '' : undefined} onClick={() => {
             if (requestDialogClose) requestDialogClose('button');
             else onClose();
           }}>
@@ -51,12 +60,12 @@ export function ResponsiveDialogLayout({
           </button>
         </div>
       </header>
-      {context ? <div className="responsive-dialog__context" data-surface-context="">{context}</div> : null}
-      <div className="responsive-dialog__body" data-surface-body="" role="region" aria-label={bodyLabel}>
+      {context ? <div className="responsive-dialog__context" data-surface-context="" hidden={contextHidden}>{context}</div> : null}
+      <div className={`responsive-dialog__body${bodyClassName ? ` ${bodyClassName}` : ''}`} data-surface-body="" role="region" aria-label={bodyLabel}>
         {children}
       </div>
       {status ? <div className="responsive-dialog__status" data-surface-status="">{status}</div> : null}
-      {footer ? <footer className="responsive-dialog__footer" data-surface-footer="">{footer}</footer> : null}
+      {footer ? <footer className={`responsive-dialog__footer${footerClassName ? ` ${footerClassName}` : ''}`} data-surface-footer="">{footer}</footer> : null}
     </section>
   );
 }

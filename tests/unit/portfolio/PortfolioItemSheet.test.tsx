@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRef } from 'react';
@@ -170,7 +170,7 @@ describe('PortfolioItemSheet', () => {
     expect(stylesheet).toContain('.portfolio-item-sheet__classification-origin .ui-button { min-height: 44px;');
   });
 
-  it.each(['취소', 'Escape', 'backdrop'] as const)('closes pristine input directly through %s', (route) => {
+  it.each(['취소', 'Escape', 'backdrop'] as const)('closes pristine input directly through %s', async (route) => {
     const props = renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
 
@@ -178,11 +178,11 @@ describe('PortfolioItemSheet', () => {
     if (route === 'Escape') fireEvent.keyDown(sheet, { key: 'Escape' });
     if (route === 'backdrop') fireEvent.click(sheet);
 
-    expect(props.onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(props.onClose).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole('dialog', { name: '입력 내용을 버릴까요?' })).not.toBeInTheDocument();
   });
 
-  it('protects dirty input, preserves it on continue, and discards only after confirmation', () => {
+  it('protects dirty input, preserves it on continue, and discards only after confirmation', async () => {
     const props = renderSheet();
     const sheet = screen.getByRole('dialog', { name: '투자 대상 추가' });
     const name = within(sheet).getByLabelText('투자 대상 이름');
@@ -192,12 +192,13 @@ describe('PortfolioItemSheet', () => {
     const confirmation = screen.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
     expect(props.onClose).not.toHaveBeenCalled();
     fireEvent.click(within(confirmation).getByRole('button', { name: '계속 입력' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '입력 내용을 버릴까요?' })).not.toBeInTheDocument());
     expect(name).toHaveValue('미국 인덱스');
 
     fireEvent.keyDown(sheet, { key: 'Escape' });
-    fireEvent.click(within(screen.getByRole('dialog', { name: '입력 내용을 버릴까요?' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: '입력 내용을 버릴까요?' }))
       .getByRole('button', { name: '버리기' }));
-    expect(props.onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(props.onClose).toHaveBeenCalledTimes(1));
   });
 
   it('connects duplicate-name and minimum-amount errors to their fields', () => {
