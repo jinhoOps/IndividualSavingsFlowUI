@@ -58,8 +58,8 @@ type ReserveStatus = 'reserved' | 'pending' | 'ready' | 'expired'
 // finish_result_card_delete(p_id uuid) -> boolean
 ```
 
-- [ ] DB runner를 작성한다. `docker run --rm postgres:17`로 고유 이름 컨테이너를 만들고 `finally`에서 삭제한다. 원격 DSN은 받지 않는다. `auth.users`, anon/authenticated/service_role, `storage.buckets` fixture 후 기존 공유 migration과 새 migration만 실행한다. 저장 파일 자체의 검증은 Task 5에서 수행한다.
-- [ ] 실제 독립 psql 연결 두 개를 동시에 실행하는 테스트를 먼저 추가한다. 각 1,000,000B 예약, capacity 1,000,000B, 깨끗한 정책 heartbeat/inventory를 fixture로 설정한다. 서버 함수가 없는 초기에는 실패를 확인한다: `node scripts/test-result-card-storage-db.mjs`.
+- [x] DB runner를 작성한다. `docker run --rm postgres:17`로 고유 이름 컨테이너를 만들고 `finally`에서 삭제한다. 원격 DSN은 받지 않는다. `auth.users`, anon/authenticated/service_role, `storage.buckets` fixture 후 기존 공유 migration과 새 migration만 실행한다. 저장 파일 자체의 검증은 Task 5에서 수행한다.
+- [x] 실제 독립 psql 연결 두 개를 동시에 실행하는 테스트를 먼저 추가한다. 각 1,000,000B 예약, capacity 1,000,000B, 깨끗한 정책 heartbeat/inventory를 fixture로 설정한다. 서버 함수가 없는 초기에는 실패를 확인한다: `node scripts/test-result-card-storage-db.mjs`.
 
 ```js
 // runner's assertions after two concurrent RPC calls, parsed as JSON:
@@ -67,9 +67,9 @@ assert.deepEqual(results.map(r => r.status).sort(), ['capacity_reached', 'reserv
 assert.equal(Number(sql("select coalesce(sum(byte_size),0) from public.result_card_shares where state <> 'deleted'")), 1_000_000);
 ```
 
-- [ ] migration에 설계 §3의 필드·정책을 추가한다. 기존 행은 크기를 알기 전 0으로 간주하지 않는다. backfill 전 생성 비활성화/미대조 상태로 두고 nullable legacy 값이 남으면 예약을 거부한다. 기존 object path 정규식도 실제 유효/무효 경로 insert 테스트로 확인한다.
-- [ ] bucket의 신규 업로드 제한을 `file_size_limit=1000000`으로 낮춘다. 이 설정 변경이 기존 큰 객체를 지우지 않는지 Task 5 실제 Storage 시험에 포함한다.
-- [ ] 예약 RPC의 정책 행 잠금 → 기존 요청 검사 → 건강 상태 → quota → 총 바이트 → insert 순서를 구현한다. 동일 정책 잠금을 게시·삭제 완료 RPC에도 적용한다. 합계 기반으로 구현하여 실패한 트랜잭션이 바이트를 따로 차감하지 않게 한다.
+- [x] migration에 설계 §3의 필드·정책을 추가한다. 기존 행은 크기를 알기 전 0으로 간주하지 않는다. backfill 전 생성 비활성화/미대조 상태로 두고 nullable legacy 값이 남으면 예약을 거부한다. 기존 object path 정규식도 실제 유효/무효 경로 insert 테스트로 확인한다.
+- [x] bucket의 신규 업로드 제한을 `file_size_limit=1000000`으로 낮춘다. 이 설정 변경이 기존 큰 객체를 지우지 않는지 Task 5 실제 Storage 시험에 포함한다.
+- [x] 예약 RPC의 정책 행 잠금 → 기존 요청 검사 → 건강 상태 → quota → 총 바이트 → insert 순서를 구현한다. 동일 정책 잠금을 게시·삭제 완료 RPC에도 적용한다. 합계 기반으로 구현하여 실패한 트랜잭션이 바이트를 따로 차감하지 않게 한다.
 
 ```sql
 select * into policy from public.result_card_share_policy where id = 1 for update;
@@ -81,8 +81,8 @@ if charged + p_byte_size > policy.capacity_bytes then
 end if;
 ```
 
-- [ ] 20회 경계 동시 요청, 다른 body/hash의 동일 요청, cleanup 15분/inventory 24시간 경계, deleted tombstone 유지, owner 삭제 시 경로 보존, 일반 사용자 RPC 접근 거부 테스트를 추가한다. 조회 index는 `(owner_id,created_at)`, 정리 대상 `state/expires_at/created_at`을 지원한다.
-- [ ] 동일 DB 명령을 다시 실행해 통과를 확인하고 migration·runner만 커밋한다. 커밋 전 `git var GIT_AUTHOR_IDENT`가 `KIM JINHO <okho04@gmail.com>`인지 확인한다.
+- [x] 20회 경계 동시 요청, 다른 body/hash의 동일 요청, cleanup 15분/inventory 24시간 경계, deleted tombstone 유지, owner 삭제 시 경로 보존, 일반 사용자 RPC 접근 거부 테스트를 추가한다. 조회 index는 `(owner_id,created_at)`, 정리 대상 `state/expires_at/created_at`을 지원한다.
+- [x] 동일 DB 명령을 다시 실행해 통과를 확인하고 migration·runner만 커밋한다. 커밋 전 `git var GIT_AUTHOR_IDENT`가 `KIM JINHO <okho04@gmail.com>`인지 확인한다.
 
 ### Task 2: 업로드와 서버 응답
 
@@ -101,7 +101,7 @@ export async function readLimitedPng(request: Request): Promise<Uint8Array>;
 // Handler tests stub outbound fetch for Auth, RPC and Storage, restore in finally.
 ```
 
-- [ ] Deno tests에 Content-Length 누락/위조, chunked 합계 초과, 잘못된 PNG, 미인증 요청을 추가한다. `deno test --allow-env supabase/functions/result-card-share/index.test.ts`로 미구현 실패를 확인한다. 외부 fetch는 모두 stub하며 실제 Storage에 접속하지 않는다.
+- [x] Deno tests에 Content-Length 누락/위조, chunked 합계 초과, 잘못된 PNG, 미인증 요청을 추가한다. `deno test --allow-env supabase/functions/result-card-share/index.test.ts`로 미구현 실패를 확인한다. 외부 fetch는 모두 stub하며 실제 Storage에 접속하지 않는다.
 
 ```ts
 Deno.test('rejects a body over 1 MB before upload', async () => {
@@ -114,10 +114,10 @@ Deno.test('rejects a body over 1 MB before upload', async () => {
 });
 ```
 
-- [ ] 스트림 reader가 상한을 넘으면 cancel하고, 기존 signature/IHDR 검사와 SHA-256 계산을 수행한다. 인증 후 Task 1 RPC를 호출하고 `reserved`만 Storage upload를 한 번 실행한다. `upsert:false`를 유지한다.
-- [ ] 상태를 HTTP로 변환한다: ready=201, pending=202, expired=410, conflict=409, daily_limit=429, capacity/health=503. 실패 body는 `{code}`, 429는 `retryAt`, 202는 `Retry-After: 3`을 제공한다. ready는 기존 `{token,expiresAt}`을 유지한다.
-- [ ] 성공 응답 유실 후 재시도 시 upload 한 번·동일 expiresAt, pending 재시도 시 추가 upload 없음, 다른 body는 409, Storage timeout 시 예약 유지, 기한 후 publish 거부, owner 없는 GET 거부를 검증한다. body 읽기와 외부 요청의 timeout은 각각 30초로 두고, timeout을 삭제 완료의 증거로 취급하지 않는다.
-- [ ] `deno check supabase/functions/result-card-share/index.ts`와 Deno tests를 통과시키고 생성 함수 변경을 커밋한다.
+- [x] 스트림 reader가 상한을 넘으면 cancel하고, 기존 signature/IHDR 검사와 SHA-256 계산을 수행한다. 인증 후 Task 1 RPC를 호출하고 `reserved`만 Storage upload를 한 번 실행한다. `upsert:false`를 유지한다.
+- [x] 상태를 HTTP로 변환한다: ready=201, pending=202, expired=410, conflict=409, daily_limit=429, capacity/health=503. 실패 body는 `{code}`, 429는 `retryAt`, 202는 `Retry-After: 3`을 제공한다. ready는 기존 `{token,expiresAt}`을 유지한다.
+- [x] 성공 응답 유실 후 재시도 시 upload 한 번·동일 expiresAt, pending 재시도 시 추가 upload 없음, 다른 body는 409, Storage timeout 시 예약 유지, 기한 후 publish 거부, owner 없는 GET 거부를 검증한다. body 읽기와 외부 요청의 timeout은 각각 30초로 두고, timeout을 삭제 완료의 증거로 취급하지 않는다.
+- [x] `deno check supabase/functions/result-card-share/index.ts`와 Deno tests를 통과시키고 생성 함수 변경을 커밋한다.
 
 ### Task 3: 실제 파일 삭제와 사용량 대조
 
@@ -128,9 +128,9 @@ Deno.test('rejects a body over 1 MB before upload', async () => {
 
 **Interfaces:** secret으로 인증한 POST만 허용한다. body 없음=cleanup, `{"mode":"inventory"}`=inventory. 응답은 `{processed,deleted,failed,unsettled,remaining,complete}` 집계만 제공한다. token/path를 공개하지 않는다. DB의 `finish_result_card_delete`는 `deleting`이면서 `upload_settled_at`이 있는 행만 deleted로 바꿀 수 있다.
 
-- [ ] Deno fetch stub으로 삭제 500 오류, 삭제 성공 후 DB 실패, 동시 Cron, 105건 중 앞쪽 5건 실패 사례를 먼저 작성한다. `deno test --allow-env supabase/functions/cleanup-result-card-shares/index.test.ts`로 미구현 실패를 확인한다.
-- [ ] 조건부 상태 갱신, 100건 cursor, 45초 처리 예산, Storage remove→부재 확인→RPC 순서를 구현한다. RPC 전에는 용량을 반환하지 않는다. complete는 모든 페이지 처리 완료 때만 true이며 실패한 행도 cursor를 진행한다.
-- [ ] 정책 행에 cleanup/inventory cursor와 작업 세대를 저장한다. 45초 중단 후 다음 5분 호출에서 이어받고, 동시 호출은 조건부 세대 갱신으로 오래된 cursor를 덮어쓰지 못하게 한다. 시간 예산을 소진하는 앞쪽 실패 파일 때문에 뒤쪽 파일이 영구 대기하지 않는 테스트를 추가한다.
+- [x] Deno fetch stub으로 삭제 500 오류, 삭제 성공 후 DB 실패, 동시 Cron, 105건 중 앞쪽 5건 실패 사례를 먼저 작성한다. `deno test --allow-env supabase/functions/cleanup-result-card-shares/index.test.ts`로 미구현 실패를 확인한다.
+- [x] 조건부 상태 갱신, 100건 cursor, 45초 처리 예산, Storage remove→부재 확인→RPC 순서를 구현한다. RPC 전에는 용량을 반환하지 않는다. complete는 모든 페이지 처리 완료 때만 true이며 실패한 행도 cursor를 진행한다.
+- [x] 정책 행에 cleanup/inventory cursor와 작업 세대를 저장한다. 45초 중단 후 다음 5분 호출에서 이어받고, 동시 호출은 조건부 세대 갱신으로 오래된 cursor를 덮어쓰지 못하게 한다. 시간 예산을 소진하는 앞쪽 실패 파일 때문에 뒤쪽 파일이 영구 대기하지 않는 테스트를 추가한다.
 
 ```ts
 // After mocked Storage deletion fails, verify the externally observable contract:
@@ -139,11 +139,11 @@ const remainingBytes = rows.filter(row => row.state !== 'deleted')
 if (remainingBytes !== initialBytes) throw new Error('failed deletion released capacity');
 ```
 
-- [ ] 업로드 미완료로 15분 지난 예약을 deleting으로 바꾸고, 늦게 upload 응답이 와도 publish 불가·예약 바이트 유지·재업로드 불가를 테스트한다. upload 성공 뒤 DB 갱신 실패도 자동 반환하지 않는다.
-- [ ] owner 삭제, 이미 없는 완결된 파일, 만료 전 1MB 초과 기존 파일, deleted 행의 24시간 보존을 DB runner와 함수 tests로 확인한다.
-- [ ] inventory 모드에 Storage 전체 페이지 조회, 기존 행 byte_size backfill, 미확인 path/크기 차이 시 생성 중지를 구현한다. active pending을 한 번의 목록 부재로 해제하지 않는다. 모든 페이지 조회 성공·일치 때만 inventory 성공 시각을 갱신한다.
-- [ ] heartbeat, 7일 집계·로그 정리를 추가한다. cleanup 성공, 대상 0건, 부분 실패, inventory 중간 실패의 시각 갱신 조건과 secret header 미설정·오류 시 401을 검증한다.
-- [ ] DB runner, `deno check supabase/functions/cleanup-result-card-shares/index.ts`, 두 함수 Deno tests를 통과시키고 커밋한다.
+- [x] 업로드 미완료로 15분 지난 예약을 deleting으로 바꾸고, 늦게 upload 응답이 와도 publish 불가·예약 바이트 유지·재업로드 불가를 테스트한다. upload 성공 뒤 DB 갱신 실패도 자동 반환하지 않는다.
+- [x] owner 삭제, 이미 없는 완결된 파일, 만료 전 1MB 초과 기존 파일, deleted 행의 24시간 보존을 DB runner와 함수 tests로 확인한다.
+- [x] inventory 모드에 Storage 전체 페이지 조회, 기존 행 byte_size backfill, 미확인 path/크기 차이 시 생성 중지를 구현한다. active pending을 한 번의 목록 부재로 해제하지 않는다. 모든 페이지 조회 성공·일치 때만 inventory 성공 시각을 갱신한다.
+- [x] heartbeat, 7일 집계·로그 정리를 추가한다. cleanup 성공, 대상 0건, 부분 실패, inventory 중간 실패의 시각 갱신 조건과 secret header 미설정·오류 시 401을 검증한다.
+- [x] DB runner, `deno check supabase/functions/cleanup-result-card-shares/index.ts`, 두 함수 Deno tests를 통과시키고 커밋한다.
 
 ### Task 4: 기간·실패 UX와 브라우저 자원 해제
 
@@ -157,8 +157,8 @@ if (remainingBytes !== initialBytes) throw new Error('failed deletion released c
 
 **Interfaces:** 기존 `create(png, requestId, token, signal)`과 `{token,expiresAt}`을 유지한다. HTTP error code를 안내 문구로 변환하고 pending/expired를 UI에서 식별한다. 오류 타입은 `ResultCardShareError extends Error { code: string; retryAt?: string }`로 shareClient에서 export한다.
 
-- [ ] Vitest에 413/429/503/202/410 응답 fixture를 추가한다. workspace를 보내지 않는 것, retryAt이 없으면 임의의 재개 시각을 표시하지 않는 것을 검증한다. `npm run test:unit -- tests/unit/journey/resultCardShareClient.test.ts`로 실패를 확인한다.
-- [ ] 설계 §5의 문구와 상태를 구현한다. 1MB 초과를 클라이언트에서도 미리 안내하고 서버에서도 검사한다. 실패 후 현재 PNG 저장은 가능하게 한다. 202는 동일 request로 재시도하고, 410의 새 생성 동작에서만 request/token을 갱신한다.
+- [x] Vitest에 413/429/503/202/410 응답 fixture를 추가한다. workspace를 보내지 않는 것, retryAt이 없으면 임의의 재개 시각을 표시하지 않는 것을 검증한다. `npm run test:unit -- tests/unit/journey/resultCardShareClient.test.ts`로 실패를 확인한다.
+- [x] 설계 §5의 문구와 상태를 구현한다. 1MB 초과를 클라이언트에서도 미리 안내하고 서버에서도 검사한다. 실패 후 현재 PNG 저장은 가능하게 한다. 202는 동일 request로 재시도하고, 410의 새 생성 동작에서만 request/token을 갱신한다.
 
 ```ts
 // Error mapping contract in shareClient.ts:
@@ -166,10 +166,10 @@ const unavailable = '지금은 공유 링크를 만들 수 없어요. 이미지�
 // capacity_reached and cleanup_unhealthy share one user-facing message.
 ```
 
-- [ ] 생성 전 안내를 최대 2일, 성공 후 안내를 서버 expiresAt으로 통일하고 48h/24h를 모두 E2E로 확인한다.
-- [ ] 수신 화면에 expiresAt timer와 visibilitychange 재검사를 추가한다. 만료·종료·교체 시 object URL 해제를 검증하고 Service Worker에 이미지나 token을 담은 응답이 저장되지 않는지 확인한다.
-- [ ] 390px/768px/1280px에서 용량 실패→이미지 저장, pending→성공, 만료→새 생성, 금액 제외 흐름을 확인한다. overflow·overlay containment·focus·44px touch target·도표 가시성과 workspace revision 불변을 검증한다.
-- [ ] `npm run check`, focused unit, `npx playwright test tests/account-workspace.spec.ts`를 통과시키고 커밋한다. 공유 저장·수신 route 영향을 포함한 전체 E2E는 Task 5에서 실행한다.
+- [x] 생성 전 안내를 최대 2일, 성공 후 안내를 서버 expiresAt으로 통일하고 48h/24h를 모두 E2E로 확인한다.
+- [x] 수신 화면에 expiresAt timer와 visibilitychange 재검사를 추가한다. 만료·종료·교체 시 object URL 해제를 검증하고 Service Worker에 이미지나 token을 담은 응답이 저장되지 않는지 확인한다.
+- [x] 390px/768px/1280px에서 용량 실패→이미지 저장, pending→성공, 만료→새 생성, 금액 제외 흐름을 확인한다. overflow·overlay containment·focus·44px touch target·도표 가시성과 workspace revision 불변을 검증한다.
+- [x] `npm run check`, focused unit, `npx playwright test tests/account-workspace.spec.ts`를 통과시키고 커밋한다. 공유 저장·수신 route 영향을 포함한 전체 E2E는 Task 5에서 실행한다.
 
 ### Task 5: 운영 적용·통합 검증·인계
 
@@ -196,7 +196,7 @@ const unavailable = '지금은 공유 링크를 만들 수 없어요. 이미지�
 
 - 설계 §2/3 → Task 1/2, §4 → Task 3/5, §5 → Task 4, §6 → Task 5.
 - Review Focus 5건에 각 담당 작업의 실패 테스트를 배정했다.
-- 현재는 문서 작성만 했다. 새 RPC·runner·함수 테스트는 이 계획에서 만들 대상이며 이미 실행 가능한 결과물로 취급하지 않는다.
+- 구현과 로컬·운영 시험을 진행했다. 실제 실행 결과와 남은 검증은 [운영 기록](../evidence/2026-09-22-result-card-storage-budget.md)을 따른다.
 
 ## 실행 중 변경 기록
 
