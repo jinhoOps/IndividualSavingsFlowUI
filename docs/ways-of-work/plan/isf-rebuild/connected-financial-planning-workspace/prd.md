@@ -346,6 +346,8 @@ Simulation과 Portfolio는 workspace 안의 최신 Main을 읽기 전용으로 �
 
 거래별 지출 기록, 가구 병합, 과거 비교와 주거 구매력은 발견 단계의 후보다. 별도 문제 검증과 PRD 승인 전에는 구현 범위나 완료 요구사항으로 취급하지 않는다.
 
+2026-09-22 사용자 요청에 따라 공유 이미지의 500MB 운영 예산, 자동 삭제, 필요 시 신규 링크의 24시간 보관 전환을 [저장 예산 설계](../../../../superpowers/specs/2026-09-22-result-card-storage-budget-design.md)와 [실행 계획](../../../../superpowers/plans/2026-09-22-result-card-storage-budget.md)으로 제안했다. 같은 날 사용자가 운영 적용까지 승인해 파일당 1MB·예약 400MB·기본 48시간 정책과 함수·Cron을 적용했다. 삭제 실패·미완결 업로드는 용량에 포함하며, workspace 계약은 변경하지 않는다. 실제 검증 범위와 시간 경과 관찰은 [운영 기록](../../../../superpowers/evidence/2026-09-22-result-card-storage-budget.md)을 따른다.
+
 ## 13. Success Signals
 
 - 사용자가 초기 설정을 완료하고 적용된 월간 계획을 다시 확인한다.

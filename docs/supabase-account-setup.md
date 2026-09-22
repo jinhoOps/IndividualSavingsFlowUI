@@ -152,12 +152,37 @@ v5 쓰기가 시작된 이후 v4 before-image를 그대로 복원하면 새 답�
 
 ## 2026-09-21 결과 이미지 공유 적용
 
-이 절은 `result_card_shares` migration과 두 Edge Function 원본을 포함한 PR의 **운영 적용 절차**다. 이 문서를 갱신한 시점에는 원격 migration·함수·Cron을 적용하거나 실제 공유 링크를 만들지 않았다. 정적 앱만 먼저 배포하면 `저장하기`는 동작하지만 `공유하기`는 서버가 준비될 때까지 성공으로 표시해서는 안 된다.
+**2026-09-22 갱신:** 운영 migration 두 개와 Edge Function 두 개를 적용하고 생성·열람·만료·실제 파일 삭제를 검증했다. 기본 48시간, 파일당 1,000,000B, 예약 상한 400,000,000B로 활성화했다. 정기 Cron 관찰과 배포 증거는 [운영 기록](superpowers/evidence/2026-09-22-result-card-storage-budget.md)을 따른다. 실제 48시간 경과 관찰은 서버 시각을 당긴 시험과 구분한다.
 
-1. 기존 workspace 데이터와 migration 이력을 백업한 뒤 [result-card migration](../supabase/migrations/202609210001_result_card_shares.sql)을 기존 Supabase migration 절차로 한 번만 적용한다. 이 migration은 workspace schema·RPC·backup을 변경하지 않고 private `result-card-shares` bucket과 공유 메타데이터만 만든다.
-2. `RESULT_CARD_ALLOWED_ORIGINS`에 정확한 정적 앱 origin(현재 `https://jinhoops.github.io`)과 필요한 개발 origin만 쉼표로 등록한다. `RESULT_CARD_CLEANUP_SECRET`에는 충분히 긴 난수 값을 등록한다. service-role key와 cleanup secret은 `VITE_*`, GitHub 공개 변수, 정적 빌드와 브라우저에 절대 넣지 않는다.
-3. `result-card-share`와 `cleanup-result-card-shares`를 배포한다. 전자는 로그인 없는 `GET` 열람도 한 endpoint에서 처리하므로 Edge gateway JWT 검증을 끄고 배포하되, 함수 내부의 `POST`는 Bearer JWT를 `auth.getUser()`로 반드시 다시 검증한다. cleanup도 gateway 대신 전용 secret을 검증하므로 같은 방식으로 배포한다. 이 이유 없이 `--no-verify-jwt`를 다른 함수에 적용하지 않는다.
-4. 5분마다 `POST /functions/v1/cleanup-result-card-shares`를 호출하는 Supabase Scheduler/Cron을 등록하고 `x-result-card-cleanup`에 위 secret을 서버 측에서만 넣는다. 48시간이 지난 `ready` 파일과 15분이 지난 `pending` 파일을 Storage API로 지운 뒤 metadata를 삭제해야 한다. scheduler 실패·Storage 삭제 실패는 다음 주기에 재시도하게 두며, token·이미지·금융 수치를 운영 로그에 남기지 않는다.
-5. 적용 뒤 로그인한 생성, 로그인 없는 fragment 링크 열람, private Storage/table 직접 접근 거부, 만료 직전/직후 새 열람 차단, cleanup 뒤 파일·metadata 제거를 별도 테스트 계정과 이미지로 확인한다. workspace revision과 모든 slice가 생성 전후 동일한지도 비교한다. 실제 48시간 만료·삭제 증거를 남기기 전에는 운영 rollout 완료로 표시하지 않는다.
+### 재현 가능한 적용 순서
 
-공유 URL의 token은 fragment에만 두며 private Storage URL·signed URL·workspace JSON을 사용자에게 주지 않는다. 이미 수신자가 내려받거나 메신저가 보관한 이미지 사본은 회수할 수 없다. 상세 계약과 테스트 범위는 [결과 이미지 링크 공유 계획](superpowers/plans/2026-09-21-result-image-link-sharing.md)을 따른다.
+1. 대상 프로젝트·migration 이력·전체 bucket 사용량을 확인하고 workspace를 비공개로 백업한다. [초기 migration](../supabase/migrations/202609210001_result_card_shares.sql) 뒤 [저장 예산 migration](../supabase/migrations/202609220001_result_card_storage_budget.sql)을 적용한다. 이미 기록된 migration을 재실행하지 않는다. 새 정책은 생성 비활성화 상태로 시작한다.
+2. 기존 객체가 있으면 크기를 대조한다. `reconcile_result_card_storage()`는 Storage 메타데이터를 **읽기만** 하고 기존 공유의 누락된 크기를 채운다. 미확인 객체·크기 불일치는 생성 활성화를 막는다. 유효한 기존 1MB 초과 파일은 만료 전 보존한다.
+3. `result-card-share`, `cleanup-result-card-shares`를 [설정](../supabase/config.toml)대로 배포한다. 전자는 익명 GET도 처리하므로 gateway JWT 검증을 끄되 POST 내부 JWT 인증을 유지한다. 후자는 전용 secret을 검사한다. 다른 함수의 gateway 설정을 변경하지 않는다.
+4. Edge secret `RESULT_CARD_ALLOWED_ORIGINS=https://jinhoops.github.io`와 난수 `RESULT_CARD_CLEANUP_SECRET`을 설정한다. 같은 cleanup secret을 Vault의 `isf_result_card_cleanup_secret`, 프로젝트 URL을 `isf_result_card_project_url`에 등록한다. service key와 secret을 `VITE_*`, 정적 빌드, Git 또는 작업 로그에 넣지 않는다.
+5. [Cron SQL](../supabase/operations/result-card-share-cron.sql)을 적용한다. 정리 5분, 사용량 대조 매일, 전용 작업 로그 7일 정리다. 일반 정리도 마지막 대조 후 23시간에 재검사한다. Vault 값이 없는 상태의 Cron 실패를 성공으로 기록하지 않는다.
+6. cleanup과 inventory 성공, 시험 공유의 생성·익명 GET·private 직접 접근 거부·만료·Storage API 삭제를 확인한 뒤 `creation_enabled=true`로 바꾼다. 실제 Cron의 HTTP 응답과 `last_cleanup_success_at`을 함께 확인한다. `cron.job_run_details`의 성공은 HTTP 요청 발송 성공만 뜻할 수 있다.
+7. workspace 행 수와 전체 행 해시가 적용 전과 같은지 비교한다. UI·RPC·모의 서버 시험과 실제 운영 증거를 별도로 기록한다.
+
+### 정책 변경과 장애 대응
+
+```sql
+-- 새로 게시하는 링크만 24시간으로 변경; 기존 expires_at은 건드리지 않는다.
+update public.result_card_share_policy set retention_hours = 24 where id = 1;
+-- 생성만 중단; 기존 유효 링크 읽기와 cleanup은 계속한다.
+update public.result_card_share_policy set creation_enabled = false where id = 1;
+-- 용량·최근 정리/대조 시각 점검. 금액·종목 정보는 조회하지 않는다.
+select capacity_bytes, retention_hours, creation_enabled, inventory_valid,
+       last_cleanup_success_at, last_inventory_success_at
+from public.result_card_share_policy where id = 1;
+select state, count(*), sum(byte_size) as bytes
+from public.result_card_shares group by state;
+```
+
+- 생성은 최근 cleanup 성공 15분 이내, inventory 성공 24시간 이내와 일치 상태를 요구한다. 파일당 1MB와 최근 24시간 계정당 20회 예약을 서버에서 검사한다. pending·만료·삭제 실패는 계속 용량에 포함한다.
+- `deleting`이면서 `upload_settled_at`이 없는 예약은 자동 용량 반환을 하지 않는다. 신규 쓰기를 중지하고 진행 중 업로드 종료와 Storage 부재를 확인한 후 운영자가 정산한다. 기한 경과나 404 한 번만으로 반환하지 않는다.
+- 파일은 **Storage API로만 삭제**한다. SQL로 `storage.objects`를 지우면 실제 파일을 잃어버린 메타데이터로 만들 수 있다. 삭제 완료 행은 최소 24시간 더 유지해 재시도·일일 quota를 보존한다.
+- 공유 URL token은 fragment에만 두고 서버에는 hash만 저장한다. 이미지 응답은 no-store이며, 브라우저가 만든 blob URL은 교체·만료·종료 시 해제한다. 사용자가 저장했거나 메신저가 복제한 사본은 회수할 수 없다.
+- 이미지 상한 400MB는 사용자 지정 운영 예산이다. Free DB 500MB와 Storage 한도는 별도 지표이며 전송량도 따로 관찰한다. 다른 bucket 사용량이 있으면 여유 100MB를 남기도록 이미지 예약 상한을 낮춘다.
+
+상세 계약은 [설계](superpowers/specs/2026-09-22-result-card-storage-budget-design.md), 로컬·운영 검증 순서는 [실행 계획](superpowers/plans/2026-09-22-result-card-storage-budget.md)을 따른다.

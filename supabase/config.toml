@@ -1,0 +1,16 @@
+project_id = "result-card-storage-budget"
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[analytics]
+enabled = false
+
+[functions.result-card-share]
+verify_jwt = false
+
+[functions.cleanup-result-card-shares]
+verify_jwt = false

@@ -44,6 +44,7 @@ function planWithExpenseHistory(): WorkspaceDocument {
 function fakeServer() {
   const rows = new Map<string, WorkspaceDocument>();
   const receipts = new Map<string, unknown>();
+  const sharePolicy = {hours: 48, failures: [] as Array<{status: number; code: string}>};
   const shares = new Map<string, {png: Buffer; expiresAt: string}>();
   let failRead = false;
   let readBarrier: Promise<void> | null = null;
@@ -79,12 +80,14 @@ function fakeServer() {
       if (!user) {await route.fulfill({status: 401, body: '{}'}); return;}
       if (url.pathname === '/functions/v1/result-card-share') {
         if (route.request().method() === 'POST') {
+          const failure = sharePolicy.failures.shift();
+          if (failure) {await route.fulfill({status: failure.status, json: {code: failure.code}}); return;}
           const token = route.request().headers()['x-result-card-token'];
           const png = route.request().postDataBuffer();
           if (route.request().headers()['content-type'] !== 'image/png' || !token || !png?.length) {
             await route.fulfill({status: 400, json: {error: 'invalid'}}); return;
           }
-          const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+          const expiresAt = new Date(Date.now() + sharePolicy.hours * 60 * 60 * 1000).toISOString();
           shares.set(token, {png, expiresAt});
           await route.fulfill({status: 201, json: {token, expiresAt}}); return;
         }
@@ -124,7 +127,7 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, shares, attach, holdWrites() {
+  return {rows, operations, shares, sharePolicy, attach, holdWrites() {
     let release!: () => void;
     writeBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {writeBarrier = null; release();};
@@ -178,7 +181,7 @@ for (const width of [390, 768, 1280]) {
     const dialog = page.getByRole('dialog', {name: '계획 이미지 공유'});
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('switch', {name: '금액 포함'})).toBeVisible();
-    await expect(dialog.getByText('공유 링크는 생성 후 2일 뒤에 만료돼요.')).toBeVisible();
+    await expect(dialog.getByText('공유 링크는 최대 2일 동안 열 수 있어요. 정확한 만료 시각은 생성 후 표시돼요.')).toBeVisible();
     await expect(dialog.getByRole('button', {name: '공유 링크 만들기'})).toBeEnabled({timeout: 10_000});
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
@@ -1614,3 +1617,44 @@ test('Portfolio editor locks an already open item dialog when account refresh go
   await expect(item.getByLabel('금액', {exact: true})).toHaveValue('120,000');
   expect(server.operations).toEqual([]);
 });
+
+for (const width of [390, 768, 1280]) {
+  test(`storage budget failures keep local saving and respect 24-hour expiry at ${width}px`, async ({page, context}, testInfo) => {
+    const server = fakeServer();
+    const workspace = resultCardPlan();
+    server.rows.set(userA, structuredClone(workspace));
+    server.sharePolicy.hours = 24;
+    server.sharePolicy.failures.push({status:503,code:'capacity_reached'}, {status:202,code:'share_pending'}, {status:410,code:'share_expired'});
+    await server.attach(context,userA);
+    await page.setViewportSize({width,height:900});
+    await page.emulateMedia({reducedMotion:'reduce'});
+    const requests:string[]=[];
+    page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/functions/v1/result-card-share')) requests.push(request.headers()['x-result-card-request-id']);});
+    await page.goto('apps/portfolio/');
+    await page.getByRole('button',{name:'공유하기'}).click();
+    const dialog=page.getByRole('dialog',{name:'계획 이미지 공유'});
+    const create=dialog.getByRole('button',{name:'공유 링크 만들기'});
+    await expect(create).toBeEnabled();await create.click();
+    await expect(dialog.getByText('지금은 공유 링크를 만들 수 없어요. 이미지로 저장해 주세요.')).toBeVisible();
+    const save=dialog.getByRole('button',{name:'이미지 저장',exact:true});
+    await expect(save).toBeVisible();
+    expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const download=page.waitForEvent('download');await save.click();await download;
+    await page.screenshot({path:testInfo.outputPath(`storage-budget-${width}.png`)});
+    await create.click();await expect(dialog.getByText('공유 링크를 준비하고 있어요. 잠시 뒤 다시 시도해 주세요.')).toBeVisible();
+    await create.click();await expect(dialog.getByText('이전 공유 요청이 끝났어요. 새 링크를 만들어 주세요.')).toBeVisible();
+    await create.click();const input=dialog.getByRole('textbox',{name:'공유 링크'});await expect(input).toBeVisible();
+    expect(requests[0]).toBe(requests[1]);expect(requests[1]).toBe(requests[2]);expect(requests[3]).not.toBe(requests[2]);
+    const url=await input.inputValue(),record=server.shares.get(new URL(url).hash.slice(1))!;
+    expect(Date.parse(record.expiresAt)-Date.now()).toBeGreaterThan(23.9*3600_000);
+    expect(Date.parse(record.expiresAt)-Date.now()).toBeLessThanOrEqual(24*3600_000);
+    expect(server.rows.get(userA)).toEqual(workspace);expect(await preventsLeaving(page)).toBe(false);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    record.expiresAt=new Date(Date.now()+5000).toISOString();
+    await page.clock.install();await page.goto(url);
+    await expect(page.getByRole('img',{name:'공유된 나의 자금 계획 이미지'})).toBeVisible();
+    await page.clock.fastForward(6000);
+    await expect(page.getByRole('heading',{name:'공유 기간이 끝났거나 사용할 수 없는 링크예요.'})).toBeVisible();
+    await expect(page.getByRole('img')).toHaveCount(0);
+  });
+}

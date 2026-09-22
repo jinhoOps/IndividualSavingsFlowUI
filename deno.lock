@@ -1,0 +1,65 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/assert@1": "1.0.19",
+    "jsr:@std/internal@^1.0.12": "1.0.14"
+  },
+  "jsr": {
+    "@std/assert@1.0.19": {
+      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
+  },
+  "redirects": {
+    "https://esm.sh/iceberg-js@^0.8.1?target=denonext": "https://esm.sh/iceberg-js@0.8.1?target=denonext"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/auth-js@2.115.0/denonext/auth-js.mjs": "ee695fb5271cd20891151acb8f7b7dccd7a3d2cddcf7ea22707ed847c6310068",
+    "https://esm.sh/@supabase/functions-js@2.115.0/denonext/functions-js.mjs": "45dbef89b45252297c8088c37f5085fddf14f56e9d662efe9cf6fe928249b76a",
+    "https://esm.sh/@supabase/phoenix@0.4.5/denonext/phoenix.mjs": "40bd2a70829cd847848baac58e635bacd83fd62188f6624b44e2c295341004eb",
+    "https://esm.sh/@supabase/postgrest-js@2.115.0/denonext/postgrest-js.mjs": "be07c08a0221f3cc021ce179f3f3865899e7118a499a873609d35313cb6a0338",
+    "https://esm.sh/@supabase/realtime-js@2.115.0/denonext/realtime-js.mjs": "3032ecc022da4d8ad7a973ac9c7d3efb4d5d140940b32351ffe7753b2a656ae3",
+    "https://esm.sh/@supabase/storage-js@2.115.0/denonext/storage-js.mjs": "a79c4f054784fbc837b2ab250c3eaba8bcd8b7e7b001d8303dc6bc0a3ddaddf3",
+    "https://esm.sh/@supabase/supabase-js@2.115.0": "f4e488ef8059a64be766b58feb4d6a18aa812038fdcf9c7c916efbdf26ab9585",
+    "https://esm.sh/@supabase/supabase-js@2.115.0/denonext/dist/tracingRegistry.mjs": "5c7f16d4b145f80bc9b76e3c657854a91a8ef36df29558b35733ebc179d5ca47",
+    "https://esm.sh/@supabase/supabase-js@2.115.0/denonext/supabase-js.mjs": "6e4d33a86264c0c0505b514a2b748d184a0836d3f501f33d0c533731726c63db",
+    "https://esm.sh/iceberg-js@0.8.1/denonext/iceberg-js.mjs": "d839d81a2e3966500ca2cdd0c1cb458e9608bacfc91f7bb67a69b2e878dcdb4f",
+    "https://esm.sh/iceberg-js@0.8.1?target=denonext": "58c849d7fe2bf4eca4a84eb501e83c161a7d8c34ca1bec15a962b3bec3062633",
+    "https://esm.sh/tslib@2.8.1/denonext/tslib.mjs": "c38da5dd6da6281964435002ce204cd586634fe3bdfb24a0ee116f48cf3292e9"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@playwright/test@^1.60.0",
+        "npm:@supabase/supabase-js@^2.115.0",
+        "npm:@tailwindcss/vite@^4.0.0-alpha.13",
+        "npm:@testing-library/dom@^10.4.1",
+        "npm:@testing-library/jest-dom@^6.9.1",
+        "npm:@testing-library/react@^16.3.0",
+        "npm:@types/node@^20.14.9",
+        "npm:@types/react-dom@^19.2.3",
+        "npm:@types/react@^19.2.14",
+        "npm:@vitejs/plugin-react@^4.3.1",
+        "npm:@vitest/ui@^4.1.11",
+        "npm:animejs@^4.5.0",
+        "npm:autoprefixer@^10.4.19",
+        "npm:jsdom@26.1.0",
+        "npm:lucide-react@^1.31.0",
+        "npm:postcss@^8.4.38",
+        "npm:react-dom@^19.2.5",
+        "npm:react@^19.2.5",
+        "npm:sharp@~0.35.3",
+        "npm:tailwindcss@^4.0.0-alpha.13",
+        "npm:typescript@^5.5.2",
+        "npm:vite-plugin-pwa@~0.21.1",
+        "npm:vite@^6.4.3",
+        "npm:vitest@^4.1.11"
+      ]
+    }
+  }
+}
