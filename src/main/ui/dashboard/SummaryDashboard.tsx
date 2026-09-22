@@ -1,4 +1,5 @@
 import { ChevronUp } from 'lucide-react';
+import { AccountProductBoundary } from '../../../auth/AccountManagementContext';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppContentFrame } from '../../../components/common/AppContentFrame';
 import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
@@ -210,7 +211,7 @@ export function SummaryDashboard({
           onRequestClose={requestClose}
           onClosed={() => setEditorOpen(false)}
         >
-          <ResponsiveDialogLayout
+          <AccountProductBoundary><ResponsiveDialogLayout
             title="월 자금 계획 편집"
             titleId="cashflow-editor-title"
             eyebrow="월간 계획"
@@ -225,7 +226,7 @@ export function SummaryDashboard({
               initialFocusPath={editorFocusPath}
               onChange={onDraftChange}
             />
-          </ResponsiveDialogLayout>
+          </ResponsiveDialogLayout></AccountProductBoundary>
         </ResponsiveDialog>
       ) : null}
     </AppContentFrame>

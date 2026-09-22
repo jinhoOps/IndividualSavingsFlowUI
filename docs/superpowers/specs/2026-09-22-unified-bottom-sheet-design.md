@@ -139,14 +139,12 @@ Main 기준과 현재 저장 상태
 ```text
 조건 편집 / 닫기
 명목 · 실질 토글
-현재 조건으로 계산한 예상액과 목표까지 기간
 기간 · 기대수익률 · 시작 자산 · 목표
 기준금리 · 물가
-입력 오류/저장 상태
-취소 / 적용
+기존 입력 검증과 자동 저장
 ```
 
-명목·실질 토글은 첫 viewport 안에 보인다. 배경 그래프는 적용된 값으로 유지하고, 편집 sheet 안의 숫자 preview만 local draft를 반영한다. 적용 성공 뒤에만 결과와 서버 상태를 갱신한다.
+명목·실질 토글은 첫 viewport 안에 보인다. 기존 Simulation 자동 저장과 그래프 즉시 반영을 유지하며, 별도의 취소/적용 단계나 local draft를 추가하지 않는다. 이 자동 저장 표면은 footer action을 생략한다. 닫기는 편집 표면만 닫으며 저장 실패·충돌은 기존 복구 계약을 따른다.
 
 ### Portfolio
 
@@ -235,7 +233,7 @@ Portfolio 전용 `PortfolioDialog`와 Main 전용 sheet geometry는 제거했다
 
 - 공통 surface: presentation 전환, body만 scroll, footer 고정, focus trap/복원, Escape/backdrop/drag, dirty/saving/error, reduced-motion
 - Main: 다섯 값 소유권, 지출 중간 저장, 남는 돈 검증, 적용 실패·충돌 복구
-- Simulation: 명목/실질 첫 노출, draft 취소/적용, 외부 Main 변경, 저장 실패
+- Simulation: 명목/실질 첫 노출, 조건 변경 자동 저장, 외부 Main 변경, 저장 실패
 - Portfolio: 부모→대상 단계 전환, 합계 검증, 삭제/취소 focus 복원, nested trap 부재
 
 ### 브라우저

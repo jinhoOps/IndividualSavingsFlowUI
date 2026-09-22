@@ -1271,6 +1271,7 @@ test('returns a short mobile cashflow editor drag without more than 4px overshoo
   const restingTop = (await editor.boundingBox())!.y;
   await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 100 });
   await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 116 });
+  await expect(editor).toHaveCSS('opacity', '1');
   await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 116 });
 
   expect(await editor.getAttribute('data-sheet-exiting')).toBeNull();
@@ -1289,6 +1290,7 @@ test('returns a short mobile cashflow editor drag without more than 4px overshoo
   expect(Math.max(...positions)).toBeLessThanOrEqual(restingTop + 20);
   expect(Math.abs(positions.at(-1)! - restingTop)).toBeLessThanOrEqual(1);
   await expect(editor).toBeVisible();
+  await expect(editor).toHaveCSS('opacity', '1');
 });
 
 test('dashboard deficit shows all allocations and the income threshold after editing', async ({ page }, testInfo) => {

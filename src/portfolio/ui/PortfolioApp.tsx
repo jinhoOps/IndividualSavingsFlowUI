@@ -118,9 +118,11 @@ export function PortfolioApp({
   const openSamplePicker = sampleIntent !== null && !sampleIntentHandledRef.current;
 
   useEffect(() => {
-    if (state?.view !== 'edit' && closingEdit === null
-      && editTriggerRef.current && !editTriggerRef.current.isConnected) {
-      editTriggerRef.current = resultControlsRef.current?.querySelector<HTMLButtonElement>('.portfolio-allocation-row__select') ?? null;
+    if (state?.view !== 'edit' && closingEdit === null && editTriggerRef.current) {
+      if (!editTriggerRef.current.isConnected) {
+        editTriggerRef.current = resultControlsRef.current?.querySelector<HTMLButtonElement>('.portfolio-allocation-row__select') ?? null;
+      }
+      // Restore after React has removed the result area's inert attribute.
       editTriggerRef.current?.focus({ preventScroll: true });
     }
   }, [state?.view, closingEdit]);

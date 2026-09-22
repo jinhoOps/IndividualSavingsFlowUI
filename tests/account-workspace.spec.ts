@@ -495,6 +495,41 @@ test('account actions stay inside settings and remain usable offline while edits
   expect(server.operations).toEqual([]);
 });
 
+for (const surface of [
+  {name: 'monthly', path: 'main', opener: /^월 금액 편집$/, dialog: '월 자금 계획 편집'},
+  {name: 'expense', path: 'main', opener: /지출 계산 도우미/, dialog: '지출 계산 도우미'},
+  {name: 'remaining', path: 'main', opener: /남는 돈 분배 도우미/, dialog: '남는 돈 분배'},
+  {name: 'simulation', path: 'simulation', opener: /^조건 편집$/, dialog: '시뮬레이션 조건'},
+] as const) {
+  test(`${surface.name} portaled editor locks open financial controls when account goes offline`, async ({page, context}) => {
+    const server = fakeServer();
+    const workspace = plan();
+    workspace.simulation.draft = {
+      schemaVersion: 3, source: {monthlySavingsWon: 300000, monthlyInvestmentWon: 200000, mainUpdatedAt: 1000},
+      initialInvestmentWon: 0, years: 20, expectedAnnualReturnPercent: 9,
+      baseRatePercent: 3, inflationOffsetPercentPoints: -0.25, amountMode: 'nominal',
+      targetAmountWon: 100000000, updatedAt: 1000,
+    };
+    server.rows.set(userA, workspace); await server.attach(context, userA);
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto(`apps/${surface.path}/`);
+    await page.getByRole('button', {name: surface.opener}).click();
+    const dialog = page.getByRole('dialog', {name: surface.dialog, exact: true});
+    const input = dialog.locator('input').first();
+    await expect(input).toBeEnabled();
+    const previousValue = await input.inputValue();
+    server.setFailRead(true);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(input).toBeDisabled();
+    await expect(input).toHaveValue(previousValue);
+    for (const control of await dialog.locator('input, button').all()) await expect(control).toBeDisabled();
+    expect(server.operations).toEqual([]);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('button', {name: '관리 메뉴', exact: true})).toBeEnabled();
+  });
+}
+
 test('settings remain available in authenticated Main setup', async ({page, context}) => {
   const server = fakeServer(); server.rows.set(userA, createEmptyWorkspace(1000)); await server.attach(context, userA);
   await page.goto('apps/main/');

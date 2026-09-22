@@ -1,5 +1,7 @@
 # Unified Bottom Sheet Surfaces Implementation Plan
 
+**Implementation status (2026-09-22):** Implemented and verified, including premerge fixes and the child workspace dependency task. See the [integration evidence](../evidence/2026-09-22-unified-bottom-sheet-integration.md) for final results and limitations; the task checklist below records the original implementation sequence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Main, Simulation, and Portfolio use one responsive surface contract with the same Bottom Sheet/Modal geometry, internal header/context/body/status/footer layout, motion, focus behavior, and close states.
@@ -171,10 +173,10 @@ git commit -m "refactor: move Main editors to shared surface layout"
 
 **Interfaces:**
 
-- `SimulationApp` keeps local edit draft, repository writes, conflict handling, and `mobileEntranceMotion` behavior.
-- The condition editor uses `ResponsiveDialogLayout layout="edit"` with `명목 · 실질` as the first context control, then preview numbers, then condition fields.
+- `SimulationApp` keeps its existing automatically saved draft, repository writes, conflict handling, and `mobileEntranceMotion` behavior.
+- The condition editor uses `ResponsiveDialogLayout layout="edit"` with `명목 · 실질` as the first context control, then condition fields. The autosave surface has no cancel/apply footer.
 
-- [ ] **Step 1: Add failing layout and state tests.** Assert the first visible control inside the condition dialog is the nominal/real toggle, that the preview numbers are based on the draft while the background graph stays based on applied values, and that cancel leaves the saved result unchanged.
+- [ ] **Step 1: Add failing layout and state tests.** Assert the first visible control inside the condition dialog is the nominal/real toggle and that changes retain the existing automatic save and immediate graph update behavior. Closing the surface must not introduce a second apply step.
 
 ```tsx
 it('places the amount mode toggle before condition fields in the shared editor', async () => {
@@ -193,7 +195,7 @@ Run: `npm run test:unit -- tests/unit/simulation/SimulationApp.test.tsx`
 
 Expected: FAIL because the editor still owns an app-specific body arrangement.
 
-- [ ] **Step 3: Recompose the editor with the common frame.** Move the title/close control, amount-mode group, draft preview, fields, status, and cancel/apply actions into the standard slots. Keep the existing `data-dialog-initial-focus`, validation, source Main revision checks, pending state, and mobile Anime.js opt-in.
+- [ ] **Step 3: Recompose the editor with the common frame.** Move the title/close control, amount-mode group and fields into the standard slots. Preserve automatic saving, validation, source Main revision checks, pending state, and mobile Anime.js opt-in; do not add a separate edit draft or cancel/apply actions.
 
 - [ ] **Step 4: Remove duplicate Simulation surface spacing.** Keep graph and result card styles intact; remove only editor-specific header/footer positioning that conflicts with the common frame. Do not reintroduce the removed `⌃` icon or text-link CTA beside the expected return rate.
 

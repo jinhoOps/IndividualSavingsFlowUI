@@ -1,5 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { AccountDraftContext, AccountWriteRecoveryContext } from '../../../auth/AccountDraftContext';
+import { AccountProductBoundary } from '../../../auth/AccountManagementContext';
 import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
 import type { MainState } from '../../application/mainReducer';
@@ -67,7 +68,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, returnFo
 
   return <ResponsiveDialog open labelledBy="remaining-allocation-title" size="form" busy={busy} mobileEntranceMotion
     returnFocusRef={returnFocusRef ?? fallbackFocusRef} onRequestClose={requestClose} onClosed={onClose}>
-    {({ requestClose: closeDialog }) => <ResponsiveDialogLayout title="남는 돈 분배" titleId="remaining-allocation-title"
+    {({ requestClose: closeDialog }) => <AccountProductBoundary><ResponsiveDialogLayout title="남는 돈 분배" titleId="remaining-allocation-title"
       eyebrow={available > 0 ? `이번 달 남는 돈 ${won(available)}` : '이번 달 남는 돈 없음'}
       onClose={() => undefined}
       status={saveStatus === 'error' ? <div className="expense-assistant__error" role="alert">
@@ -130,6 +131,6 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, returnFo
           ? '지금 계획은 수입보다 나가는 돈이 많아요. 월 금액 편집에서 지출과 저축·투자 금액을 먼저 확인해주세요.'
           : '수입이 지출과 저축·투자에 모두 배분되어 있어요. 금액을 바꾸려면 월 금액 편집에서 조정해주세요.'}</p>}
       </div>
-    </ResponsiveDialogLayout>}
+    </ResponsiveDialogLayout></AccountProductBoundary>}
   </ResponsiveDialog>;
 }

@@ -1,5 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { AccountProductBoundary } from '../../../auth/AccountManagementContext';
 import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
 import { SegmentedControl } from '../../../components/common/SegmentedControl';
 import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
@@ -91,7 +92,7 @@ export function ExpenseAssistantDialog({ repository, returnFocusRef, onClose, on
 
   return <ResponsiveDialog open labelledBy="expense-assistant-title" size="form" busy={busy} mobileEntranceMotion
     returnFocusRef={returnFocusRef ?? fallbackFocusRef} onRequestClose={requestClose} onClosed={onClose}>
-    {({ requestClose: closeDialog }) => <ResponsiveDialogLayout title="지출 계산 도우미" titleId="expense-assistant-title"
+    {({ requestClose: closeDialog }) => <AccountProductBoundary><ResponsiveDialogLayout title="지출 계산 도우미" titleId="expense-assistant-title"
       eyebrow={item ? `답변 ${index + 1} / ${EXPENSE_ITEMS.length}` : `답변 ${answered}개 / ${EXPENSE_ITEMS.length}`}
       onClose={() => undefined}
       status={error ? <div className="expense-assistant__error" role="alert"><p>{error}</p>
@@ -167,6 +168,6 @@ export function ExpenseAssistantDialog({ repository, returnFocusRef, onClose, on
           </div>
         </>}
       </div>
-    </ResponsiveDialogLayout>}
+    </ResponsiveDialogLayout></AccountProductBoundary>}
   </ResponsiveDialog>;
 }

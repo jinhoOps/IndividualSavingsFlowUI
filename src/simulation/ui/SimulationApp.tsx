@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
@@ -325,7 +326,7 @@ export function SimulationApp({
               onRequestClose={() => true}
               onClosed={() => setConditionEditorOpen(false)}
             >
-              <ResponsiveDialogLayout
+              <AccountProductBoundary><ResponsiveDialogLayout
                 title="시뮬레이션 조건"
                 titleId="simulation-condition-editor-title"
                 eyebrow="미래 성장"
@@ -351,7 +352,7 @@ export function SimulationApp({
                     updatedAt: now(),
                   })} />
                 </div>
-              </ResponsiveDialogLayout>
+              </ResponsiveDialogLayout></AccountProductBoundary>
             </ResponsiveDialog>
             {saveState === 'saved' ? (
               <section className="simulation-portfolio-entry" aria-labelledby="simulation-portfolio-entry-title">
