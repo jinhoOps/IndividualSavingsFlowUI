@@ -1,0 +1,57 @@
+import { ArrowLeft, X } from 'lucide-react';
+import type { ReactNode } from 'react';
+
+export interface ResponsiveDialogLayoutProps {
+  title: ReactNode;
+  titleId: string;
+  eyebrow?: ReactNode;
+  onBack?: () => void;
+  onClose: () => void;
+  context?: ReactNode;
+  status?: ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
+  layout?: 'edit' | 'step' | 'settings' | 'preview' | 'confirm';
+}
+
+/** Standard content frame for every responsive dialog surface. */
+export function ResponsiveDialogLayout({
+  title,
+  titleId,
+  eyebrow,
+  onBack,
+  onClose,
+  context,
+  status,
+  footer,
+  children,
+  layout = 'edit',
+}: ResponsiveDialogLayoutProps) {
+  const bodyLabel = typeof title === 'string' ? `${title} 내용` : '대화 상자 내용';
+
+  return (
+    <section className="responsive-dialog__layout" data-surface-layout={layout}>
+      <header className="responsive-dialog__header" data-surface-header="">
+        <div className="responsive-dialog__drag-handle" data-sheet-drag-handle aria-hidden="true" />
+        <div className="responsive-dialog__header-row">
+          {onBack ? <button className="responsive-dialog__icon-button" type="button" aria-label="뒤로" onClick={onBack}>
+            <ArrowLeft size={20} aria-hidden="true" />
+          </button> : <span className="responsive-dialog__header-spacer" aria-hidden="true" />}
+          <div className="responsive-dialog__heading">
+            {eyebrow ? <p className="responsive-dialog__eyebrow">{eyebrow}</p> : null}
+            <h2 id={titleId}>{title}</h2>
+          </div>
+          <button className="responsive-dialog__icon-button" type="button" aria-label="닫기" onClick={onClose}>
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+      {context ? <div className="responsive-dialog__context" data-surface-context="">{context}</div> : null}
+      <div className="responsive-dialog__body" data-surface-body="" role="region" aria-label={bodyLabel}>
+        {children}
+      </div>
+      {status ? <div className="responsive-dialog__status" data-surface-status="">{status}</div> : null}
+      {footer ? <footer className="responsive-dialog__footer" data-surface-footer="">{footer}</footer> : null}
+    </section>
+  );
+}

@@ -2,6 +2,7 @@ import { animate } from 'animejs';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../motion/tokens';
+import { useSheetDismiss } from '../motion/useSheetDismiss';
 import './responsive-dialog.css';
 
 export type DialogCloseReason = 'button' | 'escape' | 'backdrop' | 'drag' | 'back';
@@ -20,6 +21,8 @@ export interface ResponsiveDialogProps {
 }
 
 const activeDialogs: HTMLDialogElement[] = [];
+let bodyScrollLockCount = 0;
+let unlockedBodyOverflow = '';
 const focusableSelector = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])', 'select:not([disabled])',
   'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
@@ -42,7 +45,19 @@ export function ResponsiveDialog({
   const wasOpenRef = useRef(false);
   const closeRequestPendingRef = useRef(false);
   const openingMotionRef = useRef<{ cancel?(): void } | null>(null);
+  const bodyLockedRef = useRef(false);
   const [requestedClosed, setRequestedClosed] = useState(false);
+  const presentation = useDialogPresentation();
+
+  useSheetDismiss({
+    rootRef: dialogRef,
+    enabled: open && !requestedClosed,
+    blocked: busy || closeRequestPendingRef.current,
+    isTopmost: () => activeDialogs.at(-1) === dialogRef.current,
+    mediaQuery: '(max-width: 767px)',
+    onRequestDismiss: () => requestClose('drag', false),
+    onDismissed: finishClose,
+  });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -58,6 +73,7 @@ export function ResponsiveDialog({
         }
         if (mobileEntranceMotion) revealDialog(dialog, openingMotionRef);
         if (!activeDialogs.includes(dialog)) activeDialogs.push(dialog);
+        lockBodyScroll(bodyLockedRef);
         window.requestAnimationFrame(() => {
           if (!dialog.contains(document.activeElement)) focusInitialElement(dialog);
         });
@@ -76,17 +92,25 @@ export function ResponsiveDialog({
     const dialog = dialogRef.current;
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
+    unlockBodyScroll(bodyLockedRef);
   }, []);
 
-  function requestClose(reason: DialogCloseReason): void {
-    if (busy || closeRequestPendingRef.current) return;
+  function requestClose(reason: DialogCloseReason, closeImmediately = true): Promise<boolean> {
+    if (busy || closeRequestPendingRef.current) return Promise.resolve(false);
     closeRequestPendingRef.current = true;
-    Promise.resolve(onRequestClose(reason)).then(
+    return Promise.resolve(onRequestClose(reason)).then(
       (approved) => {
-        if (approved) finishClose();
-        else closeRequestPendingRef.current = false;
+        if (!approved) {
+          closeRequestPendingRef.current = false;
+          return false;
+        }
+        if (closeImmediately) finishClose();
+        return true;
       },
-      () => { closeRequestPendingRef.current = false; },
+      () => {
+        closeRequestPendingRef.current = false;
+        return false;
+      },
     );
   }
 
@@ -99,6 +123,7 @@ export function ResponsiveDialog({
     openingMotionRef.current = null;
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
+    unlockBodyScroll(bodyLockedRef);
     setRequestedClosed(true);
     queueMicrotask(() => {
       const trigger = returnFocusRef.current;
@@ -126,6 +151,7 @@ export function ResponsiveDialog({
       ref={dialogRef}
       className="responsive-dialog"
       data-mobile-height={mobileHeight}
+      data-presentation={presentation}
       data-size={size}
       aria-busy={busy || undefined}
       aria-labelledby={labelledBy}
@@ -144,6 +170,41 @@ export function ResponsiveDialog({
     </dialog>,
     document.body,
   );
+}
+
+function useDialogPresentation(): 'sheet' | 'modal' {
+  const query = '(max-width: 767px)';
+  const [presentation, setPresentation] = useState<'sheet' | 'modal'>(() => (
+    typeof window !== 'undefined' && window.matchMedia?.(query).matches ? 'sheet' : 'modal'
+  ));
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.matchMedia === undefined) return;
+    const media = window.matchMedia(query);
+    const update = () => setPresentation(media.matches ? 'sheet' : 'modal');
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
+
+  return presentation;
+}
+
+function lockBodyScroll(lockRef: { current: boolean }): void {
+  if (lockRef.current || typeof document === 'undefined') return;
+  if (bodyScrollLockCount === 0) {
+    unlockedBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  bodyScrollLockCount += 1;
+  lockRef.current = true;
+}
+
+function unlockBodyScroll(lockRef: { current: boolean }): void {
+  if (!lockRef.current || typeof document === 'undefined') return;
+  lockRef.current = false;
+  bodyScrollLockCount = Math.max(0, bodyScrollLockCount - 1);
+  if (bodyScrollLockCount === 0) document.body.style.overflow = unlockedBodyOverflow;
 }
 
 function revealDialog(
