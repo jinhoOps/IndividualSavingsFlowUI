@@ -9,6 +9,7 @@ export interface ResponsiveDialogLayoutProps {
   onBack?: () => void;
   onClose: () => void;
   closeInitialFocus?: boolean;
+  showClose?: boolean;
   context?: ReactNode;
   contextHidden?: boolean;
   status?: ReactNode;
@@ -27,6 +28,7 @@ export function ResponsiveDialogLayout({
   onBack,
   onClose,
   closeInitialFocus = true,
+  showClose = true,
   context,
   contextHidden = false,
   status,
@@ -51,13 +53,13 @@ export function ResponsiveDialogLayout({
             {eyebrow ? <p className="responsive-dialog__eyebrow">{eyebrow}</p> : null}
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button className="responsive-dialog__icon-button" type="button" aria-label="닫기"
+          {showClose ? <button className="responsive-dialog__icon-button" type="button" aria-label="닫기"
             data-dialog-initial-focus={closeInitialFocus ? '' : undefined} onClick={() => {
             if (requestDialogClose) requestDialogClose('button');
             else onClose();
           }}>
             <X size={20} aria-hidden="true" />
-          </button>
+          </button> : <span className="responsive-dialog__header-spacer" aria-hidden="true" />}
         </div>
       </header>
       {context ? <div className="responsive-dialog__context" data-surface-context="" hidden={contextHidden}>{context}</div> : null}

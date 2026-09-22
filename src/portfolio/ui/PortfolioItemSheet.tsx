@@ -1,6 +1,7 @@
 import { useContext, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref, type RefObject } from 'react';
 import { Trash2 } from 'lucide-react';
 import { AccountDraftContext, useAccountRecovery, useInitialRecovery } from '../../auth/AccountDraftContext';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
@@ -316,7 +317,7 @@ export function PortfolioItemSheet({
           onRequestClose={requestSurfaceClose}
           onClosed={onClose}
         >
-          <ResponsiveDialogLayout
+          <AccountProductBoundary><ResponsiveDialogLayout
             title={title}
             titleId="portfolio-item-sheet-title"
             layout="edit"
@@ -328,7 +329,7 @@ export function PortfolioItemSheet({
             footer={actions(false)}
           >
             {fields}
-          </ResponsiveDialogLayout>
+          </ResponsiveDialogLayout></AccountProductBoundary>
         </ResponsiveDialog>
       )}
       {confirmDiscard ? (
@@ -340,7 +341,7 @@ export function PortfolioItemSheet({
           onRequestClose={() => true}
           onClosed={cancelDiscard}
         >
-          <ResponsiveDialogLayout
+          <AccountProductBoundary><ResponsiveDialogLayout
             title="입력 내용을 버릴까요?"
             titleId="portfolio-item-discard-title"
             layout="confirm"
@@ -349,7 +350,7 @@ export function PortfolioItemSheet({
             footer={<PortfolioItemDiscardActions onContinue={cancelDiscard} onDiscard={discardChanges} />}
           >
             <p>완료하지 않은 변경 내용이 사라집니다.</p>
-          </ResponsiveDialogLayout>
+          </ResponsiveDialogLayout></AccountProductBoundary>
         </ResponsiveDialog>
       ) : null}
     </>

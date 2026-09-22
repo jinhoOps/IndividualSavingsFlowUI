@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import type { PortfolioDraft } from '../domain/model';
 import type { PortfolioSampleSelection } from '../domain/samplePreset';
@@ -141,7 +142,7 @@ export function PortfolioEditSurface({
           });
         }}
       >
-        <ResponsiveDialogLayout
+        <AccountProductBoundary><ResponsiveDialogLayout
           title={stage === 'item' ? `투자 대상 ${itemMode === 'add' ? '추가' : '수정'}` : stage === 'examples' ? '샘플로 구성하기' : '투자 배분 수정'}
           titleId="portfolio-edit-title"
           eyebrow={stage === 'examples' ? '포트폴리오 샘플' : '월 투자 배분'}
@@ -207,15 +208,15 @@ export function PortfolioEditSurface({
             />
             </>
           )}
-        </ResponsiveDialogLayout>
+        </ResponsiveDialogLayout></AccountProductBoundary>
       </ResponsiveDialog>
       {confirmDiscard ? <ResponsiveDialog open labelledBy="portfolio-discard-title" returnFocusRef={discardTriggerRef}
         size="compact" onRequestClose={() => true} onClosed={cancelDiscard}>
-        <ResponsiveDialogLayout title="변경사항을 버릴까요?" titleId="portfolio-discard-title" layout="confirm"
+        <AccountProductBoundary><ResponsiveDialogLayout title="변경사항을 버릴까요?" titleId="portfolio-discard-title" layout="confirm"
           onClose={cancelDiscard} closeInitialFocus={false}
           footer={<PortfolioDiscardActions onContinue={cancelDiscard} onDiscard={discardChanges} />}>
           <p>적용하지 않은 배분과 샘플 구성을 버리고 닫습니다.</p>
-        </ResponsiveDialogLayout>
+        </ResponsiveDialogLayout></AccountProductBoundary>
       </ResponsiveDialog> : null}
     </>
   );

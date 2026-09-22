@@ -10,6 +10,8 @@ export type DialogCloseReason = 'button' | 'escape' | 'backdrop' | 'drag' | 'bac
 export interface ResponsiveDialogProps {
   open: boolean;
   labelledBy: string;
+  describedBy?: string;
+  initialFocusSelector?: string;
   className?: string;
   size?: 'compact' | 'form' | 'wide';
   mobileHeight?: 'content' | 'full';
@@ -44,6 +46,8 @@ const focusableSelector = [
 export function ResponsiveDialog({
   open,
   labelledBy,
+  describedBy,
+  initialFocusSelector,
   className,
   size = 'form',
   mobileHeight = 'content',
@@ -99,11 +103,17 @@ export function ResponsiveDialog({
         }
         if (!activeDialogs.includes(dialog)) activeDialogs.push(dialog);
         lockBodyScroll(bodyLockedRef);
-        if (isOpening) {
-          focusInitialElement(dialog);
+        const hasExplicitInitialFocus = initialFocusSelector !== undefined
+          || dialog.querySelector('[data-dialog-initial-focus]') !== null;
+        if (isOpening && (
+          hasExplicitInitialFocus
+          || document.activeElement === dialog
+          || !dialog.contains(document.activeElement)
+        )) {
+          focusInitialElement(dialog, initialFocusSelector);
           window.requestAnimationFrame(() => {
             if (wasOpenRef.current && dialog.isConnected && !dialog.contains(document.activeElement)) {
-              focusInitialElement(dialog);
+              focusInitialElement(dialog, initialFocusSelector);
             }
           });
         }
@@ -123,29 +133,13 @@ export function ResponsiveDialog({
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
     unlockBodyScroll(bodyLockedRef);
+    wasOpenRef.current = false;
+    closeRequestPendingRef.current = false;
   }, []);
 
   useLayoutEffect(() => {
-    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
-      const dialog = dialogRef.current;
-      if (
-        !open
-        || dialog === null
-        || activeDialogs.at(-1) !== dialog
-        || !(event.target instanceof Node)
-        || !dialog.contains(event.target)
-      ) return;
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        requestClose('escape');
-        return;
-      }
-      if (event.key === 'Tab') trapFocus(event, dialog);
-    };
-    document.addEventListener('keydown', handleDocumentKeyDown, true);
-    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true);
-  }, [busy, onRequestClose, open, requestedClosed]);
+    if (busy && dialogRef.current?.open) dialogRef.current.focus();
+  }, [busy]);
 
   function requestClose(reason: DialogCloseReason, closeImmediately = true): boolean | Promise<boolean> {
     if (busy || closeRequestPendingRef.current) return false;
@@ -193,18 +187,28 @@ export function ResponsiveDialog({
     unlockBodyScroll(bodyLockedRef);
     setRequestedClosed(true);
     const trigger = returnFocusRef.current;
+    onClosed();
     if (trigger?.isConnected) trigger.focus();
-    queueMicrotask(() => {
-      onClosed();
-      window.requestAnimationFrame(() => {
-        const topmost = activeDialogs.at(-1);
-        if (trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
-      });
-      window.setTimeout(() => {
-        const topmost = activeDialogs.at(-1);
-        if (trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
-      }, 0);
+    window.requestAnimationFrame(() => {
+      const topmost = activeDialogs.at(-1);
+      if (trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
     });
+    window.setTimeout(() => {
+      const topmost = activeDialogs.at(-1);
+      if (trigger?.isConnected && (topmost === undefined || topmost.contains(trigger))) trigger.focus();
+    }, 0);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDialogElement>): void {
+    const dialog = dialogRef.current;
+    if (dialog === null || activeDialogs.at(-1) !== dialog) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      requestClose('escape');
+      return;
+    }
+    if (event.key === 'Tab') trapFocus(event.nativeEvent, dialog);
   }
 
   if (!open || requestedClosed || typeof document === 'undefined') return null;
@@ -217,18 +221,24 @@ export function ResponsiveDialog({
       data-mobile-entrance={mobileEntranceMotion || undefined}
       data-presentation={presentation}
       data-size={size}
-      aria-busy={busy || undefined}
+      aria-busy={busy}
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       aria-modal="true"
       role="dialog"
+      tabIndex={-1}
       onCancel={(event) => {
         event.preventDefault();
         event.stopPropagation();
         requestClose('escape');
       }}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) requestClose('backdrop');
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget) requestClose('backdrop');
       }}
+      onKeyDown={handleKeyDown}
     >
       <ResponsiveDialogCloseContext.Provider value={(reason) => { void requestClose(reason); }}>
         <div className="responsive-dialog__surface">
@@ -313,7 +323,11 @@ function prepareDialogEntrance(dialog: HTMLDialogElement): void {
   if (
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     || !window.matchMedia?.('(max-width: 767px)').matches
-  ) return;
+    || dialog.getClientRects().length === 0
+  ) {
+    commitVisibleDialogState(dialog);
+    return;
+  }
   const dialogHeight = dialog.getBoundingClientRect().height;
   const entranceDistance = Math.max(
     MOTION_DISTANCE_PX.reveal,
@@ -321,6 +335,11 @@ function prepareDialogEntrance(dialog: HTMLDialogElement): void {
   );
   dialog.style.opacity = '0';
   dialog.style.transform = `translateY(${entranceDistance}px)`;
+}
+
+function commitVisibleDialogState(dialog: HTMLDialogElement): void {
+  dialog.style.opacity = '1';
+  dialog.style.transform = 'translateY(0px)';
 }
 
 function removeActiveDialog(dialog: HTMLDialogElement | null): void {
@@ -334,8 +353,9 @@ function closeNativeDialog(dialog: HTMLDialogElement | null): void {
   else dialog.removeAttribute('open');
 }
 
-function focusInitialElement(dialog: HTMLDialogElement): void {
-  const initial = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]')
+function focusInitialElement(dialog: HTMLDialogElement, initialFocusSelector?: string): void {
+  const initial = (initialFocusSelector === undefined ? null : dialog.querySelector<HTMLElement>(initialFocusSelector))
+    ?? dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]')
     ?? dialog.querySelector<HTMLElement>(focusableSelector)
     ?? dialog;
   initial.focus();

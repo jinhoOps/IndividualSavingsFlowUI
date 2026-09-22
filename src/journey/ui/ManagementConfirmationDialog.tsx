@@ -1,9 +1,8 @@
-import { animate } from 'animejs';
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
-import { MOTION_DISTANCE_PX, MOTION_DURATION, MOTION_EASE } from '../../components/motion/tokens';
-import { setMotionFinalState } from '../../components/motion/setMotionFinalState';
-import { useAnimeScope } from '../../components/motion/useAnimeScope';
+import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import type { ManagementConfirmation } from './AppManagementMenu';
 
 export function ManagementConfirmationDialog({
@@ -31,110 +30,74 @@ export function ManagementConfirmationDialog({
     const timer = window.setTimeout(() => setDelayElapsed(true), delayMs);
     return () => window.clearTimeout(timer);
   }, [delayMs]);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const focusEffectGenerationRef = useRef(0);
-  const titleId = `journey-management-dialog-${confirmation.title.replace(/\s+/g, '-')}`;
-  const alternateDisabled = pending || !delayElapsed;
-  const motionRef = useAnimeScope<HTMLDivElement>(({ root, reducedMotion }) => {
-    if (reducedMotion) {
-      setMotionFinalState(root);
-      return;
-    }
-    try {
-      animate(root, {
-        opacity: [0, 1],
-        y: [MOTION_DISTANCE_PX.subtle, 0],
-        duration: MOTION_DURATION.normal,
-        ease: MOTION_EASE.enter,
-      });
-    } catch {
-      setMotionFinalState(root);
-    }
-  }, []);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog === null) return;
-    const generation = ++focusEffectGenerationRef.current;
-    if (!dialog.open) {
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else dialog.setAttribute('open', '');
-    }
-    dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus();
-    return () => {
-      if (dialog.open && typeof dialog.close === 'function') dialog.close();
-      queueMicrotask(() => {
-        if (focusEffectGenerationRef.current === generation) returnFocusRef.current?.focus();
-      });
-    };
-  }, [returnFocusRef]);
-
-  useEffect(() => {
-    if (pending) dialogRef.current?.focus();
-  }, [pending]);
-
-  function trapFocus(event: KeyboardEvent<HTMLDialogElement>): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      if (!pending) onCancel();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])',
-    ));
-    if (controls.length === 0) {
-      event.preventDefault();
-      event.currentTarget.focus();
-      return;
-    }
-    const first = controls[0];
-    const last = controls[controls.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="journey-management__dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      aria-describedby={`${titleId}-description`}
-      aria-busy={pending}
-      tabIndex={-1}
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!pending) onCancel();
-      }}
-      onKeyDown={trapFocus}
-      onPointerDown={(event) => {
-        if (!pending && event.target === event.currentTarget) onCancel();
-      }}
+    <ResponsiveDialog
+      open
+      labelledBy="journey-management-confirmation-title"
+      describedBy="journey-management-confirmation-description"
+      size="compact"
+      mobileEntranceMotion
+      busy={pending}
+      returnFocusRef={returnFocusRef}
+      onRequestClose={() => !pending}
+      onClosed={onCancel}
     >
-      <div ref={motionRef} data-dialog-motion>
-        <h2 id={titleId}>{confirmation.title}</h2>
-        <p id={`${titleId}-description`}>{confirmation.description}</p>
+      <AccountProductBoundary><ResponsiveDialogLayout
+        title={confirmation.title}
+        titleId="journey-management-confirmation-title"
+        eyebrow="관리 작업"
+        layout="confirm"
+        closeInitialFocus={false}
+        showClose={false}
+        onClose={onCancel}
+        footer={<ManagementConfirmationActions
+          confirmation={confirmation}
+          pending={pending}
+          delayElapsed={delayElapsed}
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+          onAlternate={onAlternate}
+        />}
+      >
+        <p id="journey-management-confirmation-description">{confirmation.description}</p>
         {errorMessage === undefined ? null : (
           <p className="journey-management__dialog-alert" role="alert">{errorMessage}</p>
         )}
-        <div className="journey-management__dialog-actions">
-          {confirmation.alternateAction && onAlternate ? (
-            <Button variant="bare" className={`journey-management__danger journey-management__dialog-alternate${alternateDisabled ? ' journey-management__dialog-alternate--disabled' : ''}`}
-              type="button" disabled={alternateDisabled}
-              onClick={() => { if (!pending && delayElapsed) onAlternate(); }}>
-              {confirmation.alternateAction.label}
-            </Button>
-          ) : null}
-          <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending} onClick={onCancel}>취소</Button>
-          <Button variant="bare" className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
-        </div>
-      </div>
-    </dialog>
+      </ResponsiveDialogLayout></AccountProductBoundary>
+    </ResponsiveDialog>
+  );
+}
+
+function ManagementConfirmationActions({
+  confirmation,
+  pending,
+  delayElapsed,
+  onCancel,
+  onConfirm,
+  onAlternate,
+}: {
+  confirmation: ManagementConfirmation;
+  pending: boolean;
+  delayElapsed: boolean;
+  onCancel(): void;
+  onConfirm(): void;
+  onAlternate?(): void;
+}) {
+  const requestDialogClose = useResponsiveDialogClose();
+  const alternateDisabled = pending || !delayElapsed;
+  return (
+    <div className="journey-management__dialog-actions">
+      {confirmation.alternateAction && onAlternate ? (
+        <Button variant="bare" className={`journey-management__danger journey-management__dialog-alternate${alternateDisabled ? ' journey-management__dialog-alternate--disabled' : ''}`}
+          type="button" disabled={alternateDisabled}
+          onClick={() => { if (!pending && delayElapsed) onAlternate(); }}>
+          {confirmation.alternateAction.label}
+        </Button>
+      ) : null}
+      <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending}
+        onClick={() => requestDialogClose ? requestDialogClose('button') : onCancel()}>취소</Button>
+      <Button variant="bare" className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
+    </div>
   );
 }

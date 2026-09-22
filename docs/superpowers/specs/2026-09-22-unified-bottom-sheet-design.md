@@ -4,7 +4,7 @@
 
 Main, Simulation, Portfolio가 서로 다른 바텀시트와 모달 구현을 사용하면서 생긴 높이, 여백, 모션, footer, focus 차이를 하나의 표면 계약으로 통일한다. 화면별 금융 상태와 저장 책임은 각 앱에 남기고, 표면의 외형·반응형 전환·종료·접근성·내부 큰 배치만 공통화한다.
 
-현재 `ResponsiveDialog`, Portfolio 전용 `PortfolioDialog`, Main 전용 `main-editor-sheet`와 각 앱의 `useSheetDismiss` 연결이 같은 역할을 나눠 갖고 있다. 이 설계는 `ResponsiveDialog`를 기준 표면으로 확장하고, 앱별 dialog 구현을 단계적으로 이관하는 방향을 정한다.
+이관 전에는 `ResponsiveDialog`, Portfolio 전용 `PortfolioDialog`, Main 전용 `main-editor-sheet`와 각 앱의 `useSheetDismiss` 연결이 같은 역할을 나눠 갖고 있었다. 현재는 확장된 `ResponsiveDialog`를 세 앱의 기준 표면으로 사용한다.
 
 ## 범위와 제외
 
@@ -216,9 +216,9 @@ Main 기준과 현재 저장 상태
 - `src/components/motion/useSheetDismiss.ts`: handle drag와 dismiss guard를 공통 shell에서 재사용한다.
 - `src/components/motion/tokens.ts`: duration, distance, spring token을 계속 사용한다.
 
-Portfolio 전용 `PortfolioDialog`와 Main 전용 sheet CSS는 이관 완료 뒤 삭제한다. 앱별 controller는 draft, validation, persistence, recovery, domain action만 소유한다.
+Portfolio 전용 `PortfolioDialog`와 Main 전용 sheet geometry는 제거했다. 앱별 controller는 draft, validation, persistence, recovery, domain action만 소유한다.
 
-### 이관 순서
+### 완료한 이관
 
 1. 공통 shell과 visual tokens
 2. Main 월 금액·지출·남는 돈

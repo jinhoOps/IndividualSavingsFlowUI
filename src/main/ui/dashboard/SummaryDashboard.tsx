@@ -202,6 +202,7 @@ export function SummaryDashboard({
         <ResponsiveDialog
           open={editorOpen}
           labelledBy="cashflow-editor-title"
+          initialFocusSelector={editorFocusPath === undefined ? undefined : `[data-validation-path="${editorFocusPath}"]`}
           size="form"
           busy={saving}
           mobileEntranceMotion

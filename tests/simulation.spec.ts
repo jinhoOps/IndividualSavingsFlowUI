@@ -589,14 +589,15 @@ test('keeps a failed reset dialog scrollable, contained, and focused in a short 
   const containment = await dialog.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
+    const body = element.querySelector<HTMLElement>('[data-surface-body]')!;
     return {
       top: rect.top,
       bottom: rect.bottom,
       viewportHeight: innerHeight,
-      scrollHeight: element.scrollHeight,
-      clientHeight: element.clientHeight,
+      scrollHeight: body.scrollHeight,
+      clientHeight: body.clientHeight,
       maxBlockSize: style.maxBlockSize,
-      overflowY: style.overflowY,
+      overflowY: getComputedStyle(body).overflowY,
     };
   });
   expect(containment.top).toBeGreaterThanOrEqual(16);

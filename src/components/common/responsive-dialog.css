@@ -30,6 +30,17 @@
   min-height: 0;
 }
 
+/* A portaled product dialog keeps the account lock boundary inside the dialog. */
+.responsive-dialog__surface > .account-product {
+  display: grid;
+  min-inline-size: 0;
+  height: 100%;
+  max-height: inherit;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .responsive-dialog__layout {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto auto;
@@ -179,4 +190,23 @@
   .responsive-dialog__status,
   .responsive-dialog__body,
   .responsive-dialog__footer { padding-right: max(1.25rem, env(safe-area-inset-right)); padding-left: max(1.25rem, env(safe-area-inset-left)); }
+}
+
+@media (max-width: 767px) and (max-height: 24rem) {
+  .responsive-dialog[data-size='compact'] {
+    inset: 1rem;
+    width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+    height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--ui-surface-radius);
+  }
+
+  .responsive-dialog[data-size='compact'] .responsive-dialog__surface,
+  .responsive-dialog[data-size='compact'] .responsive-dialog__layout {
+    height: 100%;
+    max-height: 100%;
+  }
 }

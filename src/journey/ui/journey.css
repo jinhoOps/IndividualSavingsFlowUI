@@ -158,48 +158,10 @@
   background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
 }
 
-.journey-management__settings {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  max-height: inherit;
-}
-
-.journey-management__settings-header {
-  display: flex;
-  min-height: 60px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid var(--line);
-  padding: .75rem 1rem;
-}
-
-.journey-management__settings-header h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.journey-management__settings-close {
-  min-width: 44px;
-  min-height: 44px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-}
-
-.journey-management__settings-close:hover,
-.journey-management__settings-close:focus-visible {
-  background: color-mix(in srgb, var(--tone-accent) 8%, transparent);
-  box-shadow: var(--ui-focus-ring);
-}
-
 .journey-management__settings-body {
   display: grid;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: .375rem;
+  align-content: start;
+  gap: .25rem;
 }
 
 .journey-management__row {
@@ -248,31 +210,8 @@
   font-size: .875rem;
 }
 
-.journey-management__dialog {
-  position: fixed;
-  inset: 50% auto auto 50%;
-  width: min(28rem, calc(100vw - 32px));
-  transform: translate(-50%, -50%);
-  border: 1px solid var(--line);
-  border-radius: var(--ui-surface-radius);
-  background: var(--panel);
-  box-shadow: var(--shadow-float);
-  color: var(--ink);
-  max-block-size: calc(100dvh - 2rem);
-  padding: 1.5rem;
-  overflow-y: auto;
-}
-
-.journey-management__dialog::backdrop {
-  background: rgb(16 34 32 / 32%);
-}
-
-.journey-management__dialog h2,
-.journey-management__dialog p {
-  margin-top: 0;
-}
-
 .journey-management__dialog-alert {
+  margin: 1rem 0 0;
   border-radius: var(--ui-control-radius);
   background: color-mix(in srgb, var(--status-error) 8%, var(--panel));
   color: var(--status-error);
@@ -284,7 +223,6 @@
   display: flex;
   justify-content: flex-end;
   gap: .625rem;
-  margin-top: 1.5rem;
 }
 
 .journey-management__dialog-alternate {

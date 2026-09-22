@@ -1,5 +1,7 @@
 # Responsive Experience Implementation Plan — 총괄
 
+> **구현 소유권:** 공통 표면 이관과 검증은 [2026-09-22 통합 바텀시트 실행 계획](2026-09-22-unified-bottom-sheet.md)으로 이관되었습니다. 이 문서는 그 이전 범위와 결정 기록입니다.
+
 > **For agentic workers:** 계획 승인 후 `superpowers:executing-plans`로 A→B→C 순서대로 수행한다. 각 세부 계획은 자체 테스트 주기를 가진다. 이번 요청은 계획 작성이며 제품 구현·커밋·배포를 포함하지 않는다.
 
 **Goal:** 세 앱의 웹 중앙 모달·모바일 하단 시트·행동 배치를 통일하고, 결과를 읽은 뒤 샘플 탐색과 종합 이미지 보관으로 이어지게 한다.

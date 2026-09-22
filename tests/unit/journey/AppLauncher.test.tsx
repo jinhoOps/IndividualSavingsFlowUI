@@ -359,7 +359,7 @@ describe('shared Journey overlays', () => {
     expect(trigger).toHaveFocus();
   });
 
-  it('reveals confirmation content with normal motion and removes it before returning focus', async () => {
+  it('uses the shared confirmation surface and removes it before returning focus', async () => {
     function Harness() {
       const triggerRef = useRef<HTMLButtonElement>(null);
       const [open, setOpen] = useState(false);
@@ -388,17 +388,11 @@ describe('shared Journey overlays', () => {
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('data-mobile-entrance', 'true');
+    expect(dialog.querySelector('[data-surface-layout="confirm"]')).toBeTruthy();
     const confirm = within(dialog).getByRole('button', { name: '초기화' });
     expect(confirm).toHaveClass('ui-button--bare', 'journey-management__danger');
     expect(confirm).not.toHaveClass('ui-button--secondary');
-    const motionContent = dialog.querySelector<HTMLElement>('[data-dialog-motion]');
-    expect(motionContent).not.toBeNull();
-    expect(animationOptionsFor(motionContent!)).toMatchObject({
-      opacity: [0, 1],
-      y: [MOTION_DISTANCE_PX.subtle, 0],
-      duration: MOTION_DURATION.normal,
-      ease: MOTION_EASE.enter,
-    });
 
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -438,11 +432,8 @@ describe('shared Journey overlays', () => {
     expect(motionContent).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
   });
 
-  it('commits the visible confirmation state when Anime.js cannot start', () => {
+  it('commits the visible confirmation state when layout measurement is unavailable', () => {
     const returnFocusRef = createRef<HTMLButtonElement>();
-    animeMocks.animate.mockImplementationOnce(() => {
-      throw new Error('Anime.js unavailable');
-    });
 
     render(
       <ManagementConfirmationDialog
@@ -457,10 +448,9 @@ describe('shared Journey overlays', () => {
         onConfirm={() => undefined}
       />,
     );
-    const motionContent = screen.getByRole('dialog', { name: '초기화 확인' })
-      .querySelector<HTMLElement>('[data-dialog-motion]');
+    const dialog = screen.getByRole('dialog', { name: '초기화 확인' });
 
-    expect(motionContent).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(dialog).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
   });
 });
 

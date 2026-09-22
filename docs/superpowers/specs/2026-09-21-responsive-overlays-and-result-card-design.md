@@ -1,6 +1,6 @@
 # 세 앱의 모달·하단 시트·다음 단계·결과 이미지 설계
 
-**상태:** 2026-09-21 계획 제안. 사용자가 요구한 방향을 구체화한 문서이며 제품 구현·배포 완료를 뜻하지 않는다.
+**상태:** 역사적 계획 제안. 표면 shell, breakpoint, focus, motion, Portfolio 단계 전환의 현재 계약은 [세 앱 공통 바텀시트·모달 표면 설계](2026-09-22-unified-bottom-sheet-design.md)로 이관되었다.
 **기준:** `main` / `7c22487d`. 기존 미추적 `2026-09-16-portfolio-editor-hierarchy.md`는 이번 범위 밖이다.
 **총괄 실행 계획:** [단계·의존성·검증](../plans/2026-09-21-responsive-experience.md).
 **관찰 자료:** [현재 화면과 확인 한계](../evidence/2026-09-21-responsive-overlays/README.md).

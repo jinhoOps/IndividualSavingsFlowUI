@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Copy, Share2, X } from 'lucide-react';
+import { Copy, Share2 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { getBrowserClient, readSupabaseConfig } from '../../auth/auth';
 import type { AccountWorkspaceSession } from '../../workspace/infrastructure/accountWorkspaceSession';
 import { downloadResultCard, renderResultCardPng } from '../../journey/result-card/files';
@@ -90,9 +91,6 @@ export function PortfolioResultCardPreview({
   const blockedCopy = useMemo(() => build?.kind === 'blocked' ? blockedMessage(build.reason) : '', [build]);
   const filename = `ISF-plan-${new Date().toISOString().slice(0, 10)}.png`;
 
-  function close() {
-    if (!sharing) onClose();
-  }
   function save() {
     if (!png || stale) return;
     setNotice(downloadResultCard(png, filename) ? '다운로드를 요청했어요.' : '이미지를 저장하지 못했습니다. 다시 시도해 주세요.');
@@ -134,12 +132,19 @@ export function PortfolioResultCardPreview({
   }
 
   return <ResponsiveDialog open={open} labelledBy="result-card-preview-title" size="wide" mobileHeight="full"
-    busy={sharing} returnFocusRef={returnFocusRef} onRequestClose={() => !sharing} onClosed={onClose}>
-    <header className="result-card-preview__header">
-      <div><p>나의 자금 계획</p><h2 id="result-card-preview-title">{title}</h2></div>
-      <Button type="button" variant="quiet" aria-label="이미지 미리보기 닫기" disabled={sharing} onClick={close}><X size={20} aria-hidden="true" /></Button>
-    </header>
-    <div className="result-card-preview__body">
+    mobileEntranceMotion busy={sharing} returnFocusRef={returnFocusRef} onRequestClose={() => !sharing} onClosed={onClose}>
+    {({ requestClose }) => <ResponsiveDialogLayout
+      title={title}
+      titleId="result-card-preview-title"
+      eyebrow="나의 자금 계획"
+      layout="preview"
+      bodyClassName="result-card-preview__body"
+      footerClassName="result-card-preview__footer"
+      onClose={() => requestClose('button')}
+      footer={<>
+        {intent === 'save' ? <Button type="button" variant="primary" disabled={!ready} onClick={save}>이미지 저장</Button> : <Button type="button" variant="primary" disabled={!ready || sharing || shareUrl !== null} onClick={() => void createShare()}>{sharing ? '링크 만드는 중…' : '공유 링크 만들기'}</Button>}
+      </>}
+    >
       {previewUrl ? <img className="result-card-preview__image" src={previewUrl} alt="저장하거나 공유할 나의 자금 계획 이미지" /> : null}
       {build?.kind === 'blocked' ? <p role="alert">{blockedCopy}</p> : null}
       {!previewUrl && build?.kind === 'ready' && !notice ? <p role="status">이미지를 준비하고 있어요.</p> : null}
@@ -148,11 +153,7 @@ export function PortfolioResultCardPreview({
       {stale ? <p role="alert">계획이 변경됐어요. 미리보기를 닫고 다시 만들어 주세요.</p> : null}
       {notice ? <p role={notice.includes('못했') ? 'alert' : 'status'}>{notice}</p> : null}
       {shareUrl ? <section className="result-card-preview__link" aria-label="공유 링크"><strong>{expiresAt ? `${new Date(expiresAt).toLocaleString('ko-KR')}까지 볼 수 있어요.` : '공유 링크를 만들었어요.'}</strong><input aria-label="공유 링크" value={shareUrl} readOnly /><div><Button type="button" variant="secondary" onClick={() => void copyLink()}><Copy size={18} aria-hidden="true" />링크 복사</Button><Button type="button" variant="primary" onClick={() => void shareLink()}><Share2 size={18} aria-hidden="true" />링크 공유</Button></div></section> : null}
-    </div>
-    <footer className="result-card-preview__footer">
-      <Button type="button" variant="secondary" disabled={sharing} onClick={close}>닫기</Button>
-      {intent === 'save' ? <Button type="button" variant="primary" disabled={!ready} onClick={save}>이미지 저장</Button> : <Button type="button" variant="primary" disabled={!ready || sharing || shareUrl !== null} onClick={() => void createShare()}>{sharing ? '링크 만드는 중…' : '공유 링크 만들기'}</Button>}
-    </footer>
+    </ResponsiveDialogLayout>}
   </ResponsiveDialog>;
 }
 

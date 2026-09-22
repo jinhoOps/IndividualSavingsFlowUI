@@ -2,6 +2,7 @@ import { animate } from 'animejs';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { createProductSpring, MOTION_DURATION } from '../../components/motion/tokens';
 import { useEffect, useRef, useState } from 'react';
+import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
@@ -91,7 +92,7 @@ export function PortfolioApplyBar({
           onRequestClose={() => !applying}
           onClosed={close}
         >
-          <ResponsiveDialogLayout
+          <AccountProductBoundary><ResponsiveDialogLayout
             title="투자 배분을 적용할까요?"
             titleId="portfolio-apply-title"
             layout="confirm"
@@ -112,7 +113,7 @@ export function PortfolioApplyBar({
             </dl>
             {fieldError ? <p role="alert">입력 오류를 수정한 뒤 적용해 주세요.</p> : null}
             {saveError ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
-          </ResponsiveDialogLayout>
+          </ResponsiveDialogLayout></AccountProductBoundary>
         </ResponsiveDialog>
       ) : null}
     </Surface>

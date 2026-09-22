@@ -1352,7 +1352,10 @@ for (const width of [390, 767, 768, 1280]) {
       await expect(field.getByRole('button', {name: '+10만', exact: true})).toBeVisible();
       const bounds = await input.boundingBox();
       expect(bounds!.y).toBeGreaterThanOrEqual(0);
-      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
+      await expect.poll(async () => {
+        const visibleBounds = await input.boundingBox();
+        return visibleBounds!.y + visibleBounds!.height;
+      }).toBeLessThanOrEqual(height);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(original);
       await page.keyboard.press('Escape');

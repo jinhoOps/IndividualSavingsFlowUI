@@ -1,6 +1,7 @@
 import { useContext, useId, useRef, useState, type ReactNode } from 'react';
 import { AccountManagementContext, AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
 
 export interface ManagementConfirmation {
@@ -103,6 +104,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         labelledBy={menuId}
         size="compact"
         mobileHeight="content"
+        mobileEntranceMotion
         returnFocusRef={triggerRef}
         onRequestClose={() => {
           closeSettings();
@@ -112,12 +114,14 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
           if (pending !== null) setConfirmationReady(true);
         }}
       >
-        <section className="journey-management__settings">
-          <header className="journey-management__settings-header">
-            <h2 id={menuId} tabIndex={-1} data-dialog-initial-focus>관리 메뉴</h2>
-            <button type="button" className="journey-management__settings-close" aria-label="관리 메뉴 닫기" onClick={closeSettings}>닫기</button>
-          </header>
-          <div className="journey-management__settings-body">
+        <ResponsiveDialogLayout
+          title="관리 메뉴"
+          titleId={menuId}
+          eyebrow="앱 설정"
+          layout="settings"
+          bodyClassName="journey-management__settings-body"
+          onClose={closeSettings}
+        >
           {sections.map((section, index) => section.kind === 'control' ? (
             <div key={section.item.id} role="group" className="journey-management__control"><AccountProductBoundary>{section.item.content}</AccountProductBoundary></div>
           ) : (
@@ -132,8 +136,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
               {account.items.map(item => item.kind === 'control' ? <div key={item.id}>{item.content}</div> : renderMenuItem(item))}
             </div>
           </div>}
-          </div>
-        </section>
+        </ResponsiveDialogLayout>
       </ResponsiveDialog>
       {pending?.confirmation === undefined || !confirmationReady ? null : (
         <AccountProductBoundary>

@@ -446,6 +446,10 @@ for (const configured of [false, true]) {
       }
 
       await expect(popover).toHaveCSS('opacity', '1');
+      if (width < 768) await expect.poll(async () => {
+        const box = await popover.boundingBox();
+        return box === null ? Infinity : Math.abs(box.y + box.height - 900);
+      }).toBeLessThan(0.5);
       const bounds = await popover.boundingBox();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
@@ -1088,8 +1092,14 @@ for (const width of [390, 768, 1280]) {
     await expect(reset).toBeFocused();
     const boxes = await Promise.all([dialog, reset, cancel, restart].map(item => item.boundingBox()));
     const [modal, left, middle, right] = boxes;
-    expect(modal!.x).toBeGreaterThanOrEqual(16);
-    expect(modal!.x + modal!.width).toBeLessThanOrEqual(width - 16);
+    if (width < 768) {
+      expect(modal!.x).toBeCloseTo(0, 0);
+      expect(modal!.x + modal!.width).toBeCloseTo(width, 0);
+      expect(modal!.y + modal!.height).toBeCloseTo(900, 0);
+    } else {
+      expect(modal!.x).toBeGreaterThanOrEqual(16);
+      expect(modal!.x + modal!.width).toBeLessThanOrEqual(width - 16);
+    }
     expect(left!.x + left!.width).toBeLessThanOrEqual(middle!.x);
     expect(middle!.x + middle!.width).toBeLessThanOrEqual(right!.x);
     for (const box of [left, middle, right]) expect(box!.height).toBeGreaterThanOrEqual(44);
