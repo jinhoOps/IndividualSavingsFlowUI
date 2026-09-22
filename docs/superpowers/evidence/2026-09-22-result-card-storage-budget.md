@@ -1,6 +1,6 @@
 # 결과 이미지 저장 예산·운영 적용 기록
 
-**상태:** 2026-09-22 코드와 운영 DB·함수·Cron을 적용하고 공유를 활성화했다. 정기 Cron 첫 자동 실행까지 확인했다. 두 번째 주기와 웹앱 배포 확인은 아래 기록을 갱신한다. 실제 48시간 경과 관찰은 아직 수행하지 않았다.
+**상태:** 2026-09-22 코드와 운영 DB·함수·Cron을 적용하고 공유를 활성화했다. 정기 Cron 두 차례 자동 실행을 확인했다. 코드 통합·웹 배포 이력은 [PR #20](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/20)에서 추적한다. 실제 48시간 경과 관찰은 아직 수행하지 않았다.
 
 ## 적용 내용
 
@@ -27,7 +27,7 @@
 | 정리 후 | 시험 계정 삭제, 이미지 객체 0개/0B, 생성 활성화·inventory 정상 |
 | Cron | `isf-result-card-cleanup` 5분, `isf-result-card-inventory` 매일 03:17 UTC, `isf-result-card-log-retention` 매일 03:27 UTC |
 
-08:30 UTC 첫 스케줄은 함수/Vault 설정 완료 전이라 실패했다. 이 실패를 숨기거나 정상 주기로 세지 않았다. 설정 완료 후 수동 cleanup 4회와 08:35 UTC 자동 Cron의 HTTP 200·timeout false·성공 이력을 확인했다. 작업 발송 성공과 실제 HTTP 성공을 구분했다.
+08:30 UTC 첫 스케줄은 함수/Vault 설정 완료 전이라 실패했다. 이 실패를 숨기거나 정상 주기로 세지 않았다. 설정 완료 후 수동 cleanup 4회와 08:35·08:40 UTC 두 차례 자동 Cron의 HTTP 200·timeout false·성공 이력을 확인했다. 작업 발송 성공과 실제 HTTP 성공을 구분했다.
 
 운영 시험에서 전체 capacity를 임시로 낮추거나 다른 사용자의 만료를 변경하지 않았다. 용량 경합, 신규 24시간 전환, 기존 1.5MB 파일 보존은 별도의 로컬 실제 Storage에서 검증했다.
 

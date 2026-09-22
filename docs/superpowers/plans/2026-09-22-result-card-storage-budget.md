@@ -1,8 +1,8 @@
 # 결과 이미지 저장 예산 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. 사용자에게서 받은 Native 실행 선호를 유지한다. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. 사용자에게서 받은 Native 실행 선호를 유지한다. Steps use checkbox (`- [x]`) syntax for tracking.
 
-**상태:** 2026-09-22 사용자가 구현과 운영 적용을 승인했다. 실행 중 판단은 아래 변경 기록과 evidence를 따른다.
+**상태:** 2026-09-22 구현·운영 적용을 완료했다. 실제 48시간 경과 관찰은 미완료이며, 코드 통합은 PR #20에서 추적한다. 실행 중 판단은 아래 변경 기록과 evidence를 따른다.
 **Goal:** 공유 이미지의 예약·실제 파일·정리를 연결하여 500MB 운영 예산 안에서 신규 업로드를 제한한다.
 **Architecture:** 단일 정책 행 잠금 아래 바이트·일일 횟수를 원자적으로 예약한다. 기존 private bucket과 두 Edge Function을 확장하고, 실제 파일 삭제가 확인되어야 용량을 반환한다. 클라이언트는 서버 오류와 정확한 만료 시각을 표시한다.
 **Tech Stack:** PostgreSQL migration/RPC, Supabase Storage/Edge Functions/Cron, Deno tests, React/TypeScript, Vitest, Playwright, Docker PostgreSQL 17.
@@ -181,16 +181,16 @@ const unavailable = '지금은 공유 링크를 만들 수 없어요. 이미지�
 
 **Interfaces:** migration→backfill→Edge→Cron→활성화 적용 기록, 사용량 전후 비교, 테스트 결과, 미완료 항목. secret 자체를 커밋하지 않는다.
 
-- [ ] 실행 환경의 Deno/Docker/Supabase CLI와 운영 접근 여부부터 확인한다. 현재 운영 접근이 없어 해당 부분을 완료로 취급하지 않는다. 인증된 관리 환경에서 작업하고 secret을 채팅에 요구하지 않는다.
-- [ ] 로컬 설정을 만들고 `supabase start`, `supabase functions serve --env-file supabase/.env.local`로 시험 서버를 연다. `.env.local`은 Git에서 제외하고 로컬 CLI가 발급한 값과 로컬 전용 cleanup secret만 사용한다. config의 두 함수는 `verify_jwt=false`로 두되 POST 내부 인증과 cleanup secret 검증은 유지한다. 시험 후 `supabase stop`으로 종료한다.
-- [ ] 로컬 실제 Supabase Storage에서 시험 PNG upload→expire→cleanup 후 Storage 목록·download로 부재를 검증한다. 함수 mock/SQL fixture 성공을 실제 파일 삭제 증거로 사용하지 않는다.
-- [ ] `npm run check:ci`, 두 함수 `deno check`/`deno test`, DB runner, `npm run test:e2e`를 실행한다. UI 3개 폭의 이미지, quota 경합, 삭제 장애, DB 복구 결과를 evidence에 기록한다.
-- [ ] 운영 신규 생성을 멈추고 현재 migration/함수/Cron/전체 bucket 사용량을 확인한다. 기존 공유를 보존하면서 새 migration을 적용하고 Storage 실제 byte_size를 backfill한다. 미확인 path는 해결 전까지 활성화하지 않는다.
-- [ ] 일반 cleanup 5분과 inventory 하루 1회의 secret 보호 Cron을 등록한다. cleanup 2회 성공, 전체 inventory 성공, 삭제 장애 후 재시도를 기록한다. Cron 이력·집계의 7일 정리도 확인한다.
-- [ ] 제한된 시험 계정으로 1MB 경계, 작은 시험 용량에서 거부, 48→24시간 변경 시 기존 링크 불변, 새 링크 기한, 미인증 열람, private 직접 접근 거부, workspace 불변을 확인한다. 시험 용량을 기본 400MB에서 다른 bucket분을 차감한 값으로 되돌리고 활성화한다.
+- [x] 실행 환경의 Deno/Docker/Supabase CLI와 운영 접근 여부부터 확인한다. 인증된 Orca 관리 세션의 운영 접근을 확인했다. 인증된 관리 환경에서 작업하고 secret을 채팅에 요구하지 않는다.
+- [x] 로컬 설정을 만들고 `supabase start`, `supabase functions serve --env-file supabase/.env.local`로 시험 서버를 연다. `.env.local`은 Git에서 제외하고 로컬 CLI가 발급한 값과 로컬 전용 cleanup secret만 사용한다. config의 두 함수는 `verify_jwt=false`로 두되 POST 내부 인증과 cleanup secret 검증은 유지한다. 시험 후 `supabase stop`으로 종료한다.
+- [x] 로컬 실제 Supabase Storage에서 시험 PNG upload→expire→cleanup 후 Storage 목록·download로 부재를 검증한다. 함수 mock/SQL fixture 성공을 실제 파일 삭제 증거로 사용하지 않는다.
+- [x] `npm run check:ci`, 두 함수 `deno check`/`deno test`, DB runner, `npm run test:e2e`를 실행한다. UI 3개 폭의 이미지, quota 경합, 삭제 장애, DB 복구 결과를 evidence에 기록한다.
+- [x] 운영 신규 생성을 멈추고 현재 migration/함수/Cron/전체 bucket 사용량을 확인한다. 기존 공유를 보존하면서 새 migration을 적용하고 Storage 실제 byte_size를 backfill한다. 미확인 path는 해결 전까지 활성화하지 않는다.
+- [x] 일반 cleanup 5분과 inventory 하루 1회의 secret 보호 Cron을 등록한다. cleanup 2회 성공, 전체 inventory 성공, 삭제 장애 후 재시도를 기록한다. Cron 이력·집계의 7일 정리 SQL과 스케줄 등록을 확인한다. 일별 스케줄의 자연 실행은 아직 관찰하지 않았다.
+- [x] 제한된 시험 계정으로 1MB 경계, 작은 시험 용량에서 거부, 48→24시간 변경 시 기존 링크 불변, 새 링크 기한, 미인증 열람, private 직접 접근 거부, workspace 불변을 확인한다. 작은 용량·24시간 전환 시험은 로컬 실제 Storage에서 수행하고, 운영은 400MB/48시간을 유지해 활성화한다.
 - [ ] 실제 48시간이 지난 시험 링크의 거부와 이후 삭제를 기록한다. 시간 가속 시험만 했다면 이 항목은 미완료로 남긴다.
-- [ ] 롤백은 생성 중지로 수행하며 읽기·정기 삭제·새 예약 장부를 유지한다. 미적용/적용/검증 완료를 구분해 README·PRD·운영 안내를 갱신하고 문서 링크·`git diff --check`를 확인한다.
-- [ ] 최종 변경을 검토하고 커밋 작성자를 확인한 뒤 커밋한다. 사용자 실행 지시에서 요구한 통합·push까지 수행하고 적용 환경과 미해결 항목을 명시한다.
+- [x] 롤백은 생성 중지로 수행하며 읽기·정기 삭제·새 예약 장부를 유지한다. 미적용/적용/검증 완료를 구분해 README·PRD·운영 안내를 갱신하고 문서 링크·`git diff --check`를 확인한다.
+- [x] 최종 변경을 검토하고 커밋 작성자를 확인한 뒤 커밋한다. 사용자 실행 지시에서 요구한 통합·push까지 수행하고 적용 환경과 미해결 항목을 명시한다.
 
 ## 계획 자체 검토
 
