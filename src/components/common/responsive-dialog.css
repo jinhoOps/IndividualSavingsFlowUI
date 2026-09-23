@@ -34,7 +34,6 @@
 .responsive-dialog__surface > .account-product {
   display: grid;
   min-inline-size: 0;
-  height: 100%;
   max-height: inherit;
   margin: 0;
   padding: 0;
@@ -67,9 +66,9 @@
 }
 
 .responsive-dialog__drag-handle {
-  width: 2.5rem;
+  width: 100%;
   height: 2.75rem;
-  margin: 0 auto;
+  margin: 0;
   touch-action: none;
   cursor: grab;
   position: relative;
@@ -79,7 +78,7 @@
   position: absolute;
   top: 1.25rem;
   left: 50%;
-  width: 2.5rem;
+  width: clamp(4.5rem, 22vw, 6.5rem);
   height: .25rem;
   border-radius: 999px;
   background: var(--line-strong, var(--line));
@@ -141,20 +140,21 @@
 }
 
 @media (min-width: 768px) {
-  .responsive-dialog[data-size='form'] {
-    height: min(46rem, calc(100dvh - 48px));
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__drag-handle { display: none; }
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__header { padding: .75rem 1.5rem; }
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__header-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0;
   }
-
-  .responsive-dialog[data-size='wide'] {
-    height: min(54rem, calc(100dvh - 48px));
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__header-row:has([aria-label='뒤로']) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
-
-  .responsive-dialog[data-size='form'] .responsive-dialog__surface,
-  .responsive-dialog[data-size='form'] .responsive-dialog__layout,
-  .responsive-dialog[data-size='wide'] .responsive-dialog__surface,
-  .responsive-dialog[data-size='wide'] .responsive-dialog__layout {
-    height: 100%;
-  }
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__header-spacer { display: none; }
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__heading { text-align: left; }
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__context,
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__status,
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__body,
+  .responsive-dialog[data-presentation='modal'] .responsive-dialog__footer { padding-right: 1.5rem; padding-left: 1.5rem; }
 }
 
 @media (max-width: 767px) {
@@ -162,7 +162,7 @@
     inset: auto 0 0;
     width: 100%;
     max-width: none;
-    max-height: min(92dvh, calc(100dvh - 8px));
+    max-height: min(88dvh, calc(100dvh - 8px));
     margin: 0;
     border-right: 0;
     border-bottom: 0;
@@ -170,36 +170,17 @@
     border-radius: 1.5rem 1.5rem 0 0;
   }
 
-  .responsive-dialog__surface { max-height: min(92dvh, calc(100dvh - 8px)); }
+  .responsive-dialog__surface { max-height: min(88dvh, calc(100dvh - 8px)); }
 
-  .responsive-dialog[data-mobile-height='full'] { height: min(92dvh, calc(100dvh - 8px)); }
+  .responsive-dialog[data-mobile-height='full'] { height: min(88dvh, calc(100dvh - 8px)); }
   .responsive-dialog[data-mobile-height='full'] .responsive-dialog__surface,
   .responsive-dialog[data-mobile-height='full'] .responsive-dialog__layout { height: 100%; }
 
-  .responsive-dialog__body { max-height: calc(92dvh - 12rem); }
+  .responsive-dialog__body { max-height: calc(88dvh - 12rem); }
 
   .responsive-dialog__header { padding-right: max(1.25rem, env(safe-area-inset-right)); padding-left: max(1.25rem, env(safe-area-inset-left)); }
   .responsive-dialog__context,
   .responsive-dialog__status,
   .responsive-dialog__body,
   .responsive-dialog__footer { padding-right: max(1.25rem, env(safe-area-inset-right)); padding-left: max(1.25rem, env(safe-area-inset-left)); }
-}
-
-@media (max-width: 767px) and (max-height: 24rem) {
-  .responsive-dialog[data-size='compact'] {
-    inset: 1rem;
-    width: calc(100vw - 2rem);
-    max-width: calc(100vw - 2rem);
-    height: calc(100dvh - 2rem);
-    max-height: calc(100dvh - 2rem);
-    margin: 0;
-    border: 1px solid var(--line);
-    border-radius: var(--ui-surface-radius);
-  }
-
-  .responsive-dialog[data-size='compact'] .responsive-dialog__surface,
-  .responsive-dialog[data-size='compact'] .responsive-dialog__layout {
-    height: 100%;
-    max-height: 100%;
-  }
 }

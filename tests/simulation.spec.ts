@@ -53,6 +53,34 @@ test('mobile condition editor begins below its resting position', async ({ page 
 
 for (const viewport of [
   { name: '390px', width: 390, height: 844 },
+  { name: '768px', width: 768, height: 1024 },
+  { name: 'desktop', width: 1280, height: 900 },
+]) {
+  test(`${viewport.name} 조건 편집 표면은 기기별 규격을 사용한다`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await seedMain(page);
+    await openFirstResult(page);
+
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    const dialog = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+    await expect(dialog).toBeVisible();
+    const box = await dialog.boundingBox();
+    expect(box).not.toBeNull();
+
+    if (viewport.width < 768) {
+      const maxHeight = await dialog.evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
+      expect(maxHeight).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
+      await expect(dialog.locator('.responsive-dialog__drag-handle')).toBeVisible();
+    } else {
+      await expect(dialog.locator('.responsive-dialog__drag-handle')).toBeHidden();
+      expect(Math.abs(box!.x + box!.width / 2 - viewport.width / 2)).toBeLessThan(2);
+      await expect(dialog.locator('.responsive-dialog__heading')).toHaveCSS('text-align', 'left');
+    }
+  });
+}
+
+for (const viewport of [
+  { name: '390px', width: 390, height: 844 },
   { name: '768px', width: 768, height: 900 },
   { name: 'desktop', width: 1280, height: 900 },
 ]) {
