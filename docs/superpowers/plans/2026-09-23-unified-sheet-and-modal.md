@@ -132,7 +132,7 @@ const interactiveSelector = [
 
 **Interfaces:** 신규 모듈은 `DIALOG_MOTION_MS = 450`, `createDialogMotionTiming(bounce: number): { duration: number; ease: (progress: number) => number }`를 제공한다. 종료·복귀도 이 시간 규격을 사용한다. 기존 `createProductSpring('value')` 등 다른 제품 모션은 유지한다.
 
-- [ ] 1. 실제 Anime.js를 사용하는 모션 테스트를 먼저 작성한다. easing 객체를 animate에 직접 전달해 duration이 재정의되는 실수를 잡는다.
+- [x] 1. 실제 Anime.js를 사용하는 모션 테스트를 먼저 작성한다. easing 객체를 animate에 직접 전달해 duration이 재정의되는 실수를 잡는다.
 
 ```ts
 const timing = createDialogMotionTiming(0.12);
@@ -143,7 +143,7 @@ expect(timing.ease(1)).toBeCloseTo(1, 2);
 ```
 
   `animate({ value: 0 }, { value: 1, autoplay: false, ...timing })`로 얻은 실제 animation.duration도 450인지 확인하고 cancel한다. fake timer 테스트에는 300ms에 종료되지 않음, 완료 콜백 1회, reduced-motion 즉시 완료를 추가한다.
-- [ ] 2. 위 단위 테스트 실패를 확인한 뒤 스프링의 완전한 settling 곡선을 450ms에 재생한다.
+- [x] 2. 위 단위 테스트 실패를 확인한 뒤 스프링의 완전한 settling 곡선을 450ms에 재생한다.
 
 ```ts
 import { spring } from 'animejs';
@@ -158,11 +158,11 @@ export function createDialogMotionTiming(bounce: number) {
 ```
 
   이는 체감 duration=450을 설정하는 방식이 아니다. 전체 곡선을 재생하는 함수형 easing을 명시적 450ms와 함께 사용한다. 공식 근거: [Anime.js spring](https://animejs.com/documentation/easings/spring/)은 spring 객체를 전달하면 animation duration을 settling duration으로 대체한다.
-- [ ] 3. 모바일 enter는 실제 높이+16px→0, modal enter는 중앙 `scale 0.97→1`·opacity 0→1로 구현한다. 모달의 y는 항상 0이다. exit는 현재 위치에서 sheet 아래 이동/modal scale 1→0.97로 진행한다. enter/return bounce=0.12, exit bounce=0을 시작값으로 사용한다.
-- [ ] 4. `requestClose`가 승인되면 버튼·Escape·backdrop 모두 exit를 기다려 `finishClose`한다. 드래그는 훅이 이미 exit를 소유하므로 이중 애니메이션하지 않는다. 확인창 승인 대기·저장 pending 동안 중복 요청은 차단한다. 정상 종료 시점에만 native close·scroll unlock·focus 복원이 실행된다.
-- [ ] 5. 300ms fallback을 정상 450ms 모션보다 긴 **550ms 오류 복구용** 타이머로 바꾼다. 정상 완료에서는 즉시 타이머를 취소한다. 애니메이션 초기화 실패는 기다리지 않고 완료한다. 외부 unmount/open=false·presentation 전환은 애니메이션을 취소하고 잔여 스타일과 타이머를 정리한다.
-- [ ] 6. 진입 도중 드래그는 기존 transform을 지우고 0부터 시작하지 않고 현재 화면 위치에서 이어간다. 복귀 중 재드래그, 새 dialog 열기, StrictMode effect 재실행도 이전 완료 콜백이 다음 모션을 건드리지 않도록 취소/세대 검사를 둔다.
-- [ ] 7. `npx vitest run tests/unit/components/dialogMotion.test.ts tests/unit/components/ResponsiveDialog.test.tsx tests/unit/components/useSheetDismiss.test.tsx` 통과 후 커밋: `feat: unify dialog motion with bounded settling time`.
+- [x] 3. 모바일 enter는 실제 높이+16px→0, modal enter는 중앙 `scale 0.97→1`·opacity 0→1로 구현한다. 모달의 y는 항상 0이다. exit는 현재 위치에서 sheet 아래 이동/modal scale 1→0.97로 진행한다. enter/return bounce=0.12, exit bounce=0을 시작값으로 사용한다.
+- [x] 4. `requestClose`가 승인되면 버튼·Escape·backdrop 모두 exit를 기다려 `finishClose`한다. 드래그는 훅이 이미 exit를 소유하므로 이중 애니메이션하지 않는다. 확인창 승인 대기·저장 pending 동안 중복 요청은 차단한다. 정상 종료 시점에만 native close·scroll unlock·focus 복원이 실행된다.
+- [x] 5. 300ms fallback을 정상 450ms 모션보다 긴 **550ms 오류 복구용** 타이머로 바꾼다. 정상 완료에서는 즉시 타이머를 취소한다. 애니메이션 초기화 실패는 기다리지 않고 완료한다. 외부 unmount/open=false·presentation 전환은 애니메이션을 취소하고 잔여 스타일과 타이머를 정리한다.
+- [x] 6. 진입 도중 드래그는 기존 transform을 지우고 0부터 시작하지 않고 현재 화면 위치에서 이어간다. 복귀 중 재드래그, 새 dialog 열기, StrictMode effect 재실행도 이전 완료 콜백이 다음 모션을 건드리지 않도록 취소/세대 검사를 둔다.
+- [x] 7. `npx vitest run tests/unit/components/dialogMotion.test.ts tests/unit/components/ResponsiveDialog.test.tsx tests/unit/components/useSheetDismiss.test.tsx` 통과 후 커밋: `feat: unify dialog motion with bounded settling time`.
 
 ## Task 4: 세 앱의 공통 행동 배치와 호출부 이관
 

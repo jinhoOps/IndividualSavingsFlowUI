@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountManagementContext, AccountProductBoundary } from '../../../src/auth/AccountManagementContext';
 import { ResponsiveDialog } from '../../../src/components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../../src/components/common/ResponsiveDialogLayout';
@@ -11,13 +11,23 @@ import { PortfolioEditSurface } from '../../../src/portfolio/ui/PortfolioEditSur
 import { PortfolioManagementMenu } from '../../../src/portfolio/ui/PortfolioManagementMenu';
 
 const animeMocks = vi.hoisted(() => ({
-  animate: vi.fn(() => ({ cancel: vi.fn() })),
+  animate: vi.fn((_target: unknown, options: Record<string, unknown>) => {
+    if (typeof options.onComplete === 'function') options.onComplete();
+    return { cancel: vi.fn() };
+  }),
   createScope: vi.fn(() => ({
     add: (setup: () => void) => setup(),
     matches: { reducedMotion: false },
     revert: vi.fn(),
   })),
 }));
+
+beforeEach(() => {
+  animeMocks.animate.mockImplementation((_target: unknown, options: Record<string, unknown>) => {
+    if (typeof options.onComplete === 'function') options.onComplete();
+    return { cancel: vi.fn() };
+  });
+});
 
 vi.mock('animejs', () => ({
   animate: animeMocks.animate,

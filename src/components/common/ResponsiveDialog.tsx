@@ -1,7 +1,7 @@
 import { animate } from 'animejs';
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { createProductSpring, MOTION_DISTANCE_PX, MOTION_DURATION } from '../motion/tokens';
+import { createDialogMotionTiming, DIALOG_MOTION_MS, readDialogTranslateY } from '../motion/dialogMotion';
 import { useSheetDismiss } from '../motion/useSheetDismiss';
 import './responsive-dialog.css';
 
@@ -37,6 +37,9 @@ export function useResponsiveDialogClose(): ((reason: DialogCloseReason) => void
 const activeDialogs: HTMLDialogElement[] = [];
 let bodyScrollLockCount = 0;
 let unlockedBodyOverflow = '';
+type AnimationHandle = { cancel?(): void };
+
+const MOTION_RECOVERY_DEADLINE_MS = DIALOG_MOTION_MS + 100;
 const focusableSelector = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])', 'select:not([disabled])',
   'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
@@ -51,7 +54,7 @@ export function ResponsiveDialog({
   className,
   size = 'form',
   mobileHeight = 'content',
-  mobileEntranceMotion = false,
+  mobileEntranceMotion = true,
   busy = false,
   returnFocusRef,
   onRequestClose,
@@ -61,15 +64,25 @@ export function ResponsiveDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const wasOpenRef = useRef(false);
   const closeRequestPendingRef = useRef(false);
-  const openingMotionRef = useRef<{ cancel?(): void } | null>(null);
+  const openingMotionRef = useRef<AnimationHandle | null>(null);
+  const closingMotionRef = useRef<AnimationHandle | null>(null);
+  const openingFrameRef = useRef<number | undefined>(undefined);
+  const closingTimerRef = useRef<number | undefined>(undefined);
+  const lifecycleGenerationRef = useRef(0);
+  const openingGenerationRef = useRef(0);
+  const closingGenerationRef = useRef(0);
   const bodyLockedRef = useRef(false);
   const [requestedClosed, setRequestedClosed] = useState(false);
+  const [closeRequestPending, setCloseRequestPending] = useState(false);
   const presentation = useDialogPresentation();
+  const presentationRef = useRef(presentation);
+  const previousPresentationRef = useRef(presentation);
+  presentationRef.current = presentation;
 
   useSheetDismiss({
     rootRef: dialogRef,
     enabled: open && !requestedClosed,
-    blocked: busy || closeRequestPendingRef.current,
+    blocked: busy || closeRequestPending,
     isTopmost: () => activeDialogs.at(-1) === dialogRef.current,
     mediaQuery: '(max-width: 767px)',
     onRequestDismiss: () => requestClose('drag', false),
@@ -78,9 +91,25 @@ export function ResponsiveDialog({
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
+    const presentationChanged = previousPresentationRef.current !== presentation;
+    previousPresentationRef.current = presentation;
+    if (presentationChanged && wasOpenRef.current && dialog !== null) {
+      const wasClosing = closingMotionRef.current !== null;
+      cancelOpeningMotion();
+      cancelClosingMotion();
+      clearDialogMotionStyles(dialog);
+      if (wasClosing) {
+        finishClose();
+        return undefined;
+      }
+    }
+
     if (open && !requestedClosed) {
       const isOpening = !wasOpenRef.current;
-      wasOpenRef.current = true;
+      if (isOpening) {
+        wasOpenRef.current = true;
+        lifecycleGenerationRef.current += 1;
+      }
       if (dialog !== null) {
         if (!dialog.open) {
           try {
@@ -89,16 +118,14 @@ export function ResponsiveDialog({
             dialog.setAttribute('open', '');
           }
         }
-        // A state change inside an open sheet must not replay its entrance.
-        // Apart from looking disruptive, a fresh translateY can temporarily put
-        // the footer outside the viewport while a nested editor is closing.
-        if (isOpening && mobileEntranceMotion) {
-          prepareDialogEntrance(dialog);
-          // showModal() must paint before Anime can measure and animate the
-          // sheet. This also keeps React's development effect replay from
-          // cancelling the only entrance animation.
-          window.requestAnimationFrame(() => {
-            if (wasOpenRef.current && dialog.open) revealDialog(dialog, openingMotionRef);
+        if (isOpening && prepareDialogEntrance(dialog, presentation)) {
+          // Start after showModal has painted so Anime measures the real surface.
+          const generation = lifecycleGenerationRef.current;
+          openingFrameRef.current = window.requestAnimationFrame(() => {
+            openingFrameRef.current = undefined;
+            if (generation === lifecycleGenerationRef.current && wasOpenRef.current && dialog.open) {
+              revealDialog(dialog, presentation, openingMotionRef, openingGenerationRef);
+            }
           });
         }
         if (!activeDialogs.includes(dialog)) activeDialogs.push(dialog);
@@ -125,11 +152,14 @@ export function ResponsiveDialog({
       if (wasOpenRef.current) finishClose();
       else if (requestedClosed) setRequestedClosed(false);
     }
-  }, [mobileEntranceMotion, onClosed, open, requestedClosed, returnFocusRef]);
+  }, [mobileEntranceMotion, onClosed, open, presentation, requestedClosed, returnFocusRef]);
 
   useEffect(() => () => {
-    try { openingMotionRef.current?.cancel?.(); } catch { /* best-effort cleanup */ }
+    lifecycleGenerationRef.current += 1;
+    cancelOpeningMotion();
+    cancelClosingMotion();
     const dialog = dialogRef.current;
+    if (dialog !== null) clearDialogMotionStyles(dialog);
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
     unlockBodyScroll(bodyLockedRef);
@@ -144,44 +174,113 @@ export function ResponsiveDialog({
   function requestClose(reason: DialogCloseReason, closeImmediately = true): boolean | Promise<boolean> {
     if (busy || closeRequestPendingRef.current) return false;
     closeRequestPendingRef.current = true;
+    setCloseRequestPending(true);
+    const generation = lifecycleGenerationRef.current;
     let approval: boolean | Promise<boolean>;
     try {
       approval = onRequestClose(reason);
     } catch {
       closeRequestPendingRef.current = false;
+      setCloseRequestPending(false);
       return false;
     }
     if (typeof approval !== 'object' || approval === null || typeof approval.then !== 'function') {
       if (!approval) {
         closeRequestPendingRef.current = false;
+        setCloseRequestPending(false);
         return false;
       }
-      if (closeImmediately) finishClose();
+      if (closeImmediately) startApprovedClose();
       return true;
     }
     return Promise.resolve(approval).then(
       (approved) => {
-        if (!approved) {
-          closeRequestPendingRef.current = false;
+        if (!approved || generation !== lifecycleGenerationRef.current || !wasOpenRef.current) {
+          if (generation === lifecycleGenerationRef.current) {
+            closeRequestPendingRef.current = false;
+            setCloseRequestPending(false);
+          }
           return false;
         }
-        if (closeImmediately) finishClose();
+        if (closeImmediately) startApprovedClose();
         return true;
       },
       () => {
-        closeRequestPendingRef.current = false;
+        if (generation === lifecycleGenerationRef.current) {
+          closeRequestPendingRef.current = false;
+          setCloseRequestPending(false);
+        }
         return false;
       },
     );
+  }
+
+  function startApprovedClose(): void {
+    const dialog = dialogRef.current;
+    if (dialog === null || !dialog.open || !wasOpenRef.current) {
+      finishClose();
+      return;
+    }
+    const entranceNotStarted = openingFrameRef.current !== undefined;
+    let currentY = readDialogTranslateY(dialog);
+    let currentOpacity = readOpacity(dialog);
+    let currentScale = readScale(dialog);
+    cancelOpeningMotion();
+    if (entranceNotStarted) {
+      clearDialogMotionStyles(dialog);
+      currentY = 0;
+      currentOpacity = 1;
+      currentScale = 1;
+    }
+    cancelClosingMotion();
+    if (prefersReducedMotion()) {
+      finishClose();
+      return;
+    }
+
+    const generation = ++closingGenerationRef.current;
+    const presentationAtClose = presentationRef.current;
+    const height = dialog.getBoundingClientRect().height;
+    let completed = false;
+    const finish = () => {
+      if (completed || generation !== closingGenerationRef.current) return;
+      completed = true;
+      window.clearTimeout(closingTimerRef.current);
+      closingTimerRef.current = undefined;
+      closingMotionRef.current = null;
+      clearDialogMotionStyles(dialog);
+      finishClose();
+    };
+    const surfaceExit: Record<string, [number, number]> = presentationAtClose === 'sheet'
+      ? { translateY: [currentY, Math.max(height, currentY) + 16] }
+      : { scale: [currentScale, 0.97] };
+
+    try {
+      const motion = animate(dialog, {
+        ...surfaceExit,
+        opacity: [currentOpacity, 0],
+        ...createDialogMotionTiming(0),
+        onComplete: finish,
+      });
+      if (!completed) {
+        closingMotionRef.current = motion;
+        closingTimerRef.current = window.setTimeout(finish, MOTION_RECOVERY_DEADLINE_MS);
+      }
+    } catch {
+      finish();
+    }
   }
 
   function finishClose(): void {
     if (!wasOpenRef.current) return;
     const dialog = dialogRef.current;
     wasOpenRef.current = false;
+    lifecycleGenerationRef.current += 1;
     closeRequestPendingRef.current = false;
-    try { openingMotionRef.current?.cancel?.(); } catch { /* best-effort cleanup */ }
-    openingMotionRef.current = null;
+    setCloseRequestPending(false);
+    cancelOpeningMotion();
+    cancelClosingMotion();
+    if (dialog !== null) clearDialogMotionStyles(dialog);
     closeNativeDialog(dialog);
     removeActiveDialog(dialog);
     unlockBodyScroll(bodyLockedRef);
@@ -198,6 +297,24 @@ export function ResponsiveDialog({
     };
     window.requestAnimationFrame(restoreUnclaimedFocus);
     window.setTimeout(restoreUnclaimedFocus, 0);
+  }
+
+  function cancelOpeningMotion(): void {
+    openingGenerationRef.current += 1;
+    if (openingFrameRef.current !== undefined) {
+      window.cancelAnimationFrame(openingFrameRef.current);
+      openingFrameRef.current = undefined;
+    }
+    try { openingMotionRef.current?.cancel?.(); } catch { /* best-effort cleanup */ }
+    openingMotionRef.current = null;
+  }
+
+  function cancelClosingMotion(): void {
+    closingGenerationRef.current += 1;
+    window.clearTimeout(closingTimerRef.current);
+    closingTimerRef.current = undefined;
+    try { closingMotionRef.current?.cancel?.(); } catch { /* best-effort cleanup */ }
+    closingMotionRef.current = null;
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDialogElement>): void {
@@ -290,57 +407,83 @@ function unlockBodyScroll(lockRef: { current: boolean }): void {
 
 function revealDialog(
   dialog: HTMLDialogElement,
-  motionRef: { current: { cancel?(): void } | null },
+  presentation: 'sheet' | 'modal',
+  motionRef: { current: AnimationHandle | null },
+  generationRef: { current: number },
 ): void {
-  if (
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    || !window.matchMedia?.('(max-width: 767px)').matches
-    || dialog.getClientRects().length === 0
-  ) {
-    dialog.style.opacity = '1';
-    dialog.style.transform = 'translateY(0px)';
+  if (prefersReducedMotion() || !dialog.isConnected) {
+    clearDialogMotionStyles(dialog);
     return;
   }
-
+  const generation = ++generationRef.current;
+  let completed = false;
+  const finish = () => {
+    if (completed || generation !== generationRef.current || !dialog.isConnected) return;
+    completed = true;
+    motionRef.current = null;
+    clearDialogMotionStyles(dialog);
+  };
+  const surfaceEnter: Record<string, [number, number]> = presentation === 'sheet'
+    ? { translateY: [readDialogTranslateY(dialog), 0] }
+    : { scale: [readScale(dialog), 1] };
   try {
-    const entranceDistance = Math.max(MOTION_DISTANCE_PX.reveal, dialog.getBoundingClientRect().height + 16);
-    motionRef.current?.cancel?.();
-    motionRef.current = animate(dialog, {
-      opacity: [0, 1],
-      y: [entranceDistance, 0],
-      duration: MOTION_DURATION.normal,
-      ease: createProductSpring('surface'),
-      onComplete: () => {
-        motionRef.current = null;
-      },
+    const motion = animate(dialog, {
+      ...surfaceEnter,
+      opacity: [readOpacity(dialog), 1],
+      ...createDialogMotionTiming(0.12),
+      onComplete: finish,
     });
+    if (!completed) motionRef.current = motion;
   } catch {
-    dialog.style.opacity = '1';
-    dialog.style.transform = 'translateY(0px)';
+    finish();
   }
 }
 
-function prepareDialogEntrance(dialog: HTMLDialogElement): void {
-  if (
-    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    || !window.matchMedia?.('(max-width: 767px)').matches
-    || dialog.getClientRects().length === 0
-  ) {
-    commitVisibleDialogState(dialog);
-    return;
+function prepareDialogEntrance(dialog: HTMLDialogElement, presentation: 'sheet' | 'modal'): boolean {
+  if (prefersReducedMotion() || dialog.getClientRects().length === 0) {
+    clearDialogMotionStyles(dialog);
+    return false;
   }
-  const dialogHeight = dialog.getBoundingClientRect().height;
-  const entranceDistance = Math.max(
-    MOTION_DISTANCE_PX.reveal,
-    dialogHeight > 0 ? dialogHeight + 16 : window.innerHeight + 16,
-  );
   dialog.style.opacity = '0';
-  dialog.style.transform = `translateY(${entranceDistance}px)`;
+  dialog.style.removeProperty('translate');
+  if (presentation === 'sheet') {
+    const height = dialog.getBoundingClientRect().height || window.innerHeight;
+    dialog.style.transform = `translateY(${height + 16}px)`;
+    dialog.style.removeProperty('scale');
+  } else {
+    dialog.style.transform = 'scale(0.97)';
+    dialog.style.removeProperty('scale');
+  }
+  return true;
 }
 
-function commitVisibleDialogState(dialog: HTMLDialogElement): void {
-  dialog.style.opacity = '1';
-  dialog.style.transform = 'translateY(0px)';
+function clearDialogMotionStyles(dialog: HTMLDialogElement): void {
+  dialog.style.removeProperty('opacity');
+  dialog.style.removeProperty('transform');
+  dialog.style.removeProperty('translate');
+  dialog.style.removeProperty('scale');
+}
+
+function readOpacity(dialog: HTMLDialogElement): number {
+  const opacity = Number.parseFloat(window.getComputedStyle(dialog).opacity);
+  return Number.isFinite(opacity) ? opacity : 1;
+}
+
+function readScale(dialog: HTMLDialogElement): number {
+  const style = window.getComputedStyle(dialog);
+  if (style.scale !== '' && style.scale !== 'none') {
+    const individual = Number.parseFloat(style.scale);
+    if (Number.isFinite(individual)) return individual;
+  }
+  const transform = style.transform;
+  const matrix = transform.match(/^matrix\(\s*([\d.]+)/);
+  if (matrix !== null) return Number.parseFloat(matrix[1]);
+  const scale = transform.match(/scale\(\s*([\d.]+)/);
+  return scale === null ? 1 : Number.parseFloat(scale[1]);
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 }
 
 function removeActiveDialog(dialog: HTMLDialogElement | null): void {

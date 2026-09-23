@@ -11,6 +11,7 @@ const animeMocks = vi.hoisted(() => {
   return {
     animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
       applyFinalAnimationStyles(target, options);
+      (options.onComplete as (() => void) | undefined)?.();
       return { cancel: vi.fn() };
     }),
     createScope: vi.fn(() => ({
@@ -26,7 +27,9 @@ function applyFinalAnimationStyles(target: unknown, options: Record<string, unkn
   if (!(target instanceof HTMLElement)) return;
   if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
   if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+  if (Array.isArray(options.translateY)) target.style.transform = `translateY(${String(options.translateY.at(-1))}px)`;
   if (Array.isArray(options.x)) target.style.transform = `translateX(${String(options.x.at(-1))}px)`;
+  if (Array.isArray(options.scale)) target.style.transform = `scale(${String(options.scale.at(-1))})`;
 }
 
 vi.mock('animejs', () => ({
@@ -357,6 +360,10 @@ describe('SummaryDashboard', () => {
   it('keeps the mobile editor modal until the approved drag exit finishes', async () => {
     render(<DashboardHarness mobile />);
     vi.useFakeTimers();
+    animeMocks.animate.mockImplementationOnce((target, options) => {
+      applyFinalAnimationStyles(target, options);
+      return { cancel: vi.fn() };
+    });
     const opener = screen.getByRole('button', { name: '월 금액 편집' });
     fireEvent.click(opener);
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
@@ -364,15 +371,17 @@ describe('SummaryDashboard', () => {
     expect(handle).not.toBeNull();
 
     act(() => {
-      dispatchPointer(handle!, 'pointerdown', { clientY: 0 });
-      dispatchPointer(handle!, 'pointermove', { clientY: 100 });
-      dispatchPointer(handle!, 'pointerup', { clientY: 100 });
+      dispatchTouch(handle!, 'touchstart', 0);
+      dispatchTouch(handle!, 'touchmove', 100);
+      dispatchTouch(handle!, 'touchend', 100);
     });
 
     await act(async () => undefined);
     expect(dialog).toHaveAttribute('data-sheet-exiting', 'true');
     expect(dialog).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(300));
+    expect(dialog).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(250));
     expect(screen.queryByRole('dialog', { name: '월 자금 계획 편집' })).not.toBeInTheDocument();
     await act(async () => undefined);
     expect(opener).toHaveFocus();
@@ -387,9 +396,9 @@ describe('SummaryDashboard', () => {
     const handle = dialog.querySelector<HTMLElement>('[data-sheet-drag-handle]')!;
 
     act(() => {
-      dispatchPointer(handle, 'pointerdown', { clientY: 0 });
-      dispatchPointer(handle, 'pointermove', { clientY: 120 });
-      dispatchPointer(handle, 'pointerup', { clientY: 120 });
+      dispatchTouch(handle, 'touchstart', 0);
+      dispatchTouch(handle, 'touchmove', 120);
+      dispatchTouch(handle, 'touchend', 120);
     });
 
     expect(confirm).toHaveBeenCalledOnce();
@@ -405,7 +414,8 @@ describe('SummaryDashboard', () => {
 
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(dialog.style.opacity).toBe('');
+    expect(dialog.style.transform).toBe('');
     expect(animationOptionsFor(dialog)).toBeUndefined();
 
     fireEvent.click(screen.getByRole('button', { name: '닫기' }));
@@ -419,7 +429,8 @@ describe('SummaryDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: '월 금액 편집' }));
     const dialog = screen.getByRole('dialog', { name: '월 자금 계획 편집' });
 
-    expect(dialog).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(dialog.style.opacity).toBe('');
+    expect(dialog.style.transform).toBe('');
     expect(animationOptionsFor(dialog)).toBeUndefined();
   });
 
@@ -563,16 +574,13 @@ function animationOptionsFor(target: Element): Record<string, unknown> | undefin
     | undefined;
 }
 
-function dispatchPointer(target: HTMLElement, type: string, properties: Record<string, unknown>): void {
+function dispatchTouch(target: HTMLElement, type: 'touchstart' | 'touchmove' | 'touchend', clientY: number): void {
+  const touch = { identifier: 1, target, clientX: 0, clientY, pageX: 0, pageY: clientY, screenX: 0, screenY: clientY };
   const event = new Event(type, { bubbles: true, cancelable: true });
-  for (const [key, value] of Object.entries({
-    pointerId: 1,
-    pointerType: 'touch',
-    isPrimary: true,
-    clientX: 0,
-    clientY: 0,
-    ...properties,
-  })) Object.defineProperty(event, key, { configurable: true, value });
+  Object.defineProperties(event, {
+    changedTouches: { value: [touch] },
+    touches: { value: type === 'touchend' ? [] : [touch] },
+  });
   target.dispatchEvent(event);
 }
 

@@ -13,6 +13,7 @@ const animeMocks = vi.hoisted(() => {
   return {
     animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
       applyFinalAnimationStyles(target, options);
+      (options.onComplete as (() => void) | undefined)?.();
       return { cancel: vi.fn() };
     }),
     createScope: vi.fn(() => ({
@@ -28,7 +29,9 @@ function applyFinalAnimationStyles(target: unknown, options: Record<string, unkn
   if (!(target instanceof HTMLElement)) return;
   if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
   if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+  if (Array.isArray(options.translateY)) target.style.transform = `translateY(${String(options.translateY.at(-1))}px)`;
   if (Array.isArray(options.x)) target.style.transform = `translateX(${String(options.x.at(-1))}px)`;
+  if (Array.isArray(options.scale)) target.style.transform = `scale(${String(options.scale.at(-1))})`;
 }
 
 vi.mock('animejs', () => ({
@@ -450,7 +453,8 @@ describe('shared Journey overlays', () => {
     );
     const dialog = screen.getByRole('dialog', { name: '초기화 확인' });
 
-    expect(dialog).toHaveStyle({ opacity: '1', transform: 'translateY(0px)' });
+    expect(dialog.style.opacity).toBe('');
+    expect(dialog.style.transform).toBe('');
   });
 });
 

@@ -13,7 +13,11 @@ const animate = vi.hoisted(() => vi.fn((target: unknown, options: Record<string,
   return { cancel: vi.fn() };
 }));
 
-vi.mock('animejs', () => ({ animate }));
+vi.mock('animejs', () => ({
+  animate,
+  remove: vi.fn(),
+  spring: vi.fn(() => ({ ease: (progress: number) => progress })),
+}));
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -99,6 +103,22 @@ describe('useSheetDismiss', () => {
     expect(onRequestDismiss).not.toHaveBeenCalled();
     expect(animate).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('sheet')).not.toHaveAttribute('data-sheet-dragging');
+  });
+
+  it('keeps the entrance position while taking over a drag', () => {
+    render(<Harness />);
+    const sheet = screen.getByTestId('sheet');
+    const handle = screen.getByText('손잡이');
+    sheet.style.transform = 'translateY(120px)';
+    sheet.style.opacity = '0.5';
+
+    dispatchPointer(handle, 'pointerdown', { clientY: 100 });
+    sheet.style.transform = 'translateY(150px)';
+    dispatchPointer(handle, 'pointermove', { clientY: 125 });
+
+    expect(sheet.style.transform).toBe('translateY(175px)');
+    expect(sheet.style.opacity).toBe('0.5');
+    dispatchPointer(handle, 'pointercancel', { clientY: 125 });
   });
 
   it.each([
@@ -449,10 +469,13 @@ describe('useSheetDismiss', () => {
     dispatchPointer(handle, 'pointerup', { clientY: 120 });
 
     expect(onDismissed).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(299);
+    vi.advanceTimersByTime(300);
+    expect(onDismissed).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(249);
     expect(onDismissed).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(onDismissed).toHaveBeenCalledOnce();
+    expect(animate).toHaveBeenCalledWith(expect.any(HTMLElement), expect.objectContaining({ duration: 450 }));
   });
 
   it('closes without a presentation delay when reduced motion is requested', () => {

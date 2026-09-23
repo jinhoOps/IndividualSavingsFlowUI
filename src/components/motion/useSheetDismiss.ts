@@ -1,12 +1,11 @@
 import { animate, remove as removeAnimations } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { createProductSpring } from './tokens';
+import { createDialogMotionTiming, readDialogTranslateY } from './dialogMotion';
 
 const ACTIVATION_DISTANCE_PX = 8;
 const QUICK_DISMISS_DISTANCE_PX = 32;
 const QUICK_DISMISS_VELOCITY_PX_MS = 0.6;
-const RETURN_DEADLINE_MS = 300;
-const EXIT_DEADLINE_MS = 300;
+const MOTION_RECOVERY_DEADLINE_MS = 550;
 const interactiveSelector = [
   'input', 'textarea', 'select', 'button', 'a[href]', 'label', 'summary',
   '[contenteditable]:not([contenteditable="false"])', '[role="button"]',
@@ -16,6 +15,11 @@ const interactiveSelector = [
 ].join(',');
 
 type AnimationHandle = { cancel?(): void };
+
+function readOpacity(element: HTMLElement): number {
+  const opacity = Number.parseFloat(window.getComputedStyle(element).opacity);
+  return Number.isFinite(opacity) ? opacity : 1;
+}
 
 export interface UseSheetDismissOptions {
   rootRef: RefObject<HTMLElement | null>;
@@ -76,6 +80,7 @@ export function useSheetDismiss({
       source: 'pointer' | 'touch';
       startX: number;
       startY: number;
+      baseOffsetY: number;
       lastY: number;
       lastTime: number;
       velocityY: number;
@@ -108,19 +113,20 @@ export function useSheetDismiss({
       root.style.removeProperty('will-change');
       root.style.removeProperty('transform');
       root.style.removeProperty('translate');
+      root.style.removeProperty('opacity');
     };
-    const stopOpeningMotion = () => {
+    const stopOpeningMotion = (baseOffsetY: number) => {
+      const opacity = readOpacity(root);
       try { removeAnimations(root); } catch { /* best-effort cancellation */ }
       root.style.removeProperty('bottom');
       root.style.removeProperty('right');
-      root.style.removeProperty('opacity');
       root.style.removeProperty('translate');
-      root.style.removeProperty('transform');
+      root.style.transform = `translateY(${baseOffsetY}px)`;
+      root.style.opacity = String(opacity);
     };
     const returnToOrigin = () => {
-      const transform = root.style.transform;
-      const match = transform.match(/translateY\((-?[\d.]+)px\)/);
-      const currentY = match === null ? 0 : Number(match[1]);
+      const currentY = readDialogTranslateY(root);
+      const currentOpacity = readOpacity(root);
       const generation = ++returnGeneration;
       const finish = () => {
         if (generation !== returnGeneration) return;
@@ -133,7 +139,7 @@ export function useSheetDismiss({
           exitSheet(0);
         }
       };
-      if (currentY === 0 || !Number.isFinite(currentY)) {
+      if ((currentY === 0 && currentOpacity === 1) || !Number.isFinite(currentY)) {
         try { returnAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
         finish();
         return;
@@ -155,10 +161,11 @@ export function useSheetDismiss({
       try {
         returnAnimation = animate(root, {
           translateY: [currentY, 0],
-          ease: createProductSpring('return'),
+          ...(currentOpacity === 1 ? {} : { opacity: [currentOpacity, 1] }),
+          ...createDialogMotionTiming(0.12),
           onComplete: finishAnimation,
         });
-        if (!finished) returnTimer = window.setTimeout(finishAnimation, RETURN_DEADLINE_MS);
+        if (!finished) returnTimer = window.setTimeout(finishAnimation, MOTION_RECOVERY_DEADLINE_MS);
       } catch {
         finishAnimation();
       }
@@ -178,7 +185,7 @@ export function useSheetDismiss({
       cancelActiveDrag();
       event.stopPropagation();
     };
-    const exitSheet = (currentY: number) => {
+    const exitSheet = (currentY: number, currentOpacity = readOpacity(root)) => {
       let finished = false;
       const finish = () => {
         if (finished || !exiting) return;
@@ -200,23 +207,24 @@ export function useSheetDismiss({
       root.setAttribute('data-sheet-exiting', 'true');
       root.style.willChange = 'transform, opacity';
       backdropRef?.current?.setAttribute('data-sheet-exiting', 'true');
-      // Pointer tracking uses transform directly; hand off to Anime's translate
-      // channel from the same offset so the release never jumps back to zero.
+      // Direct pointer tracking uses transform. Continue Anime from its current
+      // offset so an interrupted entrance or drag release does not jump.
       root.style.removeProperty('transform');
+      root.style.removeProperty('translate');
       try {
         exitAnimation = animate(root, {
           translateY: [currentY, Math.max(height, currentY) + 16],
-          opacity: [1, 0],
-          ease: createProductSpring('exit'),
+          opacity: [currentOpacity, 0],
+          ...createDialogMotionTiming(0),
           onComplete: finish,
         });
         if (backdropRef?.current !== null && backdropRef?.current !== undefined) {
           backdropAnimation = animate(backdropRef.current, {
             opacity: [1, 0],
-            ease: createProductSpring('exit'),
+            ...createDialogMotionTiming(0),
           });
         }
-        if (!finished) exitTimer = window.setTimeout(finish, EXIT_DEADLINE_MS);
+        if (!finished) exitTimer = window.setTimeout(finish, MOTION_RECOVERY_DEADLINE_MS);
       } catch {
         finish();
       }
@@ -260,6 +268,7 @@ export function useSheetDismiss({
         source,
         startX: clientX,
         startY: clientY,
+        baseOffsetY: readDialogTranslateY(root),
         lastY: clientY,
         lastTime: time,
         velocityY: 0,
@@ -305,14 +314,15 @@ export function useSheetDismiss({
       if (!drag.active) {
         if (dy <= ACTIVATION_DISTANCE_PX || dy <= Math.abs(dx)) return;
         drag.active = true;
-        stopOpeningMotion();
+        drag.baseOffsetY = readDialogTranslateY(root);
+        stopOpeningMotion(drag.baseOffsetY);
         if (source === 'pointer') root.setPointerCapture?.(pointerId);
         root.setAttribute('data-sheet-dragging', 'true');
         root.style.willChange = 'transform';
       }
       preventDefault();
       const height = root.getBoundingClientRect().height;
-      const visibleDy = Math.max(0, height > 0 ? Math.min(dy, height) : dy);
+      const visibleDy = drag.baseOffsetY + Math.max(0, height > 0 ? Math.min(dy, height) : dy);
       root.style.transform = `translateY(${visibleDy}px)`;
     };
     const pointerMove = (event: PointerEvent) => {
@@ -369,7 +379,8 @@ export function useSheetDismiss({
       const dy = Math.max(0, clientY - current.startY);
       const height = root.getBoundingClientRect().height;
       const releaseVelocity = time - current.lastTime <= 80 ? current.velocityY : 0;
-      root.style.transform = `translateY(${Math.max(0, height > 0 ? Math.min(dy, height) : dy)}px)`;
+      const currentY = current.baseOffsetY + Math.max(0, height > 0 ? Math.min(dy, height) : dy);
+      root.style.transform = `translateY(${currentY}px)`;
       const threshold = Math.min(140, Math.max(80, height * 0.2));
       const shouldDismiss = dy >= threshold
         || (dy >= QUICK_DISMISS_DISTANCE_PX && releaseVelocity >= QUICK_DISMISS_VELOCITY_PX_MS);
@@ -403,7 +414,7 @@ export function useSheetDismiss({
           returnToOrigin();
         } else if (dismissedRef.current !== undefined) {
           exiting = true;
-          exitSheet(dy);
+          exitSheet(currentY);
         } else {
           queueMicrotask(() => {
             if (root.isConnected) returnToOrigin();
