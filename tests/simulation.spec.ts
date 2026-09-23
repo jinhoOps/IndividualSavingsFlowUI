@@ -53,6 +53,55 @@ test('mobile condition editor begins below its resting position', async ({ page 
 
 for (const viewport of [
   { name: '390px', width: 390, height: 844 },
+  { name: '390x600', width: 390, height: 600 },
+  { name: '320x568', width: 320, height: 568 },
+  { name: '768px', width: 768, height: 1024 },
+  { name: 'desktop', width: 1280, height: 900 },
+]) {
+  test(`${viewport.name} 조건 편집 표면은 기기별 규격을 사용한다`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await seedMain(page);
+    await openFirstResult(page);
+
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    const dialog = page.getByRole('dialog', { name: '시뮬레이션 조건' });
+    await expect(dialog).toBeVisible();
+    await expect.poll(() => dialog.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
+    const box = await dialog.boundingBox();
+    expect(box).not.toBeNull();
+
+    if (viewport.width < 768) {
+      const maxHeight = await dialog.evaluate((element) => Number.parseFloat(getComputedStyle(element).maxHeight));
+      expect(maxHeight).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
+      await expect(dialog.locator('.responsive-dialog__drag-handle')).toBeVisible();
+      expect(box!.x).toBe(0);
+      expect(box!.width).toBe(viewport.width);
+      expect(box!.y + box!.height).toBeCloseTo(viewport.height, 0);
+    } else {
+      await expect(dialog.locator('.responsive-dialog__drag-handle')).toBeHidden();
+      expect(Math.abs(box!.x + box!.width / 2 - viewport.width / 2)).toBeLessThan(2);
+      expect(box!.y + box!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+      await expect(dialog.locator('.responsive-dialog__heading')).toHaveCSS('text-align', 'left');
+    }
+    const close = dialog.getByRole('button', { name: '닫기', exact: true });
+    const closeBox = await close.boundingBox();
+    expect(closeBox).not.toBeNull();
+    expect(closeBox!.height).toBeGreaterThanOrEqual(44);
+    await expect(close).toBeFocused();
+    const amountMode = dialog.getByRole('group', { name: '표시 금액 기준' });
+    for (const button of await amountMode.getByRole('button').all()) {
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`simulation-condition-${viewport.width}x${viewport.height}.png`) });
+  });
+}
+
+for (const viewport of [
+  { name: '390px', width: 390, height: 844 },
   { name: '768px', width: 768, height: 900 },
   { name: 'desktop', width: 1280, height: 900 },
 ]) {
@@ -190,6 +239,11 @@ for (const viewport of [
         === value.querySelector('.simulation-comparison__visual-value')?.textContent
     )))).toBe(true);
     await page.getByRole('button', { name: '조건 편집' }).click();
+    await expect(conditionEditor).toBeVisible();
+    await expect.poll(() => conditionEditor.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
     await summary.click();
     const controls = conditionEditor.locator('input, button, summary');
     for (const control of await controls.all()) {
@@ -601,9 +655,9 @@ test('keeps a failed reset dialog scrollable, contained, and focused in a short 
     };
   });
   expect(containment.top).toBeGreaterThanOrEqual(16);
-  expect(containment.bottom).toBeLessThanOrEqual(containment.viewportHeight - 16);
+  expect(containment.bottom).toBeCloseTo(containment.viewportHeight, 0);
   expect(Number.parseFloat(containment.maxBlockSize)).toBeLessThanOrEqual(
-    containment.viewportHeight - 32,
+    containment.viewportHeight * 0.88 + 1,
   );
   expect(containment.overflowY).toBe('auto');
   expect(containment.scrollHeight).toBeGreaterThan(containment.clientHeight);

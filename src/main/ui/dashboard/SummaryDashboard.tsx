@@ -206,7 +206,6 @@ export function SummaryDashboard({
           initialFocusSelector={editorFocusPath === undefined ? undefined : `[data-validation-path="${editorFocusPath}"]`}
           size="form"
           busy={saving}
-          mobileEntranceMotion
           returnFocusRef={openerRef}
           onRequestClose={requestClose}
           onClosed={() => setEditorOpen(false)}

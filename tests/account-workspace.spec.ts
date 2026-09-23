@@ -155,19 +155,49 @@ function resultCardPlan(): WorkspaceDocument {
   return workspace;
 }
 
-for (const width of [390, 768, 1280]) {
-  test(`creates and opens a 48-hour result-card link without changing the workspace at ${width}px`, async ({page, context}, testInfo) => {
+for (const viewport of [
+  {width: 390, height: 844},
+  {width: 390, height: 600},
+  {width: 320, height: 568},
+  {width: 768, height: 1024},
+  {width: 1280, height: 900},
+]) {
+  test(`creates and opens a 48-hour result-card link without changing the workspace at ${viewport.width}x${viewport.height}`, async ({page, context}, testInfo) => {
     const server = fakeServer();
     const workspace = resultCardPlan();
     server.rows.set(userA, structuredClone(workspace));
     await server.attach(context, userA);
-    await page.setViewportSize({width, height: 900});
+    await page.setViewportSize(viewport);
     await page.emulateMedia({reducedMotion: 'reduce'});
     await page.goto('apps/portfolio/');
+
+    const expectSurface = async (dialog: import('@playwright/test').Locator) => {
+      await expect(dialog).toHaveAttribute('data-presentation', viewport.width < 768 ? 'sheet' : 'modal');
+      const box = await dialog.boundingBox();
+      expect(box).not.toBeNull();
+      if (viewport.width < 768) {
+        expect(box!.height).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
+        expect(box!.x).toBe(0);
+        expect(box!.width).toBe(viewport.width);
+        expect(box!.y + box!.height).toBeCloseTo(viewport.height, 0);
+        await expect(dialog.locator('.responsive-dialog__drag-handle')).toBeVisible();
+      } else {
+        expect(box!.x + box!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+        expect(box!.y + box!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+        await expect(dialog.locator('.responsive-dialog__drag-handle')).toBeHidden();
+      }
+      await expect(dialog.getByRole('button', {name: '닫기', exact: true})).toBeFocused();
+      expect(await page.locator('html').evaluate(html => html.scrollWidth <= innerWidth)).toBe(true);
+    };
 
     await page.getByRole('button', {name: '저장하기'}).click();
     const saveDialog = page.getByRole('dialog', {name: '계획 이미지 저장'});
     await expect(saveDialog).toBeVisible();
+    await expectSurface(saveDialog);
+    const saveActions = saveDialog.locator('[data-surface-footer] .responsive-dialog__actions');
+    const saveButton = saveActions.getByRole('button', {name: '이미지 저장'});
+    expect((await saveButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expect(saveButton).toBeInViewport();
     await expect(saveDialog.getByRole('button', {name: '이미지 저장'})).toBeEnabled({timeout: 10_000});
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -180,16 +210,26 @@ for (const width of [390, 768, 1280]) {
     await page.getByRole('button', {name: '공유하기'}).click();
     const dialog = page.getByRole('dialog', {name: '계획 이미지 공유'});
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('switch', {name: '금액 포함'})).toBeVisible();
+    await expectSurface(dialog);
+    const toggle = dialog.getByRole('switch', {name: '금액 포함'});
+    await expect(toggle).toBeVisible();
+    await toggle.scrollIntoViewIfNeeded();
+    await expect(toggle).toBeInViewport();
+    const toggleLabelBox = await dialog.locator('.result-card-preview__amounts').boundingBox();
+    expect(toggleLabelBox).not.toBeNull();
+    expect(toggleLabelBox!.height).toBeGreaterThanOrEqual(44);
     await expect(dialog.getByText('공유 링크는 최대 2일 동안 열 수 있어요. 정확한 만료 시각은 생성 후 표시돼요.')).toBeVisible();
-    await expect(dialog.getByRole('button', {name: '공유 링크 만들기'})).toBeEnabled({timeout: 10_000});
+    const createButton = dialog.getByRole('button', {name: '공유 링크 만들기'});
+    await expect(createButton).toBeEnabled({timeout: 10_000});
+    expect((await createButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expect(createButton).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
     expect(await preventsLeaving(page)).toBe(false);
     await dialog.getByRole('switch', {name: '금액 포함'}).click();
     await expect(dialog.getByRole('button', {name: '공유 링크 만들기'})).toBeEnabled();
     expect(await preventsLeaving(page)).toBe(false);
-    await page.screenshot({path: testInfo.outputPath('share-preview.png')});
+    await page.screenshot({path: testInfo.outputPath(`share-preview-${viewport.width}x${viewport.height}.png`)});
 
     await dialog.getByRole('button', {name: '공유 링크 만들기'}).click();
     const link = dialog.getByRole('textbox', {name: '공유 링크'});
@@ -206,6 +246,30 @@ for (const width of [390, 768, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+test.describe('result preview touch controls', () => {
+  test.use({viewport: {width: 390, height: 844}, hasTouch: true});
+
+  test('toggles amount visibility with a real touch while keeping the sheet open', async ({page, context}) => {
+    const server = fakeServer();
+    server.rows.set(userA, resultCardPlan());
+    await server.attach(context, userA);
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.goto('apps/portfolio/');
+    await page.getByRole('button', {name: '공유하기'}).click();
+    const dialog = page.getByRole('dialog', {name: '계획 이미지 공유'});
+    const toggle = dialog.getByRole('switch', {name: '금액 포함'});
+    const before = await toggle.isChecked();
+    await toggle.scrollIntoViewIfNeeded();
+    await expect(toggle).toBeInViewport();
+    const box = await toggle.boundingBox();
+    expect(box).not.toBeNull();
+    await page.touchscreen.tap(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await expect(toggle).toHaveJSProperty('checked', !before);
+    await expect(dialog).toBeVisible();
+    await expect(dialog).not.toHaveAttribute('data-sheet-exiting', 'true');
+  });
+});
 
 for (const includeAmounts of [true, false]) {
   test(`result-card text keeps natural glyphs and separate rows (amounts: ${includeAmounts})`, async ({page, context}, testInfo) => {
@@ -937,9 +1001,11 @@ for (const width of [390, 768, 1280]) {
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', {name: '매달 월세로 얼마를 내나요?'})).toBeFocused();
     await expect(page.getByTestId('dashboard-controls')).toHaveAttribute('inert', '');
-    // Anime.js drives requestAnimationFrame; Element.getAnimations only sees CSS/WAAPI.
+    await expect.poll(() => dialog.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
     await expect(dialog).toHaveCSS('opacity', '1');
-    await expect(dialog).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
     const box = (await dialog.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(844);
@@ -1012,6 +1078,8 @@ for (const width of [390, 768, 1280]) {
       expect(hintBounds.y + hintBounds.height).toBeLessThanOrEqual(nextBounds.y);
       expect(nextBounds.y + nextBounds.height).toBeLessThanOrEqual(844);
       expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+      await adjustments.scrollIntoViewIfNeeded();
+      await expect(adjustments).toBeInViewport();
       const quickBounds = (await dialog.getByRole('group', {name: '금액 빠른 조정'}).boundingBox())!;
       const footerBounds = (await dialog.locator('.expense-assistant__footer').boundingBox())!;
       expect(quickBounds.y + quickBounds.height).toBeLessThanOrEqual(footerBounds.y);
@@ -1484,9 +1552,11 @@ for (const width of [390, 768, 1280]) {
         ? page.locator('dialog[data-presentation="sheet"]')
         : page.getByRole('dialog', { name: '월 자금 계획 편집' });
       await expect(editor).toBeVisible();
-      if (width < 768) {
-        await expect(editor).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
-      }
+      await expect.poll(() => editor.evaluate((element) => (
+        element.style.opacity === '' && element.style.transform === ''
+          && element.style.translate === '' && element.style.scale === ''
+      ))).toBe(true);
+      await page.evaluate(() => document.fonts.ready);
       const before = await apply.boundingBox();
       const footer = page.locator('.main-apply-bar');
       const footerBefore = await footer.boundingBox();

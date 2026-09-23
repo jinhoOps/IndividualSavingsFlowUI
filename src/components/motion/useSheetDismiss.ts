@@ -1,14 +1,25 @@
 import { animate, remove as removeAnimations } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { createProductSpring } from './tokens';
+import { createDialogMotionTiming, readDialogTranslateY } from './dialogMotion';
 
 const ACTIVATION_DISTANCE_PX = 8;
 const QUICK_DISMISS_DISTANCE_PX = 32;
 const QUICK_DISMISS_VELOCITY_PX_MS = 0.6;
-const RETURN_DEADLINE_MS = 300;
-const EXIT_DEADLINE_MS = 300;
+const MOTION_RECOVERY_DEADLINE_MS = 550;
+const interactiveSelector = [
+  'input', 'textarea', 'select', 'button', 'a[href]', 'label', 'summary',
+  '[contenteditable]:not([contenteditable="false"])', '[role="button"]',
+  '[role="slider"]', '[role="switch"]', '[role="checkbox"]',
+  '[role="radio"]', '[role="combobox"]', '[tabindex]:not([tabindex="-1"])',
+  '[data-sheet-no-drag]',
+].join(',');
 
 type AnimationHandle = { cancel?(): void };
+
+function readOpacity(element: HTMLElement): number {
+  const opacity = Number.parseFloat(window.getComputedStyle(element).opacity);
+  return Number.isFinite(opacity) ? opacity : 1;
+}
 
 export interface UseSheetDismissOptions {
   rootRef: RefObject<HTMLElement | null>;
@@ -21,7 +32,7 @@ export interface UseSheetDismissOptions {
   onDismissed?(): void;
 }
 
-/** Binds downward dismissal to a visible [data-sheet-drag-handle] inside a sheet. */
+/** Binds sheet dismissal to non-interactive surface space while preserving body scrolling. */
 export function useSheetDismiss({
   rootRef,
   backdropRef,
@@ -66,12 +77,16 @@ export function useSheetDismiss({
 
     let drag: {
       pointerId: number;
+      source: 'pointer' | 'touch';
       startX: number;
       startY: number;
+      baseOffsetY: number;
       lastY: number;
       lastTime: number;
       velocityY: number;
       active: boolean;
+      scrolling: boolean;
+      scrollContainer: HTMLElement | null;
     } | null = null;
     let exiting = false;
     let suppressNextClick = false;
@@ -86,8 +101,16 @@ export function useSheetDismiss({
     let returning = false;
     let approvingDismiss = false;
     let exitAfterReturn = false;
+    let effectDisposed = false;
+    let dismissalCompleted = false;
+    let touchSelectionAtStart = '';
+    const completeDismissal = () => {
+      if (dismissalCompleted) return;
+      dismissalCompleted = true;
+      dismissedRef.current?.();
+    };
 
-    const now = (event: PointerEvent): number => (
+    const now = (event: Event): number => (
       Number.isFinite(event.timeStamp) && event.timeStamp > 0 ? event.timeStamp : performance.now()
     );
     const clearDragStyles = () => {
@@ -97,19 +120,20 @@ export function useSheetDismiss({
       root.style.removeProperty('will-change');
       root.style.removeProperty('transform');
       root.style.removeProperty('translate');
+      root.style.removeProperty('opacity');
     };
-    const stopOpeningMotion = () => {
+    const stopOpeningMotion = (baseOffsetY: number) => {
+      const opacity = readOpacity(root);
       try { removeAnimations(root); } catch { /* best-effort cancellation */ }
       root.style.removeProperty('bottom');
       root.style.removeProperty('right');
-      root.style.removeProperty('opacity');
       root.style.removeProperty('translate');
-      root.style.removeProperty('transform');
+      root.style.transform = `translateY(${baseOffsetY}px)`;
+      root.style.opacity = String(opacity);
     };
     const returnToOrigin = () => {
-      const transform = root.style.transform;
-      const match = transform.match(/translateY\((-?[\d.]+)px\)/);
-      const currentY = match === null ? 0 : Number(match[1]);
+      const currentY = readDialogTranslateY(root);
+      const currentOpacity = readOpacity(root);
       const generation = ++returnGeneration;
       const finish = () => {
         if (generation !== returnGeneration) return;
@@ -122,7 +146,7 @@ export function useSheetDismiss({
           exitSheet(0);
         }
       };
-      if (currentY === 0 || !Number.isFinite(currentY)) {
+      if ((currentY === 0 && currentOpacity === 1) || !Number.isFinite(currentY)) {
         try { returnAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
         finish();
         return;
@@ -144,23 +168,31 @@ export function useSheetDismiss({
       try {
         returnAnimation = animate(root, {
           translateY: [currentY, 0],
-          ease: createProductSpring('return'),
+          ...(currentOpacity === 1 ? {} : { opacity: [currentOpacity, 1] }),
+          ...createDialogMotionTiming(0.12),
           onComplete: finishAnimation,
         });
-        if (!finished) returnTimer = window.setTimeout(finishAnimation, RETURN_DEADLINE_MS);
+        if (!finished) returnTimer = window.setTimeout(finishAnimation, MOTION_RECOVERY_DEADLINE_MS);
       } catch {
         finishAnimation();
       }
     };
-    const cancelForAdditionalPointer = (event: PointerEvent) => {
-      if (drag === null || drag.pointerId === event.pointerId) return;
-      const activePointerId = drag.pointerId;
+    const cancelActiveDrag = () => {
+      if (drag === null) return;
+      const current = drag;
       drag = null;
-      try { handle.releasePointerCapture?.(activePointerId); } catch { /* capture may not be active */ }
+      if (current.source === 'pointer') {
+        try { root.releasePointerCapture?.(current.pointerId); } catch { /* capture may not be active */ }
+      }
       returnToOrigin();
+    };
+    const cancelForAdditionalPointer = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      if (drag === null || drag.pointerId === event.pointerId) return;
+      cancelActiveDrag();
       event.stopPropagation();
     };
-    const exitSheet = (currentY: number) => {
+    const exitSheet = (currentY: number, currentOpacity = readOpacity(root)) => {
       let finished = false;
       const finish = () => {
         if (finished || !exiting) return;
@@ -171,7 +203,7 @@ export function useSheetDismiss({
         exitAnimation = undefined;
         backdropAnimation = undefined;
         finishExit = undefined;
-        dismissedRef.current?.();
+        completeDismissal();
       };
       finishExit = finish;
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
@@ -182,96 +214,185 @@ export function useSheetDismiss({
       root.setAttribute('data-sheet-exiting', 'true');
       root.style.willChange = 'transform, opacity';
       backdropRef?.current?.setAttribute('data-sheet-exiting', 'true');
-      // Pointer tracking uses transform directly; hand off to Anime's translate
-      // channel from the same offset so the release never jumps back to zero.
+      // Direct pointer tracking uses transform. Continue Anime from its current
+      // offset so an interrupted entrance or drag release does not jump.
       root.style.removeProperty('transform');
+      root.style.removeProperty('translate');
       try {
         exitAnimation = animate(root, {
           translateY: [currentY, Math.max(height, currentY) + 16],
-          opacity: [1, 0],
-          ease: createProductSpring('exit'),
+          opacity: [currentOpacity, 0],
+          ...createDialogMotionTiming(0),
           onComplete: finish,
         });
         if (backdropRef?.current !== null && backdropRef?.current !== undefined) {
           backdropAnimation = animate(backdropRef.current, {
             opacity: [1, 0],
-            ease: createProductSpring('exit'),
+            ...createDialogMotionTiming(0),
           });
         }
-        if (!finished) exitTimer = window.setTimeout(finish, EXIT_DEADLINE_MS);
+        if (!finished) exitTimer = window.setTimeout(finish, MOTION_RECOVERY_DEADLINE_MS);
       } catch {
         finish();
       }
     };
-    const pointerDown = (event: PointerEvent) => {
+    const getScrollContainer = (target: Element): HTMLElement | null => {
+      const surfaceBody = target.closest<HTMLElement>('[data-surface-body]');
+      if (surfaceBody === null) return null;
+      let current = target instanceof HTMLElement ? target : surfaceBody;
+      while (surfaceBody.contains(current)) {
+        const overflowY = window.getComputedStyle(current).overflowY;
+        if (current === surfaceBody || overflowY === 'auto' || overflowY === 'scroll') return current;
+        if (current.parentElement === null) break;
+        current = current.parentElement;
+      }
+      return surfaceBody;
+    };
+    const startDrag = (
+      target: EventTarget | null,
+      pointerId: number,
+      source: 'pointer' | 'touch',
+      clientX: number,
+      clientY: number,
+      time: number,
+      isPrimary = true,
+    ) => {
       if (drag !== null) {
-        if (drag.pointerId !== event.pointerId) {
-          const activePointerId = drag.pointerId;
-          drag = null;
-          try { handle.releasePointerCapture?.(activePointerId); } catch { /* capture may not be active */ }
-          returnToOrigin();
-        }
+        if (drag.pointerId !== pointerId || drag.source !== source) cancelActiveDrag();
         return;
       }
-      if (exiting || approvingDismiss || blockedRef.current || !topmostRef.current() || event.isPrimary === false) return;
-      if (event.pointerType === 'mouse' && event.button !== 0) return;
-      if ((event.target as Element | null)?.closest('button, a, input, select, textarea, [contenteditable="true"]')) return;
-      window.clearTimeout(clickTimer);
-      clickTimer = undefined;
-      suppressNextClick = false;
+      if (exiting || approvingDismiss || blockedRef.current || !topmostRef.current() || !isPrimary) return;
+      const element = target instanceof Element ? target : null;
+      if (element === null || element === root || element.closest(interactiveSelector) !== null) return;
+      const scrollContainer = getScrollContainer(element);
       try { returnAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
       returnAnimation = undefined;
-      const time = now(event);
       drag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        lastY: event.clientY,
+        pointerId,
+        source,
+        startX: clientX,
+        startY: clientY,
+        baseOffsetY: readDialogTranslateY(root),
+        lastY: clientY,
         lastTime: time,
         velocityY: 0,
         active: false,
+        scrolling: scrollContainer !== null && scrollContainer.scrollTop > 0,
+        scrollContainer,
       };
     };
-    const pointerMove = (event: PointerEvent) => {
-      if (drag === null || event.pointerId !== drag.pointerId) return;
+    const pointerDown = (event: PointerEvent) => {
+      // A new pointer sequence is a deliberate interaction after the drag has
+      // ended. Only suppress the click emitted by the drag's own pointerup.
+      window.clearTimeout(clickTimer);
+      clickTimer = undefined;
+      suppressNextClick = false;
+      if (event.pointerType === 'touch') return;
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      startDrag(event.target, event.pointerId, 'pointer', event.clientX, event.clientY, now(event), event.isPrimary !== false);
+    };
+    const updateDrag = (
+      pointerId: number,
+      source: 'pointer' | 'touch',
+      clientX: number,
+      clientY: number,
+      time: number,
+      preventDefault: () => void,
+    ) => {
+      if (drag === null || drag.pointerId !== pointerId || drag.source !== source) return;
       if (blockedRef.current || !topmostRef.current()) {
-        try { handle.releasePointerCapture?.(event.pointerId); } catch { /* capture may not be active */ }
-        drag = null;
-        returnToOrigin();
+        cancelActiveDrag();
         return;
       }
-      const dy = event.clientY - drag.startY;
-      const dx = event.clientX - drag.startX;
-      const time = now(event);
+      if (drag.scrolling || (drag.scrollContainer !== null && drag.scrollContainer.scrollTop > 0)) {
+        drag.scrolling = true;
+        return;
+      }
+      const dy = clientY - drag.startY;
+      const dx = clientX - drag.startX;
+      if (drag.scrollContainer !== null && dy < -ACTIVATION_DISTANCE_PX && Math.abs(dy) > Math.abs(dx)) {
+        // An upward body gesture belongs to native scrolling for its full lifetime,
+        // even if the browser later bounces at scrollTop 0.
+        drag.scrolling = true;
+        return;
+      }
       const elapsed = time - drag.lastTime;
-      if (elapsed > 0) drag.velocityY = Math.max(0, (event.clientY - drag.lastY) / elapsed);
-      drag.lastY = event.clientY;
+      if (elapsed > 0) drag.velocityY = Math.max(0, (clientY - drag.lastY) / elapsed);
+      drag.lastY = clientY;
       drag.lastTime = time;
       if (!drag.active) {
         if (dy <= ACTIVATION_DISTANCE_PX || dy <= Math.abs(dx)) return;
         drag.active = true;
-        stopOpeningMotion();
-        handle.setPointerCapture?.(event.pointerId);
+        drag.baseOffsetY = readDialogTranslateY(root);
+        stopOpeningMotion(drag.baseOffsetY);
+        if (source === 'pointer') root.setPointerCapture?.(pointerId);
         root.setAttribute('data-sheet-dragging', 'true');
         root.style.willChange = 'transform';
       }
-      event.preventDefault();
+      preventDefault();
       const height = root.getBoundingClientRect().height;
-      const visibleDy = Math.max(0, height > 0 ? Math.min(dy, height) : dy);
+      const visibleDy = drag.baseOffsetY + Math.max(0, height > 0 ? Math.min(dy, height) : dy);
       root.style.transform = `translateY(${visibleDy}px)`;
     };
-    const pointerEnd = (event: PointerEvent) => {
-      if (drag === null || event.pointerId !== drag.pointerId) return;
+    const pointerMove = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      updateDrag(event.pointerId, 'pointer', event.clientX, event.clientY, now(event), () => event.preventDefault());
+    };
+    const findTouch = (touches: TouchList, identifier: number): Touch | undefined => {
+      for (let index = 0; index < touches.length; index += 1) {
+        if (touches[index].identifier === identifier) return touches[index];
+      }
+      return undefined;
+    };
+    const touchStart = (event: TouchEvent) => {
+      window.clearTimeout(clickTimer);
+      clickTimer = undefined;
+      suppressNextClick = false;
+      if (event.touches.length !== 1) {
+        cancelActiveDrag();
+        return;
+      }
+      touchSelectionAtStart = window.getSelection()?.toString() ?? '';
+      const touch = event.touches[0];
+      startDrag(event.target, touch.identifier, 'touch', touch.clientX, touch.clientY, now(event));
+    };
+    const touchMove = (event: TouchEvent) => {
+      if (drag?.source !== 'touch') return;
+      if (event.touches.length !== 1) {
+        cancelActiveDrag();
+        return;
+      }
+      const touch = findTouch(event.touches, drag.pointerId);
+      if (touch === undefined) return;
+      const selectedText = window.getSelection()?.toString() ?? '';
+      if (selectedText !== touchSelectionAtStart) {
+        touchSelectionAtStart = selectedText;
+        cancelActiveDrag();
+        return;
+      }
+      updateDrag(touch.identifier, 'touch', touch.clientX, touch.clientY, now(event), () => event.preventDefault());
+    };
+    const finishDrag = (
+      pointerId: number,
+      source: 'pointer' | 'touch',
+      clientY: number,
+      time: number,
+      preventDefault: () => void,
+    ) => {
+      if (drag === null || drag.pointerId !== pointerId || drag.source !== source) return;
       const current = drag;
       drag = null;
       if (!current.active) return;
-      event.preventDefault();
+      preventDefault();
       suppressNextClick = true;
-      try { handle.releasePointerCapture?.(event.pointerId); } catch { /* already released */ }
-      const dy = Math.max(0, event.clientY - current.startY);
+      if (source === 'pointer') {
+        try { root.releasePointerCapture?.(pointerId); } catch { /* already released */ }
+      }
+      const dy = Math.max(0, clientY - current.startY);
       const height = root.getBoundingClientRect().height;
-      const releaseVelocity = now(event) - current.lastTime <= 80 ? current.velocityY : 0;
-      root.style.transform = `translateY(${Math.max(0, height > 0 ? Math.min(dy, height) : dy)}px)`;
+      const releaseVelocity = time - current.lastTime <= 80 ? current.velocityY : 0;
+      const currentY = current.baseOffsetY + Math.max(0, height > 0 ? Math.min(dy, height) : dy);
+      root.style.transform = `translateY(${currentY}px)`;
       const threshold = Math.min(140, Math.max(80, height * 0.2));
       const shouldDismiss = dy >= threshold
         || (dy >= QUICK_DISMISS_DISTANCE_PX && releaseVelocity >= QUICK_DISMISS_VELOCITY_PX_MS);
@@ -294,6 +415,10 @@ export function useSheetDismiss({
           void Promise.resolve(requestAccepted).then((approved) => {
             approvingDismiss = false;
             if (approved === false || !root.isConnected || dismissedRef.current === undefined) return;
+            if (effectDisposed) {
+              completeDismissal();
+              return;
+            }
             if (returning) exitAfterReturn = true;
             else {
               exiting = true;
@@ -305,7 +430,7 @@ export function useSheetDismiss({
           returnToOrigin();
         } else if (dismissedRef.current !== undefined) {
           exiting = true;
-          exitSheet(dy);
+          exitSheet(currentY);
         } else {
           queueMicrotask(() => {
             if (root.isConnected) returnToOrigin();
@@ -315,18 +440,48 @@ export function useSheetDismiss({
         returnToOrigin();
       }
     };
-    const pointerCancel = (event: PointerEvent) => {
-      if (drag === null || event.pointerId !== drag.pointerId) return;
-      drag = null;
-      try { handle.releasePointerCapture?.(event.pointerId); } catch { /* already released */ }
-      returnToOrigin();
+    const pointerEnd = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      finishDrag(event.pointerId, 'pointer', event.clientY, now(event), () => event.preventDefault());
     };
-    const lostPointerCapture = () => {
-      if (drag?.active) returnToOrigin();
+    const touchEnd = (event: TouchEvent) => {
+      if (drag?.source !== 'touch') return;
+      const touch = findTouch(event.changedTouches, drag.pointerId);
+      if (touch === undefined) return;
+      touchSelectionAtStart = '';
+      finishDrag(touch.identifier, 'touch', touch.clientY, now(event), () => event.preventDefault());
+    };
+    const cancelDrag = (pointerId: number, source: 'pointer' | 'touch') => {
+      if (drag === null || drag.pointerId !== pointerId || drag.source !== source) return;
+      cancelActiveDrag();
+    };
+    const pointerCancel = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
+      cancelDrag(event.pointerId, 'pointer');
+    };
+    const touchCancel = (event: TouchEvent) => {
+      if (drag?.source !== 'touch') return;
+      const touch = findTouch(event.changedTouches, drag.pointerId);
+      if (touch !== undefined) {
+        touchSelectionAtStart = '';
+        cancelDrag(touch.identifier, 'touch');
+      }
+    };
+    const lostPointerCapture = (event: PointerEvent) => {
+      if (drag?.source !== 'pointer' || drag.pointerId !== event.pointerId) return;
+      if (drag.active) returnToOrigin();
       drag = null;
     };
     const click = (event: MouseEvent) => {
       if (!suppressNextClick) return;
+      // Keyboard activation has no pointer sequence and must never be swallowed
+      // by a stale drag suppression window.
+      if (event.detail === 0) {
+        suppressNextClick = false;
+        window.clearTimeout(clickTimer);
+        clickTimer = undefined;
+        return;
+      }
       suppressNextClick = false;
       window.clearTimeout(clickTimer);
       clickTimer = undefined;
@@ -335,25 +490,28 @@ export function useSheetDismiss({
     };
     const resize = () => {
       if (exiting) finishExit?.();
-      if (drag !== null) {
-        const activePointerId = drag.pointerId;
-        drag = null;
-        try { handle.releasePointerCapture?.(activePointerId); } catch { /* capture may not be active */ }
-        returnToOrigin();
-      }
+      if (drag !== null) cancelActiveDrag();
     };
+    const touchMoveOptions: AddEventListenerOptions = { passive: false };
     const visualViewport = window.visualViewport;
 
-    handle.addEventListener('pointerdown', pointerDown);
-    handle.addEventListener('pointermove', pointerMove);
-    handle.addEventListener('pointerup', pointerEnd);
-    handle.addEventListener('pointercancel', pointerCancel);
-    handle.addEventListener('lostpointercapture', lostPointerCapture);
-    handle.addEventListener('click', click, true);
+    root.addEventListener('pointerdown', pointerDown, true);
+    root.addEventListener('pointermove', pointerMove);
+    root.addEventListener('pointerup', pointerEnd);
+    root.addEventListener('pointercancel', pointerCancel);
+    root.addEventListener('lostpointercapture', lostPointerCapture);
+    root.addEventListener('touchstart', touchStart);
+    root.addEventListener('touchmove', touchMove, touchMoveOptions);
+    root.addEventListener('touchend', touchEnd);
+    root.addEventListener('touchcancel', touchCancel);
+    root.addEventListener('click', click, true);
     window.addEventListener('pointerdown', cancelForAdditionalPointer, true);
     window.addEventListener('resize', resize);
     visualViewport?.addEventListener('resize', resize);
     return () => {
+      effectDisposed = true;
+      if (exiting) queueMicrotask(() => finishExit?.());
+      else if (exitAfterReturn) queueMicrotask(completeDismissal);
       drag = null;
       returnGeneration += 1;
       returning = false;
@@ -362,12 +520,16 @@ export function useSheetDismiss({
       try { returnAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
       try { exitAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
       try { backdropAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
-      handle.removeEventListener('pointerdown', pointerDown);
-      handle.removeEventListener('pointermove', pointerMove);
-      handle.removeEventListener('pointerup', pointerEnd);
-      handle.removeEventListener('pointercancel', pointerCancel);
-      handle.removeEventListener('lostpointercapture', lostPointerCapture);
-      handle.removeEventListener('click', click, true);
+      root.removeEventListener('pointerdown', pointerDown, true);
+      root.removeEventListener('pointermove', pointerMove);
+      root.removeEventListener('pointerup', pointerEnd);
+      root.removeEventListener('pointercancel', pointerCancel);
+      root.removeEventListener('lostpointercapture', lostPointerCapture);
+      root.removeEventListener('touchstart', touchStart);
+      root.removeEventListener('touchmove', touchMove, touchMoveOptions);
+      root.removeEventListener('touchend', touchEnd);
+      root.removeEventListener('touchcancel', touchCancel);
+      root.removeEventListener('click', click, true);
       window.removeEventListener('pointerdown', cancelForAdditionalPointer, true);
       window.removeEventListener('resize', resize);
       visualViewport?.removeEventListener('resize', resize);

@@ -4,7 +4,7 @@ import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { createProductSpring } from '../../components/motion/tokens';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { Surface } from '../../components/common/Surface';
 import type {
   PortfolioAction,
@@ -114,7 +114,7 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
           />
           {exampleVisited ? <ResponsiveDialog open={examplePickerOpen}
             className="portfolio-edit-surface portfolio-edit-surface--examples" labelledBy="portfolio-example-picker-title"
-            size="wide" mobileHeight="full" mobileEntranceMotion returnFocusRef={sampleTriggerRef}
+            size="wide" mobileHeight="full" returnFocusRef={sampleTriggerRef}
             onRequestClose={() => {
               if (pickerRef.current?.hasChanges) {
                 discardTriggerRef.current = document.activeElement as HTMLElement;
@@ -180,13 +180,13 @@ export function PortfolioSetupFlow(props: PortfolioSetupFlowProps) {
 
 function PortfolioExampleDiscardActions({ onContinue, onDiscard }: { onContinue(): void; onDiscard(): void }) {
   const requestDialogClose = useResponsiveDialogClose();
-  return <div className="portfolio-item-sheet__discard-actions">
+  return <ResponsiveDialogActionRow>
     <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
       onContinue();
       requestDialogClose?.('button');
     }}>계속 살펴보기</Button>
     <Button type="button" variant="primary" onClick={onDiscard}>구성 버리기</Button>
-  </div>;
+  </ResponsiveDialogActionRow>;
 }
 
 function PortfolioSetupReview({

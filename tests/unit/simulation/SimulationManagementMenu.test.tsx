@@ -6,6 +6,15 @@ import { SimulationManagementMenu } from '../../../src/simulation/ui/SimulationM
 
 afterEach(cleanup);
 
+const anime = vi.hoisted(() => ({
+  animate: vi.fn((_target: unknown, options: Record<string, unknown>) => {
+    if (typeof options.onComplete === 'function') options.onComplete();
+    return { cancel: vi.fn() };
+  }),
+}));
+
+vi.mock('animejs', () => ({ animate: anime.animate }));
+
 describe('SimulationManagementMenu', () => {
   it('keeps Simulation-only reset behind confirmation', async () => {
     const onReset = vi.fn();

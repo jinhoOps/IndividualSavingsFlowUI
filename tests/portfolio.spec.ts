@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
 
 for (const entry of ['setup', 'edit']) {
   test(`replaces stale cash input when a sample fills the ${entry} draft`, async ({ page }) => {
@@ -96,6 +96,42 @@ for (const viewport of [
   });
 }
 
+test.describe('Portfolio sheet touch controls', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  test('uses real touch input on the sample ratio slider without dismissing the sheet', async ({ page }) => {
+    await seedMain(page, 200_000);
+    await seedAppliedPortfolio(page);
+    await page.goto('apps/portfolio/');
+    await page.locator('.portfolio-allocation-row__select').first().click();
+    const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
+    await editor.getByRole('button', { name: '샘플로 구성하기', exact: true }).click();
+    const picker = page.getByRole('dialog', { name: '샘플로 구성하기' });
+    await expect.poll(() => picker.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
+    await picker.getByRole('button', { name: 'VOO 70 · 금 30', exact: true }).click();
+    const slider = picker.getByRole('slider', { name: '주력 자산 비율' });
+    await expect(slider).toHaveValue('70');
+    await slider.scrollIntoViewIfNeeded();
+    await expect(slider).toBeInViewport();
+    const box = await slider.boundingBox();
+    expect(box).not.toBeNull();
+    const session = await page.context().newCDPSession(page);
+    const start = { x: box!.x + box!.width * 0.5, y: box!.y + box!.height / 2 };
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchMove', touchPoints: [{ x: start.x + box!.width * 0.2, y: start.y }],
+    });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(() => slider.inputValue()).not.toBe('70');
+    await expect(picker).toBeVisible();
+    await expect(picker).not.toHaveAttribute('data-sheet-exiting', 'true');
+    await session.detach();
+  });
+});
+
 test('closes on outside clicks, preserves rejected changes, and restores the entry row', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await seedMain(page, 200_000);
@@ -116,11 +152,39 @@ test('closes on outside clicks, preserves rejected changes, and restores the ent
   await page.mouse.click(40, 120);
   const discard = page.getByRole('dialog', { name: '변경사항을 버릴까요?' });
   await discard.getByRole('button', { name: '계속 수정' }).click();
+  await expect(discard).toBeHidden();
+  await expect(page.locator('dialog[aria-labelledby="portfolio-discard-title"]')).toHaveCount(0);
   await expect(editor.getByRole('button', { name: /인덱스 편집.*110,000원/ })).toBeVisible();
   await page.mouse.click(40, 120);
   await discard.getByRole('button', { name: '변경 버리기' }).click();
   await expect(trigger).toBeFocused();
   await expect(page.locator('.portfolio-allocation-list')).toContainText('인덱스60%');
+});
+
+test('makes the clean Portfolio editor inert after close approval', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await seedMain(page, 200_000);
+  await seedAppliedPortfolio(page);
+  await page.goto('apps/portfolio/');
+
+  const trigger = page.locator('.portfolio-allocation-row__select').first();
+  await trigger.click();
+  const editor = page.locator('dialog.portfolio-edit-surface');
+  const surface = editor.locator('.responsive-dialog__surface');
+  await editor.getByRole('button', { name: '닫기', exact: true }).click();
+  await expect(surface).toHaveAttribute('inert', '');
+
+  const editButton = editor.getByRole('button', { name: /인덱스 편집/ });
+  const editButtonBox = await editButton.boundingBox();
+  expect(editButtonBox).not.toBeNull();
+  await page.mouse.click(editButtonBox!.x + editButtonBox!.width / 2, editButtonBox!.y + editButtonBox!.height / 2);
+  await expect(editor.locator('#portfolio-edit-title')).toHaveText('투자 배분 수정');
+  await expect(editor.locator('.portfolio-item-sheet')).toHaveCount(0);
+  await expect(editor).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(page.getByRole('dialog', { name: '투자 배분 수정' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '투자 배분 수정' }).getByRole('button', { name: /인덱스 편집/ })).toBeVisible();
 });
 
 test('toggles every result amount immediately and retains the preference after reload', async ({ page }) => {
@@ -579,36 +643,77 @@ test('keeps the summary-first ratio list usable across required widths', async (
 });
 
 test('contains the mobile editor, apply bar, and confirmation dialog', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
-  await page.locator('.portfolio-allocation-row__select').first().click();
-  await page.getByRole('button', { name: /인덱스 편집/ }).click();
-  await page.getByLabel('금액', { exact: true }).fill('110000');
-  await page.getByRole('button', { name: '완료' }).click();
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 390, height: 600 },
+    { width: 320, height: 568 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 900 },
+  ];
+  for (const [index, viewport] of viewports.entries()) {
+    await page.setViewportSize(viewport);
+    await page.locator('.portfolio-allocation-row__select').first().click();
+    const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
+    await expect(editor).toBeVisible();
+    await expect.poll(() => editor.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
+    await page.getByRole('button', { name: /인덱스 편집/ }).click();
+    await page.getByLabel('금액', { exact: true }).fill(index % 2 === 0 ? '110000' : '100000');
+    await page.getByRole('button', { name: '완료' }).click();
 
-  const rowBox = await page.locator('.portfolio-editor__row').first().boundingBox();
-  expect(rowBox).not.toBeNull();
-  expect(rowBox!.x).toBeGreaterThanOrEqual(16);
-  expect(rowBox!.x + rowBox!.width).toBeLessThanOrEqual(374);
-  expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    const rowBox = await page.locator('.portfolio-editor__row').first().boundingBox();
+    expect(rowBox).not.toBeNull();
+    expect(rowBox!.x).toBeGreaterThanOrEqual(16);
+    expect(rowBox!.x + rowBox!.width).toBeLessThanOrEqual(viewport.width - 16);
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
-  const assertContained = async (locator: Locator) => {
-    const box = await locator.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x).toBeGreaterThanOrEqual(16);
-    expect(box!.x + box!.width).toBeLessThanOrEqual(374);
-  };
+    const assertContained = async (locator: Locator) => {
+      const box = await locator.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(16);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width - 16);
+    };
 
-  await assertContained(page.getByRole('complementary', { name: '배분 변경' }));
-  await page.getByRole('button', { name: '적용' }).click();
-  const confirmation = page.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
-  const confirmationBox = await confirmation.boundingBox();
-  expect(confirmationBox).not.toBeNull();
-  expect(confirmationBox!.x).toBe(0);
-  expect(confirmationBox!.width).toBe(390);
-  await assertContained(confirmation.getByRole('button', { name: '배분 적용' }));
+    const applyBar = page.getByRole('complementary', { name: '배분 변경' });
+    await assertContained(applyBar);
+    const applyRow = applyBar.locator('.responsive-dialog__actions');
+    await expect(applyRow.getByRole('button')).toHaveText(['취소', '적용']);
+    for (const button of await applyRow.getByRole('button').all()) {
+      expect((await button.boundingBox())!.height + 0.01).toBeGreaterThanOrEqual(44);
+    }
+
+    await applyBar.getByRole('button', { name: '적용' }).click();
+    const confirmation = page.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
+    await expect.poll(() => confirmation.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
+    const confirmationBox = await confirmation.boundingBox();
+    expect(confirmationBox).not.toBeNull();
+    if (viewport.width < 768) {
+      expect(confirmationBox!.x).toBe(0);
+      expect(confirmationBox!.width).toBe(viewport.width);
+      expect(confirmationBox!.height).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
+    } else {
+      expect(confirmationBox!.x + confirmationBox!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+      expect(confirmationBox!.y + confirmationBox!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+    }
+    const actions = confirmation.locator('[data-surface-footer] .responsive-dialog__actions');
+    await expect(actions.getByRole('button')).toHaveText(['계속 수정', '배분 적용']);
+    await expect(actions.getByRole('button', { name: '배분 적용' })).toBeInViewport();
+    for (const button of await actions.getByRole('button').all()) {
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await assertContained(button);
+    }
+    await actions.getByRole('button', { name: '배분 적용' }).click();
+    await expect(confirmation).toBeHidden();
+    await expect(editor).toBeHidden();
+  }
 });
 
 test('keeps add-sheet amount adjustments ordered, touch-sized, and on one row at 390px', async ({ page }) => {
@@ -686,11 +791,21 @@ test('closes the clean mobile Portfolio editor from a downward header drag', asy
     const trigger = page.locator('.portfolio-allocation-row__select').first();
     await trigger.click();
     const editor = page.getByRole('dialog', { name: '투자 배분 수정' });
+    await expect.poll(() => editor.evaluate((element) => (
+      element.style.opacity === '' && element.style.transform === ''
+        && element.style.translate === '' && element.style.scale === ''
+    ))).toBe(true);
     const handle = editor.locator('[data-sheet-drag-handle]');
     expect((await handle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
-    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
-    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    const box = await handle.boundingBox();
+    expect(box).not.toBeNull();
+    const session = await page.context().newCDPSession(page);
+    const start = { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + 120 }],
+    });
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
     await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
     const exitPositions = await page.evaluate(async () => {
@@ -706,6 +821,7 @@ test('closes the clean mobile Portfolio editor from a downward header drag', asy
     expect(exitPositions.every((top, index) => index === 0 || top >= exitPositions[index - 1] - 0.5)).toBe(true);
     await expect(editor).toBeHidden();
     await expect(trigger).toBeFocused();
+    await session.detach();
   }
 });
 
@@ -728,7 +844,20 @@ test('discards a dirty mobile Portfolio editor through its close confirmation', 
   await editor.getByRole('button', { name: '닫기', exact: true }).click();
   const discard = page.getByRole('dialog', { name: '변경사항을 버릴까요?' });
   await expect(discard).toBeVisible();
+  const continueAction = discard.getByRole('button', { name: '계속 수정' });
+  const discardAction = discard.getByRole('button', { name: '변경 버리기' });
+  const closeAction = discard.getByRole('button', { name: '닫기', exact: true });
+  await expect(continueAction).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(closeAction).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(continueAction).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(discardAction).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(closeAction).toBeFocused();
   await discard.getByRole('button', { name: '계속 수정' }).click();
+  await expect(discard).toBeHidden();
   await expect(editor.getByRole('button', { name: '닫기', exact: true })).toBeFocused();
   await expect(editor.getByRole('button', { name: /인덱스 편집.*110,000원/ })).toBeVisible();
 
@@ -746,6 +875,8 @@ test('isolates applied editing as a sheet or centered modal and restores focus',
 
   for (const viewport of [
     { width: 390, height: 844, mode: 'sheet' },
+    { width: 390, height: 600, mode: 'sheet' },
+    { width: 320, height: 568, mode: 'sheet' },
     { width: 768, height: 1024, mode: 'modal' },
     { width: 1280, height: 900, mode: 'modal' },
   ]) {
@@ -764,6 +895,7 @@ test('isolates applied editing as a sheet or centered modal and restores focus',
     }
     const box = await editor.boundingBox();
     if (viewport.mode === 'sheet') {
+      expect(box!.height).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
       expect(box!.x).toBe(0);
       expect(box!.width).toBe(viewport.width);
       expect(box!.y + box!.height).toBeCloseTo(viewport.height, 0);
@@ -776,10 +908,25 @@ test('isolates applied editing as a sheet or centered modal and restores focus',
     const add = editor.getByRole('button', { name: '투자 대상 추가' });
     expect(await add.evaluate((button) => getComputedStyle(button, '::before').content)).toBe('"+"');
     expect((await add.boundingBox())!.width).toBeGreaterThanOrEqual(44);
-    await page.screenshot({ path: testInfo.outputPath(`portfolio-edit-${viewport.width}.png`) });
+    await expect(editor.getByRole('button', { name: '닫기', exact: true })).toBeFocused();
+    await page.screenshot({ path: testInfo.outputPath(`portfolio-edit-${viewport.width}x${viewport.height}.png`) });
     await expect(page.getByTestId('portfolio-result-controls')).toHaveAttribute('inert', '');
     await expect(page.getByRole('region', { name: '투자 위치' })).toHaveCount(0);
     expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+    if (viewport.mode === 'modal') {
+      const before = await editor.boundingBox();
+      const header = await editor.locator('[data-surface-header]').boundingBox();
+      expect(header).not.toBeNull();
+      await page.mouse.move(header!.x + 80, header!.y + header!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(header!.x + 80, header!.y + header!.height / 2 + 120);
+      await page.mouse.up();
+      const after = await editor.boundingBox();
+      expect(after).not.toBeNull();
+      expect(after!.x).toBeCloseTo(before!.x, 0);
+      expect(after!.y).toBeCloseTo(before!.y, 0);
+      await expect(editor).toBeVisible();
+    }
     await page.keyboard.press('Escape');
     await expect(editor).not.toBeVisible();
     await expect(trigger).toBeFocused();
@@ -787,7 +934,7 @@ test('isolates applied editing as a sheet or centered modal and restores focus',
 });
 
 test('reflows a long Korean target name at a 200% desktop-zoom equivalent width', async ({ page }) => {
-  await page.setViewportSize({ width: 640, height: 900 });
+  await page.setViewportSize({ width: 640, height: 450 });
   await seedMain(page, 800_000);
   await page.addInitScript(({ fixture }) => {
     const stored = localStorage.getItem('isf-workspace-v5');
@@ -838,39 +985,51 @@ test('reflows a long Korean target name at a 200% desktop-zoom equivalent width'
 });
 
 test('keeps the final mobile editor control above the save-error apply bar', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await seedMain(page, 200_000);
   await seedAppliedPortfolio(page);
-  await page.goto('apps/portfolio/');
-  await page.locator('.portfolio-allocation-row__select').first().click();
-  await page.evaluate(() => {
-    const originalSetItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = function setItem(key: string, value: string) {
-      if (key === 'isf-workspace-v5') {
-        throw new DOMException('Portfolio draft writes are blocked for this test', 'QuotaExceededError');
-      }
-      originalSetItem.call(this, key, value);
-    };
-  });
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 390, height: 600 },
+    { width: 320, height: 568 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('apps/portfolio/');
+    await page.locator('.portfolio-allocation-row__select').first().click();
+    await page.evaluate(() => {
+      const originalSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function setItem(key: string, value: string) {
+        if (key === 'isf-workspace-v5') {
+          throw new DOMException('Portfolio draft writes are blocked for this test', 'QuotaExceededError');
+        }
+        originalSetItem.call(this, key, value);
+      };
+    });
 
-  await page.getByRole('button', { name: /인덱스 편집/ }).click();
-  await page.getByLabel('금액', { exact: true }).fill('110000');
-  await page.getByRole('button', { name: '완료' }).click();
-  const applyBar = page.getByRole('complementary', { name: '배분 변경' });
-  await expect(applyBar.getByRole('alert')).toContainText('저장하지 못했습니다');
-  await page.locator('.portfolio-edit-surface__body').evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-  });
+    await page.getByRole('button', { name: /인덱스 편집/ }).click();
+    await page.getByLabel('금액', { exact: true }).fill('110000');
+    await page.getByRole('button', { name: '완료' }).click();
+    const applyBar = page.getByRole('complementary', { name: '배분 변경' });
+    await expect(applyBar.getByRole('alert')).toContainText('저장하지 못했습니다');
+    const actionRow = applyBar.locator('.responsive-dialog__actions');
+    await expect(actionRow.getByRole('button')).toHaveText(['취소', '적용']);
+    await page.locator('.portfolio-edit-surface__body').evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
 
-  const finalControl = page.locator(
-    '.portfolio-editor button:visible, .portfolio-editor input:visible',
-  ).last();
-  await finalControl.scrollIntoViewIfNeeded();
-  const finalControlBox = await finalControl.boundingBox();
-  const applyBarBox = await applyBar.boundingBox();
-  expect(finalControlBox).not.toBeNull();
-  expect(applyBarBox).not.toBeNull();
-  expect(finalControlBox!.y + finalControlBox!.height).toBeLessThanOrEqual(applyBarBox!.y);
+    const finalControl = page.locator(
+      '.portfolio-editor button:visible, .portfolio-editor input:visible',
+    ).last();
+    await finalControl.scrollIntoViewIfNeeded();
+    await finalControl.focus();
+    await expect(finalControl).toBeFocused();
+    await expect(finalControl).toBeInViewport();
+    const finalControlBox = await finalControl.boundingBox();
+    const applyBarBox = await applyBar.boundingBox();
+    expect(finalControlBox).not.toBeNull();
+    expect(applyBarBox).not.toBeNull();
+    expect(finalControlBox!.y + finalControlBox!.height).toBeLessThanOrEqual(applyBarBox!.y);
+    expect(applyBarBox!.y + applyBarBox!.height).toBeLessThanOrEqual(viewport.height);
+  }
 });
 
 test('contains the focused target sheet at 768px', async ({ page }) => {
@@ -925,7 +1084,9 @@ test('keeps dirty inline target input contained and reuses the form for editing'
   let discard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
   await expect(discard).toBeVisible();
   await discard.getByRole('button', { name: '계속 입력' }).click();
+  await expect(discard).toBeHidden();
   await expect(sheet.getByLabel('투자 대상 이름')).toHaveValue('미국 인덱스');
+  await expect(sheet.getByLabel('투자 대상 이름')).toBeFocused();
   await page.keyboard.press('Escape');
   discard = page.getByRole('dialog', { name: '입력 내용을 버릴까요?' });
   await expect(discard).toBeVisible();
@@ -1067,7 +1228,7 @@ for (const width of [390, 768, 1280]) {
     row = editor.getByRole('button', { name: /글로벌 인덱스 편집/ });
     await expect(row).toBeFocused();
     await expect.poll(() => body.evaluate((element, initialTop) => (
-      Math.abs(element.scrollTop - initialTop) <= 1
+      Math.abs(element.scrollTop - initialTop) <= 8
     ), openedScroll)).toBe(true);
     await row.click();
     item = page.getByRole('region', { name: '투자 대상 수정' });

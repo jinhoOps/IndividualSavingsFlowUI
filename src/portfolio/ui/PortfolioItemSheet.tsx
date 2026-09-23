@@ -5,7 +5,7 @@ import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { MoneyAdjustments } from '../../components/common/MoneyAdjustments';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
@@ -372,11 +372,13 @@ function PortfolioItemActions({
   return (
     <div className="portfolio-item-sheet__actions">
       <p>배분 초안에 반영돼요</p>
-      <Button type="button" variant="secondary" onClick={() => {
-        if (inline) requestInlineClose();
-        else requestDialogClose?.('button');
-      }}>취소</Button>
-      <Button type="button" variant="primary" disabled={disabled} onClick={onComplete}>완료</Button>
+      <ResponsiveDialogActionRow>
+        <Button type="button" variant="secondary" onClick={() => {
+          if (inline) requestInlineClose();
+          else requestDialogClose?.('button');
+        }}>취소</Button>
+        <Button type="button" variant="primary" disabled={disabled} onClick={onComplete}>완료</Button>
+      </ResponsiveDialogActionRow>
     </div>
   );
 }
@@ -384,13 +386,13 @@ function PortfolioItemActions({
 function PortfolioItemDiscardActions({ onContinue, onDiscard }: { onContinue(): void; onDiscard(): void }) {
   const requestDialogClose = useResponsiveDialogClose();
   return (
-    <div className="portfolio-item-sheet__discard-actions">
+    <ResponsiveDialogActionRow>
       <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
-        onContinue();
-        requestDialogClose?.('button');
+        if (requestDialogClose) requestDialogClose('button');
+        else onContinue();
       }}>계속 입력</Button>
       <Button type="button" variant="primary" onClick={onDiscard}>버리기</Button>
-    </div>
+    </ResponsiveDialogActionRow>
   );
 }
 

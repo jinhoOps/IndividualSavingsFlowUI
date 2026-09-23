@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import type { PortfolioAction } from '../application/portfolioReducer';
 import type { PortfolioDraft } from '../domain/model';
@@ -130,7 +130,6 @@ export function PortfolioEditSurface({
         labelledBy="portfolio-edit-title"
         size={stage === 'examples' ? 'wide' : 'form'}
         mobileHeight={stage === 'examples' ? 'full' : 'content'}
-        mobileEntranceMotion
         busy={applying}
         returnFocusRef={returnFocusRef}
         onRequestClose={() => requestClose()}
@@ -225,12 +224,12 @@ export function PortfolioEditSurface({
 function PortfolioDiscardActions({ onContinue, onDiscard }: { onContinue(): void; onDiscard(): void }) {
   const requestDialogClose = useResponsiveDialogClose();
   return (
-    <div className="portfolio-item-sheet__discard-actions">
+    <ResponsiveDialogActionRow>
       <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
-        onContinue();
-        requestDialogClose?.('button');
+        if (requestDialogClose) requestDialogClose('button');
+        else onContinue();
       }}>계속 수정</Button>
       <Button type="button" variant="primary" onClick={onDiscard}>변경 버리기</Button>
-    </div>
+    </ResponsiveDialogActionRow>
   );
 }

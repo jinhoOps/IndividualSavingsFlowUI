@@ -10,6 +10,7 @@ const animeMocks = vi.hoisted(() => {
   return {
     animate: vi.fn((target: unknown, options: Record<string, unknown>) => {
       applyFinalAnimationStyles(target, options);
+      (options.onComplete as (() => void) | undefined)?.();
       return { cancel: vi.fn() };
     }),
     createScope: vi.fn(() => ({
@@ -25,6 +26,8 @@ function applyFinalAnimationStyles(target: unknown, options: Record<string, unkn
   if (!(target instanceof HTMLElement)) return;
   if (Array.isArray(options.opacity)) target.style.opacity = String(options.opacity.at(-1));
   if (Array.isArray(options.y)) target.style.transform = `translateY(${String(options.y.at(-1))}px)`;
+  if (Array.isArray(options.translateY)) target.style.transform = `translateY(${String(options.translateY.at(-1))}px)`;
+  if (Array.isArray(options.scale)) target.style.transform = `scale(${String(options.scale.at(-1))})`;
 }
 
 vi.mock('animejs', () => ({
@@ -35,6 +38,12 @@ vi.mock('animejs', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  animeMocks.animate.mockReset();
+  animeMocks.animate.mockImplementation((target, options) => {
+    applyFinalAnimationStyles(target, options);
+    (options.onComplete as (() => void) | undefined)?.();
+    return { cancel: vi.fn() };
+  });
   animeMocks.state.reducedMotion = false;
 });
 
@@ -130,6 +139,37 @@ describe('AppManagementMenu', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
+  it('runs a selected action once after the menu exit animation completes', async () => {
+    let finishExit: (() => void) | undefined;
+    animeMocks.animate.mockImplementation((target, options) => {
+      if (target instanceof HTMLDialogElement && Array.isArray(options.opacity) && options.opacity[1] === 0) {
+        finishExit = options.onComplete as () => void;
+        return { cancel: vi.fn() };
+      }
+      applyFinalAnimationStyles(target, options);
+      (options.onComplete as (() => void) | undefined)?.();
+      return { cancel: vi.fn() };
+    });
+    const onAction = vi.fn();
+    render(<AppManagementMenu items={buildItems({ onAction })} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    const dialog = screen.getByRole('dialog', { name: '관리 메뉴' });
+    const action = screen.getByRole('button', { name: '설정 적용' });
+
+    fireEvent.click(action);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(dialog).toBeVisible();
+    expect(action).toBeDisabled();
+    fireEvent.click(action);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(finishExit).toBeTypeOf('function');
+
+    await act(async () => { finishExit?.(); });
+
+    expect(onAction).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
+  });
+
   it('closes on its backdrop and Escape and restores trigger focus', async () => {
     render(<AppManagementMenu items={buildItems()} />);
     const trigger = screen.getByRole('button', { name: '관리 메뉴' });
@@ -171,6 +211,11 @@ describe('AppManagementMenu', () => {
     const dialog = await screen.findByRole('dialog', { name: '처음부터 다시 할까요?' });
     const cancel = within(dialog).getByRole('button', { name: '취소' });
     const confirm = within(dialog).getByRole('button', { name: '다시 시작' });
+    const actionRow = dialog.querySelector('.responsive-dialog__actions');
+    expect(actionRow).not.toBeNull();
+    expect(within(actionRow as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '취소', '다시 시작',
+    ]);
     expect(cancel).toHaveFocus();
     confirm.focus();
     fireEvent.keyDown(dialog, { key: 'Tab' });
@@ -213,8 +258,13 @@ describe('AppManagementMenu', () => {
       });
 
       const reset = screen.getByRole('button', { name: '초기화' });
+      const actionRow = reset.closest('.responsive-dialog__actions');
       expect(reset).toBeDisabled();
       expect(reset).toHaveClass('journey-management__dialog-alternate--disabled');
+      expect(actionRow).toHaveClass('responsive-dialog__actions--danger-leading');
+      expect(within(actionRow as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual([
+        '초기화', '취소', '다시 시작',
+      ]);
 
       act(() => vi.advanceTimersByTime(2_500));
       expect(reset).toBeEnabled();

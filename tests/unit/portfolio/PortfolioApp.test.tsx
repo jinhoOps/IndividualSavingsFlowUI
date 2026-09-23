@@ -35,7 +35,13 @@ const anime = vi.hoisted(() => {
   };
 
   return {
-    animate: vi.fn((_target: unknown, _options: unknown) => ({ cancel: vi.fn() })),
+    animate: vi.fn((_target: unknown, options: unknown) => {
+      if (typeof options === 'object' && options !== null && 'onComplete' in options
+        && typeof options.onComplete === 'function') {
+        options.onComplete();
+      }
+      return { cancel: vi.fn() };
+    }),
     createScope: vi.fn(() => scope),
     scope,
   };
@@ -47,7 +53,13 @@ vi.mock('animejs', () => ({
 }));
 
 beforeEach(() => {
-  anime.animate.mockImplementation((_target: unknown, _options: unknown) => ({ cancel: vi.fn() }));
+  anime.animate.mockImplementation((_target: unknown, options: unknown) => {
+    if (typeof options === 'object' && options !== null && 'onComplete' in options
+      && typeof options.onComplete === 'function') {
+      options.onComplete();
+    }
+    return { cancel: vi.fn() };
+  });
   anime.scope.matches.reducedMotion = false;
 });
 

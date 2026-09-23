@@ -1,4 +1,5 @@
 import type { MainState } from '../../application/mainReducer';
+import { ResponsiveDialogActionRow } from '../../../components/common/ResponsiveDialogLayout';
 import { SavingOverlay } from '../common/SavingOverlay';
 import { Button } from '../common/Button';
 
@@ -31,10 +32,12 @@ export function ApplyBar({ dirty, saveStatus, embedded = false, onApply, onCance
               ? '저장하지 않은 변경사항이 있습니다.'
               : '저장된 계획과 동일합니다.'}
       </p>
-      <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>취소</Button>
-      <Button type="button" variant="primary" disabled={!dirty || saving} onClick={onApply}>
-        {failed ? '다시 시도' : '적용'}
-      </Button>
+      <ResponsiveDialogActionRow className="main-apply-bar__actions">
+        <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>취소</Button>
+        <Button type="button" variant="primary" disabled={!dirty || saving} onClick={onApply}>
+          {failed ? '다시 시도' : '적용'}
+        </Button>
+      </ResponsiveDialogActionRow>
     </div>
   );
 }
