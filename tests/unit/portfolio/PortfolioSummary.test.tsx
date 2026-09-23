@@ -98,6 +98,42 @@ const changedAllocation: MaterializedAllocation = {
 };
 
 describe('PortfolioSummary', () => {
+  it('does not inflate surviving segments when an item is removed', () => {
+    const props = { investmentWon: 800_000, preferences: { showAmounts: false, sortMode: 'input' as const } };
+    const { rerender } = render(<PortfolioSummary {...props} allocation={allocation} />);
+    const removed = { ...allocation, items: allocation.items.filter(item => item.id !== 'bond'), cashPercentage: 35, cashAmountWon: 280_000 };
+    rerender(<PortfolioSummary {...props} allocation={removed} />);
+    const bar = screen.getByTestId('portfolio-allocation-bar');
+    expect(bar.querySelector<HTMLElement>('[data-segment-id="index"]')!.style.getPropertyValue('--allocation-segment-width')).toBe('50%');
+    expect(bar.querySelector<HTMLElement>('[data-segment-id="cash"]')!.style.getPropertyValue('--allocation-segment-width')).toBe('35%');
+    expect(screen.getByRole('heading', { name: '현금' }).closest('li')!.querySelector('[data-allocation-ratio-visual]')).toHaveTextContent('35%');
+  });
+
+  it('interpolates bar widths together and continues a replacement from their visible proportions', () => {
+    const props = { investmentWon: 800_000, preferences: { showAmounts: false, sortMode: 'input' as const } };
+    const { rerender } = render(<PortfolioSummary {...props} allocation={allocation} />);
+    rerender(<PortfolioSummary {...props} allocation={changedAllocation} />);
+    const segment = screen.getByTestId('portfolio-allocation-bar').querySelector<HTMLElement>('[data-segment-id="gold"]')!;
+    expect(segment.style.getPropertyValue('--allocation-segment-width')).toBe('15%');
+    const call = anime.animate.mock.calls.find(([, options]) => options !== null && typeof options === 'object' && 'progress' in options)!;
+    const state = call[0] as { progress: number };
+    const options = call[1] as { onUpdate(): void };
+    state.progress = .5;
+    options.onUpdate();
+    expect(segment.style.getPropertyValue('--allocation-segment-width')).toBe('22.5%');
+    rerender(<PortfolioSummary {...props} allocation={allocation} />);
+    expect(segment.style.getPropertyValue('--allocation-segment-width')).toBe('22.5%');
+  });
+
+  it('commits final bar widths when animation initialization fails', () => {
+    const props = { investmentWon: 800_000, preferences: { showAmounts: false, sortMode: 'input' as const } };
+    const { rerender } = render(<PortfolioSummary {...props} allocation={allocation} />);
+    anime.animate.mockImplementation(() => { throw new Error('motion unavailable'); });
+    rerender(<PortfolioSummary {...props} allocation={changedAllocation} />);
+    const segment = screen.getByTestId('portfolio-allocation-bar').querySelector<HTMLElement>('[data-segment-id="gold"]')!;
+    expect(segment.style.getPropertyValue('--allocation-segment-width')).toBe('30%');
+  });
+
   it('offers unobtrusive save and share actions after the complete allocation', () => {
     const save = vi.fn();
     const share = vi.fn();

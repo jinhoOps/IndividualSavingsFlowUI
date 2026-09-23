@@ -852,3 +852,54 @@ test('requires a nonzero Main savings or investment contribution', async ({ page
   await expect(page.getByText('Main에서 월 저축·투자 금액을 먼저 정해주세요.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Main에서 설정하기' })).toBeVisible();
 });
+
+
+for (const width of [390, 768, 1280]) {
+  test(`sample entry waits for further exploration at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await seedMain(page);
+    await openFirstResult(page);
+    const entry = page.locator('.simulation-portfolio-entry');
+    await expect(entry).toHaveAttribute('data-revealed', 'false');
+    expect((await entry.boundingBox())!.height).toBe(0);
+    const contentBottom = (await page.locator('.simulation-content').boundingBox())!;
+    const projectionBottom = (await page.locator('.simulation-projection').boundingBox())!;
+    expect(contentBottom.y + contentBottom.height).toBeCloseTo(projectionBottom.y + projectionBottom.height, 0);
+    await page.getByRole('button', { name: '조건 편집' }).click();
+    await page.evaluate(() => window.dispatchEvent(new WheelEvent('wheel', { deltaY: 100 })));
+    await expect(entry).toHaveAttribute('data-revealed', 'false');
+    await page.getByRole('dialog', { name: '시뮬레이션 조건' }).getByRole('button', { name: '닫기', exact: true }).click();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(entry).toHaveAttribute('data-revealed', 'false');
+    await page.screenshot({ path: testInfo.outputPath(`sample-hidden-${width}.png`) });
+    if (width === 390) {
+      await page.evaluate(() => {
+        const touch = (y: number) => new Touch({ identifier: 1, target: document.body, clientX: 200, clientY: y });
+        document.body.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, touches: [touch(700)] }));
+        document.body.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, touches: [touch(620)] }));
+        document.body.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [] }));
+      });
+    } else {
+      await page.mouse.move(width / 2, 750);
+      await page.mouse.wheel(0, 90);
+    }
+    await expect(entry).toHaveAttribute('data-revealed', 'true');
+    const link = entry.getByRole('link', { name: '포트폴리오 샘플 보기' });
+    await expect(link).toBeInViewport();
+    await expect(page).toHaveURL(/apps\/simulation\//);
+    await page.screenshot({ path: testInfo.outputPath(`sample-revealed-${width}.png`) });
+    await link.click();
+    await expect(page.getByRole('dialog', { name: '샘플로 구성하기' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'QQQM 70 · SCHD 30' })).toBeVisible();
+  });
+}
+
+test('sample discovery is reachable by ordinary keyboard tab', async ({ page }) => {
+  await seedMain(page);
+  await openFirstResult(page);
+  await page.getByRole('button', { name: '조건 편집' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: '포트폴리오 샘플 보기' })).toBeFocused();
+  await expect(page.locator('.simulation-portfolio-entry')).toHaveAttribute('data-revealed', 'true');
+});

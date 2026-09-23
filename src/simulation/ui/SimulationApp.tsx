@@ -8,7 +8,7 @@ import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialog
 import { Surface } from '../../components/common/Surface';
 import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { appPath } from '../../journey/routes';
-import { isPortfolioSamplePreset, portfolioSampleHref } from '../../journey/portfolioSampleIntent';
+import { SimulationPortfolioEntry } from './SimulationPortfolioEntry';
 import { bootstrapSimulation } from '../application/bootstrap';
 import type { CompoundSimulationDraft } from '../domain/model';
 import { projectCompoundGrowth } from '../domain/projection';
@@ -355,19 +355,10 @@ export function SimulationApp({
               </ResponsiveDialogLayout></AccountProductBoundary>
             </ResponsiveDialog>
             {saveState === 'saved' ? (
-              <section className="simulation-portfolio-entry" aria-labelledby="simulation-portfolio-entry-title">
-                <h2 id="simulation-portfolio-entry-title">
-                  {isPortfolioSamplePreset(resultDraft.expectedAnnualReturnPercent)
-                    ? `연 ${resultDraft.expectedAnnualReturnPercent}%를 가정했다면, 이 구성부터 볼까요?`
-                    : '투자 구성을 살펴볼까요?'}
-                </h2>
-                <a
-                  className="ui-button ui-button--secondary"
-                  href={isPortfolioSamplePreset(resultDraft.expectedAnnualReturnPercent)
-                    ? portfolioSampleHref(resultDraft.expectedAnnualReturnPercent)
-                    : appPath('portfolio')}
-                >포트폴리오 샘플 보기</a>
-              </section>
+              <SimulationPortfolioEntry
+                expectedAnnualReturnPercent={resultDraft.expectedAnnualReturnPercent}
+                blocked={conditionEditorOpen}
+              />
             ) : null}
           </>
         ) : (

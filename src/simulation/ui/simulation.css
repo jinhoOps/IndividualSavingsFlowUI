@@ -9,6 +9,7 @@
 }
 
 .simulation-content {
+  position: relative;
   display: grid;
   gap: 1.5rem;
 }
@@ -237,13 +238,20 @@
   font-size: .875rem;
 }
 
-.simulation-portfolio-entry {
+.simulation-portfolio-entry { position: relative; min-width: 0; scroll-margin-bottom: 2rem; }
+.simulation-portfolio-entry[data-revealed='false'] { position: absolute; inset: auto 0 0; height: 0; }
+.simulation-portfolio-entry__content {
   display: grid;
   justify-items: center;
   gap: .875rem;
-  margin: 2rem auto .5rem;
-  padding: 1.5rem;
+  padding: 2rem 0 .5rem;
+  animation: simulation-sample-reveal 240ms ease-out;
   text-align: center;
+}
+
+@keyframes simulation-sample-reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .simulation-portfolio-entry h2 {
@@ -864,6 +872,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .simulation-portfolio-entry__content { animation: none; }
   .simulation-settings-disclosure > summary > svg { transition: none; }
   .simulation-save-indicator span,
   .growth-chart__tooltip {

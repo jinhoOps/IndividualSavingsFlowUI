@@ -29,6 +29,7 @@ interface DisplayResultItem extends AllocationResultItem {
 interface AllocationRowFrame {
   opacity: number;
   percentage: number;
+  barPercentage: number;
   rect: DOMRect;
 }
 
@@ -87,17 +88,21 @@ export function PortfolioSummary({
     const previous = motionSnapshotRef.current;
     const currentSnapshot = { key: motionKey, rows: currentRows };
     motionSnapshotRef.current = currentSnapshot;
+    const membershipChanged = previous !== null && (
+      previous.rows.size !== currentRows.size || [...currentRows.keys()].some((id) => !previous.rows.has(id))
+    );
+    const stopBarMotion = animateAllocationBar(root, previous, currentSnapshot, reducedMotion || membershipChanged);
 
     if (previous === null || reducedMotion) {
       commitFinalVisualRatios(root, currentRows);
       if (reducedMotion) commitFinalRowMotion(root, currentSnapshot);
-      return;
+      return stopBarMotion;
     }
 
     if (previous.key === motionKey) {
       commitFinalVisualRatios(root, currentRows);
       continueInterruptedRowReveals(root, previous, currentSnapshot);
-      return;
+      return stopBarMotion;
     }
 
     for (const row of root.querySelectorAll<HTMLElement>('[data-allocation-id]')) {
@@ -143,7 +148,7 @@ export function PortfolioSummary({
       }
 
       const previousPercentage = prior?.percentage ?? 0;
-      if (previousPercentage === current.percentage) {
+      if (membershipChanged || previousPercentage === current.percentage) {
         commitFinalVisualRatio(row, current.percentage);
         continue;
       }
@@ -160,6 +165,7 @@ export function PortfolioSummary({
         );
       }
     }
+    return stopBarMotion;
   }, [motionKey, preferences.showAmounts]);
 
   return (
@@ -167,6 +173,7 @@ export function PortfolioSummary({
       as="section"
       ref={summaryRef}
       className="portfolio-summary"
+      data-show-amounts={preferences.showAmounts}
       aria-labelledby="portfolio-summary-title"
     >
       <header className="portfolio-summary__hero">
@@ -289,10 +296,52 @@ function captureAllocationRows(root: HTMLElement): Map<string, AllocationRowFram
     rows.set(id, {
       opacity: visualOpacity(row, 1),
       percentage,
+      barPercentage: percentage,
       rect: row.getBoundingClientRect(),
     });
   }
   return rows;
+}
+
+/** One progress value keeps all segments on the same scale throughout a change. */
+function animateAllocationBar(
+  root: HTMLElement,
+  previous: AllocationMotionSnapshot | null,
+  current: AllocationMotionSnapshot,
+  reducedMotion: boolean,
+): () => void {
+  const segments = Array.from(root.querySelectorAll<HTMLElement>('[data-segment-id]'));
+  const starts = segments.map((segment) => previous?.rows.get(segment.dataset.segmentId!)?.barPercentage ?? 0);
+  let active = true;
+  const paint = (progress: number) => {
+    if (!active) return;
+    segments.forEach((segment, index) => {
+      const frame = current.rows.get(segment.dataset.segmentId!);
+      if (frame === undefined) return;
+      const from = starts[index];
+      const value = from + (frame.percentage - from) * progress;
+      frame.barPercentage = value;
+      segment.style.setProperty('--allocation-segment-width', `${value}%`);
+    });
+  };
+  if (previous === null || previous.key === current.key || reducedMotion) {
+    paint(1);
+    return () => { active = false; };
+  }
+  const state = { progress: 0 };
+  paint(0);
+  try {
+    animate(state, {
+      progress: 1,
+      duration: MOTION_DURATION.normal,
+      ease: createProductSpring('value'),
+      onUpdate: () => paint(Math.max(0, Math.min(1, state.progress))),
+      onComplete: () => paint(1),
+    });
+  } catch {
+    paint(1);
+  }
+  return () => { active = false; };
 }
 
 function clampedPercentage(percentage: number): number {

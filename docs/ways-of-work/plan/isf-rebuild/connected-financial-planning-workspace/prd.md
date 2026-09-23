@@ -105,7 +105,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - Simulation은 단일 workspace의 최신 Main 월 저축·투자를 읽어 장기 복리 성장과 전부 저축 기준선을 비교하고 자체 Simulation slice만 갱신한다.
 - Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 하나의 aggregate-only 적용 배분과 편집 초안을 소유한다.
 - Portfolio 결과는 비율 우선 요약과 비례 목록으로 시작하며 원화 금액은 기본으로 숨긴다.
-- Simulation 결과의 연 기대수익률 5%·9%·13% 선택은 Portfolio 샘플 탐색으로 이어지는 URL CTA를 제공한다. CTA는 백테스트나 수익률 보장 없이 기존 샘플의 편집 가능한 시작 구성을 연다.
+- Simulation 결과의 연 기대수익률 5%·9%·13% 선택은 Portfolio 샘플 탐색으로 이어지는 URL CTA를 제공한다. CTA는 Main처럼 기본 화면과 일반 스크롤 중에는 숨기고 페이지 끝에서 새로 시작한 추가 스크롤·스와이프 또는 키보드 focus로 드러낸다. 조건 편집·메뉴 내부의 스크롤은 무시하며 활성화로만 이동한다. CTA는 백테스트나 수익률 보장 없이 기존 샘플의 편집 가능한 시작 구성을 연다.
 - Portfolio의 Simulation 샘플 진입은 5%에 SCHD 50·금 50, 9%에 QQQM 70·SCHD 30, 13%에 QLD 50·SCHD 30·금 20을 초기 상세로 선택한다. 다른 유효 수익률은 전체 샘플 목록을 연다.
 - Portfolio의 배분 편집은 투자 대상별 전체 기준 금액과 비율만 다루며 계좌·기관·보관처 관리 UI를 표시하지 않는다. 기존 workspace locations는 호환성 데이터로 보존하고, retired location-scoped Portfolio data는 현재 상태로 이관하지 않는다.
 - Account Map은 런처·앱 목록·인증 후 목적지에서 제거한다. 기존 `apps/account-map/`과 `apps/account-map/index.html`은 Main으로 이동하며 별도 금융 UI를 mount하지 않는다.

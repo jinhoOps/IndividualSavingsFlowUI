@@ -82,6 +82,31 @@ function openConditionEditor() {
 }
 
 describe('SimulationApp', () => {
+  it('does not remember exploration gestures from onboarding', async () => {
+    const { container } = render(<SimulationApp
+      mainSourceRepository={mainRepository(source)} repository={simulationRepository()}
+    />);
+    fireEvent.wheel(window, { deltaY: 200 });
+    fireEvent.click(screen.getByRole('button', { name: '없어요' }));
+    fireEvent.click(screen.getByRole('button', { name: '결과 보기' }));
+    await waitFor(() => expect(container.querySelector('.simulation-portfolio-entry')).toHaveAttribute('data-revealed', 'false'));
+  });
+
+  it('keeps sample discovery collapsed until keyboard focus, without saving or navigating', () => {
+    const saved = { ...createDefaultSimulationDraft(source, 456), expectedAnnualReturnPercent: 9 };
+    const repository = simulationRepository({ status: 'found', draft: saved, migration: null });
+    const { container } = render(<SimulationApp
+      mainSourceRepository={mainRepository(source)} repository={repository}
+    />);
+    const entry = container.querySelector('.simulation-portfolio-entry');
+    expect(entry).toHaveAttribute('data-revealed', 'false');
+    const link = screen.getByRole('link', { name: '포트폴리오 샘플 보기' });
+    expect(link).toHaveAttribute('href', '/apps/portfolio/?samplePreset=9');
+    fireEvent.focus(link);
+    expect(entry).toHaveAttribute('data-revealed', 'true');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
   it('keeps result conditions in a separate modal editor', () => {
     const saved = createDefaultSimulationDraft(source, 456);
     render(<SimulationApp

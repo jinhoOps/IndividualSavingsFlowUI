@@ -516,8 +516,6 @@ test('keeps the summary-first ratio list usable across required widths', async (
       expect(rowBox!.x).toBeGreaterThanOrEqual(summaryBox!.x);
       expect(rowBox!.x + rowBox!.width).toBeLessThanOrEqual(summaryBox!.x + summaryBox!.width);
     }
-    expect(await summary.locator('.portfolio-allocation-list')
-      .evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
     await expect(summary.getByTestId('portfolio-allocation-bar').locator('[data-segment-id]')).toHaveCount(4);
     await expect(summary.locator('.portfolio-allocation-row__track')).toHaveCount(0);
     const edit = page.locator('.portfolio-allocation-row__select').first();
@@ -541,8 +539,6 @@ test('keeps the summary-first ratio list usable across required widths', async (
       expect(listBox!.y - (heroBox!.y + heroBox!.height)).toBeGreaterThanOrEqual(24);
       expect(await summary.evaluate((element) => getComputedStyle(element).backgroundColor))
         .toBe('rgba(0, 0, 0, 0)');
-      expect(await list.evaluate((element) => getComputedStyle(element).backgroundColor))
-        .toBe('rgb(255, 255, 255)');
       expect(Number.parseInt(await page.getByRole('heading', { name: '안정 50%' })
         .evaluate((element) => getComputedStyle(element).fontWeight), 10)).toBeGreaterThanOrEqual(700);
       const rows = summary.getByRole('listitem');
@@ -556,8 +552,8 @@ test('keeps the summary-first ratio list usable across required widths', async (
       }
     }
     if (viewport.width === 1280) {
-      expect(summaryBox!.width).toBeGreaterThanOrEqual(767);
-      expect(summaryBox!.width).toBeLessThanOrEqual(768);
+      expect(summaryBox!.width).toBeGreaterThanOrEqual(639);
+      expect(summaryBox!.width).toBeLessThanOrEqual(640);
     }
     const allocationBar = summary.getByTestId('portfolio-allocation-bar');
     const indexSegment = allocationBar.locator('[data-segment-id="global-index"]');
@@ -1222,3 +1218,41 @@ test('clears setup cash validation when back navigation discards its local input
   await page.getByRole('button', { name: '이대로 시작' }).click();
   await expect(page.getByRole('heading', { name: '안정 100%' })).toBeVisible();
 });
+
+
+for (const width of [390, 768, 1280]) {
+  test(`compact allocation remains readable at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await seedMain(page, 800_000);
+    await seedSourceVisualPortfolio(page);
+    await page.goto('apps/portfolio/');
+    const summary = page.locator('.portfolio-summary');
+    const rows = summary.locator('.portfolio-allocation-row__select');
+    expect((await summary.boundingBox())!.width).toBeLessThanOrEqual(640);
+    for (const row of await rows.all()) {
+      const box = (await row.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeLessThanOrEqual(64);
+    }
+    const bar = summary.locator('.portfolio-allocation-bar');
+    expect((await rows.first().boundingBox())!.y - ((await bar.boundingBox())!.y + (await bar.boundingBox())!.height)).toBeLessThanOrEqual(12);
+    await page.screenshot({ path: testInfo.outputPath(`portfolio-compact-${width}.png`) });
+    await page.getByRole('button', { name: '관리 메뉴', exact: true }).click();
+    await page.getByRole('switch', { name: '금액 보기' }).locator('..').click();
+    await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).click();
+    await expect(summary).toContainText('400,000원');
+    for (const row of await rows.all()) {
+      const box = (await row.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(68);
+      expect(box.height).toBeLessThanOrEqual(76);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`portfolio-amounts-${width}.png`) });
+    await rows.first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog', { name: '투자 배분 수정' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(rows.first()).toBeFocused();
+  });
+}
