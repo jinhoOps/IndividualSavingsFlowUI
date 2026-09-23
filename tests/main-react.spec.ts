@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 const appliedMainV2 = {
@@ -64,6 +64,19 @@ async function pressTab(page: Page, count: number) {
   for (let index = 0; index < count; index += 1) {
     await page.keyboard.press('Tab');
   }
+}
+
+async function dispatchTouchDrag(
+  session: CDPSession,
+  start: { x: number; y: number },
+  distanceY: number,
+) {
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: start.x, y: start.y + distanceY }],
+  });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
 async function expectSetupActionVisuallyReady(page: Page, name: string) {
@@ -1138,9 +1151,9 @@ test('closes the clean mobile cashflow editor from a downward header drag', asyn
     await opener.click();
     const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
     const handle = editor.locator('[data-sheet-drag-handle]');
-    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
-    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
-    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'pen', isPrimary: true, button: 0, clientX: 180, clientY: 0 });
+    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'pen', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'pen', isPrimary: true, clientX: 180, clientY: 120 });
 
     await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
     const exitPositions = await page.evaluate(async () => {
@@ -1157,6 +1170,53 @@ test('closes the clean mobile cashflow editor from a downward header drag', asyn
     await expect(editor).toBeHidden();
     await expect(opener).toBeFocused();
   }
+});
+
+test.describe('sheet touch gesture arbitration', () => {
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+test('separates actual touch scrolling, controls, and fresh body-space dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  const opener = page.getByRole('button', { name: '월 금액 편집' });
+  await opener.click();
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expect.poll(() => editor.evaluate((element) => {
+    const transform = getComputedStyle(element).transform;
+    return transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42;
+  })).toBeCloseTo(0, 0);
+  const body = editor.locator('[data-surface-body]');
+  const session = await page.context().newCDPSession(page);
+  const input = editor.getByRole('textbox').first();
+  const inputBox = await input.boundingBox();
+  expect(inputBox).not.toBeNull();
+
+  await dispatchTouchDrag(session, { x: inputBox!.x + inputBox!.width / 2, y: inputBox!.y + inputBox!.height / 2 }, 96);
+  await expect(editor).toBeVisible();
+  await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+
+  const maximumScroll = await body.evaluate((element) => element.scrollHeight - element.clientHeight);
+  expect(maximumScroll).toBeGreaterThan(40);
+  const scrollStart = Math.min(40, maximumScroll);
+  await body.evaluate((element, top) => { element.scrollTop = top; }, scrollStart);
+  await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBe(scrollStart);
+  const bodyBox = await body.boundingBox();
+  expect(bodyBox).not.toBeNull();
+  const bodyGutter = { x: bodyBox!.x + 8, y: bodyBox!.y + bodyBox!.height / 2 };
+  await dispatchTouchDrag(session, bodyGutter, 112);
+  expect(await body.evaluate((element) => element.scrollTop)).toBe(0);
+  await expect(editor).toBeVisible();
+  await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+
+  await dispatchTouchDrag(session, bodyGutter, 152);
+  await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
+  await expect(editor).toBeHidden();
+  await expect(opener).toBeFocused();
+});
 });
 
 test('saves a dirty expense assistant draft before animating a drag dismissal', async ({ page }) => {

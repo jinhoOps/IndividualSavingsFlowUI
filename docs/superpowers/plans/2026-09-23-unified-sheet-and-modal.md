@@ -96,7 +96,7 @@ if (viewport.width < 768) {
 
 **Interfaces:** `UseSheetDismissOptions`의 기존 승인/완료 콜백을 유지한다. `[data-surface-body]`를 본문 스크롤 경계로 사용하고 `[data-sheet-no-drag]`를 커스텀 상호작용 영역의 명시적 제외 표식으로 지원한다.
 
-- [ ] 1. 단위 Harness에 제목 여백·본문 여백·footer 여백·input/label/button/slider를 추가한다. 기존 `dispatchPointer`를 재사용해 다음 실패 테스트를 작성한다.
+- [x] 1. 단위 Harness에 제목 여백·본문 여백·footer 여백·input/label/button/slider를 추가한다. 기존 `dispatchPointer`를 재사용해 다음 실패 테스트를 작성한다.
 
 ```ts
 const target = screen.getByTestId('sheet-body');
@@ -108,8 +108,8 @@ expect(onRequestDismiss).toHaveBeenCalledOnce();
 ```
 
   별도 테스트로 시작 시 scrollTop=40이면 0에 도달한 뒤에도 그 제스처에서는 dismiss=0, 다음 새 제스처에서만 dismiss=1임을 고정한다. 상호작용 요소/label, 가로·위 방향, 멀티터치, non-topmost, busy는 dismiss=0이다.
-- [ ] 2. `npx vitest run tests/unit/components/useSheetDismiss.test.tsx`로 새 요구사항의 실패를 확인한다.
-- [ ] 3. listener를 손잡이에서 표면 내부로 확장한다. native backdrop은 제외하고, 시작 지점의 interactive 조상과 중첩 scrollable 조상의 scrollTop을 확인한다. 제스처 상태를 `pending → dragging | scrolling → end`로 고정하고 scrolling으로 판정된 제스처는 다시 dragging으로 전환하지 않는다. 활성화 전에는 preventDefault/capture하지 않는다.
+- [x] 2. `npx vitest run tests/unit/components/useSheetDismiss.test.tsx`로 새 요구사항의 실패를 확인한다.
+- [x] 3. listener를 손잡이에서 표면 내부로 확장한다. native backdrop은 제외하고, 시작 지점의 interactive 조상과 중첩 scrollable 조상의 scrollTop을 확인한다. 제스처 상태를 `pending → dragging | scrolling → end`로 고정하고 scrolling으로 판정된 제스처는 다시 dragging으로 전환하지 않는다. 활성화 전에는 preventDefault/capture하지 않는다.
 
 ```ts
 const interactiveSelector = [
@@ -122,9 +122,9 @@ const interactiveSelector = [
 ```
 
   pointer mouse/pen 경로와 touch 경로가 중복 처리되지 않도록 분기한다. 터치 본문은 passive:false touchmove에서 시작 시점·방향·스크롤 소유권을 판단하고 **드래그로 확정한 경우에만** preventDefault한다. 본문 전체에 `touch-action:none`을 적용하지 않는다. 손잡이만 touch-action:none을 사용할 수 있다. 텍스트 선택 중·두 손가락 입력에서는 취소하고 스크롤/확대를 보존한다.
-- [ ] 4. 8px 방향 판정, 거리/최근 속도 닫기 기준, 저장 승인과 취소 복귀를 유지한다. 드래그 후 click이 footer 버튼이나 backdrop 닫기를 실행하지 않도록 표면 capture 단계에서 억제한다.
-- [ ] 5. `tests/main-react.spec.ts`에 `surface touch gesture` 테스트를 추가한다. Chromium CDP `Input.dispatchTouchEvent`로 실제 터치를 보내 본문 스크롤·맨 위 여백 드래그·입력 조작을 검증한다. JS `dispatchEvent`만으로 통과시키지 않는다. iOS 실기기 확인은 별도 증거로 기록한다.
-- [ ] 6. 단위 및 새 Playwright 그룹을 통과시킨 뒤 커밋: `feat: dismiss mobile sheets from noninteractive space`.
+- [x] 4. 8px 방향 판정, 거리/최근 속도 닫기 기준, 저장 승인과 취소 복귀를 유지한다. 드래그 후 click이 footer 버튼이나 backdrop 닫기를 실행하지 않도록 표면 capture 단계에서 억제한다.
+- [x] 5. `tests/main-react.spec.ts`에 `surface touch gesture` 테스트를 추가한다. Chromium CDP `Input.dispatchTouchEvent`로 실제 터치를 보내 본문 스크롤·맨 위 여백 드래그·입력 조작을 검증한다. JS `dispatchEvent`만으로 통과시키지 않는다. iOS 실기기 확인은 별도 증거로 기록한다.
+- [x] 6. 단위 및 새 Playwright 그룹을 통과시킨 뒤 커밋: `feat: dismiss mobile sheets from noninteractive space`.
 
 ## Task 3: 총 450ms 표면 모션과 종료 수명
 
