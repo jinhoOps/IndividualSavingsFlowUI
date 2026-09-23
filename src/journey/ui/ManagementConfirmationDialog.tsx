@@ -2,7 +2,7 @@ import { useEffect, useState, type RefObject } from 'react';
 import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import type { ManagementConfirmation } from './AppManagementMenu';
 
 export function ManagementConfirmationDialog({
@@ -37,7 +37,6 @@ export function ManagementConfirmationDialog({
       labelledBy="journey-management-confirmation-title"
       describedBy="journey-management-confirmation-description"
       size="compact"
-      mobileEntranceMotion
       busy={pending}
       returnFocusRef={returnFocusRef}
       onRequestClose={() => !pending}
@@ -87,7 +86,7 @@ function ManagementConfirmationActions({
   const requestDialogClose = useResponsiveDialogClose();
   const alternateDisabled = pending || !delayElapsed;
   return (
-    <div className="journey-management__dialog-actions">
+    <ResponsiveDialogActionRow className={confirmation.alternateAction ? 'responsive-dialog__actions--danger-leading' : ''}>
       {confirmation.alternateAction && onAlternate ? (
         <Button variant="bare" className={`journey-management__danger journey-management__dialog-alternate${alternateDisabled ? ' journey-management__dialog-alternate--disabled' : ''}`}
           type="button" disabled={alternateDisabled}
@@ -98,6 +97,6 @@ function ManagementConfirmationActions({
       <Button variant="secondary" type="button" data-dialog-initial-focus disabled={pending}
         onClick={() => requestDialogClose ? requestDialogClose('button') : onCancel()}>취소</Button>
       <Button variant="bare" className="journey-management__danger" type="button" disabled={pending} onClick={onConfirm}>{confirmation.confirmLabel}</Button>
-    </div>
+    </ResponsiveDialogActionRow>
   );
 }

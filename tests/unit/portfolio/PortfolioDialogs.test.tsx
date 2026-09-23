@@ -100,6 +100,11 @@ describe('Portfolio shared dialogs', () => {
     expect(dialog.querySelector('[data-surface-layout="confirm"]')).toBeTruthy();
     const cancel = within(dialog).getByRole('button', { name: '계속 수정' });
     const confirm = within(dialog).getByRole('button', { name: '배분 적용' });
+    const actionRow = dialog.querySelector('.responsive-dialog__actions');
+    expect(actionRow).not.toBeNull();
+    expect(within(actionRow as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '계속 수정', '배분 적용',
+    ]);
     expect(cancel).toHaveFocus();
 
     confirm.focus();

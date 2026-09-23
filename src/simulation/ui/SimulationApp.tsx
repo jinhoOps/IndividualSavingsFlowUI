@@ -321,7 +321,6 @@ export function SimulationApp({
               labelledBy="simulation-condition-editor-title"
               size="form"
               mobileHeight="full"
-              mobileEntranceMotion
               returnFocusRef={conditionEditorOpenerRef}
               onRequestClose={() => true}
               onClosed={() => setConditionEditorOpen(false)}

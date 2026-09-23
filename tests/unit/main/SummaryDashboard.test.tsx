@@ -445,6 +445,11 @@ describe('SummaryDashboard', () => {
     const close = dialogScope.getByRole('button', { name: '닫기' });
     const cancel = dialogScope.getByRole('button', { name: '취소' });
     const apply = dialogScope.getByRole('button', { name: '적용' });
+    const actionRow = dialog.querySelector('.responsive-dialog__actions');
+
+    expect(actionRow).not.toBeNull();
+    expect(within(actionRow as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual(['취소', '적용']);
+    expect(actionRow?.querySelector('.main-apply-bar__status')).toBeNull();
 
     await waitFor(() => expect(close).toHaveFocus());
     expect(apply).toBeDisabled();

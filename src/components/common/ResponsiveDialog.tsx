@@ -15,7 +15,6 @@ export interface ResponsiveDialogProps {
   className?: string;
   size?: 'compact' | 'form' | 'wide';
   mobileHeight?: 'content' | 'full';
-  mobileEntranceMotion?: boolean;
   busy?: boolean;
   returnFocusRef: RefObject<HTMLElement | null>;
   onRequestClose(reason: DialogCloseReason): boolean | Promise<boolean>;
@@ -54,7 +53,6 @@ export function ResponsiveDialog({
   className,
   size = 'form',
   mobileHeight = 'content',
-  mobileEntranceMotion = true,
   busy = false,
   returnFocusRef,
   onRequestClose,
@@ -152,7 +150,7 @@ export function ResponsiveDialog({
       if (wasOpenRef.current) finishClose();
       else if (requestedClosed) setRequestedClosed(false);
     }
-  }, [mobileEntranceMotion, onClosed, open, presentation, requestedClosed, returnFocusRef]);
+  }, [onClosed, open, presentation, requestedClosed, returnFocusRef]);
 
   useEffect(() => () => {
     lifecycleGenerationRef.current += 1;
@@ -336,7 +334,6 @@ export function ResponsiveDialog({
       ref={dialogRef}
       className={`responsive-dialog${className ? ` ${className}` : ''}`}
       data-mobile-height={mobileHeight}
-      data-mobile-entrance={mobileEntranceMotion || undefined}
       data-presentation={presentation}
       data-size={size}
       aria-busy={busy}

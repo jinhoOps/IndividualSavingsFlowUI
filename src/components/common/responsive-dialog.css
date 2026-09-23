@@ -139,6 +139,18 @@
   background: var(--panel);
 }
 
+.responsive-dialog__actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .75rem;
+}
+
+.responsive-dialog__actions > * { min-width: 0; min-height: 44px; }
+.responsive-dialog__actions--danger-leading > :first-child { margin-inline-end: auto; }
+
 @media (min-width: 768px) {
   .responsive-dialog[data-presentation='modal'] .responsive-dialog__drag-handle { display: none; }
   .responsive-dialog[data-presentation='modal'] .responsive-dialog__header { padding: .75rem 1.5rem; }
@@ -183,4 +195,7 @@
   .responsive-dialog__status,
   .responsive-dialog__body,
   .responsive-dialog__footer { padding-right: max(1.25rem, env(safe-area-inset-right)); padding-left: max(1.25rem, env(safe-area-inset-left)); }
+
+  .responsive-dialog__actions { justify-content: flex-start; }
+  .responsive-dialog__actions > * { flex: 1 1 8rem; min-width: 0; }
 }

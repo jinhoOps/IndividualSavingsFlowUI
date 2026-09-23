@@ -220,8 +220,6 @@
   .expense-assistant__total { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: .75rem; }
   .expense-assistant__total span { color: var(--muted); font-size: .875rem; }
   .expense-assistant__total strong { font-family: var(--font-display); font-size: 1.5rem; text-align: right; overflow-wrap: anywhere; }
-  .expense-assistant__actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: .75rem; }
-  .expense-assistant__apply { width: 100%; margin-top: .5rem; }
   .expense-assistant__review { display: grid; margin-top: 1.25rem; }
   .expense-assistant__review button { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border: 0; border-bottom: 1px solid var(--line); background: transparent; min-height: 48px; padding: .625rem 0; font-size: .875rem; text-align: left; }
   .expense-assistant__review button > span:last-child { color: var(--tone-accent); text-align: right; }
@@ -311,6 +309,8 @@
     font-size: .875rem;
     line-height: 1.5;
   }
+
+  .main-apply-bar__actions { grid-column: 1 / -1; }
 
   .main-apply-bar__status--error { color: var(--status-error); }
   .main-apply-bar--embedded { position: static; z-index: auto; border: 0; padding: 0; background: transparent; }

@@ -174,6 +174,11 @@ describe('AppManagementMenu', () => {
     const dialog = await screen.findByRole('dialog', { name: '처음부터 다시 할까요?' });
     const cancel = within(dialog).getByRole('button', { name: '취소' });
     const confirm = within(dialog).getByRole('button', { name: '다시 시작' });
+    const actionRow = dialog.querySelector('.responsive-dialog__actions');
+    expect(actionRow).not.toBeNull();
+    expect(within(actionRow as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '취소', '다시 시작',
+    ]);
     expect(cancel).toHaveFocus();
     confirm.focus();
     fireEvent.keyDown(dialog, { key: 'Tab' });
@@ -216,8 +221,13 @@ describe('AppManagementMenu', () => {
       });
 
       const reset = screen.getByRole('button', { name: '초기화' });
+      const actionRow = reset.closest('.responsive-dialog__actions');
       expect(reset).toBeDisabled();
       expect(reset).toHaveClass('journey-management__dialog-alternate--disabled');
+      expect(actionRow).toHaveClass('responsive-dialog__actions--danger-leading');
+      expect(within(actionRow as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual([
+        '초기화', '취소', '다시 시작',
+      ]);
 
       act(() => vi.advanceTimersByTime(2_500));
       expect(reset).toBeEnabled();

@@ -104,7 +104,6 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         labelledBy={menuId}
         size="compact"
         mobileHeight="content"
-        mobileEntranceMotion
         returnFocusRef={triggerRef}
         onRequestClose={() => {
           closeSettings();

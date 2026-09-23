@@ -391,7 +391,8 @@ describe('shared Journey overlays', () => {
     fireEvent.click(trigger);
     const dialog = screen.getByRole('dialog', { name: '처음부터 다시 할까요?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('data-mobile-entrance', 'true');
+    expect(dialog).toHaveAttribute('data-presentation', 'modal');
+    expect(dialog).not.toHaveAttribute('data-mobile-entrance');
     expect(dialog.querySelector('[data-surface-layout="confirm"]')).toBeTruthy();
     const confirm = within(dialog).getByRole('button', { name: '초기화' });
     expect(confirm).toHaveClass('ui-button--bare', 'journey-management__danger');

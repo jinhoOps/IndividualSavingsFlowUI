@@ -166,12 +166,12 @@ export function createDialogMotionTiming(bounce: number) {
 
 ## Task 4: 세 앱의 공통 행동 배치와 호출부 이관
 
-**Files:** `ResponsiveDialogLayout.tsx`, `responsive-dialog.css`; `src/main/ui/dashboard/{SummaryDashboard,ExpenseAssistantDialog,RemainingAllocationDialog}.tsx`; `src/main/ui/main.css`; `src/simulation/ui/SimulationApp.tsx`; `src/portfolio/ui/{PortfolioEditSurface,PortfolioItemSheet,PortfolioSetupFlow,PortfolioApplyBar,PortfolioResultCardPreview}.tsx`, `portfolio.css`; `src/journey/ui/{AppManagementMenu,ManagementConfirmationDialog}.tsx`.
+**Files:** `ResponsiveDialogLayout.tsx`, `responsive-dialog.css`; `src/main/ui/dashboard/{SummaryDashboard,ExpenseAssistantDialog,RemainingAllocationDialog}.tsx`, `src/main/ui/editor/ApplyBar.tsx`, `src/main/ui/main.css`; `src/simulation/ui/SimulationApp.tsx`; `src/portfolio/ui/{PortfolioEditSurface,PortfolioItemSheet,PortfolioSetupFlow,PortfolioApplyBar,PortfolioResultCardPreview}.tsx`, `portfolio.css`; `src/journey/ui/{AppManagementMenu,ManagementConfirmationDialog}.tsx`.
 
 **Interfaces:** `ResponsiveDialogLayout.tsx`에 `ResponsiveDialogActionRow({ children, className }: { children: ReactNode; className?: string })`를 export한다. status/help text는 이 행 밖에 두고 행동 버튼만 포함한다. Simulation 자동 저장 편집에는 footer를 추가하지 않는다.
 
-- [ ] 1. 기존 단위 테스트에 실제 소비자의 버튼 순서와 accessible name을 고정한다. 주요 버튼이 마지막이고 초기화 같은 위험 작업은 다른 버튼과 분리되는지 확인한다. 상태 안내가 button group에 섞이거나 사라지지 않도록 한다.
-- [ ] 2. 공통 행동 행을 구현하고 Main/Portfolio/관리 확인/미리보기 footer에 적용한다.
+- [x] 1. 기존 단위 테스트에 실제 소비자의 버튼 순서와 accessible name을 고정한다. 주요 버튼이 마지막이고 초기화 같은 위험 작업은 다른 버튼과 분리되는지 확인한다. 상태 안내가 button group에 섞이거나 사라지지 않도록 한다.
+- [x] 2. 공통 행동 행을 구현하고 Main/Portfolio/관리 확인/미리보기 footer에 적용한다.
 
 ```tsx
 export function ResponsiveDialogActionRow({ children, className = '' }: {
@@ -182,9 +182,9 @@ export function ResponsiveDialogActionRow({ children, className = '' }: {
 ```
 
   모바일은 버튼들이 가용 폭을 나누고 줄바꿈 가능, 웹은 오른쪽 정렬·내용 너비·최소 44px다. 위험 행동을 왼쪽에 두는 기존 관리 확인은 modifier로 보존한다. 이미지 미리보기의 3:4 비율과 금액 표시 토글을 유지한다.
-- [ ] 3. 앱별 같은 역할의 grid/flex/width/height override를 제거한다. 단순히 공통 CSS에 !important를 추가하지 않는다. `mobileEntranceMotion`의 호출부 opt-in 차이는 제거하고 모든 표면에서 presentation에 맞는 모션을 기본 적용한다. prop 제거 시 타입 검사로 모든 사용처를 확인한다.
-- [ ] 4. `npx vitest run tests/unit/components tests/unit/main tests/unit/simulation tests/unit/portfolio tests/unit/journey`로 소비자 회귀를 확인한다. 구조 변경 때문에 깨진 테스트는 사용자 행동 계약을 유지하면서 갱신한다.
-- [ ] 5. `npm run check` 통과 후 커밋: `refactor: align app dialogs with shared surface standards`.
+- [x] 3. 앱별 같은 역할의 grid/flex/width/height override를 제거한다. 단순히 공통 CSS에 !important를 추가하지 않는다. `mobileEntranceMotion`의 호출부 opt-in 차이는 제거하고 모든 표면에서 presentation에 맞는 모션을 기본 적용한다. prop 제거 시 타입 검사로 모든 사용처를 확인한다.
+- [x] 4. `npx vitest run tests/unit/components tests/unit/main tests/unit/simulation tests/unit/portfolio tests/unit/journey`로 소비자 회귀를 확인한다. 구조 변경 때문에 깨진 테스트는 사용자 행동 계약을 유지하면서 갱신한다.
+- [x] 5. `npm run check` 통과 후 커밋: `refactor: align app dialogs with shared surface standards`.
 
 ## Task 5: 브라우저 검증과 실제 모션 증거
 
