@@ -4,7 +4,7 @@ import { AccountProductBoundary } from '../../../auth/AccountManagementContext';
 import { MoneyAdjustments } from '../../../components/common/MoneyAdjustments';
 import { SegmentedControl } from '../../../components/common/SegmentedControl';
 import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
 import { AccountDraftContext, AccountWriteRecoveryContext, useAccountRecovery, useInitialRecovery } from '../../../auth/AccountDraftContext';
 import { createExpenseDraft, expenseAnswersComplete, expenseTotals, EXPENSE_ITEMS, parseExpenseDraft, type ExpenseAssistantDraft } from '../../domain/expenseAssistant';
 import type { MainData } from '../../domain/model';
@@ -90,7 +90,7 @@ export function ExpenseAssistantDialog({ repository, returnFocusRef, onClose, on
     void save(nextDraft);
   }
 
-  return <ResponsiveDialog open labelledBy="expense-assistant-title" size="form" busy={busy} mobileEntranceMotion
+  return <ResponsiveDialog open labelledBy="expense-assistant-title" size="form" busy={busy}
     returnFocusRef={returnFocusRef ?? fallbackFocusRef} onRequestClose={requestClose} onClosed={onClose}>
     {({ requestClose: closeDialog }) => <AccountProductBoundary><ResponsiveDialogLayout title="지출 계산 도우미" titleId="expense-assistant-title"
       eyebrow={item ? `답변 ${index + 1} / ${EXPENSE_ITEMS.length}` : `답변 ${answered}개 / ${EXPENSE_ITEMS.length}`}
@@ -108,12 +108,14 @@ export function ExpenseAssistantDialog({ repository, returnFocusRef, onClose, on
         <SavingOverlay saving={busy} />
         <div className="expense-assistant__total"><span>{item ? '지금까지 월평균' : '월 지출 합계'}</span><strong>{totals ? formatDashboardWon(totals.totalWon) : '금액 범위 초과'}</strong></div>
         {!item && totals ? <p className="expense-assistant__hint">주거 {formatDashboardWon(totals.housingWon)} · 생활 {formatDashboardWon(totals.livingWon)}<br />직접 입력한 주거비와 생활비를 이 합계로 바꿔요.</p> : null}
-        {item ? <div className="expense-assistant__actions">
+        {item ? <ResponsiveDialogActionRow>
           <Button type="button" variant="secondary" disabled={busy || !!initial.error} onClick={() => next(true)}>없어요</Button>
           <Button type="button" variant="primary" disabled={busy || invalidAmount || !totals || !!initial.error} onClick={() => next()}>{returnToReview ? '내역으로' : index === EXPENSE_ITEMS.length - 1 ? '합계 확인' : '다음'}</Button>
-        </div> : <Button className="expense-assistant__apply" type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={async () => {
-          if (await save(draft, true)) closeDialog('button');
-        }}>이 금액으로 반영</Button>}
+        </ResponsiveDialogActionRow> : <ResponsiveDialogActionRow>
+          <Button type="button" variant="primary" disabled={busy || !expenseAnswersComplete(draft.answers) || !totals || !!initial.error} onClick={async () => {
+            if (await save(draft, true)) closeDialog('button');
+          }}>이 금액으로 반영</Button>
+        </ResponsiveDialogActionRow>}
       </div>}
     >
       <div className={`expense-assistant__content${item && 'example' in item ? ' expense-assistant--explained' : ''}`}>

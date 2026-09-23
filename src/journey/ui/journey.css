@@ -219,16 +219,6 @@
   font-weight: 700;
 }
 
-.journey-management__dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: .625rem;
-}
-
-.journey-management__dialog-alternate {
-  margin-inline-end: auto;
-}
-
 .journey-launcher__current-line {
   position: absolute;
   right: 16px;

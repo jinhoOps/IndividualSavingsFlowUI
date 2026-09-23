@@ -8,6 +8,15 @@ import { AccountDraftContext } from '../../../src/auth/AccountDraftContext';
 import type { AccountWorkspaceSession } from '../../../src/workspace/infrastructure/accountWorkspaceSession';
 import { PortfolioItemSheet } from '../../../src/portfolio/ui/PortfolioItemSheet';
 
+const anime = vi.hoisted(() => ({
+  animate: vi.fn((_target: unknown, options: Record<string, unknown>) => {
+    if (typeof options.onComplete === 'function') options.onComplete();
+    return { cancel: vi.fn() };
+  }),
+}));
+
+vi.mock('animejs', () => ({ animate: anime.animate }));
+
 afterEach(cleanup);
 
 const blankItem = {

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { Surface } from '../../components/common/Surface';
 import { materializeAllocation } from '../domain/allocation';
 import { stableShareUnits } from '../domain/classification';
@@ -69,19 +69,21 @@ export function PortfolioApplyBar({
     >
       <p className="portfolio-apply-bar__status">아직 적용하지 않은 변경이 있어요</p>
       {saveError && !open ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
-      <Button type="button" variant="secondary" disabled={applying} onClick={() => {
-        if (requestDialogClose) requestDialogClose('button');
-        else onCancel();
-      }}>취소</Button>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="primary"
-        disabled={applying || fieldError !== null || !validateApplicableDraft(draft)}
-        onClick={() => {
-          setOpen(true);
-        }}
-      >적용</Button>
+      <ResponsiveDialogActionRow className="portfolio-apply-bar__actions">
+        <Button type="button" variant="secondary" disabled={applying} onClick={() => {
+          if (requestDialogClose) requestDialogClose('button');
+          else onCancel();
+        }}>취소</Button>
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="primary"
+          disabled={applying || fieldError !== null || !validateApplicableDraft(draft)}
+          onClick={() => {
+            setOpen(true);
+          }}
+        >적용</Button>
+      </ResponsiveDialogActionRow>
       {open ? (
         <ResponsiveDialog
           open
@@ -133,12 +135,12 @@ function PortfolioApplyConfirmationActions({
 }) {
   const requestDialogClose = useResponsiveDialogClose();
   return (
-    <div className="portfolio-item-sheet__discard-actions">
+    <ResponsiveDialogActionRow>
       <Button type="button" variant="secondary" data-dialog-initial-focus disabled={applying} onClick={() => {
         if (requestDialogClose) requestDialogClose('button');
         else onClose();
       }}>계속 수정</Button>
       <Button type="button" variant="primary" disabled={applying || !canApply} onClick={onApply}>배분 적용</Button>
-    </div>
+    </ResponsiveDialogActionRow>
   );
 }

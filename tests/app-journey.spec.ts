@@ -514,6 +514,7 @@ test('keeps each app management menu reachable and contained across viewports', 
       await trigger.click();
       await expect(trigger).toHaveAttribute('aria-expanded', 'true');
       await page.mouse.click(8, 8);
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
       await expect(popover).toBeHidden();
       await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await expect(trigger).toBeFocused();

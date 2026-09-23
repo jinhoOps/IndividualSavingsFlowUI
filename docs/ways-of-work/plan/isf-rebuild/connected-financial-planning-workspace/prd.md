@@ -152,7 +152,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 2026-09-10 사용자 승인: 일반 톱니 메뉴에서 Main 백업 내보내기·가져오기와 공통 계정 백업을 제거한다. Supabase 저장을 기본으로 하며 초기 브라우저 이전·유효하지 않은 저장 상태 복구·미전송 입력 복구 경로와 백업 형식 호환성은 유지한다.
 - 중복된 `앱 아이콘 안내`는 제거하고 개별 아이콘의 hover·focus·long-press 설명을 유지한다. Main 다시 시작, Simulation 다시 설정, Portfolio 보기 설정·배분 초기화 및 공통 계정 정보·로그아웃을 앱 상태에 맞게 제공한다.
 - 390px·768px·desktop에서 메뉴의 빈 구역·불필요한 구분선·overflow가 없어야 하며 기존 44px touch target, Escape·바깥 클릭과 확인 dialog focus 계약을 유지한다.
-- 편집, 관리 설정, 결과 이미지 미리보기는 같은 native dialog 표면을 사용한다. 767px 이하는 하단 sheet, 768px 이상은 중앙 modal이며 header/context/body/status/footer 순서와 body 단일 scroll, focus 복원, dirty·saving 종료 guard를 지킨다. Portfolio 대상·샘플은 같은 표면의 단계로 전환하고 확인이 필요할 때만 하나의 최상위 confirmation dialog를 연다. 상세 설계는 [공통 표면 설계](../../../../superpowers/specs/2026-09-22-unified-bottom-sheet-design.md)를 따른다.
+- 편집, 관리 설정, 결과 이미지 미리보기는 같은 native dialog 표면을 사용한다. 767px 이하는 최대 88dvh 하단 sheet, 768px 이상은 손잡이 없는 중앙 modal이다. body 단일 scroll, 비상호작용 영역의 sheet drag, focus 복원, dirty·saving 종료 guard를 지키며 모바일은 아래에서, 웹은 수직 이동 없이 opacity/scale로 나타난다. 전체 모션은 spring 잔여를 포함해 400–500ms다. Portfolio 대상·샘플은 같은 표면의 단계로 전환하고 확인이 필요할 때만 하나의 최상위 confirmation dialog를 연다. 상세 설계는 [공통 표면 설계](../../../../superpowers/specs/2026-09-22-unified-bottom-sheet-design.md)를 따른다.
 
 - 앱 간 이동은 사용자의 런처 링크 또는 CTA 행동으로 시작한다.
 - 앱 이동은 URL 탐색만 수행하고 Simulation과 Portfolio는 workspace의 최신 Main slice를 각자의 읽기 전용 adapter로 직접 읽는다.

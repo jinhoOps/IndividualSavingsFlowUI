@@ -15,9 +15,15 @@ export interface ResponsiveDialogLayoutProps {
   status?: ReactNode;
   footer?: ReactNode;
   bodyClassName?: string;
-  footerClassName?: string;
   children: ReactNode;
   layout?: 'edit' | 'step' | 'settings' | 'preview' | 'confirm';
+}
+
+export function ResponsiveDialogActionRow({ children, className = '' }: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`responsive-dialog__actions${className ? ` ${className}` : ''}`}>{children}</div>;
 }
 
 /** Standard content frame for every responsive dialog surface. */
@@ -34,7 +40,6 @@ export function ResponsiveDialogLayout({
   status,
   footer,
   bodyClassName,
-  footerClassName,
   children,
   layout = 'edit',
 }: ResponsiveDialogLayoutProps) {
@@ -67,7 +72,7 @@ export function ResponsiveDialogLayout({
         {children}
       </div>
       {status ? <div className="responsive-dialog__status" data-surface-status="">{status}</div> : null}
-      {footer ? <footer className={`responsive-dialog__footer${footerClassName ? ` ${footerClassName}` : ''}`} data-surface-footer="">{footer}</footer> : null}
+      {footer ? <footer className="responsive-dialog__footer" data-surface-footer="">{footer}</footer> : null}
     </section>
   );
 }

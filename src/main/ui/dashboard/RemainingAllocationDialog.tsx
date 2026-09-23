@@ -3,7 +3,7 @@ import { AccountDraftContext, AccountWriteRecoveryContext } from '../../../auth/
 import {useUncommittedInput} from '../../../auth/useUncommittedInput';
 import { AccountProductBoundary } from '../../../auth/AccountManagementContext';
 import { ResponsiveDialog, type DialogCloseReason } from '../../../components/common/ResponsiveDialog';
-import { ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
+import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../../components/common/ResponsiveDialogLayout';
 import type { MainState } from '../../application/mainReducer';
 import type { MainData } from '../../domain/model';
 import { allocateRemaining, availableRemainingWon } from '../../domain/remainingAllocation';
@@ -66,7 +66,7 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, returnFo
     return true;
   }
 
-  return <ResponsiveDialog open labelledBy="remaining-allocation-title" size="form" busy={busy} mobileEntranceMotion
+  return <ResponsiveDialog open labelledBy="remaining-allocation-title" size="form" busy={busy}
     returnFocusRef={returnFocusRef ?? fallbackFocusRef} onRequestClose={requestClose} onClosed={onClose}>
     {({ requestClose: closeDialog }) => <AccountProductBoundary><ResponsiveDialogLayout title="남는 돈 분배" titleId="remaining-allocation-title"
       eyebrow={available > 0 ? `이번 달 남는 돈 ${won(available)}` : '이번 달 남는 돈 없음'}
@@ -85,14 +85,16 @@ export function RemainingAllocationDialog({ applied, dirty, saveStatus, returnFo
         {available > 0 ? <>
           <div className="expense-assistant__total" aria-live="polite"><span>나눈 뒤 남는 돈</span><strong>{proposal ? won(available - total) : '금액 확인 필요'}</strong></div>
           <p className="expense-assistant__hint">기존 월 저축·투자 금액에 더해요.</p>
-          <div className="expense-assistant__actions">
+          <ResponsiveDialogActionRow>
             <Button type="button" variant="secondary" disabled={busy} onClick={() => closeDialog('button')}>나중에</Button>
             <Button type="button" variant="primary" disabled={busy || pending || !!error || total <= 0} onClick={() => {
               if (submitting.current || !proposal) return;
               submitting.current = true; submitted.current = true; onApply();
             }}>이렇게 나누기</Button>
-          </div>
-        </> : <Button type="button" className="expense-assistant__apply" variant="primary" onClick={() => closeDialog('button')}>확인</Button>}
+          </ResponsiveDialogActionRow>
+        </> : <ResponsiveDialogActionRow>
+          <Button type="button" variant="primary" onClick={() => closeDialog('button')}>확인</Button>
+        </ResponsiveDialogActionRow>}
       </div>}
     >
       <div className="remaining-allocation">

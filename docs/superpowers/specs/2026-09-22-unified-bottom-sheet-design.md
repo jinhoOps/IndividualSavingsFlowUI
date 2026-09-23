@@ -32,10 +32,11 @@ CSS viewport 폭만 기준으로 presentation을 선택한다.
 
 | viewport | 표면 | 기준 |
 | --- | --- | --- |
-| `<= 767px` | Bottom Sheet | 하단 부착, 수평 중앙, 최대 `92dvh`, safe-area 반영 |
-| `>= 768px` | Modal | 중앙 정렬, 기본 폭 `640px`, 확장 폭 `720px` 또는 preview `960px`, 최대 `calc(100dvh - 48px)` |
+| `<= 767px` | Bottom Sheet | 하단 부착, 수평 중앙, 최대 `88dvh`(및 `100dvh - 8px`), safe-area 반영 |
+| `>= 768px` | Modal | 손잡이 없이 중앙 정렬, compact `440px`, form `640px`, wide `1080px`, 최대 `calc(100dvh - 48px)` |
 
 같은 열린 편집 상태에서 viewport가 767px과 768px 사이를 넘으면 draft, 입력값, 오류, 스크롤 의미를 버리지 않고 presentation만 전환한다.
+Desktop form/wide는 각각 `min(46rem, calc(100dvh - 48px))` 및 `min(54rem, calc(100dvh - 48px))` 높이 캔버스를 유지해 input focus로 보조 조정이 접힐 때 footer와 action 위치가 움직이지 않게 한다. compact는 내용 높이를 따른다.
 
 ### 표면 구조
 
@@ -51,12 +52,13 @@ dialog/backdrop
    └─ footer: 취소·적용 또는 단계 action
 ```
 
-- 모바일 handle은 header의 장식과 drag 시작 지점으로만 사용한다.
+- 모바일 handle은 길게 잡을 수 있는 시각 affordance다. 제목·본문·footer의 비상호작용 공간도 아래 드래그 시작점으로 허용하며, 입력·버튼·링크·toggle·slider와 label은 제외한다.
 - header와 footer는 flex-shrink를 막아 항상 보인다.
 - body만 `min-height: 0; overflow-y: auto; overscroll-behavior: contain`을 갖는다.
 - footer는 safe-area bottom padding을 포함하고 body의 마지막 행을 가리지 않는다.
 - 일반 조작 영역은 최소 44×44px, keyboard focus ring과 accessible name을 갖는다.
 - title은 dialog accessible name의 기준이며, back은 왼쪽, close는 오른쪽에 둔다.
+- body scroll이 먼저 동작한다. body 최상단에서 새로 시작한 아래 방향 gesture만 sheet drag로 판정하고, scroll 중 최상단에 도착한 gesture는 drag로 바꾸지 않는다.
 
 ### 표면 유형
 
@@ -193,15 +195,16 @@ Main 기준과 현재 저장 상태
 
 | 상태 | X/Escape/backdrop/drag | 적용/완료 |
 | --- | --- | --- |
-| clean | 즉시 종료, 진입점 focus 복원 | 실행 가능 |
+| clean | presentation에 맞는 닫기 모션 후 종료, 진입점 focus 복원 | 실행 가능 |
 | dirty | 폐기 확인 | 검증 후 실행 |
 | saving/pending | 종료와 중복 조작 차단 | 진행 상태 유지 |
 | error/conflict/uncertain | 표면 유지, 입력·재시도 유지 | 실패를 성공으로 닫지 않음 |
 
 - Background는 inert 처리하고 document scroll을 잠근다.
-- 모바일 drag는 handle/header에서만 시작한다. 입력, 버튼, slider, body scroll에서는 시작하지 않는다.
-- 열기 모션은 Anime.js surface spring의 `opacity + translateY`를 사용한다.
-- 닫기 모션은 같은 표면의 reverse motion을 사용한다.
+- `onRequestClose`는 승인 여부만 반환한다. 열린 상태와 focus 복원은 exit 완료 뒤 `onClosed`에서 정리한다.
+- 모바일 drag는 handle 및 비상호작용 표면 여백에서 시작한다. 본문 스크롤, 입력, 버튼, 링크, label, toggle, slider에서는 시작하지 않는다.
+- 전체 motion은 Anime.js spring easing의 450ms duration을 사용한다. sheet는 `opacity + translateY`, desktop modal은 `opacity + scale`이며 modal의 `translateY`는 항상 0이다.
+- 브라우저에서 측정한 enter/exit/return 완료는 정상 환경에서 400–500ms다. 550ms 타이머는 animation 오류 복구용이며 정상 동작을 대체하지 않는다.
 - reduced-motion, layout 측정 실패, animation 초기화 실패, unmount에서는 최종 상태를 즉시 반영한다.
 - 모바일 browser Back은 sheet 종료와 내부 단계 뒤로가기를 구분한다. history state를 추가할 경우 overlay당 한 단계만 사용한다.
 
@@ -211,8 +214,8 @@ Main 기준과 현재 저장 상태
 
 - `src/components/common/ResponsiveDialog.tsx`: native dialog, presentation, slots, backdrop, focus, scroll lock, busy/close contract를 소유한다.
 - `src/components/common/responsive-dialog.css`: 공통 surface geometry와 breakpoint를 소유한다.
-- `src/components/motion/useSheetDismiss.ts`: handle drag와 dismiss guard를 공통 shell에서 재사용한다.
-- `src/components/motion/tokens.ts`: duration, distance, spring token을 계속 사용한다.
+- `src/components/motion/useSheetDismiss.ts`: surface drag와 dismiss guard를 공통 shell에서 재사용한다.
+- `src/components/motion/dialogMotion.ts`: sheet/modal 전용 450ms easing과 duration을 제공한다. 기존 value/chart motion tokens는 유지한다.
 
 Portfolio 전용 `PortfolioDialog`와 Main 전용 sheet geometry는 제거했다. 앱별 controller는 draft, validation, persistence, recovery, domain action만 소유한다.
 
@@ -240,18 +243,20 @@ Portfolio 전용 `PortfolioDialog`와 Main 전용 sheet geometry는 제거했다
 
 최소 다음 viewport에서 Main·Simulation·Portfolio 편집 표면을 확인한다.
 
-- 390×844: Bottom Sheet, footer 가림, drag, keyboard focus
+- 390×844: Bottom Sheet, footer 가림, 여백 drag, keyboard focus
+- 390×600·320×568: 88dvh 상한과 내부 body scroll
 - 768×1024: 중앙 Modal 전환 경계
 - 1280×900: 중앙 정렬, backdrop containment, 넓은 body
-- 320×568 및 390×600: 짧은 화면, 내부 body scroll, safe area
 - 200% 확대: 가로 overflow와 focus ring
+
+실제 iOS Safari·Android Chrome·VoiceOver/TalkBack은 Chromium CDP 기반 자동 touch 검증과 구분해 미검증 범위를 기록한다.
 
 검증은 `npm run check`, 관련 unit test, 관련 Playwright flow로 수행하고, 기존 전체 E2E 실패는 변경 원인과 분리해 기록한다. 실제 iOS Safari·Android Chrome·VoiceOver/TalkBack은 자동 브라우저 검증과 별도의 증거로 기록한다.
 
 ## 완료 기준
 
 - 세 앱이 같은 breakpoint, radius, backdrop, handle, motion, footer 규칙을 사용한다.
-- 모바일 편집 표면은 모두 아래에서 올라오고, desktop 편집 표면은 모두 중앙에 열린다.
+- 모바일 sheet는 하단에서 올라오고, desktop modal은 수직 이동 없이 중앙에서 opacity/scale로 나타난다. 전체 모션은 spring 잔여를 포함해 400–500ms 안에 끝난다.
 - 내부는 header/context/body/status/footer 구조를 따르고 body만 스크롤된다.
 - Portfolio와 Main의 중복 dialog shell이 제거된다.
 - dirty/saving/error/conflict 상태에서 입력과 복구 흐름이 보존된다.

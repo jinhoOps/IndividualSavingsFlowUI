@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
 const appliedMainV2 = {
@@ -64,6 +64,121 @@ async function pressTab(page: Page, count: number) {
   for (let index = 0; index < count; index += 1) {
     await page.keyboard.press('Tab');
   }
+}
+
+async function dispatchTouchDrag(
+  session: CDPSession,
+  start: { x: number; y: number },
+  distanceY: number,
+) {
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: start.x, y: start.y + distanceY }],
+  });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+
+interface DialogMotionFrame {
+  time: number;
+  present: boolean;
+  open: boolean;
+  opacity: number;
+  translateY: number;
+  scale: number;
+  stylesCleared: boolean;
+}
+
+async function startDialogMotionCapture(page: Page, selector = 'dialog.responsive-dialog') {
+  await page.evaluate((dialogSelector) => {
+    type MotionTrace = { started: number; running: boolean; frames: DialogMotionFrame[] };
+    const target = window as Window & { __dialogMotionTrace?: MotionTrace };
+    const trace: MotionTrace = { started: performance.now(), running: true, frames: [] };
+    target.__dialogMotionTrace = trace;
+    const sample = () => {
+      const dialog = document.querySelector<HTMLDialogElement>(dialogSelector);
+      if (dialog === null) {
+        trace.frames.push({ time: performance.now() - trace.started, present: false, open: false, opacity: 1, translateY: 0, scale: 1, stylesCleared: true });
+      } else {
+        const style = getComputedStyle(dialog);
+        const transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+        const translateParts = style.translate.trim().split(/[\s,]+/);
+        const translateY = style.translate === 'none' || translateParts.length < 2
+          ? 0
+          : Number.parseFloat(translateParts[1]!) || 0;
+        const individualScale = style.scale === 'none' ? 1 : Number.parseFloat(style.scale) || 1;
+        trace.frames.push({
+          time: performance.now() - trace.started,
+          present: true,
+          open: dialog.open,
+          opacity: Number.parseFloat(style.opacity) || 0,
+          translateY: transform.m42 + translateY,
+          scale: transform.a * individualScale,
+          stylesCleared: dialog.style.opacity === '' && dialog.style.transform === ''
+            && dialog.style.translate === '' && dialog.style.scale === '',
+        });
+      }
+      if (trace.running) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }, selector);
+}
+
+async function stopDialogMotionCapture(page: Page, terminal: 'resting' | 'closed'): Promise<DialogMotionFrame[]> {
+  await expect.poll(() => page.evaluate((expectedTerminal) => {
+    const trace = (window as Window & { __dialogMotionTrace?: { frames: DialogMotionFrame[] } }).__dialogMotionTrace;
+    if (trace === undefined) return false;
+    return trace.frames.some((frame) => expectedTerminal === 'closed'
+      ? !frame.present
+      : frame.present && frame.open && frame.opacity >= 0.999
+        && Math.abs(frame.translateY) < 0.5 && Math.abs(frame.scale - 1) < 0.002 && frame.stylesCleared);
+  }, terminal)).toBe(true);
+  return page.evaluate(() => {
+    const trace = (window as Window & { __dialogMotionTrace?: { running: boolean; frames: DialogMotionFrame[] } }).__dialogMotionTrace;
+    if (trace === undefined) return [];
+    trace.running = false;
+    return trace.frames;
+  });
+}
+
+function expectMeasuredDialogMotion(frames: DialogMotionFrame[], terminal: 'resting' | 'closed') {
+  const isResting = (frame: DialogMotionFrame) => frame.present && frame.open && frame.opacity >= 0.999
+    && Math.abs(frame.translateY) < 0.5 && Math.abs(frame.scale - 1) < 0.002 && frame.stylesCleared;
+  const startIndex = frames.findIndex((frame) => frame.present && !isResting(frame));
+  expect(startIndex, 'a non-resting animation frame was sampled').toBeGreaterThanOrEqual(0);
+  const endIndex = frames.findIndex((frame, index) => index > startIndex
+    && (terminal === 'closed' ? !frame.present : isResting(frame)));
+  expect(endIndex, 'a terminal animation frame was sampled').toBeGreaterThan(startIndex);
+  const motionFrames = frames.slice(startIndex, endIndex);
+  expect(motionFrames.length, 'initial and intermediate frames were sampled').toBeGreaterThan(10);
+  expect(motionFrames.some((frame) => !frame.stylesCleared)).toBe(true);
+  const duration = frames[endIndex]!.time - frames[startIndex]!.time;
+  expect(duration, `sampled duration was ${duration.toFixed(1)}ms`).toBeGreaterThanOrEqual(400);
+  expect(duration, `sampled duration was ${duration.toFixed(1)}ms`).toBeLessThanOrEqual(500);
+  if (terminal === 'resting') {
+    expect(frames[endIndex]).toMatchObject({ opacity: 1, translateY: 0, scale: 1, stylesCleared: true });
+  } else {
+    expect(frames[endIndex]).toMatchObject({ present: false, open: false });
+  }
+  return duration;
+}
+
+function expectPresentationMotion(frames: DialogMotionFrame[], presentation: 'sheet' | 'modal') {
+  const activeFrames = frames.filter((frame) => frame.present && !frame.stylesCleared);
+  expect(activeFrames.length).toBeGreaterThan(10);
+  if (presentation === 'modal') {
+    expect(activeFrames.every((frame) => Math.abs(frame.translateY) < 0.5)).toBe(true);
+    expect(activeFrames.some((frame) => Math.abs(frame.scale - 1) > 0.002)).toBe(true);
+  } else {
+    expect(activeFrames.some((frame) => Math.abs(frame.translateY) > 0.5)).toBe(true);
+  }
+}
+
+async function expectDialogMotionSettled(dialog: Locator) {
+  await expect.poll(() => dialog.evaluate((element) => (
+    element.style.opacity === '' && element.style.transform === ''
+      && element.style.translate === '' && element.style.scale === ''
+  ))).toBe(true);
 }
 
 async function expectSetupActionVisuallyReady(page: Page, name: string) {
@@ -155,7 +270,7 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
     };
   });
   expect(layout.chartHeight).toBe(32);
-  expect(layout.chartWidth).toBeGreaterThan(290);
+  expect(layout.chartWidth).toBeGreaterThan(Math.min(290, viewport.width - 80));
   expect(layout.chartBeforeRows).toBe(true);
   expect(layout.overflow).toBe(false);
   for (const height of layout.targets) expect(height).toBeGreaterThanOrEqual(44);
@@ -163,9 +278,32 @@ async function expectResponsiveDashboardFlow(page: Page, viewport: { width: numb
   await page.getByRole('button', { name: '월 금액 편집' }).click();
   const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
   await expect(editor).toBeVisible();
-  await expect.poll(() => editor.evaluate((element) => (
-    element.getAnimations().every((animation) => animation.playState === 'finished')
-  ))).toBe(true);
+  await expectDialogMotionSettled(editor);
+  const editorBox = await editor.boundingBox();
+  expect(editorBox).not.toBeNull();
+  if (viewport.width < 768) {
+    expect(editorBox!.height).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
+    await expect(editor.locator('.responsive-dialog__drag-handle')).toBeVisible();
+  } else {
+    await expect(editor.locator('.responsive-dialog__drag-handle')).toBeHidden();
+    expect(editorBox!.x + editorBox!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+    expect(editorBox!.y + editorBox!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+  }
+  await expect(editor.getByRole('button', { name: '닫기' })).toBeFocused();
+  const actionRow = editor.locator('[data-surface-footer] .responsive-dialog__actions');
+  await expect(actionRow.getByRole('button')).toHaveText(['취소', '적용']);
+  for (const button of await actionRow.getByRole('button').all()) {
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+  }
+  const focusedInput = editor.getByRole('textbox').first();
+  await focusedInput.focus();
+  await expect(focusedInput).toBeFocused();
+  await expect(focusedInput).toBeInViewport();
   await expect.poll(() => editor.evaluate((element) => {
     const bounds = element.getBoundingClientRect();
     return bounds.left >= 0
@@ -852,7 +990,9 @@ test('live dashboard keeps allocation, rows, and editor contained at required vi
 
   for (const viewport of [
     { width: 390, height: 844 },
-    { width: 768, height: 900 },
+    { width: 390, height: 600 },
+    { width: 320, height: 568 },
+    { width: 768, height: 1024 },
     { width: 1280, height: 900 },
   ]) {
     await expectResponsiveDashboardFlow(page, viewport);
@@ -1138,9 +1278,9 @@ test('closes the clean mobile cashflow editor from a downward header drag', asyn
     await opener.click();
     const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
     const handle = editor.locator('[data-sheet-drag-handle]');
-    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
-    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
-    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'pen', isPrimary: true, button: 0, clientX: 180, clientY: 0 });
+    await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'pen', isPrimary: true, clientX: 180, clientY: 120 });
+    await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'pen', isPrimary: true, clientX: 180, clientY: 120 });
 
     await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
     const exitPositions = await page.evaluate(async () => {
@@ -1159,6 +1299,254 @@ test('closes the clean mobile cashflow editor from a downward header drag', asyn
   }
 });
 
+test('records 400–500ms sheet recovery and sheet/modal entry and exit with animation frames', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  for (const viewport of [
+    { width: 390, height: 844, presentation: 'sheet' },
+    { width: 768, height: 1024, presentation: 'modal' },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    const opener = page.getByRole('button', { name: '월 금액 편집' });
+    await startDialogMotionCapture(page);
+    await opener.click();
+    const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+    await expect(editor).toHaveAttribute('data-presentation', viewport.presentation);
+    await expect(editor).toBeVisible();
+    const entryFrames = await stopDialogMotionCapture(page, 'resting');
+    const entryDuration = expectMeasuredDialogMotion(entryFrames, 'resting');
+    expectPresentationMotion(entryFrames, viewport.presentation);
+    console.info(`[dialog-motion] ${viewport.presentation} entry ${entryDuration.toFixed(1)}ms`);
+
+    if (viewport.presentation === 'sheet') {
+      const handle = editor.locator('[data-sheet-drag-handle]');
+      const handleBox = await handle.boundingBox();
+      expect(handleBox).not.toBeNull();
+      const session = await page.context().newCDPSession(page);
+      const start = { x: handleBox!.x + handleBox!.width / 2, y: handleBox!.y + handleBox!.height / 2 };
+      await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + 48 }],
+      });
+      await expect(editor).toHaveAttribute('data-sheet-dragging', 'true');
+      await startDialogMotionCapture(page);
+      await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+      const returnFrames = await stopDialogMotionCapture(page, 'resting');
+      const returnDuration = expectMeasuredDialogMotion(returnFrames, 'resting');
+      expectPresentationMotion(returnFrames, 'sheet');
+      console.info(`[dialog-motion] sheet return ${returnDuration.toFixed(1)}ms`);
+      await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+      await session.detach();
+    }
+
+    await startDialogMotionCapture(page);
+    await editor.getByRole('button', { name: '닫기', exact: true }).click();
+    await expect(editor).toBeHidden();
+    const exitFrames = await stopDialogMotionCapture(page, 'closed');
+    const exitDuration = expectMeasuredDialogMotion(exitFrames, 'closed');
+    expectPresentationMotion(exitFrames, viewport.presentation);
+    console.info(`[dialog-motion] ${viewport.presentation} exit ${exitDuration.toFixed(1)}ms`);
+    await expect(opener).toBeFocused();
+  }
+});
+
+test('accepts close while a surface is entering', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+  const opener = page.getByRole('button', { name: '월 금액 편집' });
+  await opener.click();
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  const entryStyles = await editor.evaluate((element) => ({
+    opacity: element.style.opacity,
+    transform: element.style.transform,
+    translate: element.style.translate,
+  }));
+  expect(entryStyles.opacity !== '' || entryStyles.transform !== '' || entryStyles.translate !== '').toBe(true);
+  await editor.getByRole('button', { name: '닫기', exact: true }).evaluate((button) => button.click());
+  await expect(editor).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+test('keeps an open editor stable across 767/768px and viewport-height changes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expectDialogMotionSettled(editor);
+  const field = editor.getByLabel('월평균 생활비');
+  await field.fill('1100000');
+
+  for (const viewport of [
+    { width: 767, height: 600, presentation: 'sheet' },
+    { width: 768, height: 1024, presentation: 'modal' },
+    { width: 767, height: 568, presentation: 'sheet' },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect(editor).toHaveAttribute('data-presentation', viewport.presentation);
+    await expectDialogMotionSettled(editor);
+    await expect(field).toHaveValue('1,100,000');
+    await expect(field).toBeFocused();
+    const box = await editor.boundingBox();
+    expect(box).not.toBeNull();
+    if (viewport.presentation === 'sheet') {
+      expect(box!.height).toBeLessThanOrEqual(viewport.height * 0.88 + 1);
+      expect(box!.y + box!.height).toBeCloseTo(viewport.height, 0);
+    } else {
+      expect(box!.x + box!.width / 2).toBeCloseTo(viewport.width / 2, 0);
+      expect(box!.y + box!.height / 2).toBeCloseTo(viewport.height / 2, 0);
+    }
+    expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await field.fill('1000000');
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
+});
+
+test.describe('sheet touch gesture arbitration', () => {
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+test('separates actual touch scrolling, controls, and fresh body-space dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+
+  const opener = page.getByRole('button', { name: '월 금액 편집' });
+  await opener.click();
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expect.poll(() => editor.evaluate((element) => {
+    const transform = getComputedStyle(element).transform;
+    return transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42;
+  })).toBeCloseTo(0, 0);
+  const body = editor.locator('[data-surface-body]');
+  const session = await page.context().newCDPSession(page);
+  const input = editor.getByRole('textbox').first();
+  const inputBox = await input.boundingBox();
+  expect(inputBox).not.toBeNull();
+
+  await dispatchTouchDrag(session, { x: inputBox!.x + inputBox!.width / 2, y: inputBox!.y + inputBox!.height / 2 }, 96);
+  await expect(editor).toBeVisible();
+  await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+
+  const maximumScroll = await body.evaluate((element) => element.scrollHeight - element.clientHeight);
+  expect(maximumScroll).toBeGreaterThan(40);
+  const bodyBox = await body.boundingBox();
+  expect(bodyBox).not.toBeNull();
+  const bodyGutter = { x: bodyBox!.x + 8, y: bodyBox!.y + bodyBox!.height / 2 };
+  await dispatchTouchDrag(session, bodyGutter, -112);
+  await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBeGreaterThan(40);
+  await expect(editor).toBeVisible();
+  await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+
+  await dispatchTouchDrag(session, bodyGutter, 112);
+  await expect.poll(() => body.evaluate((element) => element.scrollTop)).toBe(0);
+  await expect(editor).toBeVisible();
+  await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+
+  await dispatchTouchDrag(session, bodyGutter, 152);
+  await expect(editor).toHaveAttribute('data-sheet-exiting', 'true');
+  await expect(editor).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+test('a canceled touch returns the sheet, and both visual handle ends can dismiss it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+  const opener = page.getByRole('button', { name: '월 금액 편집' });
+  const session = await page.context().newCDPSession(page);
+
+  for (const end of ['left', 'right'] as const) {
+    await opener.click();
+    const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+    await expectDialogMotionSettled(editor);
+    const handle = editor.locator('[data-sheet-drag-handle]');
+    const grip = await handle.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const width = Number.parseFloat(getComputedStyle(element, '::before').width);
+      return { left: rect.left + (rect.width - width) / 2, top: rect.top + rect.height / 2, width };
+    });
+    expect(grip.width).toBeGreaterThanOrEqual(72);
+    const start = {
+      x: end === 'left' ? grip.left + 2 : grip.left + grip.width - 2,
+      y: grip.top,
+    };
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + 48 }],
+    });
+    await expect(editor).toHaveAttribute('data-sheet-dragging', 'true');
+    await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+    await expect.poll(() => editor.evaluate((element) => element.style.transform)).toBe('');
+    await expect(editor).not.toHaveAttribute('data-sheet-exiting', 'true');
+
+    const freshHandleBox = await handle.boundingBox();
+    expect(freshHandleBox).not.toBeNull();
+    const dismissPoint = { x: start.x, y: freshHandleBox!.y + freshHandleBox!.height / 2 };
+    await dispatchTouchDrag(session, dismissPoint, 152);
+    await expect(editor).toBeHidden();
+    await expect(opener).toBeFocused();
+  }
+  await session.detach();
+});
+
+test('a new touch during return animation cancels recovery and can dismiss the sheet', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+  const opener = page.getByRole('button', { name: '월 금액 편집' });
+  await opener.click();
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expectDialogMotionSettled(editor);
+  const handle = editor.locator('[data-sheet-drag-handle]');
+  const session = await page.context().newCDPSession(page);
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  const firstStart = { x: handleBox!.x + handleBox!.width / 2, y: handleBox!.y + handleBox!.height / 2 };
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [firstStart] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove', touchPoints: [{ x: firstStart.x, y: firstStart.y + 48 }],
+  });
+  await expect(editor).toHaveAttribute('data-sheet-dragging', 'true');
+  await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  await expect.poll(() => editor.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+    const parts = style.translate.trim().split(/[\s,]+/);
+    return transform.m42 + (style.translate === 'none' || parts.length < 2 ? 0 : Number.parseFloat(parts[1]!) || 0);
+  })).toBeLessThan(47);
+
+  const returningHandle = await handle.boundingBox();
+  expect(returningHandle).not.toBeNull();
+  const retry = { x: returningHandle!.x + returningHandle!.width / 2, y: returningHandle!.y + returningHandle!.height / 2 };
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [retry] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove', touchPoints: [{ x: retry.x, y: retry.y + 152 }],
+  });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(editor).toBeHidden();
+  await expect(opener).toBeFocused();
+  await session.detach();
+});
+});
+
 test('saves a dirty expense assistant draft before animating a drag dismissal', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((fixture) => {
@@ -1169,6 +1557,7 @@ test('saves a dirty expense assistant draft before animating a drag dismissal', 
   const trigger = page.getByRole('button', { name: /지출 계산 도우미/ });
   await trigger.click();
   const sheet = page.getByRole('dialog', { name: '지출 계산 도우미' });
+  await expectDialogMotionSettled(sheet);
   await sheet.getByLabel('월세 금액').fill('500000');
   await sheet.evaluate(element => {
     const browser = window as Window & { __sheetExitObserved?: boolean };
@@ -1182,15 +1571,17 @@ test('saves a dirty expense assistant draft before animating a drag dismissal', 
     observer.observe(element, { attributes: true, attributeFilter: ['data-sheet-exiting'], attributeOldValue: true });
   });
   const handle = sheet.locator('[data-sheet-drag-handle]');
-  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
-  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
-  await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  const box = await handle.boundingBox();
+  expect(box).not.toBeNull();
+  const session = await page.context().newCDPSession(page);
+  await dispatchTouchDrag(session, { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 }, 120);
 
   await expect(sheet).not.toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as Window & { __sheetExitObserved?: boolean }).__sheetExitObserved)).toBe(true);
   await expect(trigger).toBeFocused();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('isf-workspace-v5')!).main.expenseAssistant.draft.answers.rent))
     .toEqual({ amountWon: 500_000, period: 'month' });
+  await session.detach();
 });
 
 test('keeps dirty expense answers visible when saving a drag dismissal fails', async ({ page }) => {
@@ -1210,6 +1601,7 @@ test('keeps dirty expense answers visible when saving a drag dismissal fails', a
   const trigger = page.getByRole('button', { name: /지출 계산 도우미/ });
   await trigger.click();
   const sheet = page.getByRole('dialog', { name: '지출 계산 도우미' });
+  await expectDialogMotionSettled(sheet);
   await sheet.getByLabel('월세 금액').fill('500000');
   await page.evaluate(() => {
     const workspace = JSON.parse(localStorage.getItem('isf-workspace-v5')!);
@@ -1218,14 +1610,16 @@ test('keeps dirty expense answers visible when saving a drag dismissal fails', a
     localStorage.setItem('isf-workspace-v5', JSON.stringify(workspace));
   });
   const handle = sheet.locator('[data-sheet-drag-handle]');
-  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
-  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
-  await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  const box = await handle.boundingBox();
+  expect(box).not.toBeNull();
+  const session = await page.context().newCDPSession(page);
+  await dispatchTouchDrag(session, { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 }, 120);
 
   await expect(sheet.getByRole('alert')).toContainText('다른 곳에서 지출 내역이 변경되었습니다');
   await expect(sheet).not.toHaveAttribute('data-sheet-exiting', 'true');
   await expect(sheet.getByLabel('월세 금액')).toHaveValue('500,000');
   await expect(sheet).toBeVisible();
+  await session.detach();
 });
 
 test('confirms a dirty remaining allocation before animating a drag dismissal', async ({ page }) => {
@@ -1238,12 +1632,19 @@ test('confirms a dirty remaining allocation before animating a drag dismissal', 
   const trigger = page.getByRole('button', { name: /남는 돈 분배 도우미/ });
   await trigger.click();
   const sheet = page.getByRole('dialog', { name: '남는 돈 분배' });
+  await expectDialogMotionSettled(sheet);
   await sheet.getByRole('button', { name: '저축에 전부' }).click();
   const confirmPromise = page.waitForEvent('dialog');
   const handle = sheet.locator('[data-sheet-drag-handle]');
-  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 0 });
-  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
-  const releasePromise = handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 120 });
+  const box = await handle.boundingBox();
+  expect(box).not.toBeNull();
+  const session = await page.context().newCDPSession(page);
+  const start = { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + 120 }],
+  });
+  const releasePromise = session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   const confirm = await confirmPromise;
   await confirm.accept();
   await releasePromise;
@@ -1251,6 +1652,34 @@ test('confirms a dirty remaining allocation before animating a drag dismissal', 
   await expect(sheet).toHaveAttribute('data-sheet-exiting', 'true');
   await expect(sheet).not.toBeVisible();
   await expect(trigger).toBeFocused();
+  await session.detach();
+});
+
+test('a fresh button click after a short cancelled drag is not swallowed', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.addInitScript((fixture) => {
+    localStorage.setItem('isf-workspace-v5', JSON.stringify(fixture));
+  }, appliedWorkspaceV5);
+  await page.goto('apps/main/');
+  await page.getByRole('button', { name: '월 금액 편집' }).click();
+
+  const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expectDialogMotionSettled(editor);
+  const handle = editor.locator('[data-sheet-drag-handle]');
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  const start = { x: handleBox!.x + handleBox!.width / 2, y: handleBox!.y + handleBox!.height / 2 };
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + 16 }],
+  });
+  await expect(editor).toHaveAttribute('data-sheet-dragging', 'true');
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+
+  await editor.getByRole('button', { name: '닫기', exact: true }).click({ force: true });
+  await expect(editor).toBeHidden();
+  await session.detach();
 });
 
 test('returns a short mobile cashflow editor drag without more than 4px overshoot', async ({ page }) => {
@@ -1262,6 +1691,7 @@ test('returns a short mobile cashflow editor drag without more than 4px overshoo
   const opener = page.getByRole('button', { name: '월 금액 편집' });
   await opener.click();
   const editor = page.getByRole('dialog', { name: '월 자금 계획 편집' });
+  await expectDialogMotionSettled(editor);
   const handle = editor.locator('[data-sheet-drag-handle]');
   expect((await handle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect.poll(async () => {
@@ -1269,10 +1699,16 @@ test('returns a short mobile cashflow editor drag without more than 4px overshoo
     return box === null ? Infinity : Math.abs(box.y + box.height - 844);
   }).toBeLessThan(0.5);
   const restingTop = (await editor.boundingBox())!.y;
-  await handle.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 100 });
-  await handle.dispatchEvent('pointermove', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 116 });
+  const handleBox = await handle.boundingBox();
+  expect(handleBox).not.toBeNull();
+  const session = await page.context().newCDPSession(page);
+  const start = { x: handleBox!.x + handleBox!.width / 2, y: handleBox!.y + handleBox!.height / 2 };
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + 16 }],
+  });
   await expect(editor).toHaveCSS('opacity', '1');
-  await handle.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 180, clientY: 116 });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
   expect(await editor.getAttribute('data-sheet-exiting')).toBeNull();
   const positions = await page.evaluate(async () => {
@@ -1291,6 +1727,7 @@ test('returns a short mobile cashflow editor drag without more than 4px overshoo
   expect(Math.abs(positions.at(-1)! - restingTop)).toBeLessThanOrEqual(1);
   await expect(editor).toBeVisible();
   await expect(editor).toHaveCSS('opacity', '1');
+  await session.detach();
 });
 
 test('dashboard deficit shows all allocations and the income threshold after editing', async ({ page }, testInfo) => {

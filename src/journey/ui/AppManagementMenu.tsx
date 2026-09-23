@@ -1,6 +1,6 @@
 import { useContext, useId, useRef, useState, type ReactNode } from 'react';
 import { AccountManagementContext, AccountProductBoundary } from '../../auth/AccountManagementContext';
-import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
+import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { ManagementConfirmationDialog } from './ManagementConfirmationDialog';
 
@@ -23,7 +23,10 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
   const menuId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const confirmationPendingRef = useRef(false);
+  const pendingActionRef = useRef<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
+  const closeQueuedRef = useRef(false);
   const [open, setOpen] = useState(false);
+  const [menuClosing, setMenuClosing] = useState(false);
   const [pending, setPending] = useState<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
   const [confirmationReady, setConfirmationReady] = useState(false);
   const [confirmationFailed, setConfirmationFailed] = useState(false);
@@ -33,18 +36,19 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
     setOpen(false);
   }
 
-  function chooseAction(item: Extract<AppManagementItem, { kind: 'action' }>): void {
+  function chooseAction(item: Extract<AppManagementItem, { kind: 'action' }>): boolean {
+    if (closeQueuedRef.current) return false;
+    closeQueuedRef.current = true;
+    setMenuClosing(true);
+    pendingActionRef.current = item;
     if (item.confirmation !== undefined) {
       confirmationPendingRef.current = false;
       setConfirmationPending(false);
       setConfirmationFailed(false);
       setConfirmationReady(false);
       setPending(item);
-      closeSettings();
-      return;
     }
-    item.onSelect();
-    closeSettings();
+    return true;
   }
 
   function confirmAction(action: () => void | boolean | Promise<void | boolean>): void {
@@ -55,7 +59,10 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
     const settle = (result: void | boolean) => {
       confirmationPendingRef.current = false;
       setConfirmationPending(false);
-      if (result !== false) setPending(null);
+      if (result !== false) {
+        pendingActionRef.current = null;
+        setPending(null);
+      }
       else setConfirmationFailed(true);
     };
     try {
@@ -69,15 +76,12 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
     if (item.kind === 'separator') return <hr key={item.id} role="separator" />;
     if (item.kind === 'message') return <p key={item.id} className="journey-management__message">{item.text}</p>;
     return (
-      <button
+      <ManagementMenuAction
         key={item.id}
-        type="button"
-        className={`journey-management__row${item.tone === 'danger' ? ' journey-management__danger' : ''}`}
-        disabled={item.disabled || readOnly}
-        onClick={() => chooseAction(item)}
-      >
-        {item.label}
-      </button>
+        item={item}
+        disabled={item.disabled || readOnly || menuClosing}
+        onSelect={() => chooseAction(item)}
+      />
     );
   }
 
@@ -93,7 +97,10 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         aria-label="관리 메뉴"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-disabled={menuClosing || undefined}
         onClick={() => {
+          if (closeQueuedRef.current) return;
+          if (!open) setMenuClosing(false);
           setOpen((current) => !current);
         }}
       >
@@ -104,14 +111,19 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         labelledBy={menuId}
         size="compact"
         mobileHeight="content"
-        mobileEntranceMotion
         returnFocusRef={triggerRef}
-        onRequestClose={() => {
-          closeSettings();
-          return true;
-        }}
+        onRequestClose={() => true}
         onClosed={() => {
-          if (pending !== null) setConfirmationReady(true);
+          closeSettings();
+          const action = pendingActionRef.current;
+          if (action === null) return;
+          closeQueuedRef.current = false;
+          setMenuClosing(false);
+          if (action?.confirmation !== undefined) setConfirmationReady(true);
+          else if (action !== null) {
+            pendingActionRef.current = null;
+            action.onSelect();
+          }
         }}
       >
         <ResponsiveDialogLayout
@@ -147,6 +159,7 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
           returnFocusRef={triggerRef}
           onCancel={() => {
             confirmationPendingRef.current = false;
+            pendingActionRef.current = null;
             setPending(null);
           }}
           onConfirm={() => confirmAction(pending.onSelect)}
@@ -157,6 +170,30 @@ export function AppManagementMenu({ items }: { items: readonly AppManagementItem
         </AccountProductBoundary>
       )}
     </div>
+  );
+}
+
+function ManagementMenuAction({
+  item,
+  disabled,
+  onSelect,
+}: {
+  item: Extract<AppManagementItem, { kind: 'action' }>;
+  disabled: boolean;
+  onSelect(): boolean;
+}) {
+  const requestDialogClose = useResponsiveDialogClose();
+  return (
+    <button
+      type="button"
+      className={`journey-management__row${item.tone === 'danger' ? ' journey-management__danger' : ''}`}
+      disabled={disabled}
+      onClick={() => {
+        if (onSelect()) requestDialogClose?.('button');
+      }}
+    >
+      {item.label}
+    </button>
   );
 }
 
