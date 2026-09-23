@@ -72,6 +72,7 @@ export function ResponsiveDialog({
   const bodyLockedRef = useRef(false);
   const [requestedClosed, setRequestedClosed] = useState(false);
   const [closeRequestPending, setCloseRequestPending] = useState(false);
+  const [closeApproved, setCloseApproved] = useState(false);
   const presentation = useDialogPresentation();
   const presentationRef = useRef(presentation);
   const previousPresentationRef = useRef(presentation);
@@ -188,6 +189,7 @@ export function ResponsiveDialog({
         setCloseRequestPending(false);
         return false;
       }
+      setCloseApproved(true);
       if (closeImmediately) startApprovedClose();
       return true;
     }
@@ -200,6 +202,7 @@ export function ResponsiveDialog({
           }
           return false;
         }
+        setCloseApproved(true);
         if (closeImmediately) startApprovedClose();
         return true;
       },
@@ -214,6 +217,7 @@ export function ResponsiveDialog({
   }
 
   function startApprovedClose(): void {
+    setCloseApproved(true);
     const dialog = dialogRef.current;
     if (dialog === null || !dialog.open || !wasOpenRef.current) {
       finishClose();
@@ -276,6 +280,7 @@ export function ResponsiveDialog({
     lifecycleGenerationRef.current += 1;
     closeRequestPendingRef.current = false;
     setCloseRequestPending(false);
+    setCloseApproved(false);
     cancelOpeningMotion();
     cancelClosingMotion();
     if (dialog !== null) clearDialogMotionStyles(dialog);
@@ -356,7 +361,7 @@ export function ResponsiveDialog({
       onKeyDown={handleKeyDown}
     >
       <ResponsiveDialogCloseContext.Provider value={(reason) => { void requestClose(reason); }}>
-        <div className="responsive-dialog__surface">
+        <div className="responsive-dialog__surface" inert={closeApproved || undefined}>
           {typeof children === 'function'
             ? children({ requestClose: (reason) => { void requestClose(reason); } })
             : children}

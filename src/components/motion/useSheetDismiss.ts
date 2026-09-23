@@ -101,7 +101,14 @@ export function useSheetDismiss({
     let returning = false;
     let approvingDismiss = false;
     let exitAfterReturn = false;
+    let effectDisposed = false;
+    let dismissalCompleted = false;
     let touchSelectionAtStart = '';
+    const completeDismissal = () => {
+      if (dismissalCompleted) return;
+      dismissalCompleted = true;
+      dismissedRef.current?.();
+    };
 
     const now = (event: Event): number => (
       Number.isFinite(event.timeStamp) && event.timeStamp > 0 ? event.timeStamp : performance.now()
@@ -196,7 +203,7 @@ export function useSheetDismiss({
         exitAnimation = undefined;
         backdropAnimation = undefined;
         finishExit = undefined;
-        dismissedRef.current?.();
+        completeDismissal();
       };
       finishExit = finish;
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
@@ -258,9 +265,6 @@ export function useSheetDismiss({
       const element = target instanceof Element ? target : null;
       if (element === null || element === root || element.closest(interactiveSelector) !== null) return;
       const scrollContainer = getScrollContainer(element);
-      window.clearTimeout(clickTimer);
-      clickTimer = undefined;
-      suppressNextClick = false;
       try { returnAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
       returnAnimation = undefined;
       drag = {
@@ -278,6 +282,11 @@ export function useSheetDismiss({
       };
     };
     const pointerDown = (event: PointerEvent) => {
+      // A new pointer sequence is a deliberate interaction after the drag has
+      // ended. Only suppress the click emitted by the drag's own pointerup.
+      window.clearTimeout(clickTimer);
+      clickTimer = undefined;
+      suppressNextClick = false;
       if (event.pointerType === 'touch') return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       startDrag(event.target, event.pointerId, 'pointer', event.clientX, event.clientY, now(event), event.isPrimary !== false);
@@ -336,6 +345,9 @@ export function useSheetDismiss({
       return undefined;
     };
     const touchStart = (event: TouchEvent) => {
+      window.clearTimeout(clickTimer);
+      clickTimer = undefined;
+      suppressNextClick = false;
       if (event.touches.length !== 1) {
         cancelActiveDrag();
         return;
@@ -403,6 +415,10 @@ export function useSheetDismiss({
           void Promise.resolve(requestAccepted).then((approved) => {
             approvingDismiss = false;
             if (approved === false || !root.isConnected || dismissedRef.current === undefined) return;
+            if (effectDisposed) {
+              completeDismissal();
+              return;
+            }
             if (returning) exitAfterReturn = true;
             else {
               exiting = true;
@@ -458,6 +474,14 @@ export function useSheetDismiss({
     };
     const click = (event: MouseEvent) => {
       if (!suppressNextClick) return;
+      // Keyboard activation has no pointer sequence and must never be swallowed
+      // by a stale drag suppression window.
+      if (event.detail === 0) {
+        suppressNextClick = false;
+        window.clearTimeout(clickTimer);
+        clickTimer = undefined;
+        return;
+      }
       suppressNextClick = false;
       window.clearTimeout(clickTimer);
       clickTimer = undefined;
@@ -471,7 +495,7 @@ export function useSheetDismiss({
     const touchMoveOptions: AddEventListenerOptions = { passive: false };
     const visualViewport = window.visualViewport;
 
-    root.addEventListener('pointerdown', pointerDown);
+    root.addEventListener('pointerdown', pointerDown, true);
     root.addEventListener('pointermove', pointerMove);
     root.addEventListener('pointerup', pointerEnd);
     root.addEventListener('pointercancel', pointerCancel);
@@ -485,6 +509,9 @@ export function useSheetDismiss({
     window.addEventListener('resize', resize);
     visualViewport?.addEventListener('resize', resize);
     return () => {
+      effectDisposed = true;
+      if (exiting) queueMicrotask(() => finishExit?.());
+      else if (exitAfterReturn) queueMicrotask(completeDismissal);
       drag = null;
       returnGeneration += 1;
       returning = false;
@@ -493,7 +520,7 @@ export function useSheetDismiss({
       try { returnAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
       try { exitAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
       try { backdropAnimation?.cancel?.(); } catch { /* best-effort cleanup */ }
-      root.removeEventListener('pointerdown', pointerDown);
+      root.removeEventListener('pointerdown', pointerDown, true);
       root.removeEventListener('pointermove', pointerMove);
       root.removeEventListener('pointerup', pointerEnd);
       root.removeEventListener('pointercancel', pointerCancel);

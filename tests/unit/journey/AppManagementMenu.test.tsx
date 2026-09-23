@@ -38,6 +38,12 @@ vi.mock('animejs', () => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  animeMocks.animate.mockReset();
+  animeMocks.animate.mockImplementation((target, options) => {
+    applyFinalAnimationStyles(target, options);
+    (options.onComplete as (() => void) | undefined)?.();
+    return { cancel: vi.fn() };
+  });
   animeMocks.state.reducedMotion = false;
 });
 
@@ -131,6 +137,37 @@ describe('AppManagementMenu', () => {
     expect(onAction).toHaveBeenCalledOnce();
     expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it('runs a selected action once after the menu exit animation completes', async () => {
+    let finishExit: (() => void) | undefined;
+    animeMocks.animate.mockImplementation((target, options) => {
+      if (target instanceof HTMLDialogElement && Array.isArray(options.opacity) && options.opacity[1] === 0) {
+        finishExit = options.onComplete as () => void;
+        return { cancel: vi.fn() };
+      }
+      applyFinalAnimationStyles(target, options);
+      (options.onComplete as (() => void) | undefined)?.();
+      return { cancel: vi.fn() };
+    });
+    const onAction = vi.fn();
+    render(<AppManagementMenu items={buildItems({ onAction })} />);
+    fireEvent.click(screen.getByRole('button', { name: '관리 메뉴' }));
+    const dialog = screen.getByRole('dialog', { name: '관리 메뉴' });
+    const action = screen.getByRole('button', { name: '설정 적용' });
+
+    fireEvent.click(action);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(dialog).toBeVisible();
+    expect(action).toBeDisabled();
+    fireEvent.click(action);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(finishExit).toBeTypeOf('function');
+
+    await act(async () => { finishExit?.(); });
+
+    expect(onAction).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog', { name: '관리 메뉴' })).not.toBeInTheDocument();
   });
 
   it('closes on its backdrop and Escape and restores trigger focus', async () => {

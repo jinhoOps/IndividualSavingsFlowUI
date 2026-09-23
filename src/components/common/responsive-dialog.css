@@ -152,6 +152,22 @@
 .responsive-dialog__actions--danger-leading > :first-child { margin-inline-end: auto; }
 
 @media (min-width: 768px) {
+  .responsive-dialog[data-presentation='modal'][data-size='form'] {
+    height: min(46rem, calc(100dvh - 48px));
+  }
+
+  .responsive-dialog[data-presentation='modal'][data-size='wide'] {
+    height: min(54rem, calc(100dvh - 48px));
+  }
+
+  /* Keep action targets in place when focused form helpers expand or collapse. */
+  .responsive-dialog[data-presentation='modal'][data-size='form'] .responsive-dialog__surface,
+  .responsive-dialog[data-presentation='modal'][data-size='form'] .responsive-dialog__layout,
+  .responsive-dialog[data-presentation='modal'][data-size='wide'] .responsive-dialog__surface,
+  .responsive-dialog[data-presentation='modal'][data-size='wide'] .responsive-dialog__layout {
+    height: 100%;
+  }
+
   .responsive-dialog[data-presentation='modal'] .responsive-dialog__drag-handle { display: none; }
   .responsive-dialog[data-presentation='modal'] .responsive-dialog__header { padding: .75rem 1.5rem; }
   .responsive-dialog[data-presentation='modal'] .responsive-dialog__header-row {
@@ -197,5 +213,5 @@
   .responsive-dialog__footer { padding-right: max(1.25rem, env(safe-area-inset-right)); padding-left: max(1.25rem, env(safe-area-inset-left)); }
 
   .responsive-dialog__actions { justify-content: flex-start; }
-  .responsive-dialog__actions > * { flex: 1 1 8rem; min-width: 0; }
+  .responsive-dialog__actions > * { flex: 1 1 6.5rem; min-width: 0; }
 }

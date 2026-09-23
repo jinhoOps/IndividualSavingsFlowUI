@@ -32,15 +32,17 @@ function Harness({
   blocked = false,
   topmost = true,
   onDismissed,
+  mediaQuery,
 }: {
   onRequestDismiss?: () => boolean | void | Promise<boolean | void>;
   onDismissed?: () => void;
   enabled?: boolean;
   blocked?: boolean;
   topmost?: boolean;
+  mediaQuery?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  useSheetDismiss({ rootRef, enabled, blocked, isTopmost: () => topmost, onRequestDismiss, onDismissed });
+  useSheetDismiss({ rootRef, enabled, blocked, isTopmost: () => topmost, mediaQuery, onRequestDismiss, onDismissed });
   return (
     <div ref={rootRef} data-testid="sheet">
       <div data-testid="sheet-header-space">제목 여백</div>
@@ -342,7 +344,7 @@ describe('useSheetDismiss', () => {
     dispatchTouch(handle, 'touchstart', { clientY: 0 });
     dispatchTouch(handle, 'touchmove', { clientY: 24 });
     dispatchTouch(handle, 'touchend', { clientY: 120 });
-    fireEvent.click(handle);
+    fireEvent.click(handle, { detail: 1 });
 
     expect(onRequestDismiss).toHaveBeenCalledOnce();
     expect(click).not.toHaveBeenCalled();
@@ -435,6 +437,47 @@ describe('useSheetDismiss', () => {
 
     expect(animate).toHaveBeenCalledTimes(2);
     expect(animate).toHaveBeenNthCalledWith(2, sheet, expect.objectContaining({ translateY: [0, 16] }));
+    expect(onDismissed).toHaveBeenCalledOnce();
+  });
+
+  it('completes an approved dismissal when a breakpoint change interrupts its return spring', async () => {
+    let approve!: (approved: boolean) => void;
+    let finishReturn!: () => void;
+    const listeners = new Set<() => void>();
+    const media = {
+      matches: true,
+      addEventListener: vi.fn((_type: string, listener: () => void) => { listeners.add(listener); }),
+      removeEventListener: vi.fn((_type: string, listener: () => void) => { listeners.delete(listener); }),
+    };
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => (
+      query === '(max-width: 767px)' ? media : { matches: false }
+    )));
+    const onRequestDismiss = vi.fn(() => new Promise<boolean>((resolve) => { approve = resolve; }));
+    const onDismissed = vi.fn();
+    animate.mockImplementationOnce((_target, options) => {
+      finishReturn = options.onComplete as () => void;
+      return { cancel: vi.fn() };
+    });
+    render(<Harness
+      mediaQuery="(max-width: 767px)"
+      onRequestDismiss={onRequestDismiss}
+      onDismissed={onDismissed}
+    />);
+    const handle = screen.getByText('손잡이');
+
+    dispatchPointer(handle, 'pointerdown', { clientY: 0 });
+    dispatchPointer(handle, 'pointermove', { clientY: 120 });
+    dispatchPointer(handle, 'pointerup', { clientY: 120 });
+    await act(async () => { approve(true); });
+
+    expect(onDismissed).not.toHaveBeenCalled();
+    expect(finishReturn).toBeTypeOf('function');
+
+    await act(async () => {
+      media.matches = false;
+      for (const listener of listeners) listener();
+    });
+
     expect(onDismissed).toHaveBeenCalledOnce();
   });
 

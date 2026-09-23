@@ -388,8 +388,8 @@ function PortfolioItemDiscardActions({ onContinue, onDiscard }: { onContinue(): 
   return (
     <ResponsiveDialogActionRow>
       <Button type="button" variant="secondary" data-dialog-initial-focus onClick={() => {
-        onContinue();
-        requestDialogClose?.('button');
+        if (requestDialogClose) requestDialogClose('button');
+        else onContinue();
       }}>계속 입력</Button>
       <Button type="button" variant="primary" onClick={onDiscard}>버리기</Button>
     </ResponsiveDialogActionRow>

@@ -46,6 +46,7 @@ describe('ResponsiveDialog', () => {
     fireEvent.keyDown(dialog, { key: 'Escape' });
 
     expect(onRequestClose).toHaveBeenCalledWith('escape');
+    expect(dialog.querySelector('.responsive-dialog__surface')).toHaveAttribute('inert');
     expect(dialog).toBeInTheDocument();
     expect(document.body.style.overflow).toBe('hidden');
     expect(onClosed).not.toHaveBeenCalled();
@@ -91,10 +92,12 @@ describe('ResponsiveDialog', () => {
       </ResponsiveDialog>,
     );
     const dialog = screen.getByRole('dialog', { name: '편집' });
+    const surface = dialog.querySelector('.responsive-dialog__surface');
 
     fireEvent.keyDown(dialog, { key: 'Escape' });
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(onRequestClose).toHaveBeenCalledOnce();
+    expect(surface).not.toHaveAttribute('inert');
     expect(animate).not.toHaveBeenCalled();
     const handle = screen.getByText('드래그 손잡이');
     dispatchTouch(handle, 'touchstart', 0);
@@ -104,10 +107,101 @@ describe('ResponsiveDialog', () => {
 
     await act(async () => { approve(true); });
     expect(animate).toHaveBeenCalledOnce();
+    expect(surface).toHaveAttribute('inert');
     expect(onClosed).not.toHaveBeenCalled();
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(onRequestClose).toHaveBeenCalledOnce();
     expect(animate).toHaveBeenCalledOnce();
+  });
+
+  it('keeps an asynchronously rejected close surface interactive', async () => {
+    let approve!: (approved: boolean) => void;
+    const onRequestClose = vi.fn(() => new Promise<boolean>((resolve) => { approve = resolve; }));
+    const onClosed = vi.fn();
+    render(
+      <ResponsiveDialog
+        open
+        labelledBy="dialog-title"
+        returnFocusRef={{ current: null }}
+        onRequestClose={onRequestClose}
+        onClosed={onClosed}
+      >
+        <h2 id="dialog-title" data-dialog-initial-focus>편집</h2>
+      </ResponsiveDialog>,
+    );
+    const dialog = screen.getByRole('dialog', { name: '편집' });
+    const surface = dialog.querySelector('.responsive-dialog__surface');
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(surface).not.toHaveAttribute('inert');
+    await act(async () => { approve(false); });
+
+    expect(surface).not.toHaveAttribute('inert');
+    expect(dialog).toBeInTheDocument();
+    expect(onClosed).not.toHaveBeenCalled();
+    expect(animate).not.toHaveBeenCalled();
+  });
+
+  it('finishes an approved drag after a breakpoint cleanup without reopening the dialog', async () => {
+    const showModalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+    const showModal = vi.fn(function (this: HTMLDialogElement) { this.setAttribute('open', ''); });
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: showModal });
+    let mobile = true;
+    const listeners: Array<() => void> = [];
+    const mobileQuery = {
+      get matches() { return mobile; },
+      addEventListener: (_type: string, listener: () => void) => listeners.push(listener),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => (
+      query === '(max-width: 767px)' ? mobileQuery : { matches: false }
+    )));
+    let approve!: (approved: boolean) => void;
+    const onRequestClose = vi.fn((reason: string) => (
+      reason === 'drag' ? new Promise<boolean>((resolve) => { approve = resolve; }) : true
+    ));
+    const onClosed = vi.fn();
+    const triggerRef = createRef<HTMLButtonElement>();
+    try {
+      render(
+        <>
+          <button ref={triggerRef}>열기</button>
+          <ResponsiveDialog
+            open
+            labelledBy="dialog-title"
+            returnFocusRef={triggerRef}
+            onRequestClose={onRequestClose}
+            onClosed={onClosed}
+          >
+            <h2 id="dialog-title" data-dialog-initial-focus>편집</h2>
+            <div data-sheet-drag-handle>드래그 손잡이</div>
+          </ResponsiveDialog>
+        </>,
+      );
+      const dialog = screen.getByRole('dialog', { name: '편집' });
+      expect(showModal).toHaveBeenCalledOnce();
+      const handle = screen.getByText('드래그 손잡이');
+      dispatchTouch(handle, 'touchstart', 0);
+      dispatchTouch(handle, 'touchmove', 120);
+      dispatchTouch(handle, 'touchend', 120);
+      await act(async () => { approve(true); });
+      expect(onClosed).not.toHaveBeenCalled();
+
+      await act(async () => {
+        mobile = false;
+        listeners.forEach((listener) => listener());
+        await Promise.resolve();
+      });
+
+      expect(onClosed).toHaveBeenCalledOnce();
+      expect(showModal).toHaveBeenCalledOnce();
+      expect(screen.queryByRole('dialog', { name: '편집' })).not.toBeInTheDocument();
+      expect(triggerRef.current).toHaveFocus();
+      expect((dialog as HTMLDialogElement).open).toBe(false);
+    } finally {
+      if (showModalDescriptor === undefined) Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+      else Object.defineProperty(HTMLDialogElement.prototype, 'showModal', showModalDescriptor);
+    }
   });
 
   it('uses the 550ms recovery deadline if Anime never calls onComplete', () => {
