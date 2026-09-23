@@ -207,7 +207,7 @@ export function ResponsiveDialogActionRow({ children, className = '' }: {
 - [x] 2. 기존 spec에 compact=440/form=640/wide=1080px, 88dvh, 손잡이, 스크롤 우선, 총 450ms와 fallback 차이를 적었다. PRD는 두 표면 규격과 상세 spec 링크만 유지한다.
 - [x] 3. 편집 문서의 상대 링크·상태 주장을 확인하고 `git diff --check`를 실행한다. 계획 체크박스는 실제 완료된 작업만 체크한다.
 - [x] 4. 전체 diff와 공통 종료·터치·focus 회귀 리뷰를 수행했다. 리뷰 결과: 추가 Critical/Important 지적 없음.
-- [ ] 5. `git var GIT_AUTHOR_IDENT`가 `KIM JINHO <okho04@gmail.com>`인지 확인하고 문서/evidence를 커밋한다. 구현을 위한 Orca 작업공간을 사용했다면 main 통합 후 원격 푸시와 작업공간 정리까지 수행한다. 문서 계획 작성 단계에서는 이 실행 체크를 완료로 표시하지 않는다.
+- [x] 5. `git var GIT_AUTHOR_IDENT`가 `KIM JINHO <okho04@gmail.com>`인지 확인하고 문서/evidence를 커밋한다. 구현을 위한 Orca 작업공간을 사용했다면 main 통합 후 원격 푸시와 작업공간 정리까지 수행한다. PR #21 병합 후 로컬 main을 원격과 동기화하고 병합된 원격 브랜치와 Orca 작업공간을 정리했다.
 
 ## 완료 인수 조건
 
@@ -216,4 +216,4 @@ export function ResponsiveDialogActionRow({ children, className = '' }: {
 - [x] 웹은 손잡이 없는 중앙 modal과 공통 행동 정렬을 사용한다. form/wide는 focus 변화 중 footer 위치를 유지한다.
 - [x] 모달에 수직 등장 이동이 없고 전체 모션은 잔여까지 400–500ms 안에 종료된다.
 - [x] 세 앱의 저장·단계·오류·focus 계약과 reduced-motion을 보존한다.
-- [ ] 필수 검증 증거, 문서 갱신, 리뷰, 통합·푸시·작업공간 정리가 완료된다.
+- [x] 필수 검증 증거, 문서 갱신, 리뷰, 통합·푸시·작업공간 정리가 완료된다.
