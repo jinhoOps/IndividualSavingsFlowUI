@@ -12,8 +12,8 @@ function CommentBody({comment}:{comment:ConversationComment}) {
   }
   parts.push(chars.slice(at).join(''));return <p data-comment-body="">{parts}</p>;
 }
-function CommentRow({comment,disabled,onReply,onRemove,highlight,replyName}: {
-  comment:ConversationComment;disabled:boolean;onReply(comment:ConversationComment):void;onRemove(id:string):Promise<void>;highlight:boolean;replyName?:string;
+function CommentRow({comment,disabled,onReply,onRemove,highlight,replyLabel}: {
+  comment:ConversationComment;disabled:boolean;onReply(comment:ConversationComment):void;onRemove(id:string):Promise<void>;highlight:boolean;replyLabel?:string;
 }) {
   const [menu,setMenu]=useState(false),[confirm,setConfirm]=useState(false);
   return <article id={`comment-${comment.id}`} tabIndex={-1} className="community-comment" data-highlight={highlight || undefined} aria-label={comment.deleted?'삭제된 댓글':`${comment.author?.nickname} 댓글`}>
@@ -28,7 +28,7 @@ function CommentRow({comment,disabled,onReply,onRemove,highlight,replyName}: {
             <button type="button" className="community-text-action" disabled={disabled} onClick={()=>void onRemove(comment.id).then(()=>setMenu(false)).catch(()=>{})}>삭제하기</button>
           </>:<button type="button" className="community-text-action" disabled={disabled} onClick={()=>setConfirm(true)}>댓글 삭제</button>}</div>:null}</div>:null}
       </div>
-      {replyName?<span className="community-reply-name">{replyName}님에게 답글</span>:null}
+      {replyLabel?<span className="community-reply-name">{replyLabel}</span>:null}
       <CommentBody comment={comment}/>
     </>}
   </article>;
@@ -72,7 +72,7 @@ export function CommentThread({repository,postId,root,context,disabled,onReply,o
       {error?<div role="alert">{error}<button type="button" className="community-text-action" onClick={()=>void load()}>다시 불러오기</button></div>:null}
       {previous?<button type="button" className="community-text-action" disabled={loading} onClick={()=>void load(previous,'older')}>이전 답글</button>:null}
       {page?.comments.map(comment=><CommentRow key={comment.id} comment={comment} disabled={disabled} onReply={onReply} onRemove={remove} highlight={context?.targetId===comment.id}
-        replyName={comment.replyToId!==root.id?page.comments.find(c=>c.id===comment.replyToId)?.author?.nickname:undefined}/>)}
+        replyLabel={comment.replyToId!==root.id?(comment.replyToAuthor?`${comment.replyToAuthor.nickname}님에게 답글`:'삭제된 댓글에 답글'):undefined}/>)}
       {page?.nextCursor?<button type="button" className="community-text-action" disabled={loading} onClick={()=>void load(page.nextCursor!)}>다음 답글</button>:null}
     </div>:null}
   </li>;

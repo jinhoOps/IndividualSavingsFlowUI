@@ -31,7 +31,7 @@ describe('feed response contract',()=>{
     expect(parseFeedPage(page)).toEqual(page);
     for(const bad of [{...page,items:Array(13).fill(post)},{...page,items:[post,post]}, {...page,items:[{...post,user_id:id}]},
       {...page,nextCursor:{...cursor,last:{...cursor.last,id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'}}},
-      {...page,nextCursor:{...cursor,asOf:'2026-09-28T02:00:00Z'}},{...page,extra:true}])expect(parseFeedPage(bad)).toBeNull();
+      {...page,nextCursor:{...cursor,asOf:'2026-09-28T02:00:00Z'}},{...page,nextCursor:null,rankedAt:'2026-09-28T02:00:00Z'},{...page,extra:true}])expect(parseFeedPage(bad)).toBeNull();
   });
   it('distinguishes explicit cursor expiration and enforces ranking cursor shape',()=>{
     expect(parseFeedPage({status:'cursor-expired'})).toEqual({status:'cursor-expired'});

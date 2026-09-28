@@ -2,7 +2,7 @@
 
 **상태:** 2026-09-28 사용자 구현 승인. 대화·알림 이후 순차 구현하며 운영 DB 미적용.
 
-**실행:** native 방식으로 순차 진행한다. Task 1~3 검색·필터를 먼저 출시하고 Task 4 정렬을 이어 출시한다. [대화·알림 계획](2026-09-28-community-conversation.md) 이후 실행을 추천하며 선행 출시 없이 탐색부터 진행할 경우 알림 슬롯은 추가하지 않는다.
+**실행:** native 방식으로 순차 진행한다. Task 1~3 검색·필터와 Task 4 정렬을 순차 구현하고 대화와 한 프런트 출시로 통합한다. [대화·알림 계획](2026-09-28-community-conversation.md) 이후 실행을 추천하며 선행 출시 없이 탐색부터 진행할 경우 알림 슬롯은 추가하지 않는다.
 
 **목표:** 많은 카드에서 원하는 비율 구성을 찾고, 페이지 이동·상세 복귀·30초 갱신에도 맥락을 유지한다.
 
@@ -57,7 +57,7 @@ export function feedQueryKey(query:FeedQuery):string;
 export function parseFeedPage(value:unknown):FeedPage|null;
 ```
 
-- [ ] 먼저 query parser/URL 왕복 테스트를 작성한다. unknown sort/extra field/81자/control characters는 거부하고, URL의 모르는 키는 drop한다. queryKey는 정렬된 자산 구간까지 포함한다.
+- [x] 먼저 query parser/URL 왕복 테스트를 작성한다. unknown sort/extra field/81자/control characters는 거부하고, URL의 모르는 키는 drop한다. queryKey는 정렬된 자산 구간까지 포함한다.
 
 ```ts
 const query={q:'금',scope:'all',period:'all',hasCash:false,assetBands:[],sort:'updated'} as const;
@@ -67,8 +67,8 @@ expect(parseFeedQuery({...query,q:'x'.repeat(81)})).toBeNull();
 expect(parseFeedQuery({...query,q:"%_'; DROP TABLE x; --"})).not.toBeNull();
 ```
 
-- [ ] `npx vitest run tests/unit/lounge/discovery.test.ts`로 실패 확인 후 구현한다. q는 SQL 문법으로 해석하지 않으므로 문법처럼 보이는 텍스트도 길이/제어문자 기준만 통과하면 허용한다.
-- [ ] unit과 `npm run check`를 통과시키고 커밋한다. 작성자는 `KIM JINHO <okho04@gmail.com>`을 사용한다.
+- [x] `npx vitest run tests/unit/lounge/discovery.test.ts`로 실패 확인 후 구현한다. q는 SQL 문법으로 해석하지 않으므로 문법처럼 보이는 텍스트도 길이/제어문자 기준만 통과하면 허용한다.
+- [x] unit과 `npm run check`를 통과시키고 커밋한다. 작성자는 `KIM JINHO <okho04@gmail.com>`을 사용한다.
 
 ## Task 2. 서버 검색·필터·최근 수정순 커서
 
@@ -76,8 +76,8 @@ expect(parseFeedQuery({...query,q:"%_'; DROP TABLE x; --"})).not.toBeNull();
 
 **인터페이스:** `search_lounge_portfolios(p_query jsonb, p_cursor jsonb default null) -> FeedPage`; repository는 `search(query:FeedQuery,cursor?:FeedCursor):Promise<FeedPage>`를 제공한다. 기존 `list()`는 기존 소비자를 위해 유지한다.
 
-- [ ] 25개 동일시각·다른 ID 카드, 여러 공개 구간/미공개, `금`·`VOO`·닉네임 fixture로 DB assertions를 먼저 추가한다. 현재보다 큰 5,000개 fixture 성능 검증은 Task 5에서 실행한다.
-- [ ] JSON key/enum/문자수/자산 구간을 서버에서 검증한다. 문자열 검색은 정규화된 각 필드에 `strpos(field, q)>0`를 적용한다. 종목명은 최대 10개 배열 항목에서 검사한다. 사용자가 입력한 SQL·wildcard·정규식을 실행하지 않는다.
+- [x] 25개 동일시각·다른 ID 카드, 여러 공개 구간/미공개, `금`·`VOO`·닉네임 fixture로 DB assertions를 먼저 추가한다. 현재보다 큰 5,000개 fixture 성능 검증은 Task 5에서 실행한다.
+- [x] JSON key/enum/문자수/자산 구간을 서버에서 검증한다. 문자열 검색은 정규화된 각 필드에 `strpos(field, q)>0`를 적용한다. 종목명은 최대 10개 배열 항목에서 검사한다. 사용자가 입력한 SQL·wildcard·정규식을 실행하지 않는다.
 
 ```sql
 -- 최근 수정순의 페이지 경계. 필터를 적용한 동일 query에서만 사용한다.
@@ -87,9 +87,9 @@ order by p.updated_at desc, p.id desc
 limit 13;
 ```
 
-- [ ] 첫 조회 asOf를 서버가 만들고 다음 페이지 기간 기준도 같은 asOf를 사용한다. 커서는 queryKey/asOf/시간/ID/score 형태를 검증한다. 최근 수정순 커서는 최대 24시간까지 허용하며 미래 시각을 거부한다. ID는 인증 권한을 대신하지 않는다.
-- [ ] 최근 수정 7일/30일은 asOf 기준이다. assetBands 안은 OR, 서로 다른 조건은 AND, hidden은 null, hasCash는 `cashShareUnits>0`으로 정의한다. name 기반 추정 자산군 필터는 넣지 않는다.
-- [ ] 서버에서 13번째 행 존재 여부로 nextCursor를 만들고 응답 12개를 제한한다. 변경되지 않은 같은 조건의 데이터는 전체 순회 시 정확히 한 번씩 나오게 한다. 페이지 시작 후 수정된 글은 다음 새 탐색에서만 재등장한다.
+- [x] 첫 조회 asOf를 서버가 만들고 다음 페이지 기간 기준도 같은 asOf를 사용한다. 커서는 queryKey/asOf/시간/ID/score 형태를 검증한다. 최근 수정순 커서는 최대 24시간까지 허용하며 미래 시각을 거부한다. ID는 인증 권한을 대신하지 않는다.
+- [x] 최근 수정 7일/30일은 asOf 기준이다. assetBands 안은 OR, 서로 다른 조건은 AND, hidden은 null, hasCash는 `cashShareUnits>0`으로 정의한다. name 기반 추정 자산군 필터는 넣지 않는다.
+- [x] 서버에서 13번째 행 존재 여부로 nextCursor를 만들고 응답 12개를 제한한다. 변경되지 않은 같은 조건의 데이터는 전체 순회 시 정확히 한 번씩 나오게 한다. 페이지 시작 후 수정된 글은 다음 새 탐색에서만 재등장한다.
 
 ```text
 25개 동일시각 카드 => 12 / 12 / 1 / nextCursor=null
@@ -100,7 +100,7 @@ assetBand hidden 조건 => null만, 실제 Simulation 금액 조회 0
 페이지 사이 이전 카드 수정 => 중복 0, 새 탐색에서 최신 위치
 ```
 
-- [ ] 기존 authenticated/RLS/직접 테이블 접근 차단을 유지한다. SQL과 repository의 status/error mapping을 `node scripts/test-workspace-db.mjs`, focused unit으로 검증하고 커밋한다.
+- [x] 기존 authenticated/RLS/직접 테이블 접근 차단을 유지한다. SQL과 repository의 status/error mapping을 `node scripts/test-workspace-db.mjs`, focused unit으로 검증하고 커밋한다.
 
 ## Task 3. 검색·필터 도구 영역과 읽기 위치 보존
 
@@ -108,13 +108,13 @@ assetBand hidden 조건 => null만, 실제 Simulation 금액 조회 0
 
 **소유권:** toolbar는 입력/필터 초안, feed hook은 적용된 query·cursor·페이지 묶음·요청 세대·스크롤 복원 위치, LoungeApp은 dialog와 공유 action을 소유한다. 기존 load/refresh를 무관한 앱까지 리팩터링하지 않는다.
 
-- [ ] `Lounge discovery` E2E와 hook unit을 먼저 작성한다. 입력 조합, 350ms, Enter, clear, 이전 요청이 늦게 완료되는 경우, 전체/내 공유 전환, 오류에서 기존 목록 보존을 포함한다.
-- [ ] 한 줄 검색과 오른쪽 정렬/필터, 적용된 조건 칩/초기화를 구현한다. 첫 출시 정렬은 `최근 수정순`만 제공하고 미구현 정렬을 활성 메뉴로 노출하지 않는다.
-- [ ] 필터는 ResponsiveDialog에서 apply/cancel 모델로 구현한다. 목록 화면에서 실제 금액·수익률·확신할 수 없는 자산군 기준을 추가하지 않는다.
-- [ ] 처음 120개는 12개 더 보기로 쌓는다. 121번째부터 다음 120개 묶음으로 교체한다. 메모리에는 현재 묶음과 방문한 묶음의 시작 커서만 보관한다. 이전 묶음은 커서로 다시 읽고, 세대가 만료되면 명시적 재시작을 제공한다.
-- [ ] URL에 q/scope/period/cash/band/sort를 allowlist로 저장한다. `post`/`comment`는 따로 유지하고 dialog 닫기 시 그 두 키만 제거한다. OAuth와 외부 브라우저 반환도 허용된 조건·UUID만 전달한다. token/fragment/외부 redirect는 폐기한다.
-- [ ] 상세를 닫으면 같은 card DOM/scroll/focus를 유지한다. 브라우저 뒤로/앞으로는 조건 변경을 복원하되 매 글자 history를 만들지 않고 적용된 검색에서만 기록한다. 새로고침은 조건과 첫 페이지만 복원한다.
-- [ ] 30초 갱신은 현재 조건과 요청 세대를 검사한다. first batch/top/비조작 상태의 기본 최근 수정순만 안전하게 교체한다. 검색·다중 페이지·정렬/필터·입력 중에는 숫자와 알림만 갱신한다.
+- [x] `Lounge discovery` E2E와 hook unit을 먼저 작성한다. 입력 조합, 350ms, Enter, clear, 이전 요청이 늦게 완료되는 경우, 전체/내 공유 전환, 오류에서 기존 목록 보존을 포함한다.
+- [x] 한 줄 검색과 오른쪽 정렬/필터, 적용된 조건 칩/초기화를 구현한다. 첫 출시 정렬은 `최근 수정순`만 제공하고 미구현 정렬을 활성 메뉴로 노출하지 않는다.
+- [x] 필터는 ResponsiveDialog에서 apply/cancel 모델로 구현한다. 목록 화면에서 실제 금액·수익률·확신할 수 없는 자산군 기준을 추가하지 않는다.
+- [x] 처음 120개는 12개 더 보기로 쌓는다. 121번째부터 다음 120개 묶음으로 교체한다. 메모리에는 현재 묶음과 방문한 묶음의 시작 커서만 보관한다. 이전 묶음은 커서로 다시 읽고, 세대가 만료되면 명시적 재시작을 제공한다.
+- [x] URL에 q/scope/period/cash/band/sort를 allowlist로 저장한다. `post`/`comment`는 따로 유지하고 dialog 닫기 시 그 두 키만 제거한다. OAuth와 외부 브라우저 반환도 허용된 조건·UUID만 전달한다. token/fragment/외부 redirect는 폐기한다.
+- [x] 상세를 닫으면 같은 card DOM/scroll/focus를 유지한다. 브라우저 뒤로/앞으로는 조건 변경을 복원하되 매 글자 history를 만들지 않고 적용된 검색에서만 기록한다. 새로고침은 조건과 첫 페이지만 복원한다.
+- [x] 30초 갱신은 현재 조건과 요청 세대를 검사한다. first batch/top/비조작 상태의 기본 최근 수정순만 안전하게 교체한다. 검색·다중 페이지·정렬/필터·입력 중에는 숫자와 알림만 갱신한다.
 
 ```text
 검색 A 요청 중 B 적용, A가 나중 도착 => B 카드만 표시
@@ -124,8 +124,8 @@ assetBand hidden 조건 => null만, 실제 Simulation 금액 조회 0
 poll 중 조건 변경 => 이전 조건 응답 폐기
 ```
 
-- [ ] `npx vitest run tests/unit/lounge/usePublicationFeed.test.tsx tests/unit/auth/auth.test.ts` 및 `npx playwright test tests/account-workspace.spec.ts --project=cloud --grep 'Lounge discovery'`를 통과시킨다. 390/768/1280 UI·44px·키보드·빈 결과를 직접 확인한다.
-- [ ] Task 5의 공통 출시 gate를 적용해 검색·필터만 먼저 배포 가능하게 커밋한다.
+- [x] `npx vitest run tests/unit/lounge/usePublicationFeed.test.tsx tests/unit/auth/auth.test.ts` 및 `npx playwright test tests/account-workspace.spec.ts --project=cloud --grep 'Lounge discovery'`를 통과시킨다. 390/768/1280 UI·44px·키보드·빈 결과를 직접 확인한다.
+- [x] Task 5의 공통 출시 gate를 적용해 검색·필터만 먼저 배포 가능하게 커밋한다.
 
 ## Task 4. 공감순·댓글순과 정렬 세대
 
@@ -133,11 +133,11 @@ poll 중 조건 변경 => 이전 조건 응답 폐기
 
 **인터페이스:** FeedQuery/FeedPage의 기존 `reactions|comments`, epoch/rankedAt 필드를 사용한다. 데이터 응답 형식을 다시 바꾸지 않는다.
 
-- [ ] 여러 emoji를 누른 1명과 1종씩 누른 2명, 댓글/삭제 자리, 동점 fixture를 먼저 만든다. 두 세대가 겹치는 페이지 이동·만료·동시 job을 DB에서 검증한다.
-- [ ] private 집계는 `epoch, post_id, updated_at, unique_reactors, live_comment_count`만 저장하고 `(epoch, post_id)` UNIQUE를 둔다. FK로 삭제 게시물은 즉시 제외한다. 모든 세대 합계는 10,000행 이하로 유지한다.
-- [ ] 15분 job은 advisory lock으로 중복 실행을 막고 한 transaction에서 두 번째로 오래된 세대 삭제 → 새 세대 작성 → current pointer 전환을 처리한다. 중간 상태를 클라이언트가 읽으면 안 된다. 사용자별 검색어·결과·본문은 저장하지 않는다.
-- [ ] 정렬은 snapshot score DESC + snapshot updated_at DESC + post_id DESC다. 점수는 current community count와 분리한다. query의 검색·공개 조건을 적용하되 새로 등록된 글은 다음 집계에서 정렬 후보에 들어간다. 이후 수정된 글은 해당 집계에서 제외하고 다음 세대에 반영한다.
-- [ ] job 실패·공간 부족이면 이전 세대 유지, 0세대면 ranking-unavailable, 오래된 커서면 cursor-expired를 반환한다. 클라이언트는 카드를 보존하고 `최신 순서로 다시 보기`로 query를 새로 시작한다.
+- [x] 여러 emoji를 누른 1명과 1종씩 누른 2명, 댓글/삭제 자리, 동점 fixture를 먼저 만든다. 두 세대가 겹치는 페이지 이동·만료·동시 job을 DB에서 검증한다.
+- [x] private 집계는 `epoch, post_id, updated_at, unique_reactors, live_comment_count`만 저장하고 `(epoch, post_id)` UNIQUE를 둔다. FK로 삭제 게시물은 즉시 제외한다. 모든 세대 합계는 10,000행 이하로 유지한다.
+- [x] 15분 job은 advisory lock으로 중복 실행을 막고 한 transaction에서 두 번째로 오래된 세대 삭제 → 새 세대 작성 → current pointer 전환을 처리한다. 중간 상태를 클라이언트가 읽으면 안 된다. 사용자별 검색어·결과·본문은 저장하지 않는다.
+- [x] 정렬은 snapshot score DESC + snapshot updated_at DESC + post_id DESC다. 점수는 current community count와 분리한다. query의 검색·공개 조건을 적용하되 새로 등록된 글은 다음 집계에서 정렬 후보에 들어간다. 이후 수정된 글은 해당 집계에서 제외하고 다음 세대에 반영한다.
+- [x] job 실패·공간 부족이면 이전 세대 유지, 0세대면 ranking-unavailable, 오래된 커서면 cursor-expired를 반환한다. 클라이언트는 카드를 보존하고 `최신 순서로 다시 보기`로 query를 새로 시작한다.
 
 ```text
 A: 좋아요+하트(1명), B: 좋아요(2명) => B가 먼저
@@ -149,8 +149,8 @@ job 실패 => 이전 pointer/집계 동일, 읽기는 가능
 댓글 root tombstone+살아 있는 답글 2 => score=2
 ```
 
-- [ ] `node scripts/test-workspace-db.mjs`, discovery 관련 unit/E2E, 숫자 갱신과 순서 보존을 검증한다. 정렬 메뉴 설명에 집계 시점을 표시하고 `인기 추천/수익률순` 같은 표현을 쓰지 않는다.
-- [ ] 집계 job/세대 정리 SQL과 read 권한을 검토 후 커밋한다.
+- [x] `node scripts/test-workspace-db.mjs`, discovery 관련 unit/E2E, 숫자 갱신과 순서 보존을 검증한다. 정렬 메뉴 설명에 집계 시점을 표시하고 `인기 추천/수익률순` 같은 표현을 쓰지 않는다.
+- [x] 집계 job/세대 정리 SQL과 read 권한을 검토 후 커밋한다.
 
 ## Task 5. 규모 검증·단계별 출시
 

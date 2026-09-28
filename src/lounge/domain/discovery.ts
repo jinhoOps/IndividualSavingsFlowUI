@@ -57,7 +57,7 @@ export function parseFeedPage(value:unknown):FeedPage|null {
   if(!record(value))return null;
   if(value.status==='cursor-expired' || value.status==='ranking-unavailable')return keys(value,['status'])?{status:value.status}:null;
   if(value.status!=='ok' || !keys(value,['status','items','nextCursor','asOf','rankedAt']) || !Array.isArray(value.items)
-    || value.items.length>12 || !time(value.asOf) || value.rankedAt!==null && !time(value.rankedAt))return null;
+    || value.items.length>12 || !time(value.asOf) || value.rankedAt!==null && (!time(value.rankedAt) || Date.parse(value.rankedAt)>Date.parse(value.asOf)))return null;
   const items=value.items.map(parsePublication),cursor=value.nextCursor===null?null:parseFeedCursor(value.nextCursor);
   if(items.some(v=>!v) || new Set(items.map(v=>v?.id)).size!==items.length || value.nextCursor!==null && !cursor
     || items.some(v=>Date.parse(v!.updatedAt)>Date.parse(value.asOf as string))

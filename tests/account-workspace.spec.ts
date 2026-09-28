@@ -1982,9 +1982,13 @@ for(const width of [390,768,1280])test(`Lounge discovery literal search, filter 
   const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
   for(let i=1;i<=25;i++)server.publications.set(`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`,{owner:userB,post:{...sharedPortfolio,id:`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`,title:`분산 ${i}`,
     note:i===1?'기호 %_ 그대로':'',allocation:{items:[{name:i===1?'VOO':'SCHD',shareUnits:i%2?1000000:900000}],cashShareUnits:i%2?0:100000},assetBand:i%2?'20m':null}});
-  const divided=server.publications.get('eeeeeeee-eeee-4eee-8eee-000000000025')!;divided.post.allocation={items:[{name:'SCHD',shareUnits:500000},{name:'QQQM',shareUnits:500000}],cashShareUnits:0};
+  const divided=server.publications.get('eeeeeeee-eeee-4eee-8eee-000000000025')!;divided.post.allocation={items:[{name:'SCHD',shareUnits:500000},{name:'QQQM',shareUnits:499999},{name:'QLD',shareUnits:1}],cashShareUnits:0};
   await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
   const search=page.getByRole('searchbox',{name:'포트폴리오 검색'});await expect(search).toBeVisible();await expect(page.locator('.lounge-card')).toHaveCount(12);
+  const bar=page.locator('.lounge-card').first().locator('.lounge-allocation__bar');
+  const segments=await bar.locator('span').evaluateAll(nodes=>nodes.map(node=>({width:node.getBoundingClientRect().width,color:getComputedStyle(node).backgroundColor,divider:getComputedStyle(node).boxShadow})));
+  expect(segments).toHaveLength(3);expect(new Set(segments.map(v=>v.color)).size).toBe(1);expect(segments[1].divider).not.toBe('none');expect(segments[2].width).toBeLessThan(1);
+  expect(Math.abs(segments.reduce((sum,v)=>sum+v.width,0)-(await bar.boundingBox())!.width)).toBeLessThan(.1);
   await search.fill('VOO');await search.press('Enter');await expect(page.locator('.lounge-card')).toHaveCount(1);await expect(page.locator('.lounge-card')).toContainText('분산 1');
   expect(new URL(page.url()).searchParams.get('q')).toBe('voo');await search.fill('%_');await search.press('Enter');await expect(page.locator('.lounge-card')).toHaveCount(1);
   await page.getByRole('button',{name:'검색 지우기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(12);
@@ -2139,7 +2143,7 @@ test('Lounge quiet refresh never replaces comments after typing starts during a 
   const dialog=page.getByRole('dialog',{name:/^댓글 \d+$/});await expect(dialog.getByText('첫 댓글을 남겨 보세요.')).toBeVisible();
   let release!:()=>void;const barrier=new Promise<void>(r=>{release=r;});let held=false;
   await page.route('**/rest/v1/rpc/list_lounge_threads_v2',async route=>{
-    held=true;await barrier;await route.fulfill({json:{comments:[{id:'dddddddd-dddd-4ddd-8ddd-000000000001',author:{publicId:'fbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',nickname:'차곡차곡'},body:'늦은 응답',createdAt:'2026-09-28T04:00:00Z',isMine:false,rootId:null,replyToId:null,mentions:[],replyCount:0,deleted:false}],nextCursor:null}});
+    held=true;await barrier;await route.fulfill({json:{comments:[{id:'dddddddd-dddd-4ddd-8ddd-000000000001',author:{publicId:'fbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',nickname:'차곡차곡'},body:'늦은 응답',createdAt:'2026-09-28T04:00:00Z',isMine:false,rootId:null,replyToId:null,replyToAuthor:null,mentions:[],replyCount:0,deleted:false}],nextCursor:null}});
   });
   await page.clock.fastForward(30_000);await expect.poll(()=>held).toBe(true);
   const input=dialog.getByLabel('댓글 남기기');await input.fill('입력을 유지해 주세요');
@@ -2710,4 +2714,24 @@ test('Lounge discovery ranking keeps epoch order and explicitly recovers expired
   server.community.refreshRanking();await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.getByText(/목록의 기준 시각이 만료/)).toBeVisible();await expect(page.locator('.lounge-card')).toHaveCount(24);
   await page.getByRole('button',{name:'최신 순서로 다시 보기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(12);await expect(page.locator('.lounge-card').first()).toContainText('정렬 25');
   await sort.selectOption('comments');await expect(page.locator('.lounge-card').first()).toContainText('정렬 1');
+});
+
+for(const viewport of [{width:390,height:520},{width:640,height:450}])test(`Lounge compact conversation contains composer and mentions at ${viewport.width}x${viewport.height}`,async({page,context},testInfo)=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  const rootId='dddddddd-dddd-4ddd-8ddd-000000000001';
+  server.community.comments.set(rootId,{postId:sharedPortfolio.id,owner:userB,body:'긴 댓글에서도 입력 위치를 유지해요.',createdAt:'2026-09-28T01:00:00Z'});
+  await server.attach(context,userA);await page.setViewportSize(viewport);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'댓글 1개 보기'}).click();const dialog=page.getByRole('dialog',{name:/^댓글/});
+  await dialog.getByRole('button',{name:'답글',exact:true}).click();await dialog.getByLabel('댓글 남기기').fill('한 줄\n두 줄\n세 줄\n네 줄');
+  await dialog.getByRole('button',{name:'사용자 멘션'}).click();const search=dialog.getByRole('combobox',{name:'멘션할 닉네임 검색'});await expect(search).toBeFocused();
+  await expect(dialog.getByRole('option').first()).toBeVisible();
+  const box=(await dialog.boundingBox())!;expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(viewport.height+1);
+  for(const target of [search,dialog.getByRole('button',{name:'등록',exact:true})]){const area=(await target.boundingBox())!;expect(area.y).toBeGreaterThanOrEqual(box.y);expect(area.y+area.height).toBeLessThanOrEqual(box.y+box.height);}
+  expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`conversation-short-${viewport.width}.png`)});
+  await search.press('ArrowDown');await search.press('Enter');await expect(dialog.getByLabel('댓글 남기기')).toBeFocused();
+  await dialog.getByLabel('댓글 남기기').fill('');await dialog.getByRole('button',{name:'답글 취소'}).click();
+  const handle=dialog.locator('[data-sheet-drag-handle]');{
+    const start=(await handle.boundingBox())!;await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();await page.mouse.move(start.x+start.width/2,start.y+start.height/2+200,{steps:8});await page.mouse.up();await expect(dialog).toHaveCount(0);
+  }
 });

@@ -81,6 +81,13 @@ export async function verifyLoungeConversation({sql,asUser,userA,userC,parallelS
   assert.equal(new Set([...r1.comments,...r2.comments,...r3.comments].map(c=>c.id)).size,25);
   const middle=call('get_lounge_comment_context',`'${post.id}','${r2.comments[5].id}'`);assert.ok(parseCommentContext(middle));assert.ok(middle.previousCursor);assert.ok(middle.page.nextCursor);
   const previous=call('list_lounge_replies_v2',`'${post.id}','${thread.id}',${json(middle.previousCursor)},'older'`);assert.ok(parseConversationPage(previous,10));
+  const offWindow=input('이전 페이지 대상에게 답글',{rootId:thread.id,replyToId:r1.comments[0].id});
+  age();const offWindowSaved=add(offWindow);assert.equal(offWindowSaved.status,'saved');
+  assert.ok(!offWindowSaved.context.page.comments.some(c=>c.id===r1.comments[0].id));
+  assert.equal(offWindowSaved.comment.replyToAuthor.publicId,r1.comments[0].author.publicId);
+  call('delete_lounge_comment_v2',`'${post.id}','${r1.comments[0].id}'`,userC);
+  assert.equal(call('get_lounge_comment_context',`'${post.id}','${offWindow.id}'`).page.comments.find(c=>c.id===offWindow.id).replyToAuthor,null);
+  assert.equal(sql("select private.valid_lounge_cursor('{\"id\":\"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\",\"createdAt\":\"infinity\"}'::jsonb)"),'f');
   age();const retryInput=input('한 번만 저장',{rootId:thread.id,replyToId:thread.id});
   const retries=await Promise.all(Array.from({length:3},()=>parallelSql(asUser(`select public.add_lounge_comment_v2(${json(retryInput)})`,userC))));
   assert.ok(retries.every(r=>r.status==='saved'));assert.equal(inbox().items.filter(n=>n.commentId===retryInput.id).length,1);

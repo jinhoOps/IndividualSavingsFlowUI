@@ -25,7 +25,7 @@ export function NotificationInbox({notifications,onClose,onOpen,position,error,o
     footer={<div className="community-inbox-footer"><span>최대 30일 · 최근 100개</span>
       <button className="community-text-action" disabled={pending || notifications.loading} onClick={()=>{position.current={id:null,scroll:0};void notifications.refresh();}}>{notifications.hasNew?'새 알림 확인':'새로고침'}</button></div>}>
     {notifications.loading?<p role="status" className="lounge-muted">알림을 불러오는 중…</p>:null}
-    {!notifications.loading && !notifications.error && !notifications.items.length?<p className="community-comments-empty">{notifications.unreadOnly?'모든 알림을 읽었어요.':'아직 받은 알림이 없어요.'}</p>:null}
+    {!notifications.loading && !notifications.error && !notifications.items.length?<p className="community-comments-empty">{notifications.unreadOnly?(notifications.unreadCount?'새 알림을 불러오려면 새로고침해 주세요.':'모든 알림을 읽었어요.'):'아직 받은 알림이 없어요.'}</p>:null}
     <ol ref={list} className="community-notifications" aria-label="알림 목록">{notifications.items.map(item=><li key={item.id}>
       <button type="button" data-notification-id={item.id} disabled={pending} data-unread={!item.read || undefined} onClick={()=>{
         position.current={id:item.id,scroll:list.current?.closest('[data-surface-body]')?.scrollTop??0};void onOpen(item);

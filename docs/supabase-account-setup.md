@@ -231,3 +231,16 @@ from public.result_card_shares group by state;
 - 직접 테이블 접근·anon 실행을 차단하고 기존 `lounge_rpc_owner`/FORCE RLS/빈 search_path를 사용한다. 댓글·공감의 사용자와 시각은 서버에서 결정한다.
 - 공감 8종·동일 계정/종류 한 번, 댓글 20개 keyset 페이지, 상태 지정/UUID 재시도, 본인 삭제·닉네임 join·cascade를 사용한다.
 - 댓글 20,000개·공감 100,000행·요청 제한을 두고 DB 400MiB 이상에서는 신규 저장을 거부한다. 삭제와 무변경 재시도는 허용한다. Storage 이미지 정책과 별도이며 DB 전체 크기를 함께 관찰한다.
+
+
+### 커뮤니티 답글·멘션·알림·탐색 확장 — rollout 준비
+
+로컬 검증은 [대화 증거](superpowers/evidence/2026-09-28-community-conversation.md)·[탐색 증거](superpowers/evidence/2026-09-28-community-discovery.md)를 따른다. 운영 적용 완료 전에는 아래 migration을 적용됐다고 간주하지 않는다.
+
+1. 운영 테이블의 원본 projection/digest와 DB 전체 크기, migration 007~009 미적용을 확인한다. 기존 자료를 비공개 백업하고 같은 트랜잭션에서 기존 열 전후 digest가 같음을 검사한다.
+2. [007 대화](../supabase/migrations/202609280007_lounge_conversation.sql) → [008 탐색](../supabase/migrations/202609280008_lounge_discovery.sql) → [009 집계](../supabase/migrations/202609280009_lounge_ranking.sql)를 각각 이력과 함께 적용한다. 이미 기록된 버전을 재실행하지 않는다.
+3. [알림 정리](../supabase/operations/lounge-notification-cleanup.sql), [집계 최초 실행·15분 cron](../supabase/operations/lounge-ranking-cron.sql)을 운영자 권한으로 적용한다. private maintenance 함수는 클라이언트에 열지 않는다. 알림 job은 매일 03:17 UTC, ranking job은 매 15분이다.
+4. 기존 workspace/profile/publication/comment/reaction 값 보존·v1/v2 읽기·권한·첫 집계/cron 결과를 확인한 뒤 프런트를 배포한다. 운영에 테스트 댓글·공감을 만들지 않는다.
+5. 정렬 장애 시 기존 세대를 읽고 명시적 최근 수정순 전환을 제공한다. 프런트 롤백은 이전 list/v1 API로 가능하며 대화/알림 데이터를 삭제하지 않는다.
+
+알림은 30일/사용자 100개/전역 20,000개, 집계는 2세대/10,000행이다. 400MiB 신규 저장 guard와 이미지 Storage 별도 예산을 유지한다. 삭제 이후 DB 파일이 즉시 작아진다고 가정하지 않으며 전체 DB·테이블·인덱스 크기를 함께 관찰한다.

@@ -71,7 +71,7 @@ export function parseConversationPage(value:unknown):ConversationPage|null;
 export function parseNotificationPage(value:unknown):NotificationPage|null;
 ```
 
-- [ ] 문자·바이트 상한, 잘못된 UUID, 추가 필드, 범위 겹침, 같은 사용자 중복, 빈 본문을 거부하는 테스트를 먼저 추가한다.
+- [x] 문자·바이트 상한, 잘못된 UUID, 추가 필드, 범위 겹침, 같은 사용자 중복, 빈 본문을 거부하는 테스트를 먼저 추가한다.
 
 ```ts
 const postId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -84,9 +84,9 @@ expect(parseCommentWrite({...write,mentions:[{...write.mentions[0],start:3}]})).
 expect(parseCommentWrite({...write,ownerId:postId})).toBeNull();
 ```
 
-- [ ] `npx vitest run tests/unit/lounge/conversation.test.ts tests/unit/lounge/notifications.test.ts`로 새 계약 부재에 따른 실패를 확인한다.
-- [ ] 본문 정규화 후 code point 범위를 검증한다. 삭제 댓글은 `body:''`, `author:null`, `mentions:[]`만 허용한다. 알림 preview는 읽을 때 만든 최대 80자 텍스트이며 body/UID를 중복 저장하지 않는다.
-- [ ] readIds는 본인 미읽음 최대 100개의 조회 snapshot이며 중복을 거부한다. 같은 명령과 `npm run check`를 통과시키고 계약 변경을 커밋한다. 커밋 전 `git var GIT_AUTHOR_IDENT`는 `KIM JINHO <okho04@gmail.com>`이어야 한다.
+- [x] `npx vitest run tests/unit/lounge/conversation.test.ts tests/unit/lounge/notifications.test.ts`로 새 계약 부재에 따른 실패를 확인한다.
+- [x] 본문 정규화 후 code point 범위를 검증한다. 삭제 댓글은 `body:''`, `author:null`, `mentions:[]`만 허용한다. 알림 preview는 읽을 때 만든 최대 80자 텍스트이며 body/UID를 중복 저장하지 않는다.
+- [x] readIds는 본인 미읽음 최대 100개의 조회 snapshot이며 중복을 거부한다. 같은 명령과 `npm run check`를 통과시키고 계약 변경을 커밋한다. 커밋 전 `git var GIT_AUTHOR_IDENT`는 `KIM JINHO <okho04@gmail.com>`이어야 한다.
 
 ## Task 2. 실제 DB에서 관계·삭제·알림 원자성 보장
 
@@ -106,8 +106,8 @@ get_lounge_unread_count() -> {unreadCount, readCutoff}
 read_lounge_notifications(p_ids, p_cutoff) -> {unreadCount, readCutoff}
 ```
 
-- [ ] harness의 `verifyLoungeCommunity` 다음에 새 검증 함수를 연결한다. 기존 `{sql, asUser, userA, userC, parallelSql, vite}`를 사용해 이관 전후 기존 컬럼 값과 새 RPC를 검증한다.
-- [ ] 아래 schema 제약을 migration으로 만든다. public ID UNIQUE와 서버 생성·불변 trigger를 둔다. 원댓글/답글/대상 관계는 같은 게시물인지 트랜잭션 안에서 검증하고 부모 행 잠금과 삭제의 잠금 순서를 통일한다.
+- [x] harness의 `verifyLoungeCommunity` 다음에 새 검증 함수를 연결한다. 기존 `{sql, asUser, userA, userC, parallelSql, vite}`를 사용해 이관 전후 기존 컬럼 값과 새 RPC를 검증한다.
+- [x] 아래 schema 제약을 migration으로 만든다. public ID UNIQUE와 서버 생성·불변 trigger를 둔다. 원댓글/답글/대상 관계는 같은 게시물인지 트랜잭션 안에서 검증하고 대화 쓰기/삭제의 advisory transaction lock과 FK를 공유한다. UPDATE RLS를 요구하는 타인 게시물 행 잠금은 사용하지 않는다.
 
 ```sql
 -- 전체 migration이 구현해야 할 핵심 관계
@@ -119,12 +119,12 @@ create unique index lounge_profile_public_id on public.lounge_profiles(public_id
 -- notifications UNIQUE(recipient_id, comment_id); recipient는 서버가 계산한다.
 ```
 
-- [ ] 기존 프로필 freeze trigger의 허용 컬럼을 검토한다. 댓글 soft delete·탈퇴 처리에 필요한 update RLS와 server-only helper만 연다. 알림 insert는 저장한 댓글의 작성자 claim과 실제 답글/멘션 관계를 검증하며 알림 수신자의 직접 쓰기는 허용하지 않는다.
-- [ ] 등록은 같은 UUID+전체 요청(본문·관계·멘션)의 성공 재시도를 먼저 판별한다. 그 후 한도 검사 → 댓글 insert → 본인 제외/중복 제거 수신자 최대 4명 → 알림 insert를 같은 transaction으로 처리한다. 같은 UUID의 다른 본문/대상/계정은 conflict다.
-- [ ] 알림 정리는 시간·수신자/전역 상한을 잠금 안에서 집행한다. 정책상 오래된 알림을 제거한 뒤 insert하며 cron 실패 시 삽입 시점에도 상한이 유지되어야 한다. cron helper는 클라이언트 execute 권한 없이 별도 최소 권한으로 실행한다.
-- [ ] 모두 읽음도 전달된 p_ids 최대 100개 중 본인 소유·cutoff 이전인 행만 갱신한다. 빈 ID 배열을 전체 변경으로 해석하지 않는다. 조회 시점 뒤에 commit된 알림은 ID 집합에 없으므로 유지된다.
-- [ ] 탈퇴한 대상의 멘션을 `@탈퇴`로 치환하고 해당 연결을 제거한다. code point 범위의 뒤쪽부터 처리한 뒤 남은 범위를 조정해 다른 멘션을 손상시키지 않는다. root/target 삭제 자리 처리, 기존 v1 delete RPC 연동, 게시물 cascade를 검증한다.
-- [ ] `get_lounge_comment_context`는 root와 대상이 포함된 답글 최대 10개 구간을 반환한다. `previousCursor`와 page의 `nextCursor`로 양쪽 탐색을 제공하고 `p_direction`은 `older|newer`만 허용한다. 반환 화면 순서는 언제나 오래된 순이다. 삭제된 대상을 직접 열면 null을 반환한다.
+- [x] 기존 프로필 freeze trigger의 허용 컬럼을 검토한다. 댓글 soft delete·탈퇴 처리에 필요한 update RLS와 server-only helper만 연다. 알림 insert는 저장한 댓글의 작성자 claim과 실제 답글/멘션 관계를 검증하며 알림 수신자의 직접 쓰기는 허용하지 않는다.
+- [x] 등록은 같은 UUID+전체 요청(본문·관계·멘션)의 성공 재시도를 먼저 판별한다. 그 후 한도 검사 → 댓글 insert → 본인 제외/중복 제거 수신자 최대 4명 → 알림 insert를 같은 transaction으로 처리한다. 같은 UUID의 다른 본문/대상/계정은 conflict다.
+- [x] 알림 정리는 시간·수신자/전역 상한을 잠금 안에서 집행한다. 정책상 오래된 알림을 제거한 뒤 insert하며 cron 실패 시 삽입 시점에도 상한이 유지되어야 한다. cron helper는 클라이언트 execute 권한 없이 별도 최소 권한으로 실행한다.
+- [x] 모두 읽음도 전달된 p_ids 최대 100개 중 본인 소유·cutoff 이전인 행만 갱신한다. 빈 ID 배열을 전체 변경으로 해석하지 않는다. 조회 시점 뒤에 commit된 알림은 ID 집합에 없으므로 유지된다.
+- [x] 탈퇴한 대상의 멘션을 `@탈퇴`로 치환하고 해당 연결을 제거한다. code point 범위의 뒤쪽부터 처리한 뒤 남은 범위를 조정해 다른 멘션을 손상시키지 않는다. root/target 삭제 자리 처리, 기존 v1 delete RPC 연동, 게시물 cascade를 검증한다.
+- [x] `get_lounge_comment_context`는 root와 대상이 포함된 답글 최대 10개 구간을 반환한다. `previousCursor`와 page의 `nextCursor`로 양쪽 탐색을 제공하고 `p_direction`은 `older|newer`만 허용한다. 반환 화면 순서는 언제나 오래된 순이다. 삭제된 대상을 직접 열면 null을 반환한다.
 
 실제 DB assertions에는 다음 결과를 포함한다.
 
@@ -139,9 +139,9 @@ profile nickname 변경/옛 이름 재사용 => 기존 mention publicId 동일
 계정 삭제 => 본문/명시적 mention label scrub, 타인 답글 유지
 ```
 
-- [ ] `node scripts/test-workspace-db.mjs`에서 실제 PostgreSQL 권한·동시 작성/삭제·탈퇴·레이스·행 상한·400MiB 분기·이관 보존을 통과시킨다. 시나리오 추가 시 fake fixture만 통과시키지 않는다.
-- [ ] migration007 적용 후 v1 조회/작성/삭제 및 기존 strict parser를 다시 검증한다. 이전 migration 파일을 재적용하지 않고 upgraded DB에서 별도 호환 assertions를 실행한다.
-- [ ] 최대 길이 20,000 댓글·멘션·20,000 알림의 DB/인덱스 증가량을 기록한다. 실제 상한이 400MiB 여유를 침범하면 한도를 줄여 설계에 반영한 뒤 커밋한다.
+- [x] `node scripts/test-workspace-db.mjs`에서 실제 PostgreSQL 권한·동시 작성/삭제·탈퇴·레이스·행 상한·400MiB 분기·이관 보존을 통과시킨다. 시나리오 추가 시 fake fixture만 통과시키지 않는다.
+- [x] migration007 적용 후 v1 조회/작성/삭제 및 기존 strict parser를 다시 검증한다. 이전 migration 파일을 재적용하지 않고 upgraded DB에서 별도 호환 assertions를 실행한다.
+- [x] 최대 길이 20,000 댓글·멘션·20,000 알림의 DB/인덱스 증가량을 기록한다. 실제 상한이 400MiB 여유를 침범하면 한도를 줄여 설계에 반영한 뒤 커밋한다.
 
 ## Task 3. 통신과 댓글 직접 링크
 
@@ -163,15 +163,15 @@ getUnreadCount():Promise<{unreadCount:number;readCutoff:string}>;
 readNotifications(ids:string[],cutoff:string|null):Promise<{unreadCount:number;readCutoff:string}>;
 ```
 
-- [ ] RPC 인자·extra field 거부·계정 교체·없는 대상·같은 write ID 재시도를 unit으로 먼저 고정한다. 목록 오류를 빈 목록으로 바꾸지 않는다.
-- [ ] `?post=<uuid>&comment=<uuid>`를 댓글 직접 링크로 지원한다. comment는 유효 post가 있을 때만 허용하고 서버가 둘의 소속을 다시 검사한다. OAuth/copy/Kakao 외부 이동에도 두 UUID만 안전하게 넘긴다.
+- [x] RPC 인자·extra field 거부·계정 교체·없는 대상·같은 write ID 재시도를 unit으로 먼저 고정한다. 목록 오류를 빈 목록으로 바꾸지 않는다.
+- [x] `?post=<uuid>&comment=<uuid>`를 댓글 직접 링크로 지원한다. comment는 유효 post가 있을 때만 허용하고 서버가 둘의 소속을 다시 검사한다. OAuth/copy/Kakao 외부 이동에도 두 UUID만 안전하게 넘긴다.
 
 ```ts
 expect(safeReturnPath('/IndividualSavingsFlowUI/apps/lounge/?post=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&comment=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb&access_token=secret', '/IndividualSavingsFlowUI/'))
   .toBe('/IndividualSavingsFlowUI/apps/lounge/?post=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&comment=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 ```
 
-- [ ] 잘못된 UUID, 다른 앱의 comment 인자, 외부 URL, fragment/token을 제거하는 계약을 보존한다. 관련 unit과 `npm run check`를 통과시키고 커밋한다.
+- [x] 잘못된 UUID, 다른 앱의 comment 인자, 외부 URL, fragment/token을 제거하는 계약을 보존한다. 관련 unit과 `npm run check`를 통과시키고 커밋한다.
 
 ## Task 4. 밀도 높은 댓글 화면·답글·멘션 입력
 
@@ -179,10 +179,10 @@ expect(safeReturnPath('/IndividualSavingsFlowUI/apps/lounge/?post=aaaaaaaa-aaaa-
 
 **소유권:** PublicationComments는 원댓글 페이지·열린 묶음·이탈 보호, CommentThread는 답글 읽기/펼치기, CommentComposer는 본문·멘션·대상·요청 ID를 소유한다. 새 일반 form 프레임워크는 만들지 않는다.
 
-- [ ] 먼저 `Lounge conversation` 이름의 E2E에 원댓글/답글 진입·답글 후 자기 글 보기·대상 취소/변경·dirty 보존·실패/재시도 시나리오를 작성한다. unit에는 emoji 앞 범위, NFC/IME, 본문 수정·undo·paste와 `a@b` 후보 선택을 추가한다.
-- [ ] 설계의 메타/본문 행 구조를 구현한다. 원댓글 padding 10px, 답글 8px/들여쓰기 12px, 메타 gap 4px를 시작값으로 적용한다. 삭제는 본인 더보기 안으로 옮긴다.
-- [ ] textarea는 기본 2줄/최대 4줄, 입력 16px, 글자 수·등록은 한 행에 둔다. inline 후보 검색은 300ms, IME 조합 후만 요청하고 오래된 결과를 버린다. 메뉴를 열어도 textarea 내용/범위를 유지한다.
-- [ ] 닫기 시 body가 비어 있으면 대상 선택만으로 확인하지 않는다. 등록 성공 시 draft/id를 비우고, 응답 유실 실패에는 동일 요청 ID를 유지한다. 외부 삭제로 reply 대상이 사라지면 입력을 유지한 채 새 대상 선택을 안내한다.
+- [x] 먼저 `Lounge conversation` 이름의 E2E에 원댓글/답글 진입·답글 후 자기 글 보기·대상 취소/변경·dirty 보존·실패/재시도 시나리오를 작성한다. unit에는 emoji 앞 범위, NFC/IME, 본문 수정·undo·paste와 `a@b` 후보 선택을 추가한다.
+- [x] 설계의 메타/본문 행 구조를 구현한다. 원댓글 padding 10px, 답글 8px/들여쓰기 12px, 메타 gap 4px를 시작값으로 적용한다. 삭제는 본인 더보기 안으로 옮긴다.
+- [x] textarea는 기본 2줄/최대 4줄, 입력 16px, 글자 수·등록은 한 행에 둔다. inline 후보 검색은 300ms, IME 조합 후만 요청하고 오래된 결과를 버린다. 메뉴를 열어도 textarea 내용/범위를 유지한다.
+- [x] 닫기 시 body가 비어 있으면 대상 선택만으로 확인하지 않는다. 등록 성공 시 draft/id를 비우고, 응답 유실 실패에는 동일 요청 ID를 유지한다. 외부 삭제로 reply 대상이 사라지면 입력을 유지한 채 새 대상 선택을 안내한다.
 
 ```ts
 // Playwright fixture: 1~2줄 원댓글 8개, viewport 390×844, 키보드 닫힘
@@ -195,16 +195,16 @@ const fullyVisible=await bodies.evaluateAll(nodes=>nodes.filter(node=>{
 expect(fullyVisible).toBeGreaterThanOrEqual(5);
 ```
 
-- [ ] `npx vitest run tests/unit/lounge/CommentComposer.test.tsx`와 `npx playwright test tests/account-workspace.spec.ts --project=cloud --grep 'Lounge conversation'`를 통과시키고 390/768/1280 화면을 직접 검토한 뒤 커밋한다. 200% 확대·긴 글은 개수 목표를 적용하지 않는다.
+- [x] `npx vitest run tests/unit/lounge/CommentComposer.test.tsx`와 `npx playwright test tests/account-workspace.spec.ts --project=cloud --grep 'Lounge conversation'`를 통과시키고 390/768/1280 화면을 직접 검토한 뒤 커밋한다. 200% 확대·긴 글은 개수 목표를 적용하지 않는다.
 
 ## Task 5. 알림함·읽음·조용한 갱신
 
 **파일:** 새 `src/lounge/ui/NotificationInbox.tsx`, `src/lounge/ui/useLoungeNotifications.ts`, `tests/unit/lounge/useLoungeNotifications.test.tsx`. 수정 `LoungeApp.tsx`, `useLoungeRefresh.ts`의 소비 방식, `lounge.css`, community fixture/E2E.
 
-- [ ] 요청 중복·account 전환·늦은 읽음 응답·cutoff 뒤 신규 알림 유지 unit과 `Lounge notifications` E2E를 작성한다. request generation이 이전 값을 덮지 않도록 한다.
-- [ ] 오른쪽 종 버튼/미읽음 badge를 추가하고, 30초 타이머는 기존 scheduler를 재사용한다. 목록은 알림함이 열렸을 때만 조회하며 수동 읽음 성공만 badge에 반영한다. 모두 읽음은 최근 목록의 readIds와 readCutoff를 전송한다. 닉네임 변경 action은 톱니에 유지한다.
-- [ ] 알림 클릭 → getCommentContext → 같은 dialog의 댓글 단계로 전환한다. root와 대상 주변 답글 구간을 가져와 표시한다. 이전 구간/다음 구간을 탐색할 수 있고 최초 댓글 페이지를 전부 순회하지 않는다.
-- [ ] 단일 dialog 상태는 `notifications | allocation | comments`로 관리한다. 입력이 있는 댓글에서 알림으로 넘어가는 경우 현재 이탈 보호를 먼저 적용한다. 뒤로/닫기는 원래 알림 행/종 버튼으로 초점을 돌린다.
+- [x] 요청 중복·account 전환·늦은 읽음 응답·cutoff 뒤 신규 알림 유지 unit과 `Lounge notifications` E2E를 작성한다. request generation이 이전 값을 덮지 않도록 한다.
+- [x] 오른쪽 종 버튼/미읽음 badge를 추가하고, 30초 타이머는 기존 scheduler를 재사용한다. 목록은 알림함이 열렸을 때만 조회하며 수동 읽음 성공만 badge에 반영한다. 모두 읽음은 최근 목록의 readIds와 readCutoff를 전송한다. 닉네임 변경 action은 톱니에 유지한다.
+- [x] 알림 클릭 → getCommentContext → 같은 dialog의 댓글 단계로 전환한다. root와 대상 주변 답글 구간을 가져와 표시한다. 이전 구간/다음 구간을 탐색할 수 있고 최초 댓글 페이지를 전부 순회하지 않는다.
+- [x] 단일 dialog 상태는 `notifications | allocation | comments`로 관리한다. 입력이 있는 댓글에서 알림으로 넘어가는 경우 현재 이탈 보호를 먼저 적용한다. 뒤로/닫기는 원래 알림 행/종 버튼으로 초점을 돌린다.
 
 ```text
 알림함 진입만 실행 => read 요청 0
@@ -215,7 +215,7 @@ expect(fullyVisible).toBeGreaterThanOrEqual(5);
 댓글 draft 상태 30초 => 본문/대상/scroll 동일
 ```
 
-- [ ] unit/E2E를 통과시키고 알림 최대 보관·삭제 대상·읽음 실패 재시도·새 수신 알림의 초점 유지까지 검토 후 커밋한다.
+- [x] unit/E2E를 통과시키고 알림 최대 보관·삭제 대상·읽음 실패 재시도·새 수신 알림의 초점 유지까지 검토 후 커밋한다.
 
 ## Task 6. 통합 검증·문서·운영
 

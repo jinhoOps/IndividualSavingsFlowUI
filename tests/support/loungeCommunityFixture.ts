@@ -19,6 +19,7 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
     body:comment.body,createdAt:comment.createdAt,isMine:comment.owner===user});
   const publicId=(owner:string)=>`f${owner.slice(1)}`;
   const viewV2=(id:string,c:NonNullable<ReturnType<typeof comments.get>>,user:string):ConversationComment=>({id,rootId:c.rootId??null,replyToId:c.replyToId??null,
+    replyToAuthor:!c.deleted && c.replyToId && comments.get(c.replyToId) && !comments.get(c.replyToId)!.deleted?{publicId:publicId(comments.get(c.replyToId)!.owner),nickname:profiles.get(comments.get(c.replyToId)!.owner)!.nickname}:null,
     author:c.deleted?null:{publicId:publicId(c.owner),nickname:profiles.get(c.owner)!.nickname},body:c.deleted?'':c.body,
     mentions:(c.mentions??[]).map(m=>({...m,currentNickname:[...profiles].find(([owner])=>publicId(owner)===m.publicId)?.[1].nickname??m.label})),
     createdAt:c.createdAt,deleted:Boolean(c.deleted),isMine:!c.deleted && c.owner===user,replyCount:[...comments.values()].filter(v=>v.rootId===id && !v.deleted).length});

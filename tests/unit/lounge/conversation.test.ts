@@ -6,7 +6,7 @@ const postId='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const publicId='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const createdAt='2026-09-28T01:00:00Z';
 const write={id,postId,rootId:null,replyToId:null,body:'😀 @a@b 안녕',mentions:[{start:2,end:6,publicId,label:'a@b'}]};
-const comment={id,rootId:null,replyToId:null,author:{publicId,nickname:'새이름'},body:write.body,
+const comment={id,rootId:null,replyToId:null,replyToAuthor:null,author:{publicId,nickname:'새이름'},body:write.body,
   mentions:[{...write.mentions[0],currentNickname:'바뀐이름'}],createdAt,deleted:false,isMine:true,replyCount:2};
 
 describe('대화 계약',()=>{
@@ -43,6 +43,11 @@ describe('대화 계약',()=>{
     expect(parseConversationPage({comments:[comment,comment],nextCursor:null})).toBeNull();
     expect(parseConversationPage({comments:[{...comment,userId:publicId}],nextCursor:null})).toBeNull();
     expect(parseConversationPage({comments:[comment],nextCursor:{id:'bad',createdAt}})).toBeNull();
+  });
+  it('다른 페이지에 있는 답글 대상도 공개 작성자로 식별한다',()=>{
+    const reply={...comment,id:publicId,rootId:id,replyToId:postId,replyToAuthor:comment.author,replyCount:0};
+    expect(parseConversationPage({comments:[reply],nextCursor:null})?.comments[0].replyToAuthor).toEqual(comment.author);
+    expect(parseConversationPage({comments:[{...reply,replyToAuthor:{...comment.author,userId:id}}],nextCursor:null})).toBeNull();
   });
   it('직접 이동 응답은 올바른 원댓글·대상·답글 묶음이어야 한다',()=>{
     const reply={...comment,id:publicId,rootId:id,replyToId:id,replyCount:0};

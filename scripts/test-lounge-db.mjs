@@ -32,8 +32,15 @@ try {
     sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}.sql`,import.meta.url),'utf8')}`);
   sql(asUser("select public.register_lounge_nickname('원래투자자')"));
   vite=await createServer({server:{middlewareMode:true},appType:'custom',logLevel:'error'});
+  if(process.argv.includes('--benchmark')){
+    for(const file of ['202609280007_lounge_conversation','202609280008_lounge_discovery','202609280009_lounge_ranking'])
+      sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}.sql`,import.meta.url),'utf8')}`);
+    const {benchmarkLoungeDiscovery}=await import('./benchmark-lounge-discovery-db.mjs');
+    await benchmarkLoungeDiscovery({sql,asUser,userA,vite});
+  }else{
   await verifyLoungeConversation({sql,asUser,userA,userC,parallelSql,vite});
   await verifyLoungeDiscovery({sql,asUser,userA,vite});
   const {verifyLoungeRanking}=await import('./verify-lounge-ranking-db.mjs');
   await verifyLoungeRanking({sql,asUser,userA,vite,parallelSql});
+  }
 } finally {await vite?.close();try{docker(['rm','-f',container]);}catch{}}

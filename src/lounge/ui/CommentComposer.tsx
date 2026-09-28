@@ -85,7 +85,7 @@ export function CommentComposer({repository,postId,disabled,onDirtyChange,onBusy
     {target?<div className="community-reply-target"><div><strong>{target.author?.nickname??'탈퇴한 사용자'}님에게 답글</strong><p>{target.body}</p></div>
       <button type="button" className="responsive-dialog__icon-button" aria-label="답글 취소" disabled={pending} onClick={()=>setTarget(null)}><X size={16}/></button></div>:null}
     {picker?<div className="community-mention-picker">
-      <div><input ref={search} role="combobox" aria-label="멘션할 닉네임 검색" aria-autocomplete="list" aria-controls="mention-options" aria-expanded="true"
+      <div><input ref={search} role="combobox" aria-label="멘션할 닉네임 검색" placeholder="닉네임 검색" aria-autocomplete="list" aria-controls="mention-options" aria-expanded="true"
         aria-activedescendant={candidates[active]?`mention-option-${active}`:undefined} value={query} maxLength={40}
         onCompositionStart={()=>setComposing(true)} onCompositionEnd={event=>{setComposing(false);setQuery(event.currentTarget.value.normalize('NFC'));}}
         onChange={event=>setQuery(event.target.value)} onKeyDown={event=>{

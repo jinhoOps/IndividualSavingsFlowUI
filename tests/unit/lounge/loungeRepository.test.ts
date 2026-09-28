@@ -27,7 +27,7 @@ describe('Lounge authenticated transport',()=>{
     const f=fixture(),repo=createLoungeRepository(f.client);
     const other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
     const write={id,postId:id,rootId:null,replyToId:null,body:'@사용자 안녕',mentions:[{start:0,end:4,publicId:other,label:'사용자'}]};
-    const comment={id,rootId:null,replyToId:null,author:{publicId:other,nickname:'작성자'},body:write.body,
+    const comment={id,rootId:null,replyToId:null,replyToAuthor:null,author:{publicId:other,nickname:'작성자'},body:write.body,
       mentions:[{...write.mentions[0],currentNickname:'사용자'}],createdAt:post.updatedAt,deleted:false,isMine:true,replyCount:0};
     const summary={postId:id,reactions:[],commentCount:1,uniqueReactors:0};
     const context={postId:id,root:comment,page:{comments:[],nextCursor:null},targetId:id,previousCursor:null};

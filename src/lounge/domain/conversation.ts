@@ -10,7 +10,7 @@ export interface CommentWrite {
   body:string; mentions:MentionRange[];
 }
 export interface ConversationComment {
-  id:string; rootId:string|null; replyToId:string|null; author:MentionCandidate|null;
+  id:string; rootId:string|null; replyToId:string|null; replyToAuthor:MentionCandidate|null; author:MentionCandidate|null;
   body:string; mentions:ResolvedMention[]; createdAt:string; deleted:boolean; isMine:boolean; replyCount:number;
 }
 export interface ConversationCursor {id:string; createdAt:string}
@@ -67,19 +67,21 @@ export function parseCommentWrite(value:unknown):CommentWrite|null {
   return parsed?{id:value.id,postId:value.postId,rootId:value.rootId,replyToId:value.replyToId,body:value.body,mentions:parsed}:null;
 }
 export function parseConversationComment(value:unknown):ConversationComment|null {
-  if(!record(value) || !keys(value,['id','rootId','replyToId','author','body','mentions','createdAt','deleted','isMine','replyCount'])
+  if(!record(value) || !keys(value,['id','rootId','replyToId','replyToAuthor','author','body','mentions','createdAt','deleted','isMine','replyCount'])
     || !publicationId(value.id) || !nullableId(value.rootId) || !nullableId(value.replyToId)
     || (value.rootId===null)!==(value.replyToId===null) || value.rootId===value.id || value.replyToId===value.id
     || !timestamp(value.createdAt) || typeof value.deleted!=='boolean' || typeof value.isMine!=='boolean'
     || !Number.isSafeInteger(value.replyCount) || Number(value.replyCount)<0 || Number(value.replyCount)>500
     || (value.rootId!==null && value.replyCount!==0) || typeof value.body!=='string')return null;
   const author=value.author===null?null:parseMentionCandidate(value.author);
+  const replyToAuthor=value.replyToAuthor===null?null:parseMentionCandidate(value.replyToAuthor);
+  if(value.replyToAuthor!==null && (!replyToAuthor || value.rootId===null || value.deleted))return null;
   if(value.deleted) {
     if(value.body!=='' || value.author!==null || value.isMine || !Array.isArray(value.mentions) || value.mentions.length)return null;
   } else if(!author || !parseCommentBody(value.body) || [...value.body].length>500 || new TextEncoder().encode(value.body).length>2000)return null;
   const parsed=mentions(value.mentions,value.body,true);
   if(!parsed)return null;
-  return {id:value.id,rootId:value.rootId,replyToId:value.replyToId,author,body:value.body,mentions:parsed,
+  return {id:value.id,rootId:value.rootId,replyToId:value.replyToId,replyToAuthor,author,body:value.body,mentions:parsed,
     createdAt:value.createdAt,deleted:value.deleted,isMine:value.isMine,replyCount:Number(value.replyCount)};
 }
 export function parseConversationPage(value:unknown,max=20):ConversationPage|null {
