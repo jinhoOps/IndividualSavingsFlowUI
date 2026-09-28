@@ -2735,3 +2735,19 @@ for(const viewport of [{width:390,height:520},{width:640,height:450}])test(`Loun
     const start=(await handle.boundingBox())!;await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();await page.mouse.move(start.x+start.width/2,start.y+start.height/2+200,{steps:8});await page.mouse.up();await expect(dialog).toHaveCount(0);
   }
 });
+
+test('Lounge notifications quietly remove deleted rows across pages and keep the reading focus',async({page,context})=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  const ids=Array.from({length:25},(_,i)=>`dddddddd-dddd-4ddd-8ddd-${String(i+1).padStart(12,'0')}`);
+  for(const [index,id] of ids.entries())server.community.notifications.set(id,{id,recipient:userA,postId:sharedPortfolio.id,commentId:id,kind:'reply',actor:{publicId:'fbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',nickname:'차곡차곡'},preview:`받은 답글 ${index+1}`,createdAt:new Date(Date.UTC(2026,8,28,1,25-index)).toISOString(),read:false});
+  await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'알림함 · 읽지 않은 알림 25개'}).click();const inbox=page.getByRole('dialog',{name:'알림함',exact:true});
+  await inbox.getByRole('button',{name:'알림 더 보기'}).click();await expect(inbox.locator('[data-notification-id]')).toHaveCount(25);
+  await page.clock.runFor(100);const last=inbox.locator(`[data-notification-id="${ids[24]}"]`);await last.focus();const top=(await last.boundingBox())!.y;
+  server.community.notifications.delete(ids[0]);server.community.notifications.set(ids[1],{...server.community.notifications.get(ids[1])!,read:true});
+  await page.clock.fastForward(30_000);await expect(inbox.locator('[data-notification-id]')).toHaveCount(24);await expect(last).toBeFocused();
+  expect(Math.abs((await last.boundingBox())!.y-top)).toBeLessThan(2);await expect(inbox.locator(`[data-notification-id="${ids[1]}"]`)).not.toHaveAttribute('data-unread');
+  server.community.notifications.delete(ids[24]);await page.clock.fastForward(30_000);await expect(inbox.locator(`[data-notification-id="${ids[23]}"]`)).toBeFocused();
+  await inbox.getByRole('button',{name:'닫기',exact:true}).click();server.community.notifications.clear();await page.getByRole('button',{name:/^알림함/}).click();
+  await expect(inbox.locator('[data-notification-id]')).toHaveCount(0);await expect(inbox.getByText('아직 받은 알림이 없어요.')).toBeVisible();
+});

@@ -27,12 +27,25 @@ export function useLoungeNotifications(repository:ConversationRepository,visible
     listLock.current=token;if(!quiet){setLoading(true);setError('');}
     try {
       const page=await repository.listNotifications(unreadOnly,append?cursor.current??undefined:undefined);
+      const current=[...page.items];
+      if(quiet){
+        let after=page.nextCursor;
+        // The server retains at most 100 notifications: five bounded reads can
+        // distinguish removed rows from valid rows beyond the first page.
+        for(let pages=1;after && pages<5;pages++){
+          if(token!==generation.current || change!==changeGeneration.current)return;
+          const more=await repository.listNotifications(unreadOnly,after);
+          current.push(...more.items);after=more.nextCursor;
+        }
+        if(after)return;
+      }
       if(token!==generation.current || change!==changeGeneration.current)return;
       if(countToken===countGeneration.current)setUnreadCount(page.unreadCount);
       snapshot.current={readIds:page.readIds,readCutoff:page.readCutoff};loaded.current=true;
       if(quiet){
-        if(page.items.some(item=>!currentItems.current.some(v=>v.id===item.id)))setHasNew(true);
-        setItems(old=>old.map(item=>page.items.find(v=>v.id===item.id)??item));
+        setHasNew(current.some(item=>!currentItems.current.some(v=>v.id===item.id)));
+        const byId=new Map(current.map(item=>[item.id,item]));
+        setItems(old=>old.flatMap(item=>{const updated=byId.get(item.id);return updated?[updated]:[];}));
       }else{
         setItems(old=>append?[...old,...page.items.filter(item=>!old.some(v=>v.id===item.id))].slice(0,100):page.items);
         setNextCursor(page.nextCursor);setHasNew(false);
@@ -47,7 +60,7 @@ export function useLoungeNotifications(repository:ConversationRepository,visible
     snapshot.current={readIds:[],readCutoff:''};void refreshCount();
     return()=>{scope.current++;generation.current++;countGeneration.current++;changeGeneration.current++;};
   },[repository,refreshCount]);
-  useEffect(()=>{if(visible && !loaded.current)void load();},[visible,load]);
+  useEffect(()=>{if(visible)void load(false,loaded.current);},[visible,load]);
   const changeFilter=useCallback((value:boolean)=>{
     if(value===unreadOnly)return;generation.current++;loaded.current=false;setUnreadOnly(value);setNextCursor(null);
   },[unreadOnly]);

@@ -24,6 +24,7 @@ describe('대화 계약',()=>{
       {...write,rootId:id,replyToId:id}, {...write,rootId:postId,replyToId:null},
       {...write,rootId:null,replyToId:postId}, {...write,mentions:[{...write.mentions[0],end:999}]},
       {...write,mentions:[{...write.mentions[0],userId:publicId}]},
+      {...write,body:'@가나 @가나',mentions:[{start:0,end:3,publicId,label:'가나'},{start:4,end:7,publicId:publicId.toUpperCase(),label:'가나'}]},
     ]) expect(parseCommentWrite(bad)).toBeNull();
   });
   it('문자수·바이트·금지문자·멘션 메타데이터 상한을 적용한다',()=>{

@@ -56,16 +56,24 @@ export async function verifyLoungeConversation({sql,asUser,userA,userC,parallelS
   age();const legacy=call('add_lounge_comment',`'${post.id}','${randomUUID()}','구버전 작성'`);assert.equal(legacy.status,'saved');
   assert.equal(call('delete_lounge_comment',`'${post.id}','${legacy.comment.id}'`).status,'deleted');
   // Selected identity survives renaming and reuse of the old nickname.
-  age();const mentionInput=input('😀 @a@b 남기기',{mentions:[{start:2,end:6,publicId:d.publicId,label:'a@b'}]});
+  age();const mentionInput=input('😀 @a@b 남기기',{mentions:[{start:2,end:6,publicId:d.publicId.toUpperCase(),label:'a@b'}]});
   const mentioned=add(mentionInput);assert.equal(mentioned.status,'saved');
+  const mixedPublicId=[...d.publicId].map((c,i)=>i%2?c.toUpperCase():c).join('');
+  age();const mixedInput={...mentionInput,id:randomUUID(),mentions:[{...mentionInput.mentions[0],publicId:mixedPublicId}]};
+  assert.equal(add(mixedInput).status,'saved');
   assert.equal(call('change_lounge_nickname',"'새대상',1",userD).status,'saved');
   sql(`insert into auth.users values('${userC}')`);call('register_lounge_nickname',"'a@b'",userC);
   const renamed=add(mentionInput);assert.equal(renamed.status,'saved');
-  assert.equal(renamed.comment.mentions[0].publicId,d.publicId);assert.equal(renamed.comment.mentions[0].currentNickname,'새대상');
+  assert.equal(renamed.comment.mentions[0].publicId.toLowerCase(),d.publicId);assert.equal(renamed.comment.mentions[0].currentNickname,'새대상');
   assert.equal(inbox(userC).items.length,0,'nickname reuse never steals a mention');
   sql(`delete from auth.users where id='${userD}'`);
   const scrubbed=call('get_lounge_comment_context',`'${post.id}','${mentioned.comment.id}'`).root;
   assert.equal(scrubbed.body,'😀 @탈퇴 남기기');assert.deepEqual(scrubbed.mentions,[]);
+  const mixedScrubbed=call('get_lounge_comment_context',`'${post.id}','${mixedInput.id}'`).root;
+  assert.equal(mixedScrubbed.body,'😀 @탈퇴 남기기');assert.deepEqual(mixedScrubbed.mentions,[]);
+  assert.equal(call('delete_lounge_comment_v2',`'${post.id}','${mixedInput.id}'`).status,'deleted');
+  assert.equal(sql(`select private.valid_lounge_mentions('@가나 @가나',${json([{start:0,end:3,publicId:a.publicId,label:'가나'},{start:4,end:7,publicId:a.publicId.toUpperCase(),label:'가나'}])})`),'f');
+
   // Equal timestamps still have a deterministic cursor; deep links load a bounded window.
   const thread=mentioned.comment;
   sql(`insert into public.lounge_comments(id,post_id,user_id,body,created_at)

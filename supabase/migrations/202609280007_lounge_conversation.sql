@@ -70,7 +70,7 @@ create policy lounge_maintenance_notifications on public.lounge_notifications to
 
 create function private.valid_lounge_mentions(p_body text,p_mentions jsonb) returns boolean
 language plpgsql immutable set search_path='' as $$
-declare m jsonb; starts integer[]:='{}'; ends integer[]:='{}'; ids text[]:='{}'; a integer; b integer; i integer;
+declare m jsonb; starts integer[]:='{}'; ends integer[]:='{}'; ids uuid[]:='{}'; a integer; b integer; i integer;
 begin
   if p_mentions is null or jsonb_typeof(p_mentions)<>'array' or jsonb_array_length(p_mentions)>3
     or octet_length(p_mentions::text)>1024 then return false; end if;
@@ -80,13 +80,13 @@ begin
       or (m->>'start') !~ '^[0-9]{1,3}$' or (m->>'end') !~ '^[0-9]{1,3}$'
       or jsonb_typeof(m->'label')<>'string' or not private.valid_lounge_nickname(m->>'label')
       or jsonb_typeof(m->'publicId')<>'string' or (m->>'publicId') !~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
-      or (m->>'publicId')=any(ids) then return false; end if;
+      or (m->>'publicId')::uuid=any(ids) then return false; end if;
     a:=(m->>'start')::integer; b:=(m->>'end')::integer;
     if b<=a or b>length(p_body) or substring(p_body from a+1 for b-a)<>'@'||(m->>'label') then return false; end if;
     for i in 1..coalesce(cardinality(starts),0) loop
       if a<ends[i] and b>starts[i] then return false; end if;
     end loop;
-    starts:=array_append(starts,a);ends:=array_append(ends,b);ids:=array_append(ids,m->>'publicId');
+    starts:=array_append(starts,a);ends:=array_append(ends,b);ids:=array_append(ids,(m->>'publicId')::uuid);
   end loop;
   return true;
 end $$;
@@ -181,13 +181,13 @@ declare c public.lounge_comments; m jsonb; remaining jsonb; delta integer; a int
 begin
   perform pg_advisory_xact_lock(928,6);
   update public.lounge_comments set deleted_at=clock_timestamp(),user_id=null,body='',mentions='[]',request_hash=null where user_id=old.user_id;
-  for c in select * from public.lounge_comments where mentions @> jsonb_build_array(jsonb_build_object('publicId',old.public_id::text)) for update loop
-    for m in select value from jsonb_array_elements(c.mentions) where value->>'publicId'=old.public_id::text order by (value->>'start')::integer desc loop
+  for c in select * from public.lounge_comments source where exists(select 1 from jsonb_array_elements(source.mentions) entry(value) where (entry.value->>'publicId')::uuid=old.public_id) for update loop
+    for m in select value from jsonb_array_elements(c.mentions) where (value->>'publicId')::uuid=old.public_id order by (value->>'start')::integer desc loop
       a:=(m->>'start')::integer;b:=(m->>'end')::integer;delta:=3-(b-a);
       c.body:=substring(c.body from 1 for a)||'@탈퇴'||substring(c.body from b+1);
       select coalesce(jsonb_agg(case when (v->>'start')::integer>=b then
         v||jsonb_build_object('start',(v->>'start')::integer+delta,'end',(v->>'end')::integer+delta) else v end),'[]') into remaining
-        from jsonb_array_elements(c.mentions) v where v->>'publicId'<>old.public_id::text;
+        from jsonb_array_elements(c.mentions) v where (v->>'publicId')::uuid<>old.public_id;
       c.mentions:=remaining;
     end loop;
     update public.lounge_comments set body=c.body,mentions=c.mentions where id=c.id;

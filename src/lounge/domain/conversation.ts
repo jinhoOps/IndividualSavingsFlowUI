@@ -51,7 +51,7 @@ function mentions(value:unknown,body:string,resolved:boolean):Array<MentionRange
       || Number(item.start)<0 || Number(item.end)<=Number(item.start) || Number(item.end)>chars.length
       || !publicationId(item.publicId) || typeof item.label!=='string' || parseNickname(item.label)!==item.label
       || chars.slice(Number(item.start),Number(item.end)).join('')!==`@${item.label}`
-      || result.some(old=>old.publicId===item.publicId || Number(item.start)<old.end && Number(item.end)>old.start))return null;
+      || result.some(old=>old.publicId.toLowerCase()===(item.publicId as string).toLowerCase() || Number(item.start)<old.end && Number(item.end)>old.start))return null;
     if(resolved && (typeof item.currentNickname!=='string' || parseNickname(item.currentNickname)!==item.currentNickname))return null;
     result.push({start:Number(item.start),end:Number(item.end),publicId:item.publicId,label:item.label,
       ...(resolved?{currentNickname:item.currentNickname as string}:{})});

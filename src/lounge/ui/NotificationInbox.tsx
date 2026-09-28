@@ -1,4 +1,4 @@
-import {useEffect,useRef,type MutableRefObject} from 'react';
+import {useEffect,useLayoutEffect,useRef,type MutableRefObject} from 'react';
 import {ResponsiveDialogLayout} from '../../components/common/ResponsiveDialogLayout';
 import type {LoungeNotification} from '../domain/notifications';
 import type {LoungeNotifications} from './useLoungeNotifications';
@@ -7,7 +7,16 @@ export function NotificationInbox({notifications,onClose,onOpen,position,error,o
   notifications:LoungeNotifications;onClose():void;onOpen(item:LoungeNotification):Promise<void>;
   position:MutableRefObject<InboxPosition>;error:string;opening:boolean;
 }) {
-  const list=useRef<HTMLOListElement>(null);
+  const list=useRef<HTMLOListElement>(null),focused=useRef<string|null>(null),previous=useRef<string[]>([]);
+  useLayoutEffect(()=>{
+    const ids=notifications.items.map(item=>item.id),oldIndex=focused.current?previous.current.indexOf(focused.current):-1;
+    if(oldIndex>=0 && !ids.includes(focused.current!) && (document.activeElement===document.body || document.activeElement===list.current?.closest('dialog'))){
+      const next=ids[Math.min(oldIndex,ids.length-1)];
+      const target=next?list.current?.querySelector<HTMLButtonElement>(`[data-notification-id="${next}"]`):list.current?.closest('.responsive-dialog__layout')?.querySelector<HTMLButtonElement>('[data-dialog-initial-focus]');
+      target?.focus({preventScroll:true});
+    }
+    previous.current=ids;
+  },[notifications.items]);
   useEffect(()=>{
     const frame=requestAnimationFrame(()=>{
       const body=list.current?.closest('[data-surface-body]');if(body)body.scrollTop=position.current.scroll;
@@ -26,7 +35,7 @@ export function NotificationInbox({notifications,onClose,onOpen,position,error,o
       <button className="community-text-action" disabled={pending || notifications.loading} onClick={()=>{position.current={id:null,scroll:0};void notifications.refresh();}}>{notifications.hasNew?'새 알림 확인':'새로고침'}</button></div>}>
     {notifications.loading?<p role="status" className="lounge-muted">알림을 불러오는 중…</p>:null}
     {!notifications.loading && !notifications.error && !notifications.items.length?<p className="community-comments-empty">{notifications.unreadOnly?(notifications.unreadCount?'새 알림을 불러오려면 새로고침해 주세요.':'모든 알림을 읽었어요.'):'아직 받은 알림이 없어요.'}</p>:null}
-    <ol ref={list} className="community-notifications" aria-label="알림 목록">{notifications.items.map(item=><li key={item.id}>
+    <ol ref={list} onFocusCapture={event=>{focused.current=(event.target as HTMLElement).closest<HTMLElement>('[data-notification-id]')?.dataset.notificationId??null;}} className="community-notifications" aria-label="알림 목록">{notifications.items.map(item=><li key={item.id}>
       <button type="button" data-notification-id={item.id} disabled={pending} data-unread={!item.read || undefined} onClick={()=>{
         position.current={id:item.id,scroll:list.current?.closest('[data-surface-body]')?.scrollTop??0};void onOpen(item);
       }}><span className="community-notification-heading"><strong>{item.actor.nickname}</strong><span>{item.kind==='mention'?'님이 나를 멘션했어요':'님이 답글을 남겼어요'}</span>
