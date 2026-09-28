@@ -2694,3 +2694,20 @@ test.describe('Kakao reauthentication',()=>{
     expect(server.rows.get(userA)?.main.applied?.monthlyLivingWon).toBe(1000000);expect(server.operations).toEqual([]);
   });
 });
+
+
+test('Lounge discovery ranking keeps epoch order and explicitly recovers expired pages',async({page,context})=>{
+  const server=fakeServer(),ids:string[]=[];
+  for(let i=1;i<=25;i++){const id=`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`;ids.push(id);server.publications.set(id,{owner:userB,post:{...sharedPortfolio,id,title:`정렬 ${i}`}});}
+  server.community.reactions.set(ids[0],new Map([['like',new Set([userA])],['heart',new Set([userA])]]));
+  server.community.reactions.set(ids[1],new Map([['like',new Set([userA,userB])]]));
+  for(let i=0;i<2;i++)server.community.comments.set(ids[i],{postId:ids[0],owner:userB,body:'의견',createdAt:new Date().toISOString()});
+  server.community.refreshRanking();await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  const sort=page.getByRole('combobox',{name:'정렬'});await sort.selectOption('reactions');
+  await expect(page.locator('.lounge-card').first()).toContainText('정렬 2');await expect(page.getByText(/15분 단위 집계/)).toBeVisible();
+  server.community.reactions.clear();server.community.refreshRanking();
+  await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.locator('.lounge-card')).toHaveCount(24);await expect(page.locator('.lounge-card').first()).toContainText('정렬 2');
+  server.community.refreshRanking();await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.getByText(/목록의 기준 시각이 만료/)).toBeVisible();await expect(page.locator('.lounge-card')).toHaveCount(24);
+  await page.getByRole('button',{name:'최신 순서로 다시 보기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(12);await expect(page.locator('.lounge-card').first()).toContainText('정렬 25');
+  await sort.selectOption('comments');await expect(page.locator('.lounge-card').first()).toContainText('정렬 1');
+});

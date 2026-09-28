@@ -200,3 +200,6 @@
 .lounge-band-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .lounge-feed-pages { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:12px; margin:24px 0; }
 @media(max-width:400px) { .lounge-discovery .lounge-tabs button { padding-inline:12px; } .lounge-band-options { gap:6px; } .lounge-band-options label { font-size:13px; padding-inline:8px; } }
+
+.lounge-discovery-actions select { min-height:44px;max-width:150px;border:0;background:transparent;color:var(--color-text-secondary,#6b7280);font:inherit;font-size:13px;padding:0 8px;cursor:pointer; }
+.lounge-ranking-time { margin:0;font-size:12px;color:var(--color-text-secondary,#6b7280);text-align:right; }

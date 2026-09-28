@@ -34,4 +34,6 @@ try {
   vite=await createServer({server:{middlewareMode:true},appType:'custom',logLevel:'error'});
   await verifyLoungeConversation({sql,asUser,userA,userC,parallelSql,vite});
   await verifyLoungeDiscovery({sql,asUser,userA,vite});
+  const {verifyLoungeRanking}=await import('./verify-lounge-ranking-db.mjs');
+  await verifyLoungeRanking({sql,asUser,userA,vite,parallelSql});
 } finally {await vite?.close();try{docker(['rm','-f',container]);}catch{}}

@@ -32,22 +32,33 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
     return {postId,root:viewV2(rootId,root,user),page:{comments:items.map(([key,v])=>viewV2(key,v,user)),nextCursor:last && all.at(-1)?.[0]!==last[0]?{id:last[0],createdAt:last[1].createdAt}:null},targetId:id,
       previousCursor:start>0?{id:first[0],createdAt:first[1].createdAt}:null};
   };
-  return {notifications,reactions,comments,requests,summary,readFailure:false,writeFailure:false,loseResponse:false,
+  const rankings=new Map<string,Map<string,{updatedAt:string;reactions:number;comments:number}>>();
+  function refreshRanking(){
+    const epoch=new Date(Math.max(Date.now(),...Array.from(rankings.keys(),value=>Date.parse(value)+1))).toISOString();
+    rankings.set(epoch,new Map([...publications].map(([id,{post}])=>{const counts=summary(id,'');return [id,{updatedAt:post.updatedAt,reactions:counts.uniqueReactors,comments:counts.commentCount}];})));
+    if(rankings.size>2)rankings.delete(rankings.keys().next().value!);
+    return epoch;
+  }
+  return {notifications,reactions,comments,requests,summary,refreshRanking,readFailure:false,writeFailure:false,loseResponse:false,
     reply(operation:string,args:Record<string,unknown>,user:string):unknown {
       if(operation==='search_lounge_portfolios'){
         const query=parseFeedQuery(args.p_query),cursor=args.p_cursor as FeedCursor|null;if(!query)throw new Error('invalid query');
-        const asOf=cursor?.asOf??new Date().toISOString(),key=feedQueryKey(query);
+        const asOf=cursor?.asOf??new Date(Math.max(Date.now(),...Array.from(rankings.keys(),Date.parse))).toISOString(),key=feedQueryKey(query);
         if(cursor && Date.parse(asOf)<Date.now()-86400000)return {status:'cursor-expired'};
-        if(query.sort!=='updated')return {status:'ranking-unavailable'};
+        const epoch=query.sort==='updated'?null:cursor?.epoch??[...rankings.keys()].at(-1)??null;
+        if(query.sort!=='updated' && !epoch)return {status:'ranking-unavailable'};
+        const snapshot=epoch?rankings.get(epoch):null;
+        if(epoch && !snapshot)return {status:'cursor-expired'};
+        const score=(id:string)=>query.sort==='updated'?0:snapshot?.get(id)?.[query.sort]??0;
         const normalize=(value:string)=>value.normalize('NFC').toLowerCase().trim().replace(/\s+/g,' ');
-        const all=[...publications.values()].filter(({owner,post:p})=>p.updatedAt<=asOf && (query.scope==='all' || owner===user)
+        const all=[...publications.values()].filter(({owner,post:p})=>(!snapshot || snapshot.get(p.id)?.updatedAt===p.updatedAt) && p.updatedAt<=asOf && (query.scope==='all' || owner===user)
           && (query.period==='all' || Date.parse(p.updatedAt)>=Date.parse(asOf)-(query.period==='7d'?7:30)*86400000)
           && (!query.hasCash || p.allocation.cashShareUnits>0) && (!query.assetBands.length || query.assetBands.includes(p.assetBand??'hidden'))
           && (!query.q || [p.title,p.note,p.alias,...p.allocation.items.map(item=>item.name)].some(field=>normalize(field).includes(query.q))))
-          .sort((a,b)=>b.post.updatedAt.localeCompare(a.post.updatedAt)||b.post.id.localeCompare(a.post.id))
-          .filter(({post:p})=>!cursor || p.updatedAt<cursor.last.updatedAt || p.updatedAt===cursor.last.updatedAt && p.id<cursor.last.id);
+          .sort((a,b)=>score(b.post.id)-score(a.post.id)||b.post.updatedAt.localeCompare(a.post.updatedAt)||b.post.id.localeCompare(a.post.id))
+          .filter(({post:p})=>!cursor || score(p.id)<(cursor.last.score??0) || score(p.id)===(cursor.last.score??0) && (p.updatedAt<cursor.last.updatedAt || p.updatedAt===cursor.last.updatedAt && p.id<cursor.last.id));
         const items=all.slice(0,12).map(({owner,post})=>({...post,isMine:owner===user})),last=items.at(-1);
-        return {status:'ok',items,asOf,rankedAt:null,nextCursor:all.length>12 && last?{v:1,queryKey:key,asOf,epoch:null,last:{id:last.id,updatedAt:last.updatedAt,score:null}}:null};
+        return {status:'ok',items,asOf,rankedAt:epoch,nextCursor:all.length>12 && last?{v:1,queryKey:key,asOf,epoch,last:{id:last.id,updatedAt:last.updatedAt,score:epoch?score(last.id):null}}:null};
       }
       const unread=[...notifications.values()].filter(n=>n.recipient===user && !n.read);
       const unreadState={unreadCount:unread.length,readCutoff:new Date().toISOString()};

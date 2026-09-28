@@ -4,7 +4,7 @@ import {ResponsiveDialog} from '../../components/common/ResponsiveDialog';
 import {ResponsiveDialogLayout,ResponsiveDialogActionRow} from '../../components/common/ResponsiveDialogLayout';
 import {ASSET_BANDS,assetBandLabel} from '../domain/assetBand';
 import {parseFeedQuery,type FeedQuery} from '../domain/discovery';
-export function DiscoveryToolbar({query,loading,onApply}:{query:FeedQuery;loading:boolean;onApply(query:FeedQuery):void}) {
+export function DiscoveryToolbar({query,loading,rankedAt,onApply}:{query:FeedQuery;loading:boolean;rankedAt:string|null;onApply(query:FeedQuery):void}) {
   const [text,setText]=useState(query.q),[composing,setComposing]=useState(false),[open,setOpen]=useState(false);
   const [draft,setDraft]=useState(query);
   const apply=useRef(onApply),current=useRef(query),filter=useRef<HTMLButtonElement>(null),input=useRef<HTMLInputElement>(null);
@@ -41,8 +41,10 @@ export function DiscoveryToolbar({query,loading,onApply}:{query:FeedQuery;loadin
     {!valid?<p className="lounge-muted" role="alert">검색어는 80자 이내로 입력해 주세요.</p>:null}
     <div className="lounge-toolbar"><div className="lounge-tabs" aria-label="게시물 범위">{['all','mine'].map(scope=><button key={scope} aria-pressed={query.scope===scope}
       onClick={()=>onApply({...query,scope:scope as FeedQuery['scope']})}>{scope==='mine'?'내 공유':'전체'}</button>)}</div>
-      <div className="lounge-discovery-actions"><span className="lounge-muted">{query.sort==='updated'?'최근 수정순':query.sort==='reactions'?'공감 많은 순':'댓글 많은 순'}</span>
+      <div className="lounge-discovery-actions"><select aria-label="정렬" value={query.sort} onChange={event=>onApply({...query,sort:event.target.value as FeedQuery['sort']})}>
+          <option value="updated">최근 수정순</option><option value="reactions">공감 많은 순</option><option value="comments">댓글 많은 순</option></select>
         <button ref={filter} className="responsive-dialog__icon-button" aria-label="필터" onClick={()=>{setDraft({...query,assetBands:[...query.assetBands]});setOpen(true);}}><SlidersHorizontal size={19}/></button></div></div>
+    {query.sort!=='updated' && rankedAt?<p className="lounge-ranking-time">15분 단위 집계 · {new Date(rankedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})} 기준</p>:null}
     {chips.length?<div className="lounge-filter-chips" aria-label="적용된 필터">{chips.map(chip=><button key={chip.label} aria-label={`${chip.label} 필터 해제`} onClick={chip.clear}>{chip.label}<X size={12} aria-hidden="true"/></button>)}
       <button onClick={()=>onApply({...query,period:'all',hasCash:false,assetBands:[]})}>조건 초기화</button></div>:null}
     {open?<ResponsiveDialog open labelledBy="lounge-filter-title" returnFocusRef={filter} onRequestClose={()=>true} onClosed={()=>setOpen(false)}>

@@ -144,7 +144,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
           : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}</div>
       </header>
       {plan && !allocation ? <p role="status" className="lounge-muted">공유하려면 투자 대상 이름을 40자 이내로 정리해 주세요.</p> : null}
-      <DiscoveryToolbar query={feed.query} loading={loading} onApply={query=>{setActionError('');feed.apply(query);}}/>
+      <DiscoveryToolbar query={feed.query} loading={loading} rankedAt={feed.rankedAt} onApply={query=>{setActionError('');feed.apply(query);}}/>
       <div aria-live="polite">{notice ? <p className="lounge-notice">{notice}</p> : null}{loading && posts.length===0 ? <p className="lounge-muted" role="status">포트폴리오를 불러오고 있어요…</p> : null}</div>
       {error ? <div className="lounge-empty" role="alert"><p>{error}</p><button className="ui-button ui-button--secondary" onClick={() => {setActionError('');void feed.refresh();}}>다시 불러오기</button></div> : null}
       {feed.stale?<div className="lounge-empty" role="status"><p>{feed.stale==='cursor-expired'?'목록의 기준 시각이 만료됐어요. 읽던 카드는 그대로 두었어요.':'아직 정렬 집계를 불러올 수 없어요.'}</p><button className="ui-button ui-button--secondary" onClick={()=>feed.stale==='ranking-unavailable'?feed.apply({...feed.query,sort:'updated'}):void feed.refresh()}>{feed.stale==='ranking-unavailable'?'최근 수정순으로 보기':'최신 순서로 다시 보기'}</button></div>:null}
