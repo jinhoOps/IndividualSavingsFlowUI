@@ -1,15 +1,18 @@
-import {parseLoungeProfile, parseNickname, type LoungeProfile} from '../domain/profile';
+import {parseLoungeProfile, parseNickname, parseNicknameSettings, type LoungeProfile, type NicknameSettings} from '../domain/profile';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {getBrowserClient, readSupabaseConfig} from '../../auth/auth';
 import {parsePublication, parsePublicationInput, publicationId, PUBLICATION_PAGE_SIZE, type Publication, type PublicationInput} from '../domain/publication';
 export interface LoungeRepository {
   getProfile(): Promise<LoungeProfile | null>;
   registerNickname(nickname: string): Promise<LoungeProfile>;
+  getNicknameSettings(): Promise<NicknameSettings>;
+  changeNickname(nickname: string, expectedVersion: number): Promise<NicknameChangeResult>;
   list(mine: boolean, before?: Publication): Promise<Publication[]>;
   get(id: string): Promise<Publication | null>;
   publish(input: PublicationInput, expectedVersion: number | null): Promise<Publication>;
   remove(post: Publication): Promise<void>;
 }
+export type NicknameChangeResult = {status: 'saved' | 'unchanged' | 'cooldown' | 'conflict'; profile: NicknameSettings};
 export class LoungeError extends Error {
   constructor(public readonly code: 'conflict' | 'invalid' | 'unavailable' | 'account' | 'full' | 'nickname-taken' | 'profile-required') {super(code);}
 }
@@ -42,7 +45,20 @@ export function createLoungeRepository(client: SupabaseClient): LoungeRepository
   }
   const parse = (value: unknown) => {const post = parsePublication(value); if (!post) throw new LoungeError('invalid'); return post;};
   const profile = (value: unknown) => {const parsed = parseLoungeProfile(value); if (!parsed) throw new LoungeError('invalid'); return parsed;};
+  const settings = (value: unknown) => {const parsed = parseNicknameSettings(value); if (!parsed) throw new LoungeError('invalid'); return parsed;};
   return {
+    async getNicknameSettings() {
+      const data = await rpc('get_lounge_profile_v2', {});
+      if (data === null) throw new LoungeError('profile-required');
+      return settings(data);
+    },
+    async changeNickname(nickname, expectedVersion) {
+      const safe = parseNickname(nickname);
+      if (!safe || !Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new LoungeError('invalid');
+      const data = await rpc('change_lounge_nickname', {p_nickname: safe, p_expected_version: expectedVersion}) as {status?: string; profile?: unknown};
+      if (data?.status === 'saved' || data?.status === 'unchanged' || data?.status === 'cooldown' || data?.status === 'conflict') return {status: data.status, profile: settings(data.profile)};
+      throw new LoungeError(data?.status === 'taken' ? 'nickname-taken' : data?.status === 'profile-required' ? 'profile-required' : 'invalid');
+    },
     async getProfile() {
       const data = await rpc('get_lounge_profile', {});
       return data === null ? null : profile(data);

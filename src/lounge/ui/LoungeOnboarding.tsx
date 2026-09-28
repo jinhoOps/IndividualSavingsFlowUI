@@ -37,7 +37,7 @@ export function LoungeOnboarding({repository, onRegistered}: {repository: Lounge
         onCompositionStart={() => {composing.current = true;}} onCompositionEnd={() => {composing.current = false;}}
         onChange={event => {setRaw(event.target.value); setError('');}} />
       <p id="lounge-nickname-rule" className="lounge-muted">{NICKNAME_RULE} 기호만 쓰거나 다른 사람과 같은 이름은 사용할 수 없어요.</p>
-      <p id="lounge-nickname-permanent" className="lounge-nickname-warning">최초 설정 후 변경할 수 없어요. 현재 닉네임 변경 기능은 제공하지 않아요.</p>
+      <p id="lounge-nickname-permanent" className="lounge-nickname-warning">설정 후 닉네임을 바꿀 수 있어요. 변경하면 48시간 동안 다시 바꿀 수 없어요.</p>
       <button ref={trigger} className="ui-button ui-button--primary" disabled={!nickname || account?.readOnly}>닉네임 확인</button>
     </form>
     {confirm && nickname ? <ResponsiveDialog open labelledBy="nickname-confirm-title" size="compact" returnFocusRef={trigger} busy={pending}
@@ -51,7 +51,7 @@ export function LoungeOnboarding({repository, onRegistered}: {repository: Lounge
             try {const profile = await repository.registerNickname(nickname); savedRef.current = profile; setSaved(profile); locked.current = false; setPending(false); requestClose('button');}
             catch (error) {setError(loungeErrorMessage(error)); locked.current = false; setPending(false);}
           }}>{pending ? '설정 중…' : '이 닉네임으로 시작'}</button></ResponsiveDialogActionRow>}>
-        <div className="lounge-nickname-confirm"><strong>{nickname}</strong><p>최초 설정 후 변경할 수 없어요.</p>
+        <div className="lounge-nickname-confirm"><strong>{nickname}</strong><p>닉네임을 변경하면 48시간 동안 다시 바꿀 수 없어요.</p>
           <p className="lounge-muted">기존 공유 포트폴리오에도 이 닉네임이 적용돼요. 다른 기기에서 이미 설정했다면 먼저 등록한 닉네임을 사용해요.</p></div>
       </ResponsiveDialogLayout>}
     </ResponsiveDialog> : null}
