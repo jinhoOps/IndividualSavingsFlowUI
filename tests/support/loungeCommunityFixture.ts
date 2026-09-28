@@ -1,9 +1,11 @@
 import {parseCommentBody, isEmojiId, type EmojiId, type CommunitySummary} from '../../src/lounge/domain/community';
+import type {LoungeNotification} from '../../src/lounge/domain/notifications';
 import type {CommentWrite,ConversationComment,ConversationCursor,MentionRange} from '../../src/lounge/domain/conversation';
 import type {Publication} from '../../src/lounge/domain/publication';
 
-export const COMMUNITY_OPERATIONS = ['get_lounge_community','set_lounge_reaction','list_lounge_comments','add_lounge_comment','delete_lounge_comment','list_lounge_threads_v2','list_lounge_replies_v2','get_lounge_comment_context','add_lounge_comment_v2','delete_lounge_comment_v2','find_lounge_mention_targets'];
+export const COMMUNITY_OPERATIONS = ['get_lounge_community','set_lounge_reaction','list_lounge_comments','add_lounge_comment','delete_lounge_comment','list_lounge_threads_v2','list_lounge_replies_v2','get_lounge_comment_context','add_lounge_comment_v2','delete_lounge_comment_v2','find_lounge_mention_targets','get_lounge_unread_count','list_lounge_notifications','read_lounge_notifications'];
 export function loungeCommunityFixture(publications:Map<string,{owner:string;post:Publication}>,profiles:Map<string,{nickname:string}>) {
+  const notifications=new Map<string,LoungeNotification & {recipient:string}>();
   const reactions=new Map<string,Map<EmojiId,Set<string>>>();
   const comments=new Map<string,{postId:string;owner:string;body:string;createdAt:string;rootId?:string|null;replyToId?:string|null;mentions?:MentionRange[];deleted?:boolean}>();
   const requests:Array<{operation:string;args:Record<string,unknown>}> = [];
@@ -29,8 +31,23 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
     return {postId,root:viewV2(rootId,root,user),page:{comments:items.map(([key,v])=>viewV2(key,v,user)),nextCursor:last && all.at(-1)?.[0]!==last[0]?{id:last[0],createdAt:last[1].createdAt}:null},targetId:id,
       previousCursor:start>0?{id:first[0],createdAt:first[1].createdAt}:null};
   };
-  return {reactions,comments,requests,summary,readFailure:false,writeFailure:false,loseResponse:false,
+  return {notifications,reactions,comments,requests,summary,readFailure:false,writeFailure:false,loseResponse:false,
     reply(operation:string,args:Record<string,unknown>,user:string):unknown {
+      const unread=[...notifications.values()].filter(n=>n.recipient===user && !n.read);
+      const unreadState={unreadCount:unread.length,readCutoff:new Date().toISOString()};
+      if(operation==='get_lounge_unread_count')return unreadState;
+      if(operation==='list_lounge_notifications'){
+        const cursor=args.p_cursor as ConversationCursor|null;
+        const all=[...notifications.values()].filter(n=>n.recipient===user && (!args.p_unread_only || !n.read))
+          .sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id))
+          .filter(n=>!cursor || n.createdAt<cursor.createdAt || n.createdAt===cursor.createdAt && n.id<cursor.id);
+        const items=all.slice(0,20).map(({recipient:_,...item})=>item),last=items.at(-1);
+        return {...unreadState,readIds:unread.map(n=>n.id),items,nextCursor:all.length>20 && last?{id:last.id,createdAt:last.createdAt}:null};
+      }
+      if(operation==='read_lounge_notifications'){
+        for(const id of args.p_ids as string[]){const item=notifications.get(id);if(item?.recipient===user && (!args.p_cutoff || item.createdAt<=String(args.p_cutoff)))notifications.set(id,{...item,read:true});}
+        return {...unreadState,unreadCount:[...notifications.values()].filter(n=>n.recipient===user && !n.read).length};
+      }
       const write=args.p_input as CommentWrite|undefined;const postId=String(write?.postId??args.p_post_id);
       if(operation==='get_lounge_community') return (args.p_post_ids as string[]).filter(id=>publications.has(id)).map(id=>summary(id,user));
       if(!publications.has(postId)) return operation.startsWith('list_') || operation==='get_lounge_comment_context'?null:{status:'missing'};

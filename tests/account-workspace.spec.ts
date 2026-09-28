@@ -2006,6 +2006,60 @@ for(const width of [390,768,1280]) test(`Lounge conversation compact threads and
   expect(server.community.comments.size).toBe(9);await expect(input).toHaveValue('');
   expect(await preventsLeaving(page)).toBe(false);
 });
+for(const width of [390,1280])test(`Lounge notifications open exact reply, preserve return focus and explicitly mark read at ${width}px`,async({page,context},testInfo)=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  const rootId='dddddddd-dddd-4ddd-8ddd-000000000001',targetId='dddddddd-dddd-4ddd-8ddd-000000000025';
+  server.community.comments.set(rootId,{postId:sharedPortfolio.id,owner:userA,body:'원래 질문',createdAt:'2026-09-28T01:00:00Z'});
+  for(let i=2;i<=25;i++)server.community.comments.set(`dddddddd-dddd-4ddd-8ddd-${String(i).padStart(12,'0')}`,{postId:sharedPortfolio.id,owner:userB,rootId,replyToId:rootId,body:`대화 ${i}`,createdAt:new Date(Date.UTC(2026,8,28,1,i)).toISOString()});
+  const notification={id:rootId,recipient:userA,postId:sharedPortfolio.id,commentId:targetId,kind:'reply' as const,
+    actor:{publicId:'fbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',nickname:'차곡차곡'},preview:'대화 25',createdAt:'2026-09-28T01:25:00Z',read:false};
+  server.community.notifications.set(notification.id,notification);
+  await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  const bell=page.getByRole('button',{name:'알림함 · 읽지 않은 알림 1개'});await expect(bell).toBeVisible();
+  expect(server.community.requests.filter(r=>r.operation==='list_lounge_notifications')).toHaveLength(0);
+  await bell.click();const inbox=page.getByRole('dialog',{name:'알림함',exact:true});await expect(inbox.getByText('대화 25')).toBeVisible();
+  expect(server.community.requests.filter(r=>r.operation==='read_lounge_notifications')).toHaveLength(0);
+  await inbox.getByRole('button',{name:/차곡차곡.*답글/}).click();const comments=page.getByRole('dialog',{name:/^댓글/});
+  await expect(comments.locator(`#comment-${targetId}`)).toBeFocused();await expect(comments.locator('#comment-'+targetId)).toContainText('대화 25');
+  await expect(comments.getByText('대화 2',{exact:true})).toHaveCount(0);
+  expect(server.community.notifications.get(rootId)?.read).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`notification-thread-${width}.png`)});
+  await comments.getByRole('button',{name:'이전 답글'}).click();await expect(comments.getByText('대화 6',{exact:true})).toBeVisible();
+  await comments.getByRole('button',{name:'다음 답글'}).click();await expect(comments.getByText('대화 25',{exact:true})).toBeVisible();
+  await comments.getByLabel('댓글 남기기').fill('이어서 작성 중');await comments.getByRole('button',{name:'뒤로',exact:true}).click();
+  await page.getByRole('button',{name:'계속 작성'}).click();await expect(comments.getByLabel('댓글 남기기')).toHaveValue('이어서 작성 중');
+  await comments.getByLabel('댓글 남기기').fill('');await comments.getByRole('button',{name:'뒤로',exact:true}).click();
+  await expect(inbox.getByRole('button',{name:/차곡차곡.*답글/})).toBeFocused();await inbox.getByRole('button',{name:'닫기',exact:true}).click();
+  await expect(page.getByRole('button',{name:'알림함',exact:true})).toBeFocused();
+});
+test('Lounge notifications keep late arrivals unread, retry reads and pause hidden polling',async({page,context})=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  const id='dddddddd-dddd-4ddd-8ddd-000000000001',later='dddddddd-dddd-4ddd-8ddd-000000000002';
+  const notification={id,recipient:userA,postId:sharedPortfolio.id,commentId:id,kind:'mention' as const,
+    actor:{publicId:'fbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',nickname:'차곡차곡'},preview:'처음 멘션',createdAt:'2026-09-28T01:00:00Z',read:false};
+  server.community.notifications.set(id,notification);
+  server.community.comments.set(id,{postId:sharedPortfolio.id,owner:userB,body:'처음 멘션',createdAt:notification.createdAt});
+  await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'알림함 · 읽지 않은 알림 1개'}).click();const inbox=page.getByRole('dialog',{name:'알림함',exact:true});
+  await expect(inbox.getByText('처음 멘션')).toBeVisible();await page.clock.runFor(100);
+  server.community.writeFailure=true;await inbox.getByRole('button',{name:'모두 읽음'}).click();await expect(inbox.getByRole('alert')).toBeVisible();
+  server.community.writeFailure=false;
+  server.community.notifications.set(later,{...notification,id:later,commentId:later,preview:'조회 뒤 도착'});
+  await inbox.getByRole('button',{name:'모두 읽음'}).click();await expect(inbox.getByRole('alert')).toHaveCount(0);
+  expect(server.community.notifications.get(later)?.read).toBe(false);
+  expect(server.community.requests.filter(r=>r.operation==='read_lounge_notifications').at(-1)?.args.p_ids).toEqual([id]);
+  await expect(inbox.getByRole('button',{name:'전체',exact:true})).toBeEnabled();
+  await inbox.getByRole('button',{name:'전체',exact:true}).focus();await expect(inbox.getByRole('button',{name:'전체',exact:true})).toBeFocused();
+  await page.clock.fastForward(30_000);await expect(inbox.getByRole('button',{name:'새 알림 확인'})).toBeVisible();
+  await expect(inbox.getByRole('button',{name:'전체',exact:true})).toBeFocused();
+  await inbox.getByRole('button',{name:'새 알림 확인'}).click();await expect(inbox.getByText('조회 뒤 도착')).toBeVisible();
+  await inbox.getByRole('button',{name:/차곡차곡.*멘션/}).first().click();
+  await expect(inbox.getByRole('alert')).toContainText('더 이상 볼 수 없는 댓글');
+  const count=server.community.requests.length;await page.evaluate(()=>Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'hidden'}));
+  await page.clock.fastForward(60_000);expect(server.community.requests).toHaveLength(count);
+  await page.evaluate(()=>Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'}));
+  await inbox.getByRole('button',{name:'닫기',exact:true}).click();await expect(page.getByRole('button',{name:'알림함 · 읽지 않은 알림 1개'})).toBeFocused();
+});
 test('Lounge quiet refresh discards a late feed response after the filter changes',async({page,context})=>{
   const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});await server.attach(context,userA);
   await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');

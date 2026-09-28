@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {ArrowUpRight, Plus} from 'lucide-react';
+import {ArrowUpRight, Bell, Plus} from 'lucide-react';
 import {AppShell} from '../../components/common/AppShell';
 import {AppContentFrame} from '../../components/common/AppContentFrame';
 import {AppManagementMenu} from '../../journey/ui/AppManagementMenu';
@@ -18,6 +18,10 @@ import {CommunityBar} from './CommunityBar';
 import {PublicationComments, type CommentNavigation} from './PublicationComments';
 import {useLoungeCommunity} from './useLoungeCommunity';
 import {useLoungeRefresh} from './useLoungeRefresh';
+import {NotificationInbox,type InboxPosition} from './NotificationInbox';
+import {useLoungeNotifications} from './useLoungeNotifications';
+import type {LoungeNotification} from '../domain/notifications';
+import type {CommentContext} from '../domain/conversation';
 import {refreshPublications} from './refreshPublications';
 
 export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null}: {repository: LoungeRepository; nickname: string; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
@@ -41,7 +45,11 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
   const [detailError, setDetailError] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailMode,setDetailMode] = useState<'allocation'|'comments'>('allocation');
+  const [detailMode,setDetailMode] = useState<'notifications'|'allocation'|'comments'>('allocation');
+  const [fromInbox,setFromInbox]=useState(false),[notificationOpening,setNotificationOpening]=useState(false),[notificationError,setNotificationError]=useState('');
+  const [commentId,setCommentId]=useState<string|undefined>(),[commentContext,setCommentContext]=useState<CommentContext|undefined>();
+  const inboxPosition=useRef<InboxPosition>({id:null,scroll:0}),notificationLock=useRef(false);
+  const notifications=useLoungeNotifications(repository,detailOpen && detailMode==='notifications');
   const [commentsBusy,setCommentsBusy] = useState(false);
   const commentNavigationRef=useRef<CommentNavigation>(null);
   const detailCommentsRef=useRef<HTMLButtonElement|null>(null);
@@ -68,10 +76,10 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     finally {if (mounted.current && token === generation.current) setLoading(false);}
   }, [repository, mine, community.load]);
   useEffect(() => {setPosts([]); void load();}, [load]);
-  const loadDetail = useCallback(async (id: string, mode:'allocation'|'comments'='allocation') => {
+  const loadDetail = useCallback(async (id: string, mode:'allocation'|'comments'='allocation',targetId?:string) => {
     const token = ++detailGeneration.current;
-    setCopied(false);
-    const url = new URL(window.location.href); url.searchParams.set('post', id); history.replaceState(null, '', `${url.pathname}${url.search}`);
+    setCopied(false);setFromInbox(false);setCommentId(targetId);setCommentContext(undefined);
+    const url = new URL(window.location.href); url.searchParams.set('post', id);if(targetId)url.searchParams.set('comment',targetId);else url.searchParams.delete('comment'); history.replaceState(null, '', `${url.pathname}${url.search}`);
     setDetail(null); setDetailError(''); setDetailLoading(true); setDetailOpen(true); setDeleteConfirm(false);
     setDetailMode(mode);void community.load([id]);
     try {
@@ -81,12 +89,34 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     } catch(error) {if (mounted.current && token === detailGeneration.current) setDetailError(loungeErrorMessage(error));}
     finally {if (mounted.current && token === detailGeneration.current) setDetailLoading(false);}
   }, [repository, community.load]);
-  useEffect(() => {const id = publicationQuery(window.location.search); if (id) void loadDetail(id);}, [loadDetail]);
+  useEffect(() => {const id = publicationQuery(window.location.search); if (id){const targetId=publicationQuery(window.location.search,'comment')??undefined;void loadDetail(id,targetId?'comments':'allocation',targetId);}}, [loadDetail]);
   function closeDetail() {
     detailGeneration.current++;
-    setDetailOpen(false); setDeleteConfirm(false);
-    const url = new URL(window.location.href); url.searchParams.delete('post');
+    setDetailOpen(false); setDeleteConfirm(false);setFromInbox(false);setCommentId(undefined);setCommentContext(undefined);setNotificationError('');
+    const url = new URL(window.location.href); url.searchParams.delete('post');url.searchParams.delete('comment');
     history.replaceState(null, '', `${url.pathname}${url.search}`);
+  }
+  function openInbox(button:HTMLButtonElement){
+    trigger.current=button;setDetail(null);setDetailOpen(true);setDetailMode('notifications');setFromInbox(true);setNotificationError('');inboxPosition.current={id:null,scroll:0};
+  }
+  async function openNotification(item:LoungeNotification){
+    if(notificationLock.current)return;notificationLock.current=true;setNotificationOpening(true);setNotificationError('');
+    const token=++detailGeneration.current;
+    try {
+      const [post,context]=await Promise.all([repository.get(item.postId),repository.getCommentContext(item.postId,item.commentId)]);
+      if(!mounted.current || token!==detailGeneration.current)return;
+      if(!post || !context){setNotificationError('삭제되었거나 더 이상 볼 수 없는 댓글이에요.');return;}
+      if(!item.read && !await notifications.markRead(item.id))return;
+      if(!mounted.current || token!==detailGeneration.current)return;
+      setDetail(post);setCommentId(item.commentId);setCommentContext(context);setDetailMode('comments');void community.load([post.id]);
+      const url=new URL(location.href);url.searchParams.set('post',post.id);url.searchParams.set('comment',item.commentId);history.replaceState(null,'',`${url.pathname}${url.search}`);
+    }catch(error){if(mounted.current && token===detailGeneration.current)setNotificationError(loungeErrorMessage(error));}
+    finally{notificationLock.current=false;if(mounted.current)setNotificationOpening(false);}
+  }
+  function backFromComments(){
+    const url=new URL(location.href);url.searchParams.delete('comment');if(fromInbox)url.searchParams.delete('post');history.replaceState(null,'',`${url.pathname}${url.search}`);
+    setCommentId(undefined);setCommentContext(undefined);setDetailMode(fromInbox?'notifications':'allocation');
+    if(!fromInbox)requestAnimationFrame(()=>detailCommentsRef.current?.focus());
   }
   async function openEditor() {
     if (editorLock.current) return;
@@ -129,8 +159,9 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     <AppContentFrame className="lounge-page">
       <h1 className="lounge-heading" ref={headingRef} tabIndex={-1}>커뮤니티 (Lounge)</h1>
       <header className="lounge-header"><p className="lounge-muted" aria-label="내 커뮤니티 닉네임">{currentNickname}</p>
-        {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor}><Plus size={18} aria-hidden="true" />{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</button>
-          : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}
+        <div className="lounge-header-actions"><button type="button" className="responsive-dialog__icon-button community-notification-bell" aria-label={notifications.unreadCount?`알림함 · 읽지 않은 알림 ${notifications.unreadCount}개`:'알림함'} onClick={event=>openInbox(event.currentTarget)}><Bell size={20} aria-hidden="true"/>{notifications.unreadCount?<span aria-hidden="true">{notifications.unreadCount}</span>:null}</button>
+        {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor} aria-label="내 포트폴리오 공유"><Plus size={18} aria-hidden="true" /><span className="lounge-share-label">{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</span><span className="lounge-share-short" aria-hidden="true">공유</span></button>
+          : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}</div>
       </header>
       {plan && !allocation ? <p role="status" className="lounge-muted">공유하려면 투자 대상 이름을 40자 이내로 정리해 주세요.</p> : null}
       <div className="lounge-toolbar"><div className="lounge-tabs" aria-label="게시물 범위">{[false,true].map(value => <button key={String(value)} aria-pressed={mine===value} onClick={() => setMine(value)}>{value ? '내 공유' : '전체'}</button>)}</div><span className="lounge-muted">최근 공유순</span></div>
@@ -150,11 +181,11 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     </AppContentFrame>
     {changingNickname ? <NicknameChangeDialog repository={repository} returnFocusRef={managementTrigger} onCurrentNickname={setCurrentNickname}
       onChanged={() => {setNotice('닉네임을 저장했어요.'); void load();}} onClose={() => setChangingNickname(false)} /> : null}
-    {detailOpen ? <ResponsiveDialog open labelledBy="lounge-detail-title" returnFocusRef={trigger} busy={deleting || commentsBusy}
+    {detailOpen ? <ResponsiveDialog open labelledBy={detailMode==='notifications'?'lounge-notification-title':'lounge-detail-title'} returnFocusRef={trigger} busy={deleting || commentsBusy || notificationOpening}
       onRequestClose={() => !deletingRef.current && (commentNavigationRef.current?.canClose() ?? true)} onClosed={closeDetail}>
-      {({requestClose}) => detail && detailMode==='comments' ? <PublicationComments key={detail.id} repository={repository} post={detail}
-        count={community.entries[detail.id]?.summary?.commentCount??0} onSummary={community.accept} onClose={closeDetail} requestClose={()=>requestClose('button')} navigationRef={commentNavigationRef} onBusyChange={setCommentsBusy}
-        onBack={()=>{setDetailMode('allocation');requestAnimationFrame(()=>detailCommentsRef.current?.focus());}} />
+      {({requestClose}) => detailMode==='notifications'?<NotificationInbox notifications={notifications} onClose={closeDetail} onOpen={openNotification} position={inboxPosition} error={notificationError} opening={notificationOpening}/> : detail && detailMode==='comments' ? <PublicationComments key={detail.id} repository={repository} post={detail}
+        initialCommentId={commentId} initialContext={commentContext} count={community.entries[detail.id]?.summary?.commentCount??0} onSummary={community.accept} onClose={closeDetail} requestClose={()=>requestClose('button')} navigationRef={commentNavigationRef} onBusyChange={setCommentsBusy}
+        onBack={backFromComments} />
         : <ResponsiveDialogLayout title={deleteConfirm ? '공유를 삭제할까요?' : detail?.title ?? '공유 포트폴리오'} titleId="lounge-detail-title" onClose={closeDetail} layout="preview"
         status={detailError ? <p role="alert">{detailError}</p> : undefined}
         footer={detail ? <ResponsiveDialogActionRow>{deleteConfirm ? <>

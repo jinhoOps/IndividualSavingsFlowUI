@@ -11,16 +11,16 @@ import {CommentComposer,type ComposerHandle} from './CommentComposer';
 import {CommentThread} from './CommentThread';
 
 export interface CommentNavigation {canClose():boolean}
-export function PublicationComments({repository,post,onSummary,onBack,onClose,requestClose,navigationRef,onBusyChange,initialCommentId,count=0}: {
+export function PublicationComments({repository,post,onSummary,onBack,onClose,requestClose,navigationRef,onBusyChange,initialCommentId,initialContext,count=0}: {
   repository:LoungeRepository;post:Publication;onSummary(summary:CommunitySummary):void;
   onBack():void;onClose():void;requestClose():void;navigationRef:Ref<CommentNavigation>;onBusyChange(busy:boolean):void;
-  initialCommentId?:string;count?:number;
+  initialCommentId?:string;initialContext?:CommentContext;count?:number;
 }) {
   const account=useContext(AccountManagementContext);
   const [page,setPage]=useState<ConversationPage|null>(null),[index,setIndex]=useState(0),[loading,setLoading]=useState(true);
   const [readError,setReadError]=useState(''),[writeError,setWriteError]=useState(''),[notice,setNotice]=useState('');
   const [dirty,setDirty]=useState(false),[composing,setComposing]=useState(false),[deleting,setDeleting]=useState(false);
-  const [discard,setDiscard]=useState<'close'|'back'|null>(null),[context,setContext]=useState<CommentContext|undefined>();
+  const [discard,setDiscard]=useState<'close'|'back'|null>(null),[context,setContext]=useState<CommentContext|undefined>(initialContext);
   const approved=useRef(false),lock=useRef(false),mounted=useRef(true),sequence=useRef(0);
   const cursors=useRef<Array<ConversationCursor|undefined>>([undefined]),attemptedPage=useRef(0),expanded=useRef(new Set<string>());
   const composer=useRef<ComposerHandle>(null),listRef=useRef<HTMLOListElement>(null),refreshBlocked=useRef(false);
@@ -50,7 +50,7 @@ export function PublicationComments({repository,post,onSummary,onBack,onClose,re
   async function loadPage(nextIndex:number,focusList=false,targetId?:string):Promise<void>{
     const token=++sequence.current;attemptedPage.current=nextIndex;setLoading(true);setReadError('');
     try {
-      const [result,target]=await Promise.all([repository.listThreads(post.id,cursors.current[nextIndex]),targetId?repository.getCommentContext(post.id,targetId):undefined]);
+      const [result,target]=await Promise.all([repository.listThreads(post.id,cursors.current[nextIndex]),targetId?(initialContext?.targetId===targetId?initialContext:repository.getCommentContext(post.id,targetId)):undefined]);
       if(!mounted.current || token!==sequence.current)return;
       if(nextIndex>0 && result.comments.length===0){await loadPage(nextIndex-1,focusList);return;}
       setPage(result);setIndex(nextIndex);setContext(target??undefined);
