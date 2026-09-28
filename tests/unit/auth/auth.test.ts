@@ -1,5 +1,13 @@
 import {describe, expect, it} from 'vitest';
 import {authCallbackUrl, completeAuthCallback, readSupabaseConfig, safeReturnPath} from '../../../src/auth/auth';
+it('keeps a validated community comment target with its post and removes credentials',()=>{
+  const post='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',comment='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const base='/IndividualSavingsFlowUI/';
+  expect(safeReturnPath(`${base}apps/lounge/?post=${post}&comment=${comment}&access_token=secret#refresh_token=private`,base))
+    .toBe(`${base}apps/lounge/?post=${post}&comment=${comment}`);
+  expect(safeReturnPath(`${base}apps/lounge/?comment=${comment}`,base)).toBe(`${base}apps/lounge/`);
+  expect(safeReturnPath(`${base}apps/portfolio/?comment=${comment}`,base)).toBe(`${base}apps/portfolio/`);
+});
 
 describe('static Google auth', () => {
   it('requires public configuration and refuses secret credentials', () => {
@@ -27,4 +35,11 @@ describe('static Google auth', () => {
       value => calls.push(value), async code => {calls.push(code); return {error: null};})).toBe(false);
     expect(calls).toEqual(['/callback/']);
   });
+});
+
+it('keeps allowlisted discovery conditions across login without carrying credentials',()=>{
+  const post='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',comment='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const returned=safeReturnPath(`/IndividualSavingsFlowUI/apps/lounge/?q=VOO&scope=mine&cash=1&band=20m&sort=comments&post=${post}&comment=${comment}&access_token=secret#refresh_token=private`,'/IndividualSavingsFlowUI/');
+  expect(returned).toBe(`/IndividualSavingsFlowUI/apps/lounge/?q=voo&scope=mine&cash=1&band=20m&sort=comments&post=${post}&comment=${comment}`);
+  expect(safeReturnPath('/IndividualSavingsFlowUI/apps/lounge/?q=금&sort=bad&band=secret&comment='+comment,'/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/lounge/?q=%EA%B8%88');
 });

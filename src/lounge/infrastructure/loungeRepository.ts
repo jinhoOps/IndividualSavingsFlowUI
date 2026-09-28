@@ -1,9 +1,14 @@
+import {parseFeedQuery,parseFeedCursor,parseFeedPage,feedQueryKey,type FeedQuery,type FeedCursor,type FeedPage} from '../domain/discovery';
+import {createConversationRepository, type ConversationRepository} from './conversationRepository';
+import {LoungeError} from './loungeErrors';
+export {LoungeError,loungeErrorMessage} from './loungeErrors';
 import {parseLoungeProfile, parseNickname, parseNicknameSettings, type LoungeProfile, type NicknameSettings} from '../domain/profile';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {getBrowserClient, readSupabaseConfig} from '../../auth/auth';
 import {parsePublication, parsePublicationInput, publicationId, PUBLICATION_PAGE_SIZE, type Publication, type PublicationInput} from '../domain/publication';
 import {isEmojiId, parseComment, parseCommentBody, parseCommentPage, parseCommunitySummary, type CommentCursor, type CommentPage, type CommunitySummary, type EmojiId, type LoungeComment} from '../domain/community';
-export interface LoungeRepository {
+export interface LoungeRepository extends ConversationRepository {
+  search(query:FeedQuery,cursor?:FeedCursor):Promise<FeedPage>;
   getProfile(): Promise<LoungeProfile | null>;
   registerNickname(nickname: string): Promise<LoungeProfile>;
   getNicknameSettings(): Promise<NicknameSettings>;
@@ -19,24 +24,6 @@ export interface LoungeRepository {
   removeComment(postId: string, id: string): Promise<CommunitySummary>;
 }
 export type NicknameChangeResult = {status: 'saved' | 'unchanged' | 'cooldown' | 'conflict'; profile: NicknameSettings};
-export class LoungeError extends Error {
-  constructor(public readonly code: 'conflict' | 'invalid' | 'unavailable' | 'account' | 'full' | 'nickname-taken' | 'profile-required' | 'rate-limited' | 'comment-limit' | 'missing' | 'forbidden') {super(code);}
-}
-export function loungeErrorMessage(error: unknown): string {
-  if (error instanceof LoungeError) {
-    if (error.code === 'rate-limited') return '잠시 후 다시 시도해 주세요.';
-    if (error.code === 'comment-limit') return '이 게시물에 더 이상 댓글을 남길 수 없어요.';
-    if (error.code === 'missing') return '삭제되었거나 더 이상 볼 수 없는 게시물이에요.';
-    if (error.code === 'forbidden') return '내가 작성한 댓글만 삭제할 수 있어요.';
-    if (error.code === 'nickname-taken') return '이미 사용 중인 닉네임이에요. 다른 이름을 입력해 주세요.';
-    if (error.code === 'profile-required') return '커뮤니티에서 닉네임을 먼저 설정해 주세요.';
-    if (error.code === 'conflict') return '다른 곳에서 공유 내용이 바뀌었어요. 닫고 다시 열어 주세요.';
-    if (error.code === 'invalid') return '공유할 이름과 비율을 확인해 주세요.';
-    if (error.code === 'account') return '로그인 상태가 바뀌었어요. 새로고침해 주세요.';
-    if (error.code === 'full') return '지금은 새 내용을 저장할 수 없어요. 잠시 후 다시 시도해 주세요.';
-  }
-  return '불러오거나 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.';
-}
 export function browserLoungeRepository(): LoungeRepository {
   return createLoungeRepository(getBrowserClient(readSupabaseConfig(import.meta.env)));
 }
@@ -50,7 +37,7 @@ export function createLoungeRepository(client: SupabaseClient): LoungeRepository
     const {data: auth, error: authError} = await client.auth.getSession();
     if (!userId || authError || !auth.session || auth.session.user.id !== userId) throw new LoungeError('account');
     const {data, error} = await client.rpc(name, args).setHeader('Authorization', `Bearer ${auth.session.access_token}`).retry(false);
-    if (error) throw new LoungeError('unavailable');
+    if (error) throw new LoungeError(error.message === 'rate limited' ? 'rate-limited' : 'unavailable');
     return data;
   }
   const parse = (value: unknown) => {const post = parsePublication(value); if (!post) throw new LoungeError('invalid'); return post;};
@@ -66,6 +53,15 @@ export function createLoungeRepository(client: SupabaseClient): LoungeRepository
       || status === 'full' || status === 'profile-required' || status === 'conflict' ? status : 'invalid');
   };
   return {
+    ...createConversationRepository(rpc),
+    async search(query,cursor){
+      const safe=parseFeedQuery(query),after=cursor===undefined?null:parseFeedCursor(cursor);
+      if(!safe || cursor!==undefined && !after || after && (after.queryKey!==feedQueryKey(safe) || (safe.sort==='updated')!==(after.epoch===null)))throw new LoungeError('invalid');
+      const page=parseFeedPage(await rpc('search_lounge_portfolios',{p_query:safe,p_cursor:after}));
+      if(!page || page.status==='ok' && (page.nextCursor && page.nextCursor.queryKey!==feedQueryKey(safe)
+        || (safe.sort==='updated')!==(page.rankedAt===null) || after && (page.asOf!==after.asOf || page.rankedAt!==after.epoch)))throw new LoungeError('invalid');
+      return page;
+    },
     async getCommunity(postIds) {
       if (postIds.length > 24 || !postIds.every(publicationId)) throw new LoungeError('invalid');
       const data = await rpc('get_lounge_community',{p_post_ids:postIds});
