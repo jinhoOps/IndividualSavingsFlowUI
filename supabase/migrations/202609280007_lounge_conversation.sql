@@ -120,6 +120,9 @@ $$;
 create function private.lounge_conversation_comment(c public.lounge_comments) returns jsonb
 language sql stable set search_path='' as $$
   select jsonb_build_object('id',c.id,'rootId',c.root_id,'replyToId',c.reply_to_id,
+    'replyToAuthor',case when c.deleted_at is null then (select jsonb_build_object('publicId',p.public_id,'nickname',p.nickname)
+      from public.lounge_comments target join public.lounge_profiles p on p.user_id=target.user_id
+      where target.id=c.reply_to_id and target.deleted_at is null) else null end,
     'author',case when c.deleted_at is null then (select jsonb_build_object('publicId',p.public_id,'nickname',p.nickname) from public.lounge_profiles p where p.user_id=c.user_id) else null end,
     'body',c.body,'mentions',coalesce((select jsonb_agg(m.value||jsonb_build_object('currentNickname',p.nickname) order by m.ordinality)
       from jsonb_array_elements(c.mentions) with ordinality m join public.lounge_profiles p on p.public_id=(m.value->>'publicId')::uuid),'[]'::jsonb),
@@ -135,7 +138,7 @@ begin
   if jsonb_typeof(value)<>'object' or not coalesce((select array_agg(k order by k) from jsonb_object_keys(value) k)=array['createdAt','id'],false)
     or jsonb_typeof(value->'createdAt')<>'string' or jsonb_typeof(value->'id')<>'string'
     or (value->>'id') !~* '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$' or length(value->>'createdAt')>40 then return false; end if;
-  perform (value->>'createdAt')::timestamptz;return true;
+  return isfinite((value->>'createdAt')::timestamptz);
 exception when others then return false;
 end $$;
 
