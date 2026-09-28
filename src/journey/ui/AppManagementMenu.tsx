@@ -1,4 +1,4 @@
-import { useContext, useId, useRef, useState, type ReactNode } from 'react';
+import { useContext, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { AccountManagementContext, AccountProductBoundary } from '../../auth/AccountManagementContext';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
@@ -18,10 +18,13 @@ export type AppManagementItem =
   | { kind: 'message'; id: string; text: string }
   | { kind: 'control'; id: string; content: ReactNode };
 
-export function AppManagementMenu({ items }: { items: readonly AppManagementItem[] }) {
+export function AppManagementMenu({ items, triggerRef: providedTriggerRef }: {
+  items: readonly AppManagementItem[]; triggerRef?: RefObject<HTMLButtonElement | null>;
+}) {
   const account = useContext(AccountManagementContext);
   const menuId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const localTriggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = providedTriggerRef ?? localTriggerRef;
   const confirmationPendingRef = useRef(false);
   const pendingActionRef = useRef<Extract<AppManagementItem, { kind: 'action' }> | null>(null);
   const closeQueuedRef = useRef(false);

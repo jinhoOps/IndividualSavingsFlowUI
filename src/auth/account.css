@@ -20,6 +20,16 @@
 .account-sign-in button { margin: .25rem 0; }
 .account-gate .account-google-sign-in { width: 100%; margin-inline: 0; background: #0f766e; color: white; border-color: #0f766e; }
 .account-gate .account-sign-in button { background: white; color: #292524; border-color: #9ca3af; }
+.account-browser-notice { padding-bottom: .75rem; border-bottom: 1px solid #d6d3ce; }
+.account-browser-notice h2 { margin-block: .75rem .5rem; }
+.account-browser-actions { display: flex; justify-content: flex-end; align-items: stretch; flex-wrap: wrap; gap: .5rem; margin-block: .85rem; }
+.account-panel .account-browser-actions > * { box-sizing: border-box; margin: 0; }
+.account-panel a.account-external-browser { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; background: #0f766e; color: white; border-color: #0f766e; }
+.account-panel button.account-browser-copy { background: white; color: #292524; border-color: #9ca3af; }
+.account-panel a:focus-visible { outline: 3px solid #0f766e; outline-offset: 3px; }
+.account-browser-help, .account-browser-address span { font-size: .875rem; }
+.account-browser-address { display: grid; gap: .5rem; }
+.account-browser-address input { box-sizing: border-box; width: 100%; min-height: 44px; padding: .65rem; font: inherit; }
 @media (max-width: 390px) { .account-panel {padding: 1rem;} }
 /* Independent welcome scene, never a network loading surface. */
 .brand-visual { box-sizing: border-box; min-height: 100dvh; display: grid; place-items: center; padding: 1.5rem; background: #f8f6f1; color: #47615d; }

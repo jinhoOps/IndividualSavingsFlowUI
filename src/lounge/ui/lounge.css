@@ -91,9 +91,6 @@
   .lounge-nickname-form .ui-button { width:100%; }
 }
 
-.lounge-identity { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
-.lounge-identity p { overflow-wrap:anywhere; }
-.lounge-identity .ui-button { min-height:44px; }
 .lounge-nickname-edit { display:grid; gap:.8rem; }
 .lounge-nickname-edit p { margin:0; }
 .lounge-nickname-edit input { width:100%; min-height:52px; padding:.8rem; font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line-strong); border-radius:12px; }

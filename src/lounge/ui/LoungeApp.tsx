@@ -17,7 +17,7 @@ import {NicknameChangeDialog} from './NicknameChangeDialog';
 
 export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null}: {repository: LoungeRepository; nickname: string; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const nicknameTrigger = useRef<HTMLButtonElement>(null);
+  const managementTrigger = useRef<HTMLButtonElement>(null);
   const [currentNickname, setCurrentNickname] = useState(nickname);
   const [changingNickname, setChangingNickname] = useState(false);
   useEffect(() => {headingRef.current?.focus();}, []);
@@ -84,9 +84,10 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     } catch(error) {if (mounted.current) setError(loungeErrorMessage(error));}
     finally {editorLock.current = false; if (mounted.current) setOpeningEditor(false);}
   }
-  return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu items={[]} />}>
+  return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu triggerRef={managementTrigger}
+    items={[{kind:'action',id:'change-nickname',label:'닉네임 변경',onSelect:() => setChangingNickname(true)}]} />}>
     <AppContentFrame className="lounge-page">
-      <header className="lounge-header"><div><p className="lounge-eyebrow">PORTFOLIO LOUNGE</p><h1 ref={headingRef} tabIndex={-1}>포트폴리오 라운지</h1><div className="lounge-identity"><p className="lounge-muted" aria-label="내 라운지 닉네임">{currentNickname}</p><button ref={nicknameTrigger} className="ui-button ui-button--quiet" onClick={() => setChangingNickname(true)}>닉네임 변경</button></div></div>
+      <header className="lounge-header"><div><p className="lounge-eyebrow">PORTFOLIO LOUNGE</p><h1 ref={headingRef} tabIndex={-1}>포트폴리오 라운지</h1><p className="lounge-muted" aria-label="내 라운지 닉네임">{currentNickname}</p></div>
         {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor}><Plus size={18} aria-hidden="true" />{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</button>
           : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}
       </header>
@@ -104,7 +105,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
       {more ? <button className="ui-button ui-button--secondary lounge-more" disabled={loading} onClick={() => void load(posts.at(-1))}>더 보기</button> : null}
       <p className="lounge-footnote">사용자가 공유한 투자 구성입니다. 실제 수익률이나 추천 순위가 아니에요.</p>
     </AppContentFrame>
-    {changingNickname ? <NicknameChangeDialog repository={repository} returnFocusRef={nicknameTrigger} onCurrentNickname={setCurrentNickname}
+    {changingNickname ? <NicknameChangeDialog repository={repository} returnFocusRef={managementTrigger} onCurrentNickname={setCurrentNickname}
       onChanged={() => {setNotice('닉네임을 저장했어요.'); void load();}} onClose={() => setChangingNickname(false)} /> : null}
     {detailOpen ? <ResponsiveDialog open labelledBy="lounge-detail-title" returnFocusRef={trigger} busy={deleting}
       onRequestClose={() => !deletingRef.current} onClosed={closeDetail}>
