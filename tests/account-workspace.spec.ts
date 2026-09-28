@@ -1732,3 +1732,161 @@ for (const width of [390, 768, 1280]) {
     await expect(page.getByRole('img')).toHaveCount(0);
   });
 }
+
+function housingLoanFixture(): WorkspaceDocument {
+  const workspace = mappedPlan();
+  const draft = createExpenseDraft(1000);
+  for (const {id} of EXPENSE_ITEMS) draft.answers[id] = {amountWon: 0, period: 'month'};
+  draft.answers.rent = {amountWon: 500000, period: 'month'};
+  draft.answers.housingInterest = {amountWon: 300000, period: 'month'};
+  draft.step = 'housingInterest';
+  workspace.main.expenseAssistant = {schemaVersion: 1, draft, lastApplied: {answers: structuredClone(draft.answers), appliedAt: 1000}};
+  return workspace;
+}
+for (const width of [390, 768, 1280]) {
+  test(`housing loan planner explains methods, saves and restores conditions at ${width}`, async ({page, context}, testInfo) => {
+    const server = fakeServer(); const original = housingLoanFixture(); server.rows.set(userA, original);
+    await server.attach(context, userA); await page.setViewportSize({width, height: 900});
+    await page.goto('apps/main/');
+    await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+    await page.getByRole('button', {name: '상환방식으로 대출 설정', exact: false}).click();
+    let dialog = page.getByRole('dialog', {name: '대출 설정', exact: true});
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await dialog.getByRole('button', {name: '대출 추가'}).click();
+    await expect(dialog.getByRole('radio')).toHaveCount(3);
+    await expect(dialog.getByRole('img', {name: /개념도/})).toHaveCount(3);
+    const method = width === 390 ? '원금균등분할상환' : width === 768 ? '원리금균등분할상환' : '만기일시상환';
+    await dialog.getByRole('radio', {name: new RegExp(method)}).check();
+    await page.screenshot({path: testInfo.outputPath(`loan-methods-${width}.png`)});
+    await dialog.getByRole('button', {name: '조건 입력'}).click();
+    await dialog.getByLabel('현재 남은 원금', {exact: true}).fill('100000000');
+    await dialog.getByLabel('남은 기간 (개월)', {exact: true}).fill(width === 1280 ? '1' : '120');
+    await dialog.getByLabel('다음 납입월', {exact: true}).fill('2026-09');
+    await dialog.getByRole('button', {name: '상환 일정 확인'}).click();
+    await expect(dialog.getByRole('img', {name: /월별 정기 납입액/})).toBeVisible();
+    await dialog.getByRole('checkbox', {name: /월세·기타 주거비/}).check();
+    await expect.poll(() => dialog.locator('clipPath rect').evaluate(element => (element as SVGGraphicsElement).getBBox().width)).toBe(600);
+    await dialog.locator('[data-surface-body]').evaluate(element => { element.scrollTop = 0; });
+    await page.screenshot({path: testInfo.outputPath(`loan-result-${width}.png`)});
+    const geometry = await dialog.evaluate(node => ({dialog: node.getBoundingClientRect().toJSON(), body: document.documentElement.scrollWidth,
+      graph: node.querySelector('.loan-repayment-chart')!.getBoundingClientRect().toJSON()}));
+    expect(geometry.body).toBeLessThanOrEqual(width);
+    expect(geometry.dialog.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.dialog.right).toBeLessThanOrEqual(width);
+    expect(geometry.graph.width).toBeGreaterThan(200);
+    await dialog.getByRole('button', {name: '대출 조건 저장'}).click();
+    await expect(dialog.getByRole('button', {name: '대출 추가'})).toBeVisible();
+    expect(server.rows.get(userA)?.main.expenseAssistant?.schemaVersion).toBe(2);
+    expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
+    expect(server.rows.get(userA)?.main.expenseAssistant?.draft.answers.housingInterest?.amountWon).toBe(300000);
+    await dialog.getByLabel('주거비에 반영할 월').fill('2026-09');
+    await expect.poll(() => server.rows.get(userA)?.main.expenseAssistant?.draft.housingLoans?.month).toBe('2026-09');
+    await dialog.getByRole('button', {name: '지출 내역으로'}).click();
+    await page.getByRole('button', {name: '내역으로', exact: true}).click();
+    await page.getByRole('button', {name: '이 금액으로 반영'}).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const expected = width === 390 ? 1166666 : width === 768 ? 1012451 : 333333;
+    expect(server.rows.get(userA)?.main.applied?.monthlyHousingWon).toBe(500000 + expected);
+    for (const key of ['simulation', 'portfolio', 'locations', 'accountMap'] as const) expect(server.rows.get(userA)?.[key]).toEqual(original[key]);
+    await page.reload();
+    await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+    await page.getByRole('button', {name: '주거 대출 이자 답변 수정'}).click();
+    await page.getByRole('button', {name: /대출 1건/}).click();
+    dialog = page.getByRole('dialog', {name: '대출 설정', exact: true});
+    await expect(dialog.getByText(method, {exact: false})).toBeVisible();
+    if (width === 1280) await expect(dialog.getByText('100,000,000원', {exact: true})).toBeVisible();
+    expect(await preventsLeaving(page)).toBe(false);
+    const beforeClose = server.operations.length;
+    await dialog.getByRole('button', {name: '닫기', exact: true}).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(server.operations).toHaveLength(beforeClose);
+  });
+}
+test('housing loan planner guards only changed unsaved form input and preserves parent answers', async ({page, context}) => {
+  const server = fakeServer(); const original = housingLoanFixture(); server.rows.set(userA, original); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+  await page.getByRole('button', {name: /상환방식으로 대출 설정/}).click();
+  let dialog = page.getByRole('dialog', {name: '대출 설정', exact: true});
+  await dialog.getByRole('button', {name: '대출 추가'}).click();
+  await dialog.getByRole('button', {name: '닫기', exact: true}).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(server.operations).toEqual([]);
+  await page.getByRole('button', {name: /^지출 계산 도우미 · 현재/}).click();
+  await page.getByRole('button', {name: /상환방식으로 대출 설정/}).click();
+  dialog = page.getByRole('dialog', {name: '대출 설정', exact: true});
+  await dialog.getByRole('button', {name: '대출 추가'}).click();
+  await dialog.getByRole('button', {name: '조건 입력'}).click();
+  await dialog.getByLabel('현재 남은 원금', {exact: true}).fill('70000000');
+  await dialog.getByRole('button', {name: '닫기', exact: true}).click();
+  const confirmation = page.getByRole('dialog', {name: '입력 중인 대출 조건을 버릴까요?'});
+  await confirmation.getByRole('button', {name: '계속 입력'}).click();
+  await expect(dialog.getByLabel('현재 남은 원금', {exact: true})).toHaveValue('70,000,000');
+  await dialog.getByRole('button', {name: '뒤로', exact: true}).click();
+  await confirmation.getByRole('button', {name: '입력 버리기'}).click();
+  await expect(page.getByRole('dialog', {name: '지출 계산 도우미'})).toBeVisible();
+  expect(server.rows.get(userA)).toEqual(original);
+  expect(server.operations).toEqual([]);
+});
+
+function appliedHousingLoanFixture(): WorkspaceDocument {
+  const workspace = housingLoanFixture();
+  return withExpenseDraft(workspace, {...workspace.main.expenseAssistant!.draft, housingLoans: {
+    month: '2026-09', paymentOverrideWon: null, loans: [{id: 'home', name: '주택 대출', method: 'equal-payment',
+      basis: 'remaining', principalWon: 100000000, annualRateBps: 400, rateType: 'fixed', months: 120,
+      graceMonths: 0, firstPaymentMonth: '2026-09'}],
+  }}, true, 2000);
+}
+
+test('housing loan Main shortcut returns focus and applies a confirmed monthly amount only on request', async ({page, context}) => {
+  const server = fakeServer(); const original = appliedHousingLoanFixture(); server.rows.set(userA, original); await server.attach(context, userA);
+  await page.goto('apps/main/');
+  const opener = page.getByRole('region', {name: '주거 대출 계획'}).getByRole('button');
+  await opener.click();
+  const dialog = page.getByRole('dialog', {name: '대출 설정', exact: true});
+  await dialog.getByRole('button', {name: '지출 내역으로'}).click();
+  await expect(page.getByRole('button', {name: '주거 대출 이자 답변 수정'})).toBeFocused();
+  await page.getByRole('dialog').getByRole('button', {name: '닫기', exact: true}).click();
+  await expect(opener).toBeFocused();
+  expect(server.operations).toEqual([]);
+  await opener.click();
+  await dialog.getByText('은행 납입액과 다를 때', {exact: true}).click();
+  await dialog.getByLabel('확인한 정기 납입액', {exact: true}).fill('990000');
+  expect(server.operations).toEqual([]);
+  expect(await preventsLeaving(page)).toBe(true);
+  await dialog.getByRole('button', {name: '선택 월에 보정 적용'}).click();
+  await expect.poll(() => server.rows.get(userA)?.main.expenseAssistant?.draft.housingLoans?.paymentOverrideWon).toBe(990000);
+  expect(server.rows.get(userA)?.main.applied).toEqual(original.main.applied);
+  expect(server.rows.get(userA)?.main.expenseAssistant?.draft.housingLoans?.loans).toEqual(original.main.expenseAssistant?.draft.housingLoans?.loans);
+  await expect.poll(() => preventsLeaving(page)).toBe(false);
+  await dialog.getByRole('button', {name: '지출 내역으로'}).click();
+  await page.getByRole('button', {name: '이 금액으로 반영'}).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(server.rows.get(userA)?.main.applied?.monthlyHousingWon).toBe(1490000);
+});
+
+for (const failure of ['response-lost', 'conflict'] as const) {
+  test(`housing loan editor recovers ${failure} inside the surface without losing newer Main values`, async ({page, context}) => {
+    const server = fakeServer(); const original = appliedHousingLoanFixture(); server.rows.set(userA, original); await server.attach(context, userA);
+    await page.goto('apps/main/');
+    await page.getByRole('region', {name: '주거 대출 계획'}).getByRole('button').click();
+    const dialog = page.getByRole('dialog', {name: '대출 설정', exact: true});
+    await dialog.getByRole('button', {name: /주택 대출 원리금균등/}).click();
+    await dialog.getByLabel('현재 남은 원금', {exact: true}).fill('90000000');
+    await dialog.getByRole('button', {name: '상환 일정 확인'}).click();
+    if (failure === 'response-lost') server.loseNextResponse();
+    else server.rows.set(userA, {...original, revision: original.revision + 1, main: {...original.main,
+      applied: {...original.main.applied!, monthlyNetIncomeWon: 4000000, monthlySavingWon: 500000, updatedAt: 3000}}});
+    await dialog.getByRole('button', {name: '대출 조건 저장'}).click();
+    await expect(dialog.getByRole('alert')).toBeVisible();
+    if (failure === 'conflict') page.once('dialog', prompt => prompt.accept());
+    await dialog.getByRole('button', {name: failure === 'response-lost' ? '저장 결과 다시 확인' : '최신 상태에서 다시 적용'}).click();
+    await expect.poll(() => server.rows.get(userA)?.main.expenseAssistant?.draft.housingLoans?.loans[0].principalWon).toBe(90000000);
+    await expect.poll(() => preventsLeaving(page)).toBe(false);
+    expect(server.rows.get(userA)?.revision).toBe(original.revision + (failure === 'response-lost' ? 1 : 2));
+    expect(server.rows.get(userA)?.main.applied?.monthlyNetIncomeWon).toBe(failure === 'response-lost' ? 3200000 : 4000000);
+    expect(server.rows.get(userA)?.main.applied?.monthlySavingWon).toBe(failure === 'response-lost' ? 300000 : 500000);
+    expect(server.rows.get(userA)?.main.applied?.monthlyHousingWon).toBe(original.main.applied?.monthlyHousingWon);
+    expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
+  });
+}

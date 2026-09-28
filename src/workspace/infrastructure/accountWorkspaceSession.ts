@@ -326,7 +326,8 @@ export class AccountWorkspaceSession {
       delete this.recoveryDrafts['main-expense'];
     }
     if ((pending.operation === 'save_expense_draft' || pending.operation === 'apply_expense')
-      && sameJson((this.recoveryDrafts['main-expense']?.value as {answers?: unknown} | undefined)?.answers, pending.payload.main?.expenseAssistant?.draft.answers)) {
+      && sameJson((this.recoveryDrafts['main-expense']?.value as {answers?: unknown} | undefined)?.answers, pending.payload.main?.expenseAssistant?.draft.answers)
+      && sameJson((this.recoveryDrafts['main-expense']?.value as {housingLoans?: unknown} | undefined)?.housingLoans, pending.payload.main?.expenseAssistant?.draft.housingLoans)) {
       delete this.recoveryDrafts['main-expense'];
     }
     if (pending.operation === 'save_main' && mainRecoveryIsCovered(this.recoveryDrafts.main?.value, pending.payload)) {

@@ -1,3 +1,5 @@
+import {loanPlanMonthTotals, parseHousingLoanPlan, type HousingLoanPlan} from './housingLoan';
+
 export const EXPENSE_ITEMS = [
   { id: 'rent', label: '월세', question: '매달 월세로 얼마를 내나요?', hint: '월세가 없다면 입력하지 않고 다음으로 넘어가세요.', group: 'fixed', target: 'housing' },
   { id: 'housingInterest', label: '주거 대출 이자', question: '주거 대출 이자는 얼마인가요?', hint: '전세·주택 대출의 이자만 입력해요.', group: 'fixed', target: 'housing' },
@@ -21,31 +23,35 @@ export interface ExpenseAssistantDraft {
   answers: ExpenseAnswers;
   step: ExpenseItemId | 'review';
   updatedAt: number;
+  /** Presence marks the versioned loan extension; null explicitly uses manual interest. */
+  housingLoans?: HousingLoanPlan | null;
 }
 export interface ExpenseAssistant {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   draft: ExpenseAssistantDraft;
-  lastApplied: { answers: ExpenseAnswers; appliedAt: number } | null;
+  lastApplied: { answers: ExpenseAnswers; appliedAt: number; housingLoans?: HousingLoanPlan | null } | null;
 }
 
 export function createExpenseDraft(now = Date.now()): ExpenseAssistantDraft {
   return { answers: Object.fromEntries(EXPENSE_ITEMS.map(({ id }) => [id, null])) as ExpenseAnswers, step: 'rent', updatedAt: now };
 }
 
-export function expenseTotals(answers: ExpenseAnswers): { housingWon: number; livingWon: number; totalWon: number } | null {
+export function expenseTotals(answers: ExpenseAnswers, housingLoans?: HousingLoanPlan | null): { housingWon: number; livingWon: number; totalWon: number } | null {
   const annual = { housing: 0n, living: 0n };
   for (const item of EXPENSE_ITEMS) {
+    if (housingLoans && item.id === 'housingInterest') continue;
     const answer = answers[item.id];
     if (answer) annual[item.target] += BigInt(answer.amountWon) * (answer.period === 'month' ? 12n : 1n);
   }
+  if (housingLoans) annual.housing += BigInt(loanPlanMonthTotals(housingLoans).regularWon) * 12n;
   const housing = (annual.housing + 6n) / 12n;
   const living = (annual.living + 6n) / 12n;
   if (housing + living > BigInt(Number.MAX_SAFE_INTEGER)) return null;
   return { housingWon: Number(housing), livingWon: Number(living), totalWon: Number(housing + living) };
 }
 
-export function expenseAnswersComplete(answers: ExpenseAnswers): boolean {
-  return EXPENSE_ITEMS.every(({ id }) => answers[id] !== null);
+export function expenseAnswersComplete(answers: ExpenseAnswers, housingLoans?: HousingLoanPlan | null): boolean {
+  return EXPENSE_ITEMS.every(({ id }) => (id === 'housingInterest' && housingLoans != null) || answers[id] !== null);
 }
 
 export function parseExpenseAnswers(value: unknown): ExpenseAnswers | null {
@@ -59,21 +65,32 @@ export function parseExpenseAnswers(value: unknown): ExpenseAnswers | null {
 }
 
 export function parseExpenseDraft(value: unknown): ExpenseAssistantDraft | null {
-  if (!exactKeys(value, ['answers', 'step', 'updatedAt']) || !timestamp(value.updatedAt)
+  if ((!exactKeys(value, ['answers', 'step', 'updatedAt']) && !exactKeys(value, ['answers', 'step', 'updatedAt', 'housingLoans'])) || !timestamp(value.updatedAt)
     || (value.step !== 'review' && !EXPENSE_ITEMS.some(item => item.id === value.step))) return null;
   const answers = parseExpenseAnswers(value.answers);
-  return answers === null ? null : { answers, step: value.step as ExpenseAssistantDraft['step'], updatedAt: value.updatedAt };
+  const extension = parseLoanExtension(value);
+  return answers === null || extension === null || expenseTotals(answers, extension.housingLoans) === null ? null
+    : { answers, step: value.step as ExpenseAssistantDraft['step'], updatedAt: value.updatedAt, ...extension };
 }
 
 export function parseExpenseAssistant(value: unknown): ExpenseAssistant | null {
-  if (!exactKeys(value, ['schemaVersion', 'draft', 'lastApplied']) || value.schemaVersion !== 1) return null;
+  if (!exactKeys(value, ['schemaVersion', 'draft', 'lastApplied']) || (value.schemaVersion !== 1 && value.schemaVersion !== 2)) return null;
   const draft = parseExpenseDraft(value.draft);
-  if (draft === null) return null;
-  if (value.lastApplied === null) return { schemaVersion: 1, draft, lastApplied: null };
-  if (!exactKeys(value.lastApplied, ['answers', 'appliedAt']) || !timestamp(value.lastApplied.appliedAt)) return null;
+  if (draft === null || (value.schemaVersion === 2) !== Object.hasOwn(draft, 'housingLoans')) return null;
+  if (value.lastApplied === null) return { schemaVersion: value.schemaVersion, draft, lastApplied: null };
+  if ((!exactKeys(value.lastApplied, ['answers', 'appliedAt']) && !exactKeys(value.lastApplied, ['answers', 'appliedAt', 'housingLoans'])) || !timestamp(value.lastApplied.appliedAt)) return null;
   const answers = parseExpenseAnswers(value.lastApplied.answers);
-  if (answers === null || !expenseAnswersComplete(answers)) return null;
-  return { schemaVersion: 1, draft, lastApplied: { answers, appliedAt: value.lastApplied.appliedAt } };
+  const extension = parseLoanExtension(value.lastApplied);
+  if (extension === null || (value.schemaVersion === 1 && Object.hasOwn(extension, 'housingLoans')) || answers === null
+    || !expenseAnswersComplete(answers, extension.housingLoans) || expenseTotals(answers, extension.housingLoans) === null) return null;
+  return { schemaVersion: value.schemaVersion, draft, lastApplied: { answers, appliedAt: value.lastApplied.appliedAt, ...extension } };
+}
+
+function parseLoanExtension(value: Record<string, unknown>): {housingLoans?: HousingLoanPlan | null} | null {
+  if (!Object.hasOwn(value, 'housingLoans')) return {};
+  if (value.housingLoans === null) return {housingLoans: null};
+  const housingLoans = parseHousingLoanPlan(value.housingLoans);
+  return housingLoans === null ? null : {housingLoans};
 }
 
 function exactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {

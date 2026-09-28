@@ -212,6 +212,8 @@ try {
   assert.equal(sql("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('initialize_workspace','save_main','save_simulation','save_portfolio','save_account_map','restore_workspace') and p.prosecdef and p.proowner = 'workspace_rpc_owner'::regrole and p.proconfig @> array['search_path=\"\"']"), '6');
   const { verifyExpenseDatabase } = await import('./verify-expense-db.mjs');
   await verifyExpenseDatabase({sql, quote, asUser, vite, userA, userC});
+  const { verifyHousingLoansDatabase } = await import('./verify-housing-loans-db.mjs');
+  await verifyHousingLoansDatabase({sql, quote, asUser, vite, userA, userC});
   console.log(`PASS: ${fixtures.length} shared TS/SQL fixtures; v3 upgrade/before-images/rollback; required v4 protocol; PostgreSQL RLS, narrow RPCs, revisions, receipts, concurrent writes/retries/initialization.`);
 } finally {
   await vite?.close();
