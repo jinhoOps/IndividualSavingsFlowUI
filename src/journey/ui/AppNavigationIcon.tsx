@@ -30,6 +30,8 @@ export function AppNavigationIcon({ app }: { app: JourneyApp }) {
     );
   }
 
+  if (app === 'lounge') return <svg {...common}><rect x="3.5" y="4" width="17" height="13" rx="3" /><path d="m8 17-3 4v-5M7.5 13V10M12 13V7M16.5 13V9" /></svg>;
+
   return (
     <svg {...common}>
       <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12Z" />

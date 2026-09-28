@@ -8,9 +8,14 @@ export function authCallbackUrl(origin: string, base: string): string {
   return `${origin}${appPath('main', base).replace('apps/main/', 'apps/auth/callback/')}`;
 }
 export function safeReturnPath(path: string | null, base: string): string {
-  const paths = (['main', 'simulation', 'portfolio'] as JourneyApp[]).map(app => appPath(app, base));
-  const normalized = path?.replace(/index\.html$/, '');
-  return normalized && paths.includes(normalized) ? normalized : paths[0];
+  const paths = (['main', 'simulation', 'portfolio', 'lounge'] as JourneyApp[]).map(app => appPath(app, base));
+  if (!path || !path.startsWith('/') || path.startsWith('//')) return paths[0];
+  const url = new URL(path, 'https://isf.invalid');
+  const normalized = url.pathname.replace(/index\.html$/, '');
+  if (url.origin !== 'https://isf.invalid' || !paths.includes(normalized)) return paths[0];
+  const key = normalized === appPath('lounge', base) ? 'post' : normalized === appPath('portfolio', base) ? 'publication' : null;
+  const id = key ? url.searchParams.get(key) : null;
+  return normalized + (key && id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? `?${key}=${id}` : '');
 }
 export async function completeAuthCallback(href: string, scrub: (url: string) => void,
   exchange: (code: string) => Promise<{error: unknown}>): Promise<boolean> {

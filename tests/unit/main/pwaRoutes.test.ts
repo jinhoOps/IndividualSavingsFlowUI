@@ -16,6 +16,7 @@ describe('createMpaNavigationCaching', () => {
       ['apps/simulation/', true],
       ['apps/simulation/index.html', true],
       ['apps/portfolio/', true],
+      ['apps/lounge/', true],
       ['apps/portfolio/index.html', true],
       ['apps/account-map/', false],
       ['apps/account-map/index.html', false],

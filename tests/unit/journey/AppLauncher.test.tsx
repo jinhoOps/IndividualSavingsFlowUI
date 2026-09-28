@@ -49,15 +49,16 @@ afterEach(() => {
 });
 
 describe('AppLauncher', () => {
-  it('offers only the three supported products', () => {
+  it('offers only the four supported products', () => {
     render(<AppLauncher currentApp="main" />);
-    expect(screen.getAllByRole('link')).toHaveLength(3);
+    expect(screen.getAllByRole('link')).toHaveLength(4);
     expect(screen.queryByRole('link', { name: /Account Map/ })).not.toBeInTheDocument();
   });
   it.each([
     ['main', '자금 흐름 (Main)'],
     ['simulation', '미래 성장 (Simulation)'],
     ['portfolio', '투자 배분 (Portfolio)'],
+    ['lounge', '포트폴리오 라운지 (Lounge)'],
   ] satisfies ReadonlyArray<[JourneyApp, string]>)(
     'renders icon navigation and marks %s as the current location',
     (currentApp, currentLabel) => {
@@ -72,7 +73,7 @@ describe('AppLauncher', () => {
       expect(screen.queryByText('준비 중')).not.toBeInTheDocument();
       expect(screen.queryByText('사용 중')).not.toBeInTheDocument();
       expect(container.querySelector('details, summary')).toBeNull();
-      expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(3);
+      expect(container.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(4);
     },
   );
 
@@ -84,7 +85,7 @@ describe('AppLauncher', () => {
     const navigation = screen.getByRole('navigation', { name: 'ISF 앱' });
     const tools = screen.getByRole('group', { name: '앱 도구' });
     const management = screen.getByRole('button', { name: '관리 메뉴' });
-    expect(within(navigation).getAllByRole('link')).toHaveLength(3);
+    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
     expect(within(navigation).queryByRole('button', { name: '관리 메뉴' })).not.toBeInTheDocument();
     expect(within(tools).getByRole('button', { name: '관리 메뉴' })).toBe(management);
     expect(screen.queryByRole('button', { name: '앱 아이콘 도움말' })).not.toBeInTheDocument();
@@ -120,7 +121,7 @@ describe('AppLauncher', () => {
     const more = within(navigation).getByRole('button', { name: '앱 더보기' });
     fireEvent.click(more);
     const menu = screen.getByRole('region', { name: '추가 앱' });
-    expect(within(menu).getAllByRole('link')).toHaveLength(2);
+    expect(within(menu).getAllByRole('link')).toHaveLength(3);
     expect(within(menu).getByRole('link', { name: /미래 성장 \(Simulation\)/ }))
       .toHaveAttribute('href', expect.stringContaining('/apps/simulation/'));
     expect(within(menu).getByRole('link', { name: /자금 흐름 \(Main\)/ }))
@@ -136,7 +137,7 @@ describe('AppLauncher', () => {
     expect(screen.queryByRole('region', { name: '추가 앱' })).not.toBeInTheDocument();
 
     viewport.resize(188);
-    expect(within(navigation).getAllByRole('link')).toHaveLength(3);
+    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
     expect(within(navigation).queryByRole('button', { name: '앱 더보기' }))
       .not.toBeInTheDocument();
   });

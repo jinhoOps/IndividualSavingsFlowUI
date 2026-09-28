@@ -1,4 +1,4 @@
-export type JourneyApp = 'main' | 'simulation' | 'portfolio';
+export type JourneyApp = 'main' | 'simulation' | 'portfolio' | 'lounge';
 
 function normalizeBase(base: string): string {
   const path = `/${base.replace(/^\/+|\/+$/g, '')}`;

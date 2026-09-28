@@ -17,9 +17,9 @@ import {AccountManagementContext} from './AccountManagementContext';
 import type {AppManagementItem} from '../journey/ui/AppManagementMenu';
 
 interface AccountRuntime {user: Session['user']; workspace: AccountWorkspaceSession; generation: number}
-export function AccountWorkspaceGate({children, client: suppliedClient, config: suppliedConfig}: {
+export function AccountWorkspaceGate({children, client: suppliedClient, config: suppliedConfig, allowEmptyWorkspace = false}: {
   children: (workspace: AccountWorkspaceSession) => ReactNode;
-  client?: SupabaseClient; config?: SupabaseConfig;
+  client?: SupabaseClient; config?: SupabaseConfig; allowEmptyWorkspace?: boolean;
 }) {
   const configured = useMemo(() => {
     try {
@@ -147,7 +147,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     if (!configured) return;
     explicitLogout.current = false;
     try {
-      window.sessionStorage.setItem(RETURN_PATH_KEY, safeReturnPath(window.location.pathname, import.meta.env.BASE_URL));
+      window.sessionStorage.setItem(RETURN_PATH_KEY, safeReturnPath(window.location.pathname + window.location.search, import.meta.env.BASE_URL));
       const {error} = await configured.client.auth.signInWithOAuth({provider: 'google', options: {
         redirectTo: authCallbackUrl(window.location.origin, import.meta.env.BASE_URL),
       }});
@@ -239,7 +239,8 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
       onStart={() => {explicitLogout.current = false; setNotice('');}} onGoogleLogin={login} />
     {notice && <p role="alert">{notice}</p>}
   </GatePage>;
-  if (!workspace.snapshot && (status === 'empty' || status === 'saving' || status === 'uncertain')) return <GatePage title="계정에서 사용할 계획을 선택해주세요." busy={status === 'saving'}>
+  const browseWithoutPlan = allowEmptyWorkspace && status === 'empty';
+  if (!browseWithoutPlan && !workspace.snapshot && (status === 'empty' || status === 'saving' || status === 'uncertain')) return <GatePage title="계정에서 사용할 계획을 선택해주세요." busy={status === 'saving'}>
     <p>{runtime.user.email}</p>
     {hasAccountRecovery(accountStorage(), accountCachePrefix(configured.config, runtime.user.id)) && <button onClick={downloadRecovery}>미전송 입력 복구 파일</button>}
     {localCandidate && <><p>{workspaceSummary(localCandidate)}</p><button onClick={() => downloadWorkspace(localCandidate)}>브라우저 계획 백업 다운로드</button><button disabled={status !== 'empty'} onClick={() => void initialize(true)}>이 브라우저 계획 가져오기</button></>}
@@ -248,7 +249,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
     {status === 'uncertain' && <><p role="alert">서버 저장 결과를 확인하지 못했습니다.</p><button onClick={() => void retry()}>저장 결과 다시 확인</button></>}
     <button onClick={() => void logout()}>로그아웃</button>
   </GatePage>;
-  if (!workspace.snapshot || status === 'unsupported' || status === 'invalid') return <GatePage title={status === 'unsupported' ? '새 버전의 앱이 필요합니다.' : '계획을 불러오지 못했습니다.'}>
+  if ((!workspace.snapshot && !browseWithoutPlan) || status === 'unsupported' || status === 'invalid') return <GatePage title={status === 'unsupported' ? '새 버전의 앱이 필요합니다.' : '계획을 불러오지 못했습니다.'}>
     <p>현재 데이터를 초기화하지 않았습니다. 연결을 확인하고 다시 시도해주세요.</p>
     {workspace.rawRemote !== null && <button onClick={() => downloadText('isf-server-original.json', JSON.stringify(workspace.rawRemote))}>서버 원본 다운로드</button>}
     {status === 'invalid' && <label>검증된 백업으로 전체 복원<input type="file" accept=".json,application/json" onChange={event => {
@@ -271,7 +272,7 @@ export function AccountWorkspaceGate({children, client: suppliedClient, config: 
   </GatePage>;
   const accountItems: AppManagementItem[] = [
     {kind: 'message', id: 'account-email', text: runtime.user.email ?? '내 계정'},
-    {kind: 'message', id: 'account-saved', text: `마지막 저장: ${new Date(workspace.snapshot.updatedAt).toLocaleString('ko-KR')}`},
+    {kind: 'message', id: 'account-saved', text: workspace.snapshot ? `마지막 저장: ${new Date(workspace.snapshot.updatedAt).toLocaleString('ko-KR')}` : '아직 저장한 계획이 없습니다.'},
   ];
   if (workspace.pending || workspace.localEdits) accountItems.push({kind: 'message', id: 'account-unsent', text: '아직 계정에 저장되지 않은 입력이 있습니다. 필요한 입력은 복구 파일로 보관해주세요.'});
   if (localCandidate) accountItems.push({kind: 'action', id: 'account-replace', label: '브라우저 계획으로 전체 교체', disabled: status !== 'ready', onSelect: () => restoreLocal()});

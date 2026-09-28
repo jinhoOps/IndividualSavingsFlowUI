@@ -1,0 +1,46 @@
+# Portfolio Lounge 설계
+
+사용자 승인: 2026-09-28 신규 앱 설계·구현, 로그인한 사용자끼리 열람·공유.
+
+## 제품과 흐름
+
+- 네 번째 앱 `Lounge / 포트폴리오 라운지`, 경로 `apps/lounge/`. 런처와 Portfolio 결과에서 진입한다. 로그인한 새 계정도 개인 계획을 생성하지 않고 목록을 열람한다.
+- 최신 공유 목록 → 비율 상세 → `이 비율로 시작하기` → Portfolio에서 내 월 투자금 기준 미리보기 → 명시적 초안 교체 → 기존 적용 절차.
+- 라운지는 다른 사용자의 workspace를 읽지 않는다. 자신의 적용된 Portfolio를 별도 게시물로 복사해 공유한다. Main·Simulation 설정은 공유하거나 수정하지 않는다.
+- 실제 금액·수익률 실적·계정 이메일·실명·UID·대출은 노출하지 않는다. 제목, 직접 정한 별명, 짧은 메모, 대상명과 비율, 자산군 비율, 갱신 날짜를 보여준다. 이름 기반 자산군 분류는 기존 Portfolio와 같다.
+- 첫 버전은 계정당 게시물 하나. `내 공유`에서 현재 공유를 갱신하거나 삭제한다. 계획을 수정해도 공유 내용은 자동 변경되지 않는다. 이미지·댓글·좋아요·수익률 순위·팔로우는 이번 범위에 없다.
+- 공유 전 정확한 공개 내용을 미리 보여주고 `로그인한 모든 사용자에게 공개`를 명시한다. 기존 이미지 공유의 48시간 링크와 별도 기능이며 라운지 게시물은 삭제할 때까지 유지한다.
+
+## 화면
+
+- 요약 우선: 상단 제목과 오른쪽 `내 포트폴리오 공유`, `전체 / 내 공유` 필터, 최신순 카드 목록, 명시적인 더 보기.
+- 카드: 별명·갱신일, 제목, 자산군 비례 막대, 주요 종목과 비율. 상세에서는 전체 대상과 메모를 보여준다.
+- 상세·게시 편집·가져오기 미리보기는 기존 ResponsiveDialog/Layout을 사용한다. 모바일 88dvh sheet, 웹 중앙 modal, 400–500ms Anime.js, drag·Escape·초점 복귀 계약 유지.
+- 데이터 없음, 로딩, 오류/재시도, 삭제된 링크, 투자금 미설정, 적용된 Portfolio 없음의 다음 행동을 제공한다.
+- 게시 중 중복 제출·닫기를 막고 실패 시 입력을 유지한다. 편집한 게시 내용을 버릴 때만 확인한다. 단순 열람은 확인 없이 닫힌다.
+
+## 저장과 권한
+
+- 신규 `public.portfolio_publications`, workspace와 별도 수명. account당 UNIQUE owner, 10개 이하 종목, 제목 40자·별명 20자·메모 160자·대상명 40자, allocation 4KB 이하. 비율은 기존 1,000,000 단위이며 현금 포함 합계가 정확히 100%여야 한다.
+- JSON allowlist는 이름과 shareUnits만 받는다. 사용자 내부 item ID·금액·메타데이터를 받지 않는다. 분류는 이름에서 다시 계산한다.
+- RLS와 최소 권한 RPC로 목록/단건/본인 게시·삭제를 제공한다. anon 및 직접 테이블 접근은 차단하고 응답에서 owner UID를 제외한다. 소유권은 서버 인증 claim으로 판단한다.
+- 게시·갱신은 본인 행에만 가능하며 예상 version으로 동시 편집 충돌을 검출한다. 삭제도 version을 확인한다. 계정 삭제 시 cascade.
+- pagination은 갱신시각+ID cursor, 한 번에 12개, 최대 24개. 전체 최대 5,000행으로 신규 생성을 제한한다. 브라우저 영구 캐시·Storage 이미지·게시 이력 복제 없음. 기존 이미지 500MB 예산과 자동 삭제 정책 유지.
+- schema v5 / protocol 5 / whole-workspace 백업 / locations / accountMap은 그대로 유지한다. 라운지 게시물은 workspace 백업에 포함하지 않는다.
+
+## 가져오기
+
+- URL에는 게시물 UUID만 전달한다. 공개 데이터를 localStorage에 전달하거나 새 journey snapshot을 만들지 않는다.
+- 최신 게시물을 다시 조회하고 allowlist·합계를 검증한다. 삭제·권한·네트워크 오류면 현재 포트폴리오는 보존한다.
+- 기존 초안을 대체한다는 설명과 내 월 투자금 기준 금액을 먼저 표시한다. `초안으로 가져오기` 전에는 저장하지 않는다. 이후 Portfolio 편집기에서 조정·적용한다. Main 금액은 변경하지 않는다.
+- 가져온 대상 ID는 새로 만들고, 현재 Main 투자금으로 금액을 계산한다. 원본 사용자의 실제 금액은 필요하지 않다.
+- OAuth 왕복은 허용된 앱 경로와 검증한 게시물 UUID만 보존한다.
+
+## 인수·운영
+
+- 인증 사용자 A/B 교차 조회, 타인 수정/삭제 거부, anon 거부, 직접 쓰기 거부, malformed payload/추가 금융 필드 거부, version 충돌, 삭제·계정 cascade를 실제 로컬 PostgreSQL로 검증한다.
+- 가져오기 전후 Main·Simulation·locations·accountMap과 기존 적용 계획 보존, 취소/실패 시 무변경을 검증한다.
+- 390·768·1280 UI, 공통 modal focus/containment, 로그인/목록/게시/가져오기/삭제, 전체 E2E와 타입 검증.
+- 운영은 기존 workspace checksum 비교 → 신규 migration → 권한/함수 검증 → 프런트 배포 순서. 실제 사용자 포트폴리오를 검증용으로 게시하지 않는다.
+
+참고: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Database Functions](https://supabase.com/docs/guides/database/functions).
