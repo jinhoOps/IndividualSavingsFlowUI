@@ -133,6 +133,7 @@ schema v5 단일 workspace와 whole-workspace backup은 유지하며 `workspace.
 - 최초 설정, 결과와 배분 수정 어디에서도 계좌·기관·보관처 또는 공유 금융 위치 관리 UI를 표시하지 않습니다.
 - retired location-scoped Portfolio 데이터는 conversion에서 현재 state로 보존하지 않으며, Portfolio가 이를 만들거나 편집할 수 있는 것처럼 표현하지 않습니다.
 - Portfolio 편집의 정보 우선순위, 여백·글꼴, breakpoint별 clean·dirty·오류 layout과 focus 반환은 [Portfolio Editor Hierarchy Design](docs/superpowers/specs/2026-09-16-portfolio-editor-hierarchy-design.md)을 따릅니다.
+- Portfolio 대상 입력은 `금액 / 비율` 선택과 반대 단위의 환산값을 제공하며, 전체 배분 편집의 적용 footer는 변경 유무에 따라 사라지지 않습니다. 변경이 없으면 비활성화하고, 샘플 반영 뒤에는 활성화된 `적용`으로 focus를 연결합니다.
 
 ### 커뮤니티 (Lounge)
 

@@ -50,6 +50,70 @@ function renderSheet(overrides: Partial<React.ComponentProps<typeof PortfolioIte
 }
 
 describe('PortfolioItemSheet', () => {
+  it('edits a target by percentage and previews the monthly amount', () => {
+    const props=renderSheet({mode:'edit',initialValue:{...blankItem,name:'인덱스',amountWon:120000}});
+    fireEvent.click(screen.getByRole('button',{name:'비율'}));
+    const ratio=screen.getByLabelText('비율',{exact:true});
+    expect(ratio).toHaveValue('60');
+    fireEvent.change(ratio,{target:{value:'37.5'}});
+    expect(screen.getByText('75,000원')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'완료'}));
+    expect(props.onComplete).toHaveBeenCalledWith({...blankItem,name:'인덱스',amountWon:75000});
+  });
+
+  it('switches input modes without rounding the amount or creating an unsaved edit', async () => {
+    const props = renderSheet({ mode: 'edit', investmentWon: 300_007,
+      initialValue: { ...blankItem, name: '인덱스', amountWon: 123_457 } });
+    fireEvent.click(screen.getByRole('button', { name: '비율' }));
+    expect(screen.getByText('123,457원')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '금액' }));
+    expect(screen.getByLabelText('금액', { exact: true })).toHaveValue('123,457');
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    await waitFor(() => expect(props.onClose).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('입력 내용을 버릴까요?')).not.toBeInTheDocument();
+  });
+
+  it.each(['', '-1', '101', '1e2', 'NaN', '2.12345'])('blocks invalid percentage %j and keeps it recoverable', (value) => {
+    const drafts: Record<string, unknown> = {};
+    const props = renderSheet({ session: recoverySession(drafts), mode: 'edit',
+      initialValue: { ...blankItem, name: '인덱스', amountWon: 120_000 } });
+    fireEvent.click(screen.getByRole('button', { name: '비율' }));
+    fireEvent.change(screen.getByLabelText('비율', { exact: true }), { target: { value } });
+    expect(screen.getByLabelText('비율', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('button', { name: '완료' })).toBeDisabled();
+    expect(drafts['portfolio-item:edit:인덱스']).toMatchObject({ inputMode: 'percentage', percentage: value });
+    expect(props.onComplete).not.toHaveBeenCalled();
+  });
+
+  it('validates the converted minimum, rounds won, and adjusts by percentage points', () => {
+    const props = renderSheet({ investmentWon: 200_003, initialInputMode: 'percentage',
+      initialValue: { ...blankItem, name: '인덱스', amountWon: 120_000 } });
+    const input = screen.getByLabelText('비율', { exact: true });
+    fireEvent.change(input, { target: { value: '.1' } });
+    expect(input).toHaveAccessibleDescription('투자 대상 금액은 1,000원 이상이어야 합니다.');
+    expect(screen.getByRole('button', { name: '완료' })).toBeDisabled();
+    fireEvent.change(input, { target: { value: '37.5' } });
+    fireEvent.click(screen.getByRole('button', { name: '+5%p' }));
+    expect(input).toHaveValue('42.5');
+    expect(screen.getByText('85,001원')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    expect(props.onComplete).toHaveBeenCalledWith({ ...blankItem, name: '인덱스', amountWon: 85_001 });
+  });
+
+  it('restores an unfinished percentage edit without committing it', () => {
+    const onInputModeChange = vi.fn();
+    const props = renderSheet({ onInputModeChange, session: recoverySession({
+      'portfolio-item:add': { name: '인덱스', amount: '75,000', classification: 'growth',
+        classificationOrigin: 'automatic', inputMode: 'percentage', percentage: '37.5' },
+    }) });
+    expect(screen.getByLabelText('비율', { exact: true })).toHaveValue('37.5');
+    expect(screen.getByText('75,000원')).toBeInTheDocument();
+    expect(props.onComplete).not.toHaveBeenCalled();
+    expect(onInputModeChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '완료' }));
+    expect(onInputModeChange).toHaveBeenCalledWith('percentage');
+  });
+
   it('retains recovery and focuses a rejected amount until completion succeeds', () => {
     const drafts: Record<string, unknown> = {};
     const session = recoverySession(drafts);

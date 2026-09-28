@@ -2751,3 +2751,84 @@ test('Lounge notifications quietly remove deleted rows across pages and keep the
   await inbox.getByRole('button',{name:'닫기',exact:true}).click();server.community.notifications.clear();await page.getByRole('button',{name:/^알림함/}).click();
   await expect(inbox.locator('[data-notification-id]')).toHaveCount(0);await expect(inbox.getByText('아직 받은 알림이 없어요.')).toBeVisible();
 });
+
+
+for (const width of [390,768,1280]) {
+  test(`Portfolio sample replacement keeps final save visible at ${width}px`,async({page,context},testInfo)=>{
+    const server=fakeServer(),original=portfolioEditorPlan();server.rows.set(userA,original);await server.attach(context,userA);
+    await page.setViewportSize({width,height:width===390?600:720});await page.goto('apps/portfolio/');
+    await page.locator('.portfolio-allocation-row__select').first().click();
+    let editor=page.getByRole('dialog',{name:'투자 배분 수정',exact:true});
+    await editor.getByRole('button',{name:'샘플로 구성하기',exact:true}).click();
+    const picker=page.getByRole('dialog',{name:'샘플로 구성하기',exact:true});
+    await picker.getByRole('button',{name:'QLD 50 · BTC 30 · 금 20',exact:true}).click();
+    await picker.getByRole('button',{name:'주력 비율 5% 높이기'}).click();
+    await picker.getByRole('button',{name:'이 구성으로 초안 채우기'}).click();
+    const release=server.holdWrites();
+    await picker.getByRole('button',{name:'초안 바꾸기',exact:true}).click();
+    editor=page.getByRole('dialog',{name:'투자 배분 수정',exact:true});
+    const save=editor.getByRole('button',{name:'적용',exact:true});
+    try {
+      await expect(save).toBeInViewport();await expect(save).toBeEnabled();
+      await expect(save).toBeFocused();
+      await expect(editor.getByRole('status',{name:''}).filter({hasText:'저장 중'})).toBeVisible();
+      await expect(save).toBeInViewport();
+    } finally { release(); }
+    await expect.poll(()=>server.rows.get(userA)?.portfolio.draft?.items[0]?.name).toBe('QLD');
+    await expect(save).toBeInViewport();
+    await expect(editor.locator('.portfolio-apply-bar')).toHaveCSS('opacity','1');
+    await page.screenshot({path:testInfo.outputPath('sample-return.png')});
+    await save.click();await page.getByRole('button',{name:'배분 적용',exact:true}).click();
+    await expect(editor).toHaveCount(0);await page.reload();
+    await expect(page.locator('.portfolio-allocation-list')).toContainText('QLD55%');
+    expect(server.rows.get(userA)?.main).toEqual(original.main);
+    expect(server.rows.get(userA)?.locations).toEqual(original.locations);
+    expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
+  });
+}
+
+for (const width of [390, 768, 1280]) {
+  test(`Portfolio percentage edits preserve the total and survive cloud reload at ${width}px`, async ({page, context}, testInfo) => {
+    const server = fakeServer(), original = portfolioEditorPlan();
+    server.rows.set(userA, original); await server.attach(context, userA);
+    await page.setViewportSize({width, height: 720}); await page.goto('apps/portfolio/');
+    await page.locator('.portfolio-allocation-row__select').first().click();
+    await page.getByRole('button', {name: /인덱스 편집/}).click();
+    const item = page.getByRole('region', {name: '투자 대상 수정', exact: true});
+    await item.getByRole('button', {name: '비율', exact: true}).click();
+    await item.getByLabel('비율', {exact: true}).fill('37.5');
+    await expect(item).toContainText('75,000원');
+    await expect(item.getByLabel('비율', {exact: true})).toBeFocused();
+    await expect(page.getByRole('dialog', {name: '투자 대상 수정', exact: true})).toHaveCSS('transform', 'none');
+    await item.getByText('75,000원', {exact: true}).scrollIntoViewIfNeeded();
+    await expect(item.getByText('75,000원', {exact: true})).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path: testInfo.outputPath('percentage-edit.png')});
+    if (width === 390) {
+      await page.reload();
+      await page.locator('.portfolio-allocation-row__select').first().click();
+      await page.getByRole('button', {name: /인덱스 편집/}).click();
+      await expect(item.getByLabel('비율', {exact: true})).toHaveValue('37.5');
+      await expect(item).toContainText('75,000원');
+    }
+    await item.getByRole('button', {name: '완료', exact: true}).click();
+    const editor = page.getByRole('dialog', {name: '투자 배분 수정', exact: true});
+    await editor.getByRole('button', {name: '투자 대상 추가', exact: true}).click();
+    const add = page.getByRole('region', {name: '투자 대상 추가', exact: true});
+    await add.getByLabel('투자 대상 이름').fill('금');
+    const percentage = add.getByLabel('비율', {exact: true});
+    await percentage.fill('70'); await add.getByRole('button', {name: '완료'}).click();
+    await expect(percentage).toHaveAccessibleDescription('투자금을 초과해 배분할 수 없습니다.');
+    await expect(percentage).toBeFocused();
+    await percentage.fill('25'); await add.getByRole('button', {name: '완료'}).click();
+    await editor.getByRole('button', {name: '적용', exact: true}).click();
+    await page.getByRole('button', {name: '배분 적용', exact: true}).click();
+    await expect(editor).toHaveCount(0); await page.reload();
+    const rows = page.locator('.portfolio-allocation-list');
+    await expect(rows).toContainText('인덱스37.5%'); await expect(rows).toContainText('금25%');
+    await expect(rows).toContainText('현금37.5%');
+    expect(server.rows.get(userA)?.main).toEqual(original.main);
+    expect(server.rows.get(userA)?.locations).toEqual(original.locations);
+    expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
+  });
+}

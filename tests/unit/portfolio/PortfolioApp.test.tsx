@@ -311,7 +311,7 @@ describe('PortfolioApp', () => {
     expect(screen.getByText('아직 적용하지 않은 변경이 있어요')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '현금 자동 배분 켜기' }));
     expect(screen.getByLabelText('현금 금액')).toHaveValue('80,000');
-    expect(screen.queryByRole('button', { name: '적용' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '적용' })).toBeDisabled();
     fireEvent.click(cash);
     expect(screen.queryByLabelText('현금 금액')).not.toBeInTheDocument();
     expect(cash).toHaveFocus();
@@ -562,13 +562,13 @@ describe('PortfolioApp', () => {
     expect(within(dialog).getByRole('heading', { name: '투자 배분 수정' })).toBeVisible();
     expect(within(dialog).queryByRole('heading', { name: '투자 위치' })).not.toBeInTheDocument();
     expect(screen.getByTestId('portfolio-result-controls')).toHaveAttribute('inert');
-    expect(within(dialog).queryByRole('complementary', { name: '배분 변경' })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '적용' })).toBeDisabled();
   });
 
-  it('shows apply actions only after the first allocation change', () => {
+  it('keeps apply visible and enables it after the first allocation change', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
     fireEvent.click(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!);
-    expect(screen.queryByRole('complementary', { name: '배분 변경' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '적용' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: /인덱스 편집/ }));
     anime.animate.mockClear();

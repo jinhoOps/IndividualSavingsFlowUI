@@ -197,6 +197,8 @@ export function AllocationEditor({
           initialValue={initialValue}
           existingNames={draft.items.filter((candidate) => candidate.id !== active.id).map((candidate) => candidate.name)}
           investmentWon={investmentWon}
+          initialInputMode={draft.inputMode}
+          onInputModeChange={(mode) => onAction({ type: 'input-mode-changed', mode })}
           returnFocusRef={itemSheetReturnFocusRef}
           onComplete={(value) => {
             const existing = draft.items.find((candidate) => candidate.id === active.id);
@@ -230,6 +232,8 @@ export function AllocationEditor({
         initialValue={initialValue}
         existingNames={draft.items.map((item) => item.name)}
         investmentWon={investmentWon}
+        initialInputMode={draft.inputMode}
+        onInputModeChange={(mode) => onAction({ type: 'input-mode-changed', mode })}
         returnFocusRef={itemSheetReturnFocusRef}
         onComplete={(value) => {
           const item = { id: active.id, name: value.name, order: draft.items.length };

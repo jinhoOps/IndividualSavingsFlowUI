@@ -14,6 +14,7 @@ import { formatAllocationPercent, formatPortfolioWon } from './format';
 
 export function PortfolioApplyBar({
   dirty,
+  persistent = false,
   saveError = false,
   fieldError = null,
   applying = false,
@@ -24,6 +25,7 @@ export function PortfolioApplyBar({
   onApply,
 }: {
   dirty: boolean;
+  persistent?: boolean;
   saveError?: boolean;
   fieldError?: string | null;
   applying?: boolean;
@@ -49,7 +51,7 @@ export function PortfolioApplyBar({
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, [open]);
 
-  if (!dirty) return null;
+  if (!dirty && !persistent) return null;
 
   function close(): void {
     if (applying) return;
@@ -65,7 +67,7 @@ export function PortfolioApplyBar({
       aria-busy={applying ? 'true' : undefined}
       aria-label="배분 변경"
     >
-      <p className="portfolio-apply-bar__status">아직 적용하지 않은 변경이 있어요</p>
+      <p className="portfolio-apply-bar__status">{dirty ? '아직 적용하지 않은 변경이 있어요' : '변경사항이 없어요'}</p>
       {saveError && !open ? <p role="alert">저장하지 못했습니다. 다시 시도해 주세요.</p> : null}
       <ResponsiveDialogActionRow className="portfolio-apply-bar__actions">
         <Button type="button" variant="secondary" disabled={applying} onClick={() => {
@@ -76,7 +78,7 @@ export function PortfolioApplyBar({
           ref={triggerRef}
           type="button"
           variant="primary"
-          disabled={applying || fieldError !== null || !validateApplicableDraft(draft)}
+          disabled={!dirty || applying || fieldError !== null || !validateApplicableDraft(draft)}
           onClick={() => {
             setOpen(true);
           }}
@@ -100,7 +102,7 @@ export function PortfolioApplyBar({
             closeInitialFocus={false}
             footer={<PortfolioApplyConfirmationActions
               applying={applying}
-              canApply={fieldError === null && validateApplicableDraft(draft)}
+              canApply={dirty && fieldError === null && validateApplicableDraft(draft)}
               onClose={close}
               onApply={onApply}
             />}
