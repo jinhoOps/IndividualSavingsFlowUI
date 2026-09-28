@@ -197,3 +197,12 @@ from public.result_card_shares group by state;
 - 라운지 게시물은 삭제 시까지 유지하고 계정 삭제 시 cascade한다. schema v5·protocol 5·workspace 백업에 포함하지 않는다.
 - 검증: `node scripts/test-workspace-db.mjs`에 권한·두 계정·payload·CAS·페이지·삭제·상한 회귀가 포함된다.
 - [설계](superpowers/specs/2026-09-28-portfolio-lounge-design.md), [구현·배포 상태](superpowers/plans/2026-09-28-portfolio-lounge.md).
+
+### 선택적 자산 규모
+
+`202609280003_lounge_asset_band.sql`도 운영 적용했다. 정확한 초기 자산은 전송하지 않고 선택한 구간 코드/null만 `asset_band`에 저장한다. 기존 행은 기본 숨김이며 nullable 컬럼 외 원래 데이터의 checksum은 같았다.
+
+- v2 조회·단건·게시 RPC 3개를 추가했다. 기존 RPC 4개도 유지해 열린 구버전의 읽기·갱신을 지원하며, 구버전 갱신은 선택된 구간을 보존한다.
+- 새로운 RPC도 전용 역할·빈 search_path·로그인 필수와 FORCE RLS를 유지한다. anon 실행·authenticated 직접 조회/쓰기 차단을 운영에서 확인했다.
+- 로컬 파일과 운영 migration 이력의 SQL digest는 `24c250f8391686389cf7c6bf41b695f4`로 일치한다.
+- [선택적 자산 규모 계획·검증](superpowers/plans/2026-09-28-lounge-asset-band.md).

@@ -10,9 +10,11 @@ import type {PortfolioPlan} from '../../portfolio/domain/model';
 import {allocationFromPlan, publicationQuery, PUBLICATION_PAGE_SIZE, type Publication} from '../domain/publication';
 import {loungeErrorMessage, type LoungeRepository} from '../infrastructure/loungeRepository';
 import {AllocationSummary} from './AllocationSummary';
+import type {AssetBand} from '../domain/assetBand';
+import {AssetBandBadge} from './AssetBandBadge';
 import {PublicationEditor} from './PublicationEditor';
 
-export function LoungeApp({repository, plan}: {repository: LoungeRepository; plan: PortfolioPlan | null}) {
+export function LoungeApp({repository, plan, suggestedAssetBand = null}: {repository: LoungeRepository; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
   const [mine, setMine] = useState(false);
   const [posts, setPosts] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,10 +90,10 @@ export function LoungeApp({repository, plan}: {repository: LoungeRepository; pla
       {error ? <div className="lounge-empty" role="alert"><p>{error}</p><button className="ui-button ui-button--secondary" onClick={() => void load()}>다시 불러오기</button></div> : null}
       {!loading && !error && posts.length===0 ? <section className="lounge-empty"><h2>{mine ? '아직 공유한 포트폴리오가 없어요' : '첫 포트폴리오를 공유해 보세요'}</h2><p>종목과 비율로 서로의 투자 구성을 살펴봐요.</p>{!allocation ? <a className="ui-button ui-button--quiet" href={appPath('portfolio')}>투자 배분 시작하기 <ArrowUpRight size={18} /></a> : null}</section> : null}
       <div className="lounge-grid">{posts.map(post => <article key={post.id} className="lounge-card">
-        <button className="lounge-card__open" aria-label={`${post.title} 상세 보기`} onClick={event => {trigger.current=event.currentTarget; void loadDetail(post.id);}}>
+        <button className="lounge-card__open" aria-label={`${post.title} 상세 보기`} aria-describedby={post.assetBand ? `lounge-asset-${post.id}` : undefined} onClick={event => {trigger.current=event.currentTarget; void loadDetail(post.id);}}>
           <span className="lounge-card__meta"><span>{post.alias}{post.isMine ? ' · 내 공유' : ''}</span><time dateTime={post.updatedAt}>{new Date(post.updatedAt).toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}</time></span>
           <span className="lounge-card__title">{post.title}<ArrowUpRight size={20} aria-hidden="true" /></span>
-        </button><AllocationSummary allocation={post.allocation} compact />
+        <AssetBandBadge id={`lounge-asset-${post.id}`} band={post.assetBand} /></button><AllocationSummary allocation={post.allocation} compact />
       </article>)}</div>
       {more ? <button className="ui-button ui-button--secondary lounge-more" disabled={loading} onClick={() => void load(posts.at(-1))}>더 보기</button> : null}
       <p className="lounge-footnote">사용자가 공유한 투자 구성입니다. 실제 수익률이나 추천 순위가 아니에요.</p>
@@ -114,7 +116,7 @@ export function LoungeApp({repository, plan}: {repository: LoungeRepository; pla
         {detailLoading ? <p role="status">불러오는 중…</p> : null}
         {detail ? deleteConfirm ? <p>라운지에서 사라지고 기존 게시물 링크도 열 수 없어요. 내 투자 배분은 유지돼요.</p> : <div className="lounge-detail">
           <p className="lounge-muted">{detail.alias} · {new Date(detail.updatedAt).toLocaleDateString('ko-KR')}</p>
-          <AllocationSummary allocation={detail.allocation} />{detail.note ? <p className="lounge-note">{detail.note}</p> : null}
+          <AssetBandBadge band={detail.assetBand} /><AllocationSummary allocation={detail.allocation} />{detail.note ? <p className="lounge-note">{detail.note}</p> : null}
           <button className="ui-button ui-button--quiet" onClick={async () => {
             try {await navigator.clipboard.writeText(`${window.location.origin}${appPath('lounge')}?post=${detail.id}`); setCopied(true);}
             catch {setDetailError('링크를 복사하지 못했어요. 주소창의 링크를 복사해 주세요.');}
@@ -123,7 +125,7 @@ export function LoungeApp({repository, plan}: {repository: LoungeRepository; pla
         </div> : null}
       </ResponsiveDialogLayout>}
     </ResponsiveDialog> : null}
-    {editor && allocation ? <PublicationEditor repository={repository} existing={editor.existing} allocation={allocation} returnFocusRef={publishTrigger} onClose={() => setEditor(null)}
+    {editor && allocation ? <PublicationEditor repository={repository} existing={editor.existing} allocation={allocation} suggestedAssetBand={suggestedAssetBand} returnFocusRef={publishTrigger} onClose={() => setEditor(null)}
       onSaved={() => {setEditor(null); setNotice('라운지에 공유했어요.'); void load();}} /> : null}
   </AppShell>;
 }

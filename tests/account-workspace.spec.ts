@@ -113,17 +113,17 @@ function fakeServer() {
         const args=route.request().postDataJSON();
         const own=[...publications.values()].find(p=>p.owner===user);
         const view=(p: {owner:string;post:Publication})=>({...p.post,isMine:p.owner===user});
-        if (operation==='list_lounge_portfolios') {
+        if (operation==='list_lounge_portfolios_v2') {
           const list=[...publications.values()].filter(p=>!args.p_mine||p.owner===user).sort((a,b)=>b.post.updatedAt.localeCompare(a.post.updatedAt)||b.post.id.localeCompare(a.post.id));
           const start=args.p_before_id ? list.findIndex(p=>p.post.id===args.p_before_id)+1 : 0;
           await route.fulfill({json:list.slice(start,start+args.p_limit).map(view)}); return;
         }
-        if (operation==='get_lounge_portfolio') {const p=publications.get(args.p_id); await route.fulfill({json:p?view(p):null});return;}
+        if (operation==='get_lounge_portfolio_v2') {const p=publications.get(args.p_id); await route.fulfill({json:p?view(p):null});return;}
         loungeWrites.push(args);
         if (failWrite) {await route.abort('failed');return;}
-        if (operation==='publish_lounge_portfolio') {
+        if (operation==='publish_lounge_portfolio_v2') {
           if ((own?.post.version??null)!==args.p_expected_version) {await route.fulfill({json:{status:'conflict'}});return;}
-          const post:Publication={id:own?.post.id??'dddddddd-dddd-4ddd-8ddd-dddddddddddd',title:args.p_title,alias:args.p_alias,note:args.p_note,allocation:args.p_allocation,version:(own?.post.version??0)+1,updatedAt:new Date().toISOString(),isMine:true};
+          const post:Publication={id:own?.post.id??'dddddddd-dddd-4ddd-8ddd-dddddddddddd',title:args.p_title,alias:args.p_alias,note:args.p_note,allocation:args.p_allocation,assetBand:args.p_asset_band,version:(own?.post.version??0)+1,updatedAt:new Date().toISOString(),isMine:true};
           publications.set(post.id,{owner:user,post});await route.fulfill({json:{status:'saved',post}});return;
         }
         if (operation==='delete_lounge_portfolio') {
@@ -1916,7 +1916,7 @@ for (const failure of ['response-lost', 'conflict'] as const) {
   });
 }
 
-const sharedPortfolio: Publication = {id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc', title:'배당과 금의 균형',alias:'차곡차곡',note:'매달 같은 비율로 나눠요.',
+const sharedPortfolio: Publication = {id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc', title:'배당과 금의 균형',alias:'차곡차곡',note:'매달 같은 비율로 나눠요.',assetBand:'100m',
   allocation:{items:[{name:'SCHD',shareUnits:500000},{name:'금',shareUnits:500000}],cashShareUnits:0},version:1,updatedAt:'2026-09-28T01:00:00Z',isMine:false};
 for (const width of [390,768,1280]) {
   test(`Lounge authenticated sharing and explicit Portfolio draft copy at ${width}px`, async ({page,context}, testInfo) => {
@@ -1926,6 +1926,7 @@ for (const width of [390,768,1280]) {
     await page.goto('apps/lounge/'); await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeVisible();
     await page.evaluate(()=>document.fonts.ready);
     await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toBeVisible();
+    await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toHaveAccessibleDescription('자산 규모 · 1억원대');
     expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`lounge-list-${width}.png`),fullPage:true});
     const open=page.getByRole('button',{name:'배당과 금의 균형 상세 보기'});await open.click();
@@ -1933,6 +1934,7 @@ for (const width of [390,768,1280]) {
     const box=(await dialog.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width+1);expect(box.height).toBeLessThanOrEqual(900*.88+1);
     await expect(dialog.getByRole('button',{name:'닫기',exact:true})).toBeFocused();
     await expect(dialog.getByRole('button',{name:'공유 삭제'})).toHaveCount(0);
+    await expect(dialog.getByText('자산 규모 · 1억원대',{exact:true})).toBeVisible();
     await page.screenshot({path:testInfo.outputPath(`lounge-detail-${width}.png`)});
     expect(server.operations).toEqual([]); expect(server.rows.get(userA)).toEqual(original);
     await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(open).toBeFocused();
@@ -1954,14 +1956,36 @@ for (const width of [390,768,1280]) {
     await page.goto('apps/lounge/');const before=structuredClone(server.rows.get(userA));
     await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();
     dialog=page.getByRole('dialog',{name:'내 포트폴리오 공유'});await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('로그인한 모든 사용자에게 공개 · 금액 제외')).toBeVisible();
+    await expect(dialog.getByText('로그인한 모든 사용자에게 공개 · 정확한 금액 제외')).toBeVisible();
     await dialog.getByLabel('제목',{exact:true}).fill('나만의 배분');await dialog.getByLabel('공유할 별명').fill('나의별명');
+    const assetSwitch = dialog.getByRole('switch',{name:'자산 규모 표시'});
+    await expect(assetSwitch).not.toBeChecked();
+    await expect(dialog.getByLabel('공유할 자산 규모')).toHaveCount(0);
+    await assetSwitch.check();
+    await expect(dialog.getByLabel('공유할 자산 규모')).toHaveValue('10m');
+    await dialog.getByLabel('공유할 자산 규모').selectOption('20m');
+    await expect(dialog.getByText('자산 규모 · 2천만원대',{exact:true})).toBeVisible();
+    const toggleBox = (await assetSwitch.boundingBox())!;
+    expect(toggleBox.width).toBeGreaterThanOrEqual(44);expect(toggleBox.height).toBeGreaterThanOrEqual(44);
+    const editorBox = (await dialog.boundingBox())!;
+    expect(editorBox.x).toBeGreaterThanOrEqual(0);expect(editorBox.x+editorBox.width).toBeLessThanOrEqual(width+1);
+    expect(editorBox.height).toBeLessThanOrEqual(900*.88+1);
     expect(await preventsLeaving(page)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`lounge-publish-${width}.png`)});
     await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click(); await expect(dialog).toHaveCount(0);
     await expect.poll(()=>preventsLeaving(page)).toBe(false);
     expect(server.rows.get(userA)).toEqual(before);
-    expect(JSON.stringify(server.loungeWrites)).not.toMatch(/syncedInvestmentWon|monthly|amountWon|@|classification|sourceMain|accountMap/);
+    expect(JSON.stringify(server.loungeWrites)).not.toMatch(/syncedInvestmentWon|initialInvestmentWon|15000000|monthly|amountWon|@|classification|sourceMain|accountMap/);
+    expect(server.loungeWrites[0]).toMatchObject({p_asset_band:'20m'});
+    await expect(page.getByText('자산 규모 · 2천만원대',{exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();
+    dialog=page.getByRole('dialog',{name:'공유 포트폴리오 갱신'});
+    await expect(dialog.getByRole('switch',{name:'자산 규모 표시'})).toBeChecked();
+    await expect(dialog.getByLabel('공유할 자산 규모')).toHaveValue('20m');
+    await dialog.getByRole('switch',{name:'자산 규모 표시'}).uncheck();
+    await dialog.getByRole('button',{name:'이 내용으로 갱신'}).click();await expect(dialog).toHaveCount(0);
+    expect(server.loungeWrites[1]).toMatchObject({p_asset_band:null});
+    await expect(page.getByText('자산 규모 · 2천만원대',{exact:true})).toHaveCount(0);
     await page.getByRole('button',{name:'내 공유',exact:true}).click();await page.getByRole('button',{name:'나만의 배분 상세 보기'}).click();
     await page.getByRole('button',{name:'공유 삭제',exact:true}).click();dialog=page.getByRole('dialog',{name:'공유를 삭제할까요?'});
     await dialog.getByRole('button',{name:'공유 삭제',exact:true}).click();await expect(dialog).toHaveCount(0);
@@ -1996,6 +2020,26 @@ test('Lounge allows a signed-in new account to browse without initializing a wor
   expect(server.rows.has(userA)).toBe(false);expect(server.operations).toEqual([]);
   await expect(page.getByRole('link',{name:'내 포트폴리오 만들기',exact:true})).toBeVisible();
 });
+for (const initial of [null, 0]) {
+  test(`Lounge asset scale stays optional with initial assets ${initial}`,async({page,context})=>{
+    const server=fakeServer();const original=resultCardPlan();
+    if(initial===null) original.simulation.draft=null; else original.simulation.draft!.initialInvestmentWon=initial;
+    server.rows.set(userA,original);await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+    await page.goto('apps/lounge/');const open=page.getByRole('button',{name:'내 포트폴리오 공유',exact:true});await open.click();
+    const dialog=page.getByRole('dialog');const toggle=dialog.getByRole('switch',{name:'자산 규모 표시'});
+    await expect(toggle).not.toBeChecked();await expect.poll(()=>preventsLeaving(page)).toBe(false);
+    await toggle.check();await expect.poll(()=>preventsLeaving(page)).toBe(true);
+    await expect(dialog.getByLabel('공유할 자산 규모')).toHaveValue(initial===null?'':'under_10m');
+    if(initial===null) {await expect(dialog.getByRole('button',{name:'라운지에 공유',exact:true})).toBeDisabled();await dialog.getByLabel('공유할 자산 규모').selectOption('under_10m');}
+    await expect(dialog.getByText('자산 규모 · 1천만원 미만',{exact:true})).toBeVisible();
+    await page.keyboard.press('Escape');await expect(page.getByRole('heading',{name:'작성 중인 내용을 닫을까요?'})).toBeVisible();
+    await dialog.getByRole('button',{name:'계속 작성'}).click();await toggle.uncheck();
+    await expect.poll(()=>preventsLeaving(page)).toBe(false);
+    await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click();await expect(dialog).toHaveCount(0);
+    expect(server.loungeWrites[0]).toMatchObject({p_asset_band:null});expect(server.rows.get(userA)).toEqual(original);
+    await expect(page.locator('.lounge-asset-badge')).toHaveCount(0);
+  });
+}
 test('Lounge paginates without repeats and updates its one shared post',async({page,context})=>{
   const server=fakeServer();server.rows.set(userA,resultCardPlan());await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
   for(let i=0;i<13;i++) {const post={...sharedPortfolio,id:`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`,title:`구성 ${i+1}`};server.publications.set(post.id,{owner:userB,post});}

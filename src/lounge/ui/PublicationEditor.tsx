@@ -5,25 +5,30 @@ import {AccountManagementContext} from '../../auth/AccountManagementContext';
 import {useUncommittedInput} from '../../auth/useUncommittedInput';
 import {parsePublicationInput, type Publication, type SharedAllocation} from '../domain/publication';
 import {loungeErrorMessage, type LoungeRepository} from '../infrastructure/loungeRepository';
+import {ASSET_BANDS, isAssetBand, type AssetBand} from '../domain/assetBand';
+import {AssetBandBadge} from './AssetBandBadge';
 import {AllocationSummary} from './AllocationSummary';
 
-export function PublicationEditor({repository, existing, allocation, returnFocusRef, onClose, onSaved}: {
-  repository: LoungeRepository; existing: Publication | null; allocation: SharedAllocation;
+export function PublicationEditor({repository, existing, allocation, suggestedAssetBand, returnFocusRef, onClose, onSaved}: {
+  repository: LoungeRepository; existing: Publication | null; allocation: SharedAllocation; suggestedAssetBand: AssetBand | null;
   returnFocusRef: RefObject<HTMLElement | null>; onClose(): void; onSaved(post: Publication): void;
 }) {
   const account = useContext(AccountManagementContext);
   const [title, setTitle] = useState(existing?.title ?? '나의 포트폴리오');
   const [alias, setAlias] = useState(existing?.alias ?? '투자자');
   const [note, setNote] = useState(existing?.note ?? '');
+  const [showAssetBand, setShowAssetBand] = useState(Boolean(existing?.assetBand));
+  const [selectedAssetBand, setSelectedAssetBand] = useState<AssetBand | null>(existing?.assetBand ?? suggestedAssetBand);
+  const assetBand = showAssetBand ? selectedAssetBand : null;
   const [pending, setPending] = useState(false);
   const lock = useRef(false);
   const saved = useRef<Publication | null>(null);
   const [error, setError] = useState('');
   const [discard, setDiscard] = useState(false);
   const discardApproved = useRef(false);
-  const dirty = title !== (existing?.title ?? '나의 포트폴리오') || alias !== (existing?.alias ?? '투자자') || note !== (existing?.note ?? '');
+  const dirty = title !== (existing?.title ?? '나의 포트폴리오') || alias !== (existing?.alias ?? '투자자') || note !== (existing?.note ?? '') || showAssetBand !== Boolean(existing?.assetBand) || assetBand !== (existing?.assetBand ?? null);
   useUncommittedInput(dirty && saved.current === null && !discardApproved.current);
-  const input = parsePublicationInput({title, alias, note, allocation});
+  const input = showAssetBand && !assetBand ? null : parsePublicationInput({title, alias, note, allocation, assetBand});
   return <ResponsiveDialog open labelledBy="lounge-editor-title" returnFocusRef={returnFocusRef} busy={pending}
     onRequestClose={() => {
       if (lock.current) return false;
@@ -42,10 +47,23 @@ export function PublicationEditor({repository, existing, allocation, returnFocus
         catch(error) {setError(loungeErrorMessage(error)); lock.current = false; setPending(false);}
       }}>{pending ? '공유 중…' : existing ? '이 내용으로 갱신' : '라운지에 공유'}</button>}</ResponsiveDialogActionRow>}>
       {discard ? <p>아직 공유하지 않은 입력 내용이 사라져요.</p> : <div className="lounge-editor">
-        <p className="lounge-audience">로그인한 모든 사용자에게 공개 · 금액 제외</p>
+        <p className="lounge-audience">로그인한 모든 사용자에게 공개 · 정확한 금액 제외</p>
         <label>제목<input value={title} maxLength={40} onChange={e => setTitle(e.target.value)} disabled={pending} /></label>
         <label>공유할 별명<input value={alias} maxLength={20} onChange={e => setAlias(e.target.value)} disabled={pending} autoComplete="off" /></label>
         <label>짧은 메모 <span className="lounge-muted">선택</span><input value={note} maxLength={160} onChange={e => setNote(e.target.value)} disabled={pending} /></label>
+        <section className="lounge-asset-option" aria-label="자산 규모 공유 설정">
+          <label className="lounge-asset-toggle"><span>자산 규모 표시 <span className="lounge-muted">선택</span></span>
+            <input type="checkbox" role="switch" aria-label="자산 규모 표시" checked={showAssetBand} disabled={pending} onChange={e => setShowAssetBand(e.target.checked)} />
+          </label>
+          {showAssetBand ? <>
+            <label>공유할 자산 규모<select value={selectedAssetBand ?? ''} disabled={pending} onChange={e => setSelectedAssetBand(isAssetBand(e.target.value) ? e.target.value : null)}>
+              <option value="" disabled>구간 선택</option>
+              {ASSET_BANDS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+            </select></label>
+            <p className="lounge-muted">{suggestedAssetBand ? '시작 자산 기준으로 제안해요. 직접 바꿀 수 있어요.' : '공유할 구간을 직접 선택해 주세요.'}</p>
+            <AssetBandBadge band={assetBand} />
+          </> : null}
+        </section>
         <AllocationSummary allocation={allocation} />
         <p className="lounge-muted">현재 적용한 비율을 공유해요. 이후 내 계획을 수정해도 이 게시물은 자동으로 바뀌지 않아요. 직접 삭제할 때까지 라운지에 남아요.</p>
       </div>}
