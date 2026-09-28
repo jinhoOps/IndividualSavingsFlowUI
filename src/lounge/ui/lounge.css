@@ -1,8 +1,9 @@
 .lounge-page { padding-block: var(--ui-page-space) 3rem; }
-.lounge-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; }
-.lounge-header h1 { font-size:clamp(1.6rem,3.5vw,2.2rem); margin:.4rem 0 0; letter-spacing:-.035em; }
+.lounge-heading { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.lounge-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem 1rem; margin-bottom:1rem; }
+.lounge-header > p { margin:0; min-width:0; overflow-wrap:anywhere; }
 .lounge-eyebrow { color:var(--tone-accent); font-size:.7rem; font-weight:700; letter-spacing:.13em; margin:0; }
-.lounge-header .ui-button { flex-shrink:0; font-size:.85rem; gap:.35rem; }
+.lounge-header .ui-button { flex-shrink:0; margin-left:auto; font-size:.85rem; gap:.35rem; }
 .lounge-toolbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.2rem; }
 .lounge-tabs { display:flex; gap:.25rem; padding:4px; background:rgb(16 34 32 / 5%); border-radius:999px; }
 .lounge-tabs button { min-height:44px; padding:.4rem 1.1rem; border:0; border-radius:999px; background:transparent; color:var(--muted); }
@@ -59,8 +60,6 @@
 .lounge-import-amounts dd { white-space:nowrap; font-variant-numeric:tabular-nums; }
 .portfolio-lounge-entry { display:flex; justify-content:center; margin:2rem 0; }
 @media(max-width:767px) {
-  .lounge-header { align-items:flex-start; flex-direction:column; gap:1.1rem; margin-bottom:1.5rem; }
-  .lounge-header .ui-button { align-self:flex-end; }
   .lounge-grid { grid-template-columns:1fr; }
   .lounge-card { padding:1.25rem; }
 }

@@ -5,6 +5,7 @@ import {useUncommittedInput} from '../../auth/useUncommittedInput';
 import {parseCommentBody, type CommentCursor, type CommentPage, type CommunitySummary} from '../domain/community';
 import type {Publication} from '../domain/publication';
 import {loungeErrorMessage, type LoungeRepository} from '../infrastructure/loungeRepository';
+import {useLoungeRefresh} from './useLoungeRefresh';
 
 export interface CommentNavigation {canClose():boolean}
 export function PublicationComments({repository,post,onSummary,onBack,onClose,requestClose,navigationRef,onBusyChange}: {
@@ -32,6 +33,22 @@ export function PublicationComments({repository,post,onSummary,onBack,onClose,re
   const inputRef=useRef<HTMLTextAreaElement>(null);
   const listRef=useRef<HTMLOListElement>(null);
   const dirty=body.trim().length>0;
+  const refreshBlocked=useRef(false);
+  refreshBlocked.current=loading || pending || dirty || Boolean(deleteId) || Boolean(discard) || Boolean(readError) || index>0;
+  function canRefresh() {
+    return !refreshBlocked.current && document.visibilityState!=='hidden' &&
+      (listRef.current?.closest('[data-surface-body]')?.scrollTop??0)<=1 && !listRef.current?.contains(document.activeElement);
+  }
+  useLoungeRefresh(async()=>{
+    if(!canRefresh())return;
+    const token=sequence.current;
+    try {
+      const next=await repository.listComments(post.id);
+      if(mounted.current && token===sequence.current && canRefresh()) {
+        setPage(previous=>JSON.stringify(previous)===JSON.stringify(next)?previous:next);
+      }
+    } catch { /* Preserve the visible page and draft when a background read fails. */ }
+  });
   useUncommittedInput(dirty && !approved.current);
   useEffect(()=>{onBusyChange(pending);},[pending,onBusyChange]);
   useEffect(()=>()=>onBusyChange(false),[onBusyChange]);

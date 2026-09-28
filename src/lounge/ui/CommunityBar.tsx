@@ -12,6 +12,7 @@ export function CommunityBar({entry,onReact,onComments,onRetry,commentButtonRef}
   const account=useContext(AccountManagementContext);
   const [expanded,setExpanded]=useState(false);
   const [choosing,setChoosing]=useState(false);
+  const [chosen,setChosen]=useState<EmojiId|null>(null);
   const addRef=useRef<HTMLButtonElement>(null);
   const chipRefs=useRef<Partial<Record<EmojiId,HTMLButtonElement|null>>>({});
   const pickerId=useId();
@@ -21,9 +22,10 @@ export function CommunityBar({entry,onReact,onComments,onRetry,commentButtonRef}
   useEffect(()=>{
     if(atLimit && choosing) {
       setChoosing(false);
-      requestAnimationFrame(()=>Object.values(chipRefs.current).find(Boolean)?.focus());
+      if(chosen)setExpanded(true);
+      requestAnimationFrame(()=>(chosen && chipRefs.current[chosen] || Object.values(chipRefs.current).find(Boolean))?.focus());
     }
-  },[atLimit,choosing]);
+  },[atLimit,choosing,chosen]);
   const sorted=EMOJIS.flatMap(emoji=>{
     const reaction=summary?.reactions.find(r=>r.emoji===emoji.id);
     return reaction?[{...reaction,...emoji}]:[];
@@ -43,7 +45,7 @@ export function CommunityBar({entry,onReact,onComments,onRetry,commentButtonRef}
           <span aria-hidden="true">{expanded?'접기':`… +${sorted.length-4}`}</span>
         </button> : null}
         {summary && !atLimit ? <button ref={addRef} type="button" className="community-add" aria-label="이모지 추가"
-          aria-expanded={choosing} aria-controls={pickerId} disabled={busy} onClick={()=>setChoosing(v=>!v)}>
+          aria-expanded={choosing} aria-controls={pickerId} disabled={busy} onClick={()=>{setChosen(null);setChoosing(v=>!v);}}>
           <SmilePlus size={20} aria-hidden="true" />
         </button> : null}
         {!summary && !entry?.error ? <span className="community-loading" role="status">공감 불러오는 중…</span> : null}
@@ -57,6 +59,7 @@ export function CommunityBar({entry,onReact,onComments,onRetry,commentButtonRef}
       onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();setChoosing(false);addRef.current?.focus();}}}>
       {EMOJIS.filter(emoji=>!summary?.reactions.some(r=>r.emoji===emoji.id)).map(emoji=><button key={emoji.id} type="button"
         disabled={busy} aria-label={emoji.label} onClick={async()=>{
+          setChosen(emoji.id);
           if(await onReact(emoji.id,true)) {
             setChoosing(false);setExpanded(true);
             requestAnimationFrame(()=>chipRefs.current[emoji.id]?.focus());
