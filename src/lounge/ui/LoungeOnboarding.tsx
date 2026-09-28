@@ -23,7 +23,7 @@ export function LoungeOnboarding({repository, onRegistered}: {repository: Lounge
   useUncommittedInput(raw.length > 0 && saved === null);
   useEffect(() => {heading.current?.focus();}, []);
   return <section className="lounge-welcome" aria-labelledby="lounge-welcome-title">
-    <header><p className="lounge-eyebrow">PORTFOLIO LOUNGE</p><h1 id="lounge-welcome-title" ref={heading} tabIndex={-1}>서로의 투자 구성을 만나보세요</h1>
+    <header><p className="lounge-eyebrow">커뮤니티 (Lounge)</p><h1 id="lounge-welcome-title" ref={heading} tabIndex={-1}>서로의 투자 구성을 만나보세요</h1>
       <p className="lounge-muted">로그인한 사용자끼리 종목과 비율을 나누는 공간이에요.</p></header>
     <ul className="lounge-welcome__features">
       <li><ChartPie aria-hidden="true" /><div><strong>비율 둘러보기</strong><span>다른 사람의 종목·자산군 구성을 확인해요.</span></div></li>
@@ -31,7 +31,7 @@ export function LoungeOnboarding({repository, onRegistered}: {repository: Lounge
       <li><Users aria-hidden="true" /><div><strong>내 구성 공유</strong><span>정확한 금액은 제외하고, 자산 규모는 원할 때만 표시해요.</span></div></li>
     </ul>
     <form className="lounge-nickname-form" onSubmit={event => {event.preventDefault(); if (nickname && !composing.current) {setError(''); setConfirm(true);}}}>
-      <label htmlFor="lounge-nickname">라운지에서 사용할 닉네임</label>
+      <label htmlFor="lounge-nickname">커뮤니티에서 사용할 닉네임</label>
       <input id="lounge-nickname" value={raw} maxLength={60} autoComplete="off" autoCapitalize="none" spellCheck={false}
         aria-describedby="lounge-nickname-rule lounge-nickname-permanent" aria-invalid={raw.length > 0 && !nickname}
         onCompositionStart={() => {composing.current = true;}} onCompositionEnd={() => {composing.current = false;}}

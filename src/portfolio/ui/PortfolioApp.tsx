@@ -415,7 +415,7 @@ export function PortfolioApp({
                     setResultCardIntent('share');
                   }}
                 />
-                <div className="portfolio-lounge-entry"><a className="ui-button ui-button--quiet" href={appPath('lounge')}>다른 사람의 포트폴리오 보기</a></div>
+                <div className="portfolio-lounge-entry"><a className="ui-button ui-button--quiet" href={appPath('lounge')}>커뮤니티에서 포트폴리오 보기</a></div>
               </div>
               {state.view === 'edit' || closingEdit !== null ? (
                 <PortfolioEditSurface

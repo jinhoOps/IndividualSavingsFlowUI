@@ -29,7 +29,7 @@ export function loungeErrorMessage(error: unknown): string {
     if (error.code === 'missing') return '삭제되었거나 더 이상 볼 수 없는 게시물이에요.';
     if (error.code === 'forbidden') return '내가 작성한 댓글만 삭제할 수 있어요.';
     if (error.code === 'nickname-taken') return '이미 사용 중인 닉네임이에요. 다른 이름을 입력해 주세요.';
-    if (error.code === 'profile-required') return '라운지에서 닉네임을 먼저 설정해 주세요.';
+    if (error.code === 'profile-required') return '커뮤니티에서 닉네임을 먼저 설정해 주세요.';
     if (error.code === 'conflict') return '다른 곳에서 공유 내용이 바뀌었어요. 닫고 다시 열어 주세요.';
     if (error.code === 'invalid') return '공유할 이름과 비율을 확인해 주세요.';
     if (error.code === 'account') return '로그인 상태가 바뀌었어요. 새로고침해 주세요.';

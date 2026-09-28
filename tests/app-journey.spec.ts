@@ -409,7 +409,7 @@ test('dock preview follows pointer and keyboard without changing the current app
   await portfolio.focus();
   await tracks(portfolio);
   await page.keyboard.press('Tab');
-  await expect(navigation.getByRole('link', {name: /라운지/})).toBeFocused();
+  await expect(navigation.getByRole('link', {name: /커뮤니티/})).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: '관리 메뉴', exact: true })).toBeFocused();
   await tracks(main);

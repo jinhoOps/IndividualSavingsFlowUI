@@ -127,8 +127,8 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
   return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu triggerRef={managementTrigger}
     items={[{kind:'action',id:'change-nickname',label:'닉네임 변경',onSelect:() => setChangingNickname(true)}]} />}>
     <AppContentFrame className="lounge-page">
-      <h1 className="lounge-heading" ref={headingRef} tabIndex={-1}>포트폴리오 라운지</h1>
-      <header className="lounge-header"><p className="lounge-muted" aria-label="내 라운지 닉네임">{currentNickname}</p>
+      <h1 className="lounge-heading" ref={headingRef} tabIndex={-1}>커뮤니티 (Lounge)</h1>
+      <header className="lounge-header"><p className="lounge-muted" aria-label="내 커뮤니티 닉네임">{currentNickname}</p>
         {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor}><Plus size={18} aria-hidden="true" />{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</button>
           : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}
       </header>
@@ -169,7 +169,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
           <a className="ui-button ui-button--primary" href={`${appPath('portfolio')}?publication=${detail.id}`}>이 비율로 시작하기</a>
         </>}</ResponsiveDialogActionRow> : undefined}>
         {detailLoading ? <p role="status">불러오는 중…</p> : null}
-        {detail ? deleteConfirm ? <p>라운지에서 사라지고 기존 게시물 링크도 열 수 없어요. 내 투자 배분은 유지돼요.</p> : <div className="lounge-detail">
+        {detail ? deleteConfirm ? <p>커뮤니티에서 사라지고 기존 게시물 링크도 열 수 없어요. 내 투자 배분은 유지돼요.</p> : <div className="lounge-detail">
           <p className="lounge-muted">{detail.alias} · {new Date(detail.updatedAt).toLocaleDateString('ko-KR')}</p>
           <AssetBandBadge band={detail.assetBand} /><AllocationSummary allocation={detail.allocation} />{detail.note ? <p className="lounge-note">{detail.note}</p> : null}
           <CommunityBar entry={community.entries[detail.id]} commentButtonRef={detailCommentsRef} onReact={(emoji,active)=>community.react(detail.id,emoji,active)}
@@ -183,6 +183,6 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
       </ResponsiveDialogLayout>}
     </ResponsiveDialog> : null}
     {editor && allocation ? <PublicationEditor repository={repository} nickname={currentNickname} existing={editor.existing} allocation={allocation} suggestedAssetBand={suggestedAssetBand} returnFocusRef={publishTrigger} onClose={() => setEditor(null)}
-      onSaved={() => {setEditor(null); setNotice('라운지에 공유했어요.'); void load();}} /> : null}
+      onSaved={() => {setEditor(null); setNotice('커뮤니티에 공유했어요.'); void load();}} /> : null}
   </AppShell>;
 }

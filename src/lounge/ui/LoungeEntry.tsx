@@ -22,8 +22,8 @@ export function LoungeEntry(props: Omit<ComponentProps<typeof LoungeApp>, 'nickn
   if (!loading && !error && profile) return <LoungeApp {...props} nickname={profile.nickname} />;
   return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu items={[]} />}>
     <AppContentFrame className="lounge-page">
-      {loading ? <p role="status" className="lounge-muted">라운지를 준비하고 있어요…</p> : error ? <section className="lounge-empty" role="alert">
-        <h1>라운지를 불러오지 못했어요</h1><p>{error}</p><button className="ui-button ui-button--primary" onClick={() => setAttempt(v => v + 1)}>다시 불러오기</button>
+      {loading ? <p role="status" className="lounge-muted">커뮤니티를 준비하고 있어요…</p> : error ? <section className="lounge-empty" role="alert">
+        <h1>커뮤니티를 불러오지 못했어요</h1><p>{error}</p><button className="ui-button ui-button--primary" onClick={() => setAttempt(v => v + 1)}>다시 불러오기</button>
       </section> : <LoungeOnboarding repository={props.repository} onRegistered={setProfile} />}
     </AppContentFrame>
   </AppShell>;
