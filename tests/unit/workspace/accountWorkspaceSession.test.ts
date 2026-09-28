@@ -107,6 +107,31 @@ describe('account workspace session', () => {
     expect(restored.scope('simulation').resetMainSetup).toBeUndefined();
   });
 
+  it('retains newer loan recovery when an older expense write with identical answers completes', async () => {
+    localStorage.clear();
+    const {session, remote, setCurrent} = fixture();
+    const initial = createEmptyWorkspace(1000);
+    initial.main.applied = {schemaVersion: 2, updatedAt: 1000, monthlyNetIncomeWon: 3000000,
+      monthlyHousingWon: 500000, monthlyLivingWon: 500000, monthlySavingWon: 500000, monthlyInvestmentWon: 500000};
+    const first = {...createExpenseDraft(1000), housingLoans: {month: '2026-09', loans: [], paymentOverrideWon: null}};
+    initial.main.expenseAssistant = {schemaVersion: 2, draft: first, lastApplied: null};
+    setCurrent(initial); await session.refresh();
+    let release!: () => void;
+    const barrier = new Promise<void>(resolve => {release = resolve;});
+    const write = remote.write;
+    remote.write = async (...args) => { await barrier; return write(...args); };
+    session.recordRecoveryDraft('main-expense', first);
+    const saving = session.scope('main').saveExpense!(0, first, false);
+    const next = {...first, housingLoans: {...first.housingLoans, month: '2026-10'}};
+    session.recordRecoveryDraft('main-expense', next);
+    release(); await saving;
+    expect(session.readRecoveryDraft('main-expense')).toEqual(next);
+    expect(session.localEdits).toBe(true);
+    expect((await session.scope('main').saveExpense!(1, next, false)).status).toBe('saved');
+    expect(session.readRecoveryDraft('main-expense')).toBeNull();
+    expect(session.localEdits).toBe(false);
+  });
+
   it('locks without losing recovery and ignores a pending write response after automatic sign-out', async () => {
     localStorage.clear();
     const {session, remote} = fixture();

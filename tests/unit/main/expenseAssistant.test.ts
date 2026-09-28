@@ -4,6 +4,8 @@ import {withExpenseDraft,createExpenseAssistantRepository} from '../../../src/ma
 import {BrowserMainRepository} from '../../../src/main/infrastructure/mainRepository';
 import {BrowserWorkspaceRepository} from '../../../src/workspace/infrastructure/workspaceRepository';
 import {createEmptyWorkspace,WORKSPACE_STORAGE_KEY} from '../../../src/workspace/domain/model';
+import {exportWorkspaceBackup, importWorkspaceBackup} from '../../../src/workspace/infrastructure/workspaceBackup';
+import type {HousingLoanPlan} from '../../../src/main/domain/housingLoan';
 
 function completed() {
   const draft=createExpenseDraft(1000);
@@ -19,6 +21,27 @@ function workspace() {
   return current;
 }
 describe('expense answers and Main replacement',()=>{
+  it('versions loan conditions without reinterpreting old interest, round-trips backup and blocks old writers',()=>{
+    const original=workspace(); const draft=completed();
+    draft.answers.housingInterest={amountWon:900000,period:'month'};
+    const plan: HousingLoanPlan={month:'2026-09',paymentOverrideWon:null,loans:[{id:'home',name:'집',method:'bullet',basis:'remaining',
+      principalWon:100000000,annualRateBps:400,rateType:'fixed',months:1,graceMonths:0,firstPaymentMonth:'2026-09'}]};
+    const next={...draft,housingLoans:plan};
+    const saved=withExpenseDraft(original,next,false,2000);
+    expect(saved.main.expenseAssistant?.schemaVersion).toBe(2);
+    expect(saved.main.applied).toEqual(original.main.applied);
+    const applied=withExpenseDraft(saved,next,true,3000);
+    expect(applied.main.applied?.monthlyHousingWon).toBe(1133333);
+    expect(applied.main.expenseAssistant?.draft.answers.housingInterest?.amountWon).toBe(900000);
+    expect(applied.main.expenseAssistant?.lastApplied?.housingLoans).toEqual(plan);
+    expect(importWorkspaceBackup(exportWorkspaceBackup(applied,3000))).toEqual(applied);
+    expect(()=>withExpenseDraft(applied,draft,true,4000)).toThrow();
+    expect(parseExpenseAssistant({...applied.main.expenseAssistant,schemaVersion:1})).toBeNull();
+    expect(parseExpenseDraft({...next,housingLoans:{...plan,loans:[...plan.loans,...plan.loans]}})).toBeNull();
+    const unanswered={...next,answers:{...next.answers,housingInterest:null}};
+    expect(expenseAnswersComplete(unanswered.answers,plan)).toBe(true);
+    expect(withExpenseDraft(applied,unanswered,true,4000).main.applied?.monthlyHousingWon).toBe(1133333);
+  });
   it('distinguishes unanswered from zero and rounds yearly sums once per destination',()=>{
     const draft=createExpenseDraft(1000);
     expect(expenseAnswersComplete(draft.answers)).toBe(false);

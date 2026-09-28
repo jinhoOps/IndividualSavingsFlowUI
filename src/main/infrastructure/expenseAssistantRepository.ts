@@ -12,14 +12,16 @@ export interface ExpenseAssistantRepository {
 export function withExpenseDraft(current: WorkspaceDocument, draft: ExpenseAssistantDraft, complete: boolean, now: number): WorkspaceDocument {
   const validated = parseExpenseDraft(draft);
   const applied = current.main.applied;
-  if (!validated || !applied || (complete && !expenseAnswersComplete(validated.answers))) throw new Error('Invalid expense answers.');
-  const totals = expenseTotals(validated.answers)!;
+  if (!validated || !applied || (complete && !expenseAnswersComplete(validated.answers, validated.housingLoans))
+    || (current.main.expenseAssistant?.schemaVersion === 2 && !Object.hasOwn(validated, 'housingLoans'))) throw new Error('Invalid expense answers.');
+  const totals = expenseTotals(validated.answers, validated.housingLoans)!;
   const updatedAt = complete ? Math.max(now, applied.updatedAt + 1) : applied.updatedAt;
   if (!Number.isSafeInteger(updatedAt) || updatedAt > 8_640_000_000_000_000) throw new Error('Invalid expense timestamp.');
   return { ...current, main: { ...current.main,
     applied: complete && (applied.monthlyHousingWon !== totals.housingWon || applied.monthlyLivingWon !== totals.livingWon) ? { ...applied, monthlyHousingWon: totals.housingWon, monthlyLivingWon: totals.livingWon, updatedAt } : applied,
-    expenseAssistant: { schemaVersion: 1, draft: { ...validated, step: complete ? 'review' : validated.step },
-      lastApplied: complete ? { answers: structuredClone(validated.answers), appliedAt: updatedAt } : current.main.expenseAssistant?.lastApplied ?? null },
+    expenseAssistant: { schemaVersion: Object.hasOwn(validated, 'housingLoans') ? 2 : 1, draft: { ...validated, step: complete ? 'review' : validated.step },
+      lastApplied: complete ? { answers: structuredClone(validated.answers), appliedAt: updatedAt,
+        ...(Object.hasOwn(validated, 'housingLoans') ? {housingLoans: structuredClone(validated.housingLoans)} : {}) } : current.main.expenseAssistant?.lastApplied ?? null },
   } };
 }
 

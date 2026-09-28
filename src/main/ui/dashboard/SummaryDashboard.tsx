@@ -15,6 +15,8 @@ import { MainPlanEditor } from './MainPlanEditor';
 import { ExpenseAssistantDialog } from './ExpenseAssistantDialog';
 import { RemainingAllocationDialog } from './RemainingAllocationDialog';
 import type { ExpenseAssistantRepository } from '../../infrastructure/expenseAssistantRepository';
+import {expenseTotals, type ExpenseAssistant} from '../../domain/expenseAssistant';
+import {addLoanMonths, loanPlanMonthTotals} from '../../domain/housingLoan';
 
 export interface SummaryDashboardProps {
   applied: MainData;
@@ -52,6 +54,8 @@ export function SummaryDashboard({
   const [editorOpen, setEditorOpen] = useState(false);
   const [requestedFocusPath, setRequestedFocusPath] = useState(initialFocusPath);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [initialLoanOpen, setInitialLoanOpen] = useState(false);
+  const [expenseRecord, setExpenseRecord] = useState<ExpenseAssistant | null>(null);
   const [remainingOpen, setRemainingOpen] = useState(false);
   const openerRef = useRef<HTMLElement | null>(null);
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -61,6 +65,17 @@ export function SummaryDashboard({
   const editorFocusPath = (firstIssuePath as keyof MainData | undefined)
     ?? requestedFocusPath;
   const initialFocusConsumed = useRef(false);
+  useEffect(() => {
+    if (expenseOpen || !expenseRepository) return;
+    try { setExpenseRecord(expenseRepository.load()); } catch { /* Account recovery owns unavailable snapshots. */ }
+  }, [expenseRepository, expenseOpen, applied]);
+  const loanPlan = expenseRecord?.lastApplied?.housingLoans ?? expenseRecord?.draft.housingLoans;
+  const appliedExpense = expenseRecord?.lastApplied;
+  const loanConnected = !!appliedExpense?.housingLoans && expenseTotals(appliedExpense.answers, appliedExpense.housingLoans)?.housingWon === applied.monthlyHousingWon;
+  const loanTotal = loanPlan ? loanPlanMonthTotals(loanPlan) : null;
+  const maturities = loanPlan?.loans.filter(loan => loan.method === 'bullet').map(loan => ({
+    name: loan.name, month: addLoanMonths(loan.firstPaymentMonth, loan.months - 1), amount: loan.principalWon,
+  })).sort((left, right) => left.month.localeCompare(right.month)) ?? [];
 
   useEffect(() => {
     if (!dirty) return;
@@ -171,6 +186,7 @@ export function SummaryDashboard({
           <CashflowAllocationSummary data={applied} onEditAmount={(field, opener) => openEditor(opener, field)} onExpense={expenseRepository && !editorOpen && !dirty ? (opener) => {
             if (saving) return;
             openerRef.current = opener;
+            setInitialLoanOpen(false);
             setExpenseOpen(true);
           } : undefined} onRemaining={!editorOpen && (!dirty || remainingOpen) ? opener => {
             if (saving) return;
@@ -182,10 +198,20 @@ export function SummaryDashboard({
           </div>
         </Surface>
 
+        {loanPlan && loanPlan.loans.length > 0 && <section className="main-loan-summary" aria-label="주거 대출 계획">
+          <button type="button" className="loan-entry" disabled={saving || dirty || editorOpen} onClick={event => {
+            openerRef.current = event.currentTarget; setInitialLoanOpen(true); setExpenseOpen(true);
+          }}><span><strong>대출 {loanPlan.loans.length}건 · {loanTotal!.regularWon.toLocaleString('ko-KR')}원</strong>
+            <small>{loanPlan.month} 정기 납입 · {loanConnected ? '주거비 반영' : '지출 내역에서 반영 확인'}</small></span><span aria-hidden="true">설정</span></button>
+          {maturities.length > 0 && <div className="loan-maturity"><span>만기 상환 원금 · 정기 지출과 별도</span>
+            {maturities.map((item, index) => <span key={index}>{item.month} · {item.name} <strong>{item.amount.toLocaleString('ko-KR')}원</strong></span>)}
+          </div>}
+        </section>}
+
         {journeyEntry === undefined ? null : journeyEntry}
       </div>
 
-      {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} returnFocusRef={openerRef} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
+      {expenseOpen && expenseRepository ? <ExpenseAssistantDialog repository={expenseRepository} initialLoanOpen={initialLoanOpen} returnFocusRef={openerRef} onClose={() => setExpenseOpen(false)} onApplied={data => onExpenseApplied?.(data)} /> : null}
 
       {remainingOpen ? <RemainingAllocationDialog applied={applied} dirty={dirty} saveStatus={saveStatus} returnFocusRef={openerRef}
         onDraftChange={onDraftChange} onApply={onApply} onCancel={onCancel} onClose={() => setRemainingOpen(false)} /> : null}
