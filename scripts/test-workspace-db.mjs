@@ -222,6 +222,8 @@ try {
   await verifyNicknameChanges({sql, quote, asUser, userA, userC, parallelSql});
   const {verifyLoungeCommunity} = await import('./verify-lounge-community-db.mjs');
   await verifyLoungeCommunity({sql, asUser, userA, userC, parallelSql, vite});
+  const {verifyLoungeConversation} = await import('./verify-lounge-conversation-db.mjs');
+  await verifyLoungeConversation({sql, asUser, userA, userC, parallelSql, vite});
   console.log(`PASS: ${fixtures.length} shared TS/SQL fixtures; v3 upgrade/before-images/rollback; required v4 protocol; PostgreSQL RLS, narrow RPCs, revisions, receipts, concurrent writes/retries/initialization.`);
 } finally {
   await vite?.close();
