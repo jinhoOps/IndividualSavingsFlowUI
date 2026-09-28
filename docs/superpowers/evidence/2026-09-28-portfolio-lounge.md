@@ -40,7 +40,14 @@ Lounge 통합 검사는 390/768/1280에서 로그인 요구, 새 계정 무초�
 - 로그인용 RPC 실행 권한 허용, 전용 역할의 login/inherit/bypassrls 비활성 확인.
 - 적용 후 공유 게시물 **0개**. 실제 사용자 계획을 검증 목적으로 게시하지 않았다.
 
-프런트 배포·PR/CI의 최종 상태는 PR과 인계 메시지로 기록한다. 운영 DB 적용과 mock HTTP 화면 검증의 범위를 혼동하지 않는다.
+## PR·배포·정리
+
+- [PR #25](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/25)를 main에 병합했다. 병합 커밋 `354815c4`, 작성자 `KIM JINHO <okho04@gmail.com>`.
+- [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36371913385), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36372031956), [Pages 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36372031989) 모두 성공.
+- [배포된 라운지](https://jinhoops.github.io/IndividualSavingsFlowUI/apps/lounge/)를 실제 HTTP로 열어 390/1280에서 200 응답, 로그인 화면, 가로 overflow 없음, JavaScript 오류 없음을 확인했다. 첫 관찰은 공통 인트로가 끝나기 전이어서 인트로를 건너뛴 뒤 로그인 화면을 기다려 검증했다.
+- `jinhoOps/portfolio-lounge` 로컬/원격 브랜치를 삭제하고 main을 원격과 맞췄다. Orca 하위 작업공간이 없음을 확인하고 현재 작업공간을 완료 처리했다.
+
+운영 DB 적용·권한 검증, 실제 배포의 비로그인 진입 검사, fixture를 쓰는 로그인 후 E2E의 범위는 서로 구분한다. 실제 사용자 포트폴리오는 게시하지 않았다.
 
 ## 화면 증거
 
