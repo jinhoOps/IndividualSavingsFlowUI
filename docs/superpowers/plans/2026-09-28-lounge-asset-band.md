@@ -7,8 +7,8 @@
 2. [x] nullable 컬럼·v2 조회/게시 RPC, 기존 RPC 호환·권한·충돌·숨김 DB 검증.
 3. [x] 공유 편집 opt-in·초기 자산 제안·수동 선택, 목록/상세/미리보기 배지와 변경 확인.
 4. [x] PRD·DESIGN·README 갱신, 단위·타입·DB·390/768/1280 E2E 검증.
-5. [ ] 운영 migration 보존 검사, PR·CI·배포 및 원격/로컬/Orca 정리.
+5. [x] 운영 migration 보존 검사, PR·CI·배포 및 원격/로컬/Orca 정리.
 
-검증: 타입·단위 1,223개·전체 E2E 273개(기존 PWA 1개 제외)·전체 DB·빌드·harness 통과. 카드 접근성 설명 보완 후 Lounge focused 9개를 다시 통과했다. 운영 migration은 보존/권한 검사까지 완료했고 PR·프런트 배포가 남았다.
+검증: 타입·단위 1,223개·전체 E2E 273개(기존 PWA 1개 제외)·전체 DB·빌드·harness 통과. 카드 접근성 설명 보완 후 Lounge focused 9개를 다시 통과했다. 운영 migration 보존/권한 검사, PR #26 병합, main CI·Pages 배포와 실제 서비스 확인을 완료했다. 로컬/원격 작업 브랜치를 정리하고 Orca를 완료 처리했다.
 
 [검증·운영 및 화면 증거](../evidence/2026-09-28-lounge-asset-band.md)

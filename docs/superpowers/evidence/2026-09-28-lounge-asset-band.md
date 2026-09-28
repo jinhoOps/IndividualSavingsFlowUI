@@ -33,7 +33,12 @@
 - 로컬/운영 migration SQL digest `24c250f8391686389cf7c6bf41b695f4` 일치.
 - DB 시험 컨테이너 없음, Supabase 브라우저를 원래 프로젝트 화면으로 복귀.
 
-PR·CI·프런트 배포는 최종 완료 시 아래 기록한다.
+## 배포 완료
+
+- [PR #26](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/26), 병합 커밋 `2e838fd5`.
+- [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36373435618), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36373548772), [Pages 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36373548788) 모두 성공.
+- 실제 [라운지](https://jinhoops.github.io/IndividualSavingsFlowUI/apps/lounge/)와 JS 7개가 HTTP 200이며, 배포 파일에 자산 규모 옵션과 v2 게시 RPC가 포함된 것을 확인했다. 390/1280에서 비로그인 진입은 로그인 화면이고 overflow·JavaScript 오류가 없다.
+- 로컬/원격 `jinhoOps/lounge-asset-band` 삭제, main 동기화, Orca 완료 처리.
 
 ## 화면 증거
 
