@@ -221,6 +221,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 신규 `portfolio_publications` 테이블과 최소 권한 RPC를 사용한다. RLS로 인증/소유권을 제한하고 목록 응답에서 owner UID를 제외한다. version 충돌 검사, strict JSON allowlist, 계정 삭제 cascade를 검증한다.
 - 이미지 업로드 없이 4KB 이하 allocation·10개 종목·계정당 1행·최대 5,000행으로 제한한다. schema v5·protocol 5·백업은 유지하고 커뮤니티 프로필·게시물을 workspace 백업에 넣지 않는다. 프로필도 계정당 1행·최대 5,000행이며 계정 삭제 시 함께 제거한다.
 - [상세 설계](../../../../superpowers/specs/2026-09-28-portfolio-lounge-design.md), [구현·운영 진행](../../../../superpowers/plans/2026-09-28-portfolio-lounge.md)을 따른다.
+- 승인된 후속 작업: [답글·멘션·앱 내 알림·댓글 밀도·탐색 확장](../../../../superpowers/specs/2026-09-28-community-conversation-discovery-design.md). 2026-09-28 구현 승인·진행 중이며 배포된 제품에는 미적용이다. 동일 자산군의 종목 경계선을 추가하고 대화·알림 → 검색·필터 → 공감/댓글 정렬 순서로 구현한다.
 
 ### Account Map 제거와 데이터 보존
 
