@@ -58,7 +58,7 @@ describe('AppLauncher', () => {
     ['main', '자금 흐름 (Main)'],
     ['simulation', '미래 성장 (Simulation)'],
     ['portfolio', '투자 배분 (Portfolio)'],
-    ['lounge', '포트폴리오 라운지 (Lounge)'],
+    ['lounge', '커뮤니티 (Lounge)'],
   ] satisfies ReadonlyArray<[JourneyApp, string]>)(
     'renders icon navigation and marks %s as the current location',
     (currentApp, currentLabel) => {

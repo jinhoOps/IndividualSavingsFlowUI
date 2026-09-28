@@ -44,7 +44,7 @@ export function PublicationEditor({repository, nickname, existing, allocation, s
         lock.current = true; setPending(true); setError('');
         try {saved.current = await repository.publish(input, existing?.version ?? null); lock.current = false; setPending(false); requestClose('button');}
         catch(error) {setError(loungeErrorMessage(error)); lock.current = false; setPending(false);}
-      }}>{pending ? '공유 중…' : existing ? '이 내용으로 갱신' : '라운지에 공유'}</button>}</ResponsiveDialogActionRow>}>
+      }}>{pending ? '공유 중…' : existing ? '이 내용으로 갱신' : '커뮤니티에 공유'}</button>}</ResponsiveDialogActionRow>}>
       {discard ? <p>아직 공유하지 않은 입력 내용이 사라져요.</p> : <div className="lounge-editor">
         <p className="lounge-audience">로그인한 모든 사용자에게 공개 · 정확한 금액 제외</p>
         <label>제목<input value={title} maxLength={40} onChange={e => setTitle(e.target.value)} disabled={pending} /></label>
@@ -64,7 +64,7 @@ export function PublicationEditor({repository, nickname, existing, allocation, s
           </> : null}
         </section>
         <AllocationSummary allocation={allocation} />
-        <p className="lounge-muted">현재 적용한 비율을 공유해요. 이후 내 계획을 수정해도 이 게시물은 자동으로 바뀌지 않아요. 직접 삭제할 때까지 라운지에 남아요.</p>
+        <p className="lounge-muted">현재 적용한 비율을 공유해요. 이후 내 계획을 수정해도 이 게시물은 자동으로 바뀌지 않아요. 직접 삭제할 때까지 커뮤니티에 남아요.</p>
       </div>}
     </ResponsiveDialogLayout>}
   </ResponsiveDialog>;

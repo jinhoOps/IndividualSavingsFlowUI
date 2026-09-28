@@ -2021,7 +2021,7 @@ for(const width of [390,768,1280]) test(`Lounge quiet refresh preserves browsing
   await expect(page.getByRole('button',{name:'좋아요 1명',exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);
   expect((await page.locator('.lounge-header').boundingBox())!.height).toBeLessThanOrEqual(50);
-  expect((await page.getByRole('heading',{name:'포트폴리오 라운지',exact:true}).boundingBox())!.width).toBe(1);
+  expect((await page.getByRole('heading',{name:'커뮤니티 (Lounge)',exact:true}).boundingBox())!.width).toBe(1);
   await expect(page.locator('.lounge-header .lounge-eyebrow')).toHaveCount(0);
   expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:testInfo.outputPath(`lounge-compact-${width}.png`),fullPage:false});
@@ -2198,7 +2198,8 @@ for (const width of [390,768,1280]) {
     const server=fakeServer(); const original=resultCardPlan(); server.rows.set(userA,structuredClone(original));
     server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
     await server.attach(context,userA);await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});
-    await page.goto('apps/lounge/'); await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeVisible();
+    await page.goto('apps/lounge/'); await expect(page).toHaveTitle('커뮤니티 (Lounge) | ISF');
+    await expect(page.getByRole('heading',{name:'커뮤니티 (Lounge)',exact:true})).toBeVisible();
     await page.evaluate(()=>document.fonts.ready);
     await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toBeVisible();
     await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toHaveAccessibleDescription('자산 규모 · 1억원대');
@@ -2247,7 +2248,7 @@ for (const width of [390,768,1280]) {
     expect(editorBox.height).toBeLessThanOrEqual(900*.88+1);
     expect(await preventsLeaving(page)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`lounge-publish-${width}.png`)});
-    await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click(); await expect(dialog).toHaveCount(0);
+    await dialog.getByRole('button',{name:'커뮤니티에 공유',exact:true}).click(); await expect(dialog).toHaveCount(0);
     await expect.poll(()=>preventsLeaving(page)).toBe(false);
     expect(server.rows.get(userA)).toEqual(before);
     expect(JSON.stringify(server.loungeWrites)).not.toMatch(/p_alias|syncedInvestmentWon|initialInvestmentWon|15000000|monthly|amountWon|@|classification|sourceMain|accountMap/);
@@ -2270,7 +2271,7 @@ for (const width of [390,768,1280]) {
 }
 test('Lounge requires login; deleted link and cancelled copy never write',async({page,context})=>{
   const server=fakeServer();await server.attach(context,null);await page.goto(`apps/lounge/?post=${sharedPortfolio.id}`);
-  await expect(page.getByRole('button',{name:/Google로/})).toBeVisible(); await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:/Google로/})).toBeVisible(); await expect(page.getByRole('heading',{name:'커뮤니티 (Lounge)',exact:true})).toHaveCount(0);
   expect(server.operations).toEqual([]);
 });
 test('Lounge publish failure keeps inputs; unchanged view closes quietly and changed input asks',async({page,context})=>{
@@ -2280,7 +2281,7 @@ test('Lounge publish failure keeps inputs; unchanged view closes quietly and cha
   await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();let dialog=page.getByRole('dialog');
   await dialog.getByLabel('제목',{exact:true}).fill('보존할 제목');server.setFailWrite(true);
-  await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click();await expect(dialog.getByRole('alert')).toBeVisible();
+  await dialog.getByRole('button',{name:'커뮤니티에 공유',exact:true}).click();await expect(dialog.getByRole('alert')).toBeVisible();
   await expect(dialog.getByLabel('제목',{exact:true})).toHaveValue('보존할 제목');
   await page.keyboard.press('Escape');dialog=page.getByRole('dialog',{name:'작성 중인 내용을 닫을까요?'});await expect(dialog).toBeVisible();
   await dialog.getByRole('button',{name:'그만두기'}).click();await expect(dialog).toHaveCount(0);
@@ -2305,12 +2306,12 @@ for (const initial of [null, 0]) {
     await expect(toggle).not.toBeChecked();await expect.poll(()=>preventsLeaving(page)).toBe(false);
     await toggle.check();await expect.poll(()=>preventsLeaving(page)).toBe(true);
     await expect(dialog.getByLabel('공유할 자산 규모')).toHaveValue(initial===null?'':'under_10m');
-    if(initial===null) {await expect(dialog.getByRole('button',{name:'라운지에 공유',exact:true})).toBeDisabled();await dialog.getByLabel('공유할 자산 규모').selectOption('under_10m');}
+    if(initial===null) {await expect(dialog.getByRole('button',{name:'커뮤니티에 공유',exact:true})).toBeDisabled();await dialog.getByLabel('공유할 자산 규모').selectOption('under_10m');}
     await expect(dialog.getByText('자산 규모 · 1천만원 미만',{exact:true})).toBeVisible();
     await page.keyboard.press('Escape');await expect(page.getByRole('heading',{name:'작성 중인 내용을 닫을까요?'})).toBeVisible();
     await dialog.getByRole('button',{name:'계속 작성'}).click();await toggle.uncheck();
     await expect.poll(()=>preventsLeaving(page)).toBe(false);
-    await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click();await expect(dialog).toHaveCount(0);
+    await dialog.getByRole('button',{name:'커뮤니티에 공유',exact:true}).click();await expect(dialog).toHaveCount(0);
     expect(server.loungeWrites[0]).toMatchObject({p_asset_band:null});expect(server.rows.get(userA)).toEqual(original);
     await expect(page.locator('.lounge-asset-badge')).toHaveCount(0);
   });
@@ -2333,7 +2334,7 @@ for (const width of [390,768,1280]) {
     const heading=page.getByRole('heading',{name:'서로의 투자 구성을 만나보세요'});
     await expect(heading).toBeVisible();await expect(heading).toBeFocused();
     expect(await preventsLeaving(page)).toBe(false);
-    const input=page.getByLabel('라운지에서 사용할 닉네임');
+    const input=page.getByLabel('커뮤니티에서 사용할 닉네임');
     const confirm=page.getByRole('button',{name:'닉네임 확인',exact:true});
     await expect(confirm).toBeDisabled();
     for(const invalid of ['a','a b','name_1','😊이름','-.@','a'.repeat(21)]) {
@@ -2357,11 +2358,11 @@ for (const width of [390,768,1280]) {
     await page.screenshot({path:testInfo.outputPath(`lounge-nickname-confirm-${width}.png`)});
     await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);await expect(confirm).toBeFocused();await expect(input).toHaveValue('Kim-지호.1@');
     await confirm.click();await dialog.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).click();
-    await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeFocused();
-    await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('Kim-지호.1@');
+    await expect(page.getByRole('heading',{name:'커뮤니티 (Lounge)',exact:true})).toBeFocused();
+    await expect(page.getByLabel('내 커뮤니티 닉네임')).toHaveText('Kim-지호.1@');
     expect(server.profileWrites).toEqual([{p_nickname:'Kim-지호.1@'}]);
     expect(server.rows.size).toBe(0);expect(server.operations).toEqual([]);expect(await preventsLeaving(page)).toBe(false);
-    await page.reload();await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeVisible();
+    await page.reload();await expect(page.getByRole('heading',{name:'커뮤니티 (Lounge)',exact:true})).toBeVisible();
     await expect(input).toHaveCount(0);expect(server.profileWrites).toHaveLength(1);
   });
 }
@@ -2371,7 +2372,7 @@ test('Lounge nickname duplicate, failed save and response-lost retry preserve id
   const oldPost={...sharedPortfolio,alias:'예전별명',isMine:true};server.publications.set(oldPost.id,{owner:userA,post:oldPost});
   await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto(`apps/lounge/?post=${oldPost.id}`);
-  const input=page.getByLabel('라운지에서 사용할 닉네임');const confirm=page.getByRole('button',{name:'닉네임 확인',exact:true});
+  const input=page.getByLabel('커뮤니티에서 사용할 닉네임');const confirm=page.getByRole('button',{name:'닉네임 확인',exact:true});
   await input.fill('used.name');await confirm.click();
   const dialog=page.getByRole('dialog',{name:'이 닉네임으로 시작할까요?'});const save=dialog.getByRole('button',{name:'이 닉네임으로 시작',exact:true});
   await save.click();await expect(dialog.getByRole('alert')).toContainText('이미 사용 중');expect(server.profiles.has(userA)).toBe(false);
@@ -2379,7 +2380,7 @@ test('Lounge nickname duplicate, failed save and response-lost retry preserve id
   await input.fill('새닉네임');await confirm.click();server.setFailWrite(true);await save.click();await expect(dialog.getByRole('alert')).toContainText('다시 시도');
   server.setFailWrite(false);server.loseNextResponse();await save.click();await expect.poll(()=>server.profiles.get(userA)?.nickname).toBe('새닉네임');
   await expect(dialog.getByRole('alert')).toContainText('다시 시도');await save.click();
-  await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('새닉네임');await expect(dialog).toHaveCount(0);
+  await expect(page.getByLabel('내 커뮤니티 닉네임')).toHaveText('새닉네임');await expect(dialog).toHaveCount(0);
   const detail=page.getByRole('dialog',{name:oldPost.title});await expect(detail).toBeVisible();await expect(detail.getByText(/^새닉네임 ·/)).toBeVisible();
   expect(server.publications.get(oldPost.id)?.post).toEqual({...oldPost,alias:'새닉네임',version:2});
   expect(server.rows.size).toBe(0);expect(server.operations).toEqual([]);expect(await preventsLeaving(page)).toBe(false);
@@ -2387,13 +2388,13 @@ test('Lounge nickname duplicate, failed save and response-lost retry preserve id
 
 test('Lounge profile read failure cannot start onboarding, and concurrent registration uses the first name',async({page,context})=>{
   const server=fakeServer();server.profiles.delete(userA);server.setFailProfileRead(true);await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
-  await page.goto('apps/lounge/');await expect(page.getByRole('heading',{name:'라운지를 불러오지 못했어요'})).toBeVisible();
-  await expect(page.getByLabel('라운지에서 사용할 닉네임')).toHaveCount(0);expect(server.profileWrites).toEqual([]);
+  await page.goto('apps/lounge/');await expect(page.getByRole('heading',{name:'커뮤니티를 불러오지 못했어요'})).toBeVisible();
+  await expect(page.getByLabel('커뮤니티에서 사용할 닉네임')).toHaveCount(0);expect(server.profileWrites).toEqual([]);
   server.setFailProfileRead(false);await page.getByRole('button',{name:'다시 불러오기',exact:true}).click();
-  await page.getByLabel('라운지에서 사용할 닉네임').fill('이쪽이름');await page.getByRole('button',{name:'닉네임 확인',exact:true}).click();
+  await page.getByLabel('커뮤니티에서 사용할 닉네임').fill('이쪽이름');await page.getByRole('button',{name:'닉네임 확인',exact:true}).click();
   server.profiles.set(userA,{nickname:'먼저등록'});
   await page.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).click();
-  await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('먼저등록');expect(server.profiles.get(userA)?.nickname).toBe('먼저등록');
+  await expect(page.getByLabel('내 커뮤니티 닉네임')).toHaveText('먼저등록');expect(server.profiles.get(userA)?.nickname).toBe('먼저등록');
 });
 
 async function openNicknameSettings(page: import('@playwright/test').Page) {
@@ -2429,7 +2430,7 @@ for(const width of [390,768,1280]) {
     expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`nickname-change-${width}.png`)});
     await save.click();await expect(dialog).toHaveCount(0);await expect(open).toBeFocused();
-    await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('새로운-Kim.1@');
+    await expect(page.getByLabel('내 커뮤니티 닉네임')).toHaveText('새로운-Kim.1@');
     await expect(page.getByRole('button',{name:`${oldPost.title} 상세 보기`})).toContainText('새로운-Kim.1@');
     expect(server.nicknameWrites).toEqual([{p_nickname:'새로운-Kim.1@',p_expected_version:1}]);
     expect(server.publications.get(oldPost.id)?.post).toEqual({...oldPost,alias:'새로운-Kim.1@',version:2});
@@ -2447,7 +2448,7 @@ for(const width of [390,768,1280]) {
 test('Lounge nickname failed load, duplicate and lost-response retry preserve input and do not renew lock',async({page,context})=>{
   const server=fakeServer();await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto('apps/lounge/');
-  await expect(page.getByLabel('내 라운지 닉네임')).toBeVisible();server.setFailProfileRead(true);await openNicknameSettings(page);
+  await expect(page.getByLabel('내 커뮤니티 닉네임')).toBeVisible();server.setFailProfileRead(true);await openNicknameSettings(page);
   const dialog=page.getByRole('dialog',{name:'닉네임 변경',exact:true}),save=dialog.getByRole('button',{name:'변경하기',exact:true});
   await expect(dialog.getByRole('alert')).toBeVisible();await expect(save).toBeDisabled();
   server.setFailProfileRead(false);await dialog.getByRole('button',{name:'다시 불러오기',exact:true}).click();
@@ -2467,7 +2468,7 @@ test('Lounge nickname concurrent update is shown without overwriting and dirty c
   server.profiles.set(userA,{nickname:'다른기기이름'});server.profileVersions.set(userA,2);server.profileChangeTimes.set(userA,Date.now());
   await dialog.getByRole('button',{name:'변경하기',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('다른 곳에서');
   await expect(dialog.getByLabel('새 닉네임')).toHaveValue('내입력');await expect(dialog.getByLabel('새 닉네임')).toBeDisabled();
-  await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('다른기기이름');expect(server.profiles.get(userA)?.nickname).toBe('다른기기이름');
+  await expect(page.getByLabel('내 커뮤니티 닉네임')).toHaveText('다른기기이름');expect(server.profiles.get(userA)?.nickname).toBe('다른기기이름');
   await page.keyboard.press('Escape');await page.getByRole('button',{name:'입력 버리기',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await preventsLeaving(page)).toBe(false);await expect(open).toBeFocused();
 });
@@ -2532,7 +2533,7 @@ test.describe('Kakao clipboard fallback',()=>{
     await address.focus();expect(await address.evaluate((el:HTMLInputElement)=>el.selectionEnd! - el.selectionStart!)).toBe((await address.inputValue()).length);
     await page.getByLabel('이메일',{exact:true}).fill('test@example.com');await page.getByLabel('비밀번호',{exact:true}).fill('fixture-password');
     await page.getByRole('button',{name:'이메일로 로그인',exact:true}).click();
-    await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('나의별명');
+    await expect(page.getByLabel('내 커뮤니티 닉네임')).toHaveText('나의별명');
     await expect(page.getByRole('region',{name:'카카오톡 브라우저 안내'})).toHaveCount(0);
     expect(server.operations).toEqual([]);
   });
