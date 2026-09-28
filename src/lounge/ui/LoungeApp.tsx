@@ -1,3 +1,4 @@
+import { Button, ButtonLink } from '../../components/common/Button';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {ArrowUpRight, Bell, Check, Link, Plus} from 'lucide-react';
 import {AppShell} from '../../components/common/AppShell';
@@ -157,15 +158,15 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
       <h1 className="lounge-heading" ref={headingRef} tabIndex={-1}>커뮤니티 (Lounge)</h1>
       <header className="lounge-header"><p className="lounge-muted" aria-label="내 커뮤니티 닉네임">{currentNickname}</p>
         <div className="lounge-header-actions"><button type="button" className="responsive-dialog__icon-button community-notification-bell" aria-label={notifications.unreadCount?`알림함 · 읽지 않은 알림 ${notifications.unreadCount}개`:'알림함'} onClick={event=>openInbox(event.currentTarget)}><Bell size={20} aria-hidden="true"/>{notifications.unreadCount?<span aria-hidden="true">{notifications.unreadCount}</span>:null}</button>
-        {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor} aria-label="내 포트폴리오 공유"><Plus size={18} aria-hidden="true" /><span className="lounge-share-label">{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</span><span className="lounge-share-short" aria-hidden="true">공유</span></button>
-          : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}</div>
+        {allocation ? <Button ref={publishTrigger} variant="primary" onClick={openEditor} disabled={openingEditor} aria-label="내 포트폴리오 공유"><Plus size={18} aria-hidden="true" /><span className="lounge-share-label">{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</span><span className="lounge-share-short" aria-hidden="true">공유</span></Button>
+          : <ButtonLink variant="secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</ButtonLink>}</div>
       </header>
       {plan && !allocation ? <p role="status" className="lounge-muted">공유하려면 투자 대상 이름을 40자 이내로 정리해 주세요.</p> : null}
       <DiscoveryToolbar query={feed.query} loading={loading} rankedAt={feed.rankedAt} onApply={query=>{setActionError('');feed.apply(query);}}/>
       <div aria-live="polite">{notice ? <p className="lounge-notice">{notice}</p> : null}{loading && posts.length===0 ? <p className="lounge-muted" role="status">포트폴리오를 불러오고 있어요…</p> : null}</div>
-      {error ? <div className="lounge-empty" role="alert"><p>{error}</p><button className="ui-button ui-button--secondary" onClick={() => {setActionError('');void feed.refresh();}}>다시 불러오기</button></div> : null}
-      {feed.stale?<div className="lounge-empty" role="status"><p>{feed.stale==='cursor-expired'?'목록의 기준 시각이 만료됐어요. 읽던 카드는 그대로 두었어요.':'아직 정렬 집계를 불러올 수 없어요.'}</p><button className="ui-button ui-button--secondary" onClick={()=>feed.stale==='ranking-unavailable'?feed.apply({...feed.query,sort:'updated'}):void feed.refresh()}>{feed.stale==='ranking-unavailable'?'최근 수정순으로 보기':'최신 순서로 다시 보기'}</button></div>:null}
-      {!loading && !error && !feed.stale && posts.length===0 ? <section className="lounge-empty"><h2>{feed.query.q?'검색 결과가 없어요':feed.query.period!=='all' || feed.query.hasCash || feed.query.assetBands.length?'조건에 맞는 포트폴리오가 없어요':mine?'아직 공유한 포트폴리오가 없어요':'첫 포트폴리오를 공유해 보세요'}</h2><p>종목과 비율로 서로의 투자 구성을 살펴봐요.</p>{feed.query.q || feed.query.period!=='all' || feed.query.hasCash || feed.query.assetBands.length?<button className="ui-button ui-button--quiet" onClick={()=>feed.apply({...DEFAULT_FEED_QUERY})}>전체 보기</button>:null}{!allocation ? <a className="ui-button ui-button--quiet" href={appPath('portfolio')}>투자 배분 시작하기 <ArrowUpRight size={18} /></a> : null}</section> : null}
+      {error ? <div className="lounge-empty" role="alert"><p>{error}</p><Button variant="secondary" onClick={() => {setActionError('');void feed.refresh();}}>다시 불러오기</Button></div> : null}
+      {feed.stale?<div className="lounge-empty" role="status"><p>{feed.stale==='cursor-expired'?'목록의 기준 시각이 만료됐어요. 읽던 카드는 그대로 두었어요.':'아직 정렬 집계를 불러올 수 없어요.'}</p><Button variant="secondary" onClick={()=>feed.stale==='ranking-unavailable'?feed.apply({...feed.query,sort:'updated'}):void feed.refresh()}>{feed.stale==='ranking-unavailable'?'최근 수정순으로 보기':'최신 순서로 다시 보기'}</Button></div>:null}
+      {!loading && !error && !feed.stale && posts.length===0 ? <section className="lounge-empty"><h2>{feed.query.q?'검색 결과가 없어요':feed.query.period!=='all' || feed.query.hasCash || feed.query.assetBands.length?'조건에 맞는 포트폴리오가 없어요':mine?'아직 공유한 포트폴리오가 없어요':'첫 포트폴리오를 공유해 보세요'}</h2><p>종목과 비율로 서로의 투자 구성을 살펴봐요.</p>{feed.query.q || feed.query.period!=='all' || feed.query.hasCash || feed.query.assetBands.length?<Button variant="quiet" onClick={()=>feed.apply({...DEFAULT_FEED_QUERY})}>전체 보기</Button>:null}{!allocation ? <ButtonLink variant="quiet" href={appPath('portfolio')}>투자 배분 시작하기 <ArrowUpRight size={18} /></ButtonLink> : null}</section> : null}
       <div ref={gridRef} className="lounge-grid">{posts.map(post => <article key={post.id} className="lounge-card" data-post-id={post.id}>
         <button className="lounge-card__open" aria-label={`${post.title} 상세 보기`} aria-describedby={post.assetBand ? `lounge-asset-${post.id}` : undefined} onClick={event => {trigger.current=event.currentTarget;feed.savePosition();void loadDetail(post.id);}}>
           <span className="lounge-card__meta"><span>{post.alias}{post.isMine ? ' · 내 공유' : ''}</span><time dateTime={post.updatedAt}>{new Date(post.updatedAt).toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}</time></span>
@@ -174,8 +175,8 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
         <CommunityBar entry={community.entries[post.id]} onReact={(emoji,active)=>community.react(post.id,emoji,active)}
           onComments={button=>{trigger.current=button;feed.savePosition();void loadDetail(post.id,'comments');}} onRetry={()=>void community.load([post.id])} />
       </article>)}</div>
-      <nav className="lounge-feed-pages" aria-label="포트폴리오 목록 이동">{feed.batchIndex>0?<button className="ui-button ui-button--quiet" disabled={loading || Boolean(error) || Boolean(feed.stale)} onClick={()=>void feed.previousBatch()}>이전 묶음 보기</button>:null}
-        {feed.nextCursor?<button className="ui-button ui-button--secondary" disabled={loading || Boolean(error) || Boolean(feed.stale)} onClick={()=>posts.length>=120?void feed.nextBatch():void feed.loadMore()}>{posts.length>=120?'다음 묶음 보기':'더 보기'}</button>:null}</nav>
+      <nav className="lounge-feed-pages" aria-label="포트폴리오 목록 이동">{feed.batchIndex>0?<Button variant="quiet" disabled={loading || Boolean(error) || Boolean(feed.stale)} onClick={()=>void feed.previousBatch()}>이전 묶음 보기</Button>:null}
+        {feed.nextCursor?<Button variant="secondary" disabled={loading || Boolean(error) || Boolean(feed.stale)} onClick={()=>posts.length>=120?void feed.nextBatch():void feed.loadMore()}>{posts.length>=120?'다음 묶음 보기':'더 보기'}</Button>:null}</nav>
       <p className="lounge-footnote">사용자가 공유한 투자 구성입니다. 실제 수익률이나 추천 순위가 아니에요.</p>
     </AppContentFrame>
     {changingNickname ? <NicknameChangeDialog repository={repository} returnFocusRef={managementTrigger} onCurrentNickname={setCurrentNickname}
@@ -188,19 +189,19 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
         : <ResponsiveDialogLayout title={deleteConfirm ? '공유를 삭제할까요?' : detail?.title ?? '공유 포트폴리오'} titleId="lounge-detail-title" onClose={closeDetail} layout="preview"
         status={detailError ? <p role="alert">{detailError}</p> : copied && !deleteConfirm ? <p role="status">링크를 복사했어요.</p> : undefined}
         footer={detail ? <ResponsiveDialogActionRow>{deleteConfirm ? <>
-          <button className="ui-button ui-button--secondary" disabled={deleting} onClick={() => setDeleteConfirm(false)}>유지하기</button>
-          <button className="ui-button ui-button--primary" disabled={deleting} onClick={async () => {
+          <Button variant="secondary" disabled={deleting} onClick={() => setDeleteConfirm(false)}>유지하기</Button>
+          <Button variant="primary" disabled={deleting} onClick={async () => {
             if (deletingRef.current) return; deletingRef.current=true; setDeleting(true); setDetailError('');
             try {await repository.remove(detail); if (!mounted.current) return; setPosts(p => p.filter(item => item.id !== detail.id)); setNotice('공유를 삭제했어요.'); deletingRef.current=false; setDeleting(false); requestClose('button');}
             catch(error) {if (mounted.current) {setDetailError(loungeErrorMessage(error)); deletingRef.current=false; setDeleting(false);}}
-          }}>{deleting ? '삭제 중…' : '공유 삭제'}</button>
+          }}>{deleting ? '삭제 중…' : '공유 삭제'}</Button>
         </> : <>
-          {detail.isMine ? <button className="ui-button ui-button--quiet" onClick={() => setDeleteConfirm(true)}>공유 삭제</button> : null}
-          <a className="ui-button ui-button--primary" href={`${appPath('portfolio')}?publication=${detail.id}`}>이 비율로 시작하기</a>
-          <button type="button" className="ui-button ui-button--quiet lounge-share-link" aria-label="게시물 링크 복사" title={copied ? '링크 복사 완료' : '게시물 링크 복사'} onClick={async () => {
+          {detail.isMine ? <Button variant="quiet" onClick={() => setDeleteConfirm(true)}>공유 삭제</Button> : null}
+          <ButtonLink variant="primary" href={`${appPath('portfolio')}?publication=${detail.id}`}>이 비율로 시작하기</ButtonLink>
+          <Button type="button" variant="quiet" className="lounge-share-link" aria-label="게시물 링크 복사" title={copied ? '링크 복사 완료' : '게시물 링크 복사'} onClick={async () => {
             try {await navigator.clipboard.writeText(`${window.location.origin}${appPath('lounge')}?post=${detail.id}`); setCopied(true); setDetailError('');}
             catch {setCopied(false); setDetailError('링크를 복사하지 못했어요. 주소창의 링크를 복사해 주세요.');}
-          }}>{copied ? <Check size={20} aria-hidden="true" /> : <Link size={20} aria-hidden="true" />}</button>
+          }}>{copied ? <Check size={20} aria-hidden="true" /> : <Link size={20} aria-hidden="true" />}</Button>
         </>}</ResponsiveDialogActionRow> : undefined}>
         {detailLoading ? <p role="status">불러오는 중…</p> : null}
         {detail ? deleteConfirm ? <p>커뮤니티에서 사라지고 기존 게시물 링크도 열 수 없어요. 내 투자 배분은 유지돼요.</p> : <div className="lounge-detail">

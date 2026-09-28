@@ -1,3 +1,4 @@
+import { ButtonLink } from '../../components/common/Button';
 import '../../lounge/ui/lounge.css';
 import {publicationQuery} from '../../lounge/domain/publication';
 import type {LoungeRepository} from '../../lounge/infrastructure/loungeRepository';
@@ -415,7 +416,7 @@ export function PortfolioApp({
                     setResultCardIntent('share');
                   }}
                 />
-                <div className="portfolio-lounge-entry"><a className="ui-button ui-button--quiet" href={appPath('lounge')}>커뮤니티에서 포트폴리오 보기</a></div>
+                <div className="portfolio-lounge-entry"><ButtonLink variant="quiet" href={appPath('lounge')}>커뮤니티에서 포트폴리오 보기</ButtonLink></div>
               </div>
               {state.view === 'edit' || closingEdit !== null ? (
                 <PortfolioEditSurface
@@ -521,7 +522,7 @@ function InvestmentRequired({ plan }: { plan: PortfolioPlan | null }) {
         </div>
         <div className="portfolio-gate__message">
           <h1 id="portfolio-gate-title">투자금을 먼저 정해 주세요</h1>
-          <a className="ui-button ui-button--primary" href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
+          <ButtonLink variant="primary" href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</ButtonLink>
         </div>
       </AppContentFrame>
     </section>
@@ -545,8 +546,8 @@ function StaleMain({
         <p role="status">이전 Main 기준</p>
         <p>최신 Main 정보를 불러오지 못했습니다.</p>
         <div className="portfolio-recovery__actions">
-          <a className="ui-button ui-button--primary" href={appPath('portfolio')}>최신 Main 다시 불러오기</a>
-          <a className="ui-button ui-button--secondary" href={appPath('main')}>Main 확인하기</a>
+          <ButtonLink variant="primary" href={appPath('portfolio')}>최신 Main 다시 불러오기</ButtonLink>
+          <ButtonLink variant="secondary" href={appPath('main')}>Main 확인하기</ButtonLink>
         </div>
       </Surface>
       <PortfolioSummary
@@ -584,7 +585,7 @@ function RecoveryPanel({ reason }: { reason: 'empty' | 'invalid' | 'unavailable'
       <h1>{recovery.title}</h1>
       <p>{recovery.description}</p>
       <div className="portfolio-recovery__actions">
-        <a className="ui-button ui-button--primary" href={recovery.href}>{recovery.action}</a>
+        <ButtonLink variant="primary" href={recovery.href}>{recovery.action}</ButtonLink>
       </div>
     </AppContentFrame>
   );

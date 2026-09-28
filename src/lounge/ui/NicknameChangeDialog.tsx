@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useCallback, useContext, useEffect, useRef, useState, type RefObject} from 'react';
 import {AccountManagementContext} from '../../auth/AccountManagementContext';
 import {useUncommittedInput} from '../../auth/useUncommittedInput';
@@ -61,11 +62,11 @@ export function NicknameChangeDialog({repository, returnFocusRef, onCurrentNickn
     {({requestClose}) => <ResponsiveDialogLayout title={discard ? '입력 중인 닉네임을 버릴까요?' : '닉네임 변경'} titleId="nickname-change-title" layout={discard ? 'confirm' : 'edit'} onClose={onClose}
       status={error && !discard ? <p role="alert">{error}</p> : undefined}
       footer={<ResponsiveDialogActionRow>{discard ? <>
-        <button className="ui-button ui-button--secondary" onClick={() => setDiscard(false)}>계속 입력</button>
-        <button className="ui-button ui-button--primary" onClick={() => {discardApproved.current = true; requestClose('button');}}>입력 버리기</button>
+        <Button variant="secondary" onClick={() => setDiscard(false)}>계속 입력</Button>
+        <Button variant="primary" onClick={() => {discardApproved.current = true; requestClose('button');}}>입력 버리기</Button>
       </> : <>
-        <button className="ui-button ui-button--secondary" disabled={pending} onClick={() => requestClose('button')}>닫기</button>
-        <button className="ui-button ui-button--primary" type="submit" form="nickname-change-form" disabled={!canSave}>{pending ? '변경 중…' : '변경하기'}</button>
+        <Button variant="secondary" disabled={pending} onClick={() => requestClose('button')}>닫기</Button>
+        <Button variant="primary" type="submit" form="nickname-change-form" disabled={!canSave}>{pending ? '변경 중…' : '변경하기'}</Button>
       </>}</ResponsiveDialogActionRow>}>
       {discard ? <p>아직 저장하지 않은 새 닉네임이 사라져요.</p> : <form id="nickname-change-form" className="lounge-nickname-edit" onSubmit={async event => {
         event.preventDefault(); if (!canSave || locked.current || composing.current) return;
@@ -82,7 +83,7 @@ export function NicknameChangeDialog({repository, returnFocusRef, onCurrentNickn
         } catch (error) {setError(loungeErrorMessage(error)); locked.current = false; setPending(false);}
       }}>
         {loading ? <p role="status">변경 가능 여부를 확인하고 있어요…</p> : null}
-        {loadFailed ? <button className="ui-button ui-button--secondary" type="button" onClick={() => void load()}>다시 불러오기</button> : null}
+        {loadFailed ? <Button variant="secondary" type="button" onClick={() => void load()}>다시 불러오기</Button> : null}
         {settings ? <>
           <p className="lounge-publisher"><span className="lounge-muted">현재 닉네임</span><strong>{settings.nickname}</strong></p>
           <label htmlFor="lounge-new-nickname">새 닉네임</label>

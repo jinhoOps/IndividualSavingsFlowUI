@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useContext, useEffect, useRef, useState} from 'react';
 import {ChartPie, ArrowDownToLine, Users} from 'lucide-react';
 import {AccountManagementContext} from '../../auth/AccountManagementContext';
@@ -38,19 +39,19 @@ export function LoungeOnboarding({repository, onRegistered}: {repository: Lounge
         onChange={event => {setRaw(event.target.value); setError('');}} />
       <p id="lounge-nickname-rule" className="lounge-muted">{NICKNAME_RULE} 기호만 쓰거나 다른 사람과 같은 이름은 사용할 수 없어요.</p>
       <p id="lounge-nickname-permanent" className="lounge-nickname-warning">설정 후 닉네임을 바꿀 수 있어요. 변경하면 48시간 동안 다시 바꿀 수 없어요.</p>
-      <button ref={trigger} className="ui-button ui-button--primary" disabled={!nickname || account?.readOnly}>닉네임 확인</button>
+      <Button ref={trigger} variant="primary" disabled={!nickname || account?.readOnly}>닉네임 확인</Button>
     </form>
     {confirm && nickname ? <ResponsiveDialog open labelledBy="nickname-confirm-title" size="compact" returnFocusRef={trigger} busy={pending}
       onRequestClose={() => !locked.current} onClosed={() => {setConfirm(false); if (savedRef.current) onRegistered(savedRef.current);}}>
       {({requestClose}) => <ResponsiveDialogLayout title="이 닉네임으로 시작할까요?" titleId="nickname-confirm-title" layout="confirm" onClose={() => setConfirm(false)}
         status={error ? <p role="alert">{error}</p> : undefined}
-        footer={<ResponsiveDialogActionRow><button className="ui-button ui-button--secondary" disabled={pending} onClick={() => requestClose('button')}>다시 입력</button>
-          <button className="ui-button ui-button--primary" disabled={pending || account?.readOnly} onClick={async () => {
+        footer={<ResponsiveDialogActionRow><Button variant="secondary" disabled={pending} onClick={() => requestClose('button')}>다시 입력</Button>
+          <Button variant="primary" disabled={pending || account?.readOnly} onClick={async () => {
             if (locked.current) return;
             locked.current = true; setPending(true); setError('');
             try {const profile = await repository.registerNickname(nickname); savedRef.current = profile; setSaved(profile); locked.current = false; setPending(false); requestClose('button');}
             catch (error) {setError(loungeErrorMessage(error)); locked.current = false; setPending(false);}
-          }}>{pending ? '설정 중…' : '이 닉네임으로 시작'}</button></ResponsiveDialogActionRow>}>
+          }}>{pending ? '설정 중…' : '이 닉네임으로 시작'}</Button></ResponsiveDialogActionRow>}>
         <div className="lounge-nickname-confirm"><strong>{nickname}</strong><p>닉네임을 변경하면 48시간 동안 다시 바꿀 수 없어요.</p>
           <p className="lounge-muted">기존 공유 포트폴리오에도 이 닉네임이 적용돼요. 다른 기기에서 이미 설정했다면 먼저 등록한 닉네임을 사용해요.</p></div>
       </ResponsiveDialogLayout>}

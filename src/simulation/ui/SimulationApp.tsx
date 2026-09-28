@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
 import { AccountProductBoundary } from '../../auth/AccountManagementContext';
-import { Button } from '../../components/common/Button';
+import { Button, ButtonLink } from '../../components/common/Button';
 import { ResponsiveDialog } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { Surface } from '../../components/common/Surface';
@@ -113,7 +113,7 @@ export function SimulationApp({
             data-testid="simulation-page-frame"
           >
             <h1>Main에서 월 저축·투자 금액을 먼저 정해주세요.</h1>
-            <a className="ui-button ui-button--primary" href={appPath('main')}>Main에서 설정하기</a>
+            <ButtonLink variant="primary" href={appPath('main')}>Main에서 설정하기</ButtonLink>
           </AppContentFrame>
         </main>
       </AppShell>

@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {Search,SlidersHorizontal,X} from 'lucide-react';
 import {ResponsiveDialog} from '../../components/common/ResponsiveDialog';
@@ -49,8 +50,8 @@ export function DiscoveryToolbar({query,loading,rankedAt,onApply}:{query:FeedQue
       <button onClick={()=>onApply({...query,period:'all',hasCash:false,assetBands:[]})}>조건 초기화</button></div>:null}
     {open?<ResponsiveDialog open labelledBy="lounge-filter-title" returnFocusRef={filter} onRequestClose={()=>true} onClosed={()=>setOpen(false)}>
       {({requestClose})=><ResponsiveDialogLayout title="필터" titleId="lounge-filter-title" onClose={()=>setOpen(false)}
-        footer={<ResponsiveDialogActionRow><button className="ui-button ui-button--quiet" onClick={()=>setDraft({...draft,period:'all',hasCash:false,assetBands:[]})}>초기화</button>
-          <button className="ui-button ui-button--primary" onClick={()=>{onApply({...query,period:draft.period,hasCash:draft.hasCash,assetBands:draft.assetBands});requestClose('button');}}>필터 적용</button></ResponsiveDialogActionRow>}>
+        footer={<ResponsiveDialogActionRow><Button variant="quiet" onClick={()=>setDraft({...draft,period:'all',hasCash:false,assetBands:[]})}>초기화</Button>
+          <Button variant="primary" onClick={()=>{onApply({...query,period:draft.period,hasCash:draft.hasCash,assetBands:draft.assetBands});requestClose('button');}}>필터 적용</Button></ResponsiveDialogActionRow>}>
         <div className="lounge-filter-fields"><fieldset><legend>최근 수정</legend><div className="lounge-period-options">{(['all','7d','30d'] as const).map(period=><label key={period}>
           <span>{period==='all'?'전체':period==='7d'?'7일':'30일'}</span><input type="radio" name="lounge-period" value={period} checked={draft.period===period} onChange={()=>setDraft({...draft,period})}/></label>)}</div></fieldset>
           <label className="lounge-cash-filter"><span>현금 포함</span><input type="checkbox" checked={draft.hasCash} onChange={event=>setDraft({...draft,hasCash:event.target.checked})}/></label>

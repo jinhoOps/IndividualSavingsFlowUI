@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useEffect,useImperativeHandle,useRef,useState,type Ref} from 'react';
 import {X} from 'lucide-react';
 import {parseCommentBody} from '../domain/community';
@@ -110,6 +111,6 @@ export function CommentComposer({repository,postId,disabled,onDirtyChange,onBusy
     <div className="community-compose-actions"><button type="button" className="responsive-dialog__icon-button" aria-label="사용자 멘션"
       disabled={pending || disabled || draft.mentions.length>=3} onClick={()=>openPicker()}>@</button>
       <span id="lounge-comment-length" className="lounge-muted">{[...draft.body].length} / 500</span>
-      <button type="submit" className="ui-button ui-button--primary" disabled={pending || disabled || !parseCommentBody(draft.body)}>{pending?'저장 중…':'등록'}</button></div>
+      <Button type="submit" variant="primary" disabled={pending || disabled || !parseCommentBody(draft.body)}>{pending?'저장 중…':'등록'}</Button></div>
   </form>;
 }

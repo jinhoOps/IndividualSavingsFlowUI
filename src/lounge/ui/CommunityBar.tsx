@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useContext, useEffect, useId, useRef, useState, type Ref} from 'react';
 import {MessageCircle, SmilePlus} from 'lucide-react';
 import {AccountManagementContext} from '../../auth/AccountManagementContext';
@@ -66,7 +67,7 @@ export function CommunityBar({entry,onReact,onComments,onRetry,commentButtonRef}
           }
         }}><span aria-hidden="true">{emoji.symbol}</span></button>)}
     </div> : null}
-    {entry?.error ? <p role="alert" className="community-error">{entry.error} <button className="ui-button ui-button--quiet" disabled={busy} onClick={onRetry}>다시 불러오기</button></p> : null}
+    {entry?.error ? <p role="alert" className="community-error">{entry.error} <Button variant="quiet" disabled={busy} onClick={onRetry}>다시 불러오기</Button></p> : null}
   </div>;
 }
 function compactCount(count:number) {return count>=1000?`${(count/1000).toFixed(count%1000===0?0:1)}k`:String(count);}

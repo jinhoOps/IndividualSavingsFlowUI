@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useContext, useRef, useState, type RefObject} from 'react';
 import {ResponsiveDialog} from '../../components/common/ResponsiveDialog';
 import {ResponsiveDialogLayout, ResponsiveDialogActionRow} from '../../components/common/ResponsiveDialogLayout';
@@ -37,14 +38,14 @@ export function PublicationEditor({repository, nickname, existing, allocation, s
     {({requestClose}) => <ResponsiveDialogLayout title={discard ? '작성 중인 내용을 닫을까요?' : existing ? '공유 포트폴리오 갱신' : '내 포트폴리오 공유'} titleId="lounge-editor-title" onClose={onClose}
       status={error ? <p role="alert">{error}</p> : undefined}
       footer={<ResponsiveDialogActionRow>{discard ? <>
-        <button className="ui-button ui-button--secondary" onClick={() => setDiscard(false)}>계속 작성</button>
-        <button className="ui-button ui-button--primary" onClick={() => {discardApproved.current = true; requestClose('button');}}>그만두기</button>
-      </> : <button className="ui-button ui-button--primary" disabled={pending || !input || account?.readOnly} onClick={async () => {
+        <Button variant="secondary" onClick={() => setDiscard(false)}>계속 작성</Button>
+        <Button variant="primary" onClick={() => {discardApproved.current = true; requestClose('button');}}>그만두기</Button>
+      </> : <Button variant="primary" disabled={pending || !input || account?.readOnly} onClick={async () => {
         if (lock.current || !input) return;
         lock.current = true; setPending(true); setError('');
         try {saved.current = await repository.publish(input, existing?.version ?? null); lock.current = false; setPending(false); requestClose('button');}
         catch(error) {setError(loungeErrorMessage(error)); lock.current = false; setPending(false);}
-      }}>{pending ? '공유 중…' : existing ? '이 내용으로 갱신' : '커뮤니티에 공유'}</button>}</ResponsiveDialogActionRow>}>
+      }}>{pending ? '공유 중…' : existing ? '이 내용으로 갱신' : '커뮤니티에 공유'}</Button>}</ResponsiveDialogActionRow>}>
       {discard ? <p>아직 공유하지 않은 입력 내용이 사라져요.</p> : <div className="lounge-editor">
         <p className="lounge-audience">로그인한 모든 사용자에게 공개 · 정확한 금액 제외</p>
         <label>제목<input value={title} maxLength={40} onChange={e => setTitle(e.target.value)} disabled={pending} /></label>

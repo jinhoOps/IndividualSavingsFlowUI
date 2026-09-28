@@ -1,3 +1,4 @@
+import { ButtonLink } from '../../components/common/Button';
 import { useScrollDiscovery } from '../../journey/ui/useScrollDiscovery';
 import { appPath } from '../../journey/routes';
 import { isPortfolioSamplePreset, portfolioSampleHref } from '../../journey/portfolioSampleIntent';
@@ -18,9 +19,9 @@ export function SimulationPortfolioEntry({ expectedAnnualReturnPercent, blocked 
             ? `연 ${expectedAnnualReturnPercent}%를 가정했다면, 이 구성부터 볼까요?`
             : '투자 구성을 살펴볼까요?'}
         </h2>
-        <a className="ui-button ui-button--quiet"
+        <ButtonLink variant="quiet"
           href={hasPreset ? portfolioSampleHref(expectedAnnualReturnPercent) : appPath('portfolio')}
-        >포트폴리오 샘플 보기</a>
+        >포트폴리오 샘플 보기</ButtonLink>
       </div>
     </section>
   );

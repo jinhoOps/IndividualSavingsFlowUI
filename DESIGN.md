@@ -267,6 +267,7 @@ schema v5 단일 workspace와 whole-workspace backup은 유지하며 `workspace.
 
 ### Button
 
+- 일반 행동은 공통 `Button`, 같은 모양으로 페이지를 이동하는 링크는 `ButtonLink`를 사용합니다. 두 컴포넌트는 `ui-button` 스타일을 공유하며 각각 네이티브 button의 제출·비활성화·focus와 anchor의 `href`·새 탭 열기 동작을 유지합니다.
 - 금액 증감은 공통 `MoneyAdjustments`로 표시합니다. 옅은 배경·얇은 경계 안에 버튼을 한 줄로 묶고, 감소와 증가를 같은 크기로 표시합니다. 월/연 금액, 빈 값과 0원, 상한·저장 시점은 각 입력의 기존 계약을 유지합니다.
 - 월/연·명목/실질 선택은 공통 `SegmentedControl`을 사용합니다. 흰 선택 면과 청록 글자로 현재 선택을 표시하고 `aria-pressed`를 유지합니다. 금액 증감에는 선택 상태를 남기지 않습니다.
 - 두 컨트롤은 최소 44px 조작 영역과 14px 숫자·라벨을 사용합니다. hover·pressed·focus를 구분하고 버튼 크기를 움직이지 않습니다. reduced-motion에서는 전환을 생략합니다.

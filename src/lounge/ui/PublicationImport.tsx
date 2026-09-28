@@ -1,3 +1,4 @@
+import { Button, ButtonLink } from '../../components/common/Button';
 import {useContext, useEffect, useRef, useState} from 'react';
 import {AccountManagementContext} from '../../auth/AccountManagementContext';
 import {ResponsiveDialog} from '../../components/common/ResponsiveDialog';
@@ -31,9 +32,9 @@ export function PublicationImport({id, repository, investmentWon, onImport, onCl
     onClosed={() => {if (imported.current) onImport(imported.current); onClose();}}>
     {({requestClose}) => <ResponsiveDialogLayout title="내 투자금으로 미리보기" titleId="lounge-import-title" onClose={onClose} layout="preview"
       status={error ? <p role="alert">{error}</p> : undefined}
-      footer={<ResponsiveDialogActionRow>{draft && !loading && !error ? <button className="ui-button ui-button--primary" disabled={account?.readOnly} onClick={() => {imported.current=draft; requestClose('button');}}>초안으로 가져오기</button>
-        : investmentWon<=0 ? <a className="ui-button ui-button--primary" href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</a>
-        : error ? <button className="ui-button ui-button--secondary" onClick={() => setAttempt(n=>n+1)}>다시 불러오기</button> : null}</ResponsiveDialogActionRow>}>
+      footer={<ResponsiveDialogActionRow>{draft && !loading && !error ? <Button variant="primary" disabled={account?.readOnly} onClick={() => {imported.current=draft; requestClose('button');}}>초안으로 가져오기</Button>
+        : investmentWon<=0 ? <ButtonLink variant="primary" href={`${appPath('main')}?edit=investment`}>Main에서 투자금 설정</ButtonLink>
+        : error ? <Button variant="secondary" onClick={() => setAttempt(n=>n+1)}>다시 불러오기</Button> : null}</ResponsiveDialogActionRow>}>
       {loading ? <p role="status">공유한 비율을 불러오고 있어요…</p> : null}
       {post ? <div className="lounge-detail"><div><h3>{post.title}</h3><p className="lounge-muted">{post.alias}</p></div><AllocationSummary allocation={post.allocation} />
         {amounts ? <section className="lounge-import-amounts"><h3>내 월 투자금 {investmentWon.toLocaleString('ko-KR')}원 기준</h3><dl>

@@ -1,3 +1,4 @@
+import { Button } from '../../components/common/Button';
 import {useCallback,useContext,useEffect,useImperativeHandle,useRef,useState,type Ref} from 'react';
 import {ResponsiveDialogLayout,ResponsiveDialogActionRow} from '../../components/common/ResponsiveDialogLayout';
 import {AccountManagementContext} from '../../auth/AccountManagementContext';
@@ -83,22 +84,22 @@ export function PublicationComments({repository,post,onSummary,onBack,onClose,re
         setContext(saved.context);setPage(previous=>({comments:saved.comment.rootId?previous?.comments??[]:[saved.comment,...(previous?.comments??[]).filter(c=>c.id!==saved.comment.id)].slice(0,20),nextCursor:previous?.nextCursor??null}));
         const token=sequence.current;void repository.listThreads(post.id).then(next=>{if(mounted.current && token===sequence.current)setPage(next);}).catch(()=>{});
       }}/></div>{discard?<ResponsiveDialogActionRow>
-        <button className="ui-button ui-button--secondary" onClick={()=>{setDiscard(null);requestAnimationFrame(()=>composer.current?.focus());}}>계속 작성</button>
-        <button className="ui-button ui-button--primary" onClick={()=>{approved.current=true;if(discard==='back')onBack();else requestClose();}}>그만두기</button>
+        <Button variant="secondary" onClick={()=>{setDiscard(null);requestAnimationFrame(()=>composer.current?.focus());}}>계속 작성</Button>
+        <Button variant="primary" onClick={()=>{approved.current=true;if(discard==='back')onBack();else requestClose();}}>그만두기</Button>
       </ResponsiveDialogActionRow>:null}</>}>
     {discard?<p>아직 등록하지 않은 댓글이 사라져요.</p>:<>
       {loading?<p role="status" className="lounge-muted">댓글을 불러오고 있어요…</p>:null}
-      {readError?<div role="alert"><p>{readError}</p><button className="ui-button ui-button--secondary" disabled={loading} onClick={()=>void loadPage(attemptedPage.current)}>다시 불러오기</button></div>:null}
+      {readError?<div role="alert"><p>{readError}</p><Button variant="secondary" disabled={loading} onClick={()=>void loadPage(attemptedPage.current)}>다시 불러오기</Button></div>:null}
       {!loading && !readError && roots.length===0?<p className="community-comments-empty">첫 댓글을 남겨 보세요.</p>:null}
       <ol ref={listRef} tabIndex={-1} className="community-comment-list" aria-label="댓글 목록" aria-busy={loading}>
         {roots.map(root=><CommentThread key={root.id} repository={repository} postId={post.id} root={root} context={context?.root.id===root.id?context:undefined}
           disabled={pending || Boolean(account?.readOnly)} onReply={comment=>composer.current?.replyTo(comment)} onRemove={remove} onExpanded={onExpanded}/>)}</ol>
       {page && (index>0 || page.nextCursor)?<nav className="community-pagination" aria-label="댓글 페이지">
-        <button className="ui-button ui-button--quiet" disabled={index===0 || loading || pending} onClick={()=>void loadPage(index-1,true)}>이전</button>
+        <Button variant="quiet" disabled={index===0 || loading || pending} onClick={()=>void loadPage(index-1,true)}>이전</Button>
         <span aria-label={`댓글 ${index+1}페이지`}>{index+1}</span>
-        <button className="ui-button ui-button--quiet" disabled={!page.nextCursor || loading || pending} onClick={()=>{
+        <Button variant="quiet" disabled={!page.nextCursor || loading || pending} onClick={()=>{
           if(!page.nextCursor)return;cursors.current[index+1]=page.nextCursor;void loadPage(index+1,true);
-        }}>다음</button></nav>:null}
+        }}>다음</Button></nav>:null}
     </>}
   </ResponsiveDialogLayout>;
 }
