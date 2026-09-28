@@ -1,3 +1,4 @@
+import type {Publication} from '../src/lounge/domain/publication';
 import {createExpenseDraft, EXPENSE_ITEMS} from '../src/main/domain/expenseAssistant';
 import {withExpenseDraft} from '../src/main/infrastructure/expenseAssistantRepository';
 import {expect, test, type BrowserContext} from '@playwright/test';
@@ -42,6 +43,8 @@ function planWithExpenseHistory(): WorkspaceDocument {
   return workspace;
 }
 function fakeServer() {
+  const publications = new Map<string, {owner: string; post: Publication}>();
+  const loungeWrites: unknown[] = [];
   const rows = new Map<string, WorkspaceDocument>();
   const receipts = new Map<string, unknown>();
   const sharePolicy = {hours: 48, failures: [] as Array<{status: number; code: string}>};
@@ -106,6 +109,28 @@ function fakeServer() {
         await route.fulfill({json: current ? [row(user, current)] : []}); return;
       }
       const operation = url.pathname.split('/').at(-1)!;
+      if (operation.includes('lounge_portfolio')) {
+        const args=route.request().postDataJSON();
+        const own=[...publications.values()].find(p=>p.owner===user);
+        const view=(p: {owner:string;post:Publication})=>({...p.post,isMine:p.owner===user});
+        if (operation==='list_lounge_portfolios') {
+          const list=[...publications.values()].filter(p=>!args.p_mine||p.owner===user).sort((a,b)=>b.post.updatedAt.localeCompare(a.post.updatedAt)||b.post.id.localeCompare(a.post.id));
+          const start=args.p_before_id ? list.findIndex(p=>p.post.id===args.p_before_id)+1 : 0;
+          await route.fulfill({json:list.slice(start,start+args.p_limit).map(view)}); return;
+        }
+        if (operation==='get_lounge_portfolio') {const p=publications.get(args.p_id); await route.fulfill({json:p?view(p):null});return;}
+        loungeWrites.push(args);
+        if (failWrite) {await route.abort('failed');return;}
+        if (operation==='publish_lounge_portfolio') {
+          if ((own?.post.version??null)!==args.p_expected_version) {await route.fulfill({json:{status:'conflict'}});return;}
+          const post:Publication={id:own?.post.id??'dddddddd-dddd-4ddd-8ddd-dddddddddddd',title:args.p_title,alias:args.p_alias,note:args.p_note,allocation:args.p_allocation,version:(own?.post.version??0)+1,updatedAt:new Date().toISOString(),isMine:true};
+          publications.set(post.id,{owner:user,post});await route.fulfill({json:{status:'saved',post}});return;
+        }
+        if (operation==='delete_lounge_portfolio') {
+          const p=publications.get(args.p_id);if(p?.owner===user) publications.delete(args.p_id);
+          await route.fulfill({json:{status:'deleted'}});return;
+        }
+      }
       operations.push(operation);
       await writeBarrier;
       if (failWrite) {await route.abort('failed'); return;}
@@ -127,7 +152,7 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, shares, sharePolicy, attach, holdWrites() {
+  return {rows, operations, publications, loungeWrites, shares, sharePolicy, attach, holdWrites() {
     let release!: () => void;
     writeBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {writeBarrier = null; release();};
@@ -337,7 +362,7 @@ for (const width of [390, 768, 1280]) {
       await page.goto(path);
       await expect(page).toHaveURL(/\/apps\/main\/$/);
       const launcher = page.getByRole('navigation', {name: 'ISF 앱'});
-      await expect(launcher.getByRole('link')).toHaveCount(3);
+      await expect(launcher.getByRole('link')).toHaveCount(4);
       await expect(launcher.getByRole('link', {name: /자금 흐름 \(Main\).*현재 위치/})).toHaveAttribute('aria-current', 'page');
       await expect(page.getByRole('button', {name: '월 금액 편집'})).toBeVisible();
       expect(server.operations).toEqual([]);
@@ -1890,3 +1915,93 @@ for (const failure of ['response-lost', 'conflict'] as const) {
     expect(server.rows.get(userA)?.accountMap).toEqual(original.accountMap);
   });
 }
+
+const sharedPortfolio: Publication = {id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc', title:'배당과 금의 균형',alias:'차곡차곡',note:'매달 같은 비율로 나눠요.',
+  allocation:{items:[{name:'SCHD',shareUnits:500000},{name:'금',shareUnits:500000}],cashShareUnits:0},version:1,updatedAt:'2026-09-28T01:00:00Z',isMine:false};
+for (const width of [390,768,1280]) {
+  test(`Lounge authenticated sharing and explicit Portfolio draft copy at ${width}px`, async ({page,context}, testInfo) => {
+    const server=fakeServer(); const original=resultCardPlan(); server.rows.set(userA,structuredClone(original));
+    server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+    await server.attach(context,userA);await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});
+    await page.goto('apps/lounge/'); await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeVisible();
+    await page.evaluate(()=>document.fonts.ready);
+    await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toBeVisible();
+    expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath(`lounge-list-${width}.png`),fullPage:true});
+    const open=page.getByRole('button',{name:'배당과 금의 균형 상세 보기'});await open.click();
+    let dialog=page.getByRole('dialog'); await expect(dialog).toHaveAttribute('data-presentation',width<768?'sheet':'modal');
+    const box=(await dialog.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width+1);expect(box.height).toBeLessThanOrEqual(900*.88+1);
+    await expect(dialog.getByRole('button',{name:'닫기',exact:true})).toBeFocused();
+    await expect(dialog.getByRole('button',{name:'공유 삭제'})).toHaveCount(0);
+    await page.screenshot({path:testInfo.outputPath(`lounge-detail-${width}.png`)});
+    expect(server.operations).toEqual([]); expect(server.rows.get(userA)).toEqual(original);
+    await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); await expect(open).toBeFocused();
+    // Viewing does not trigger unsaved-input protection.
+    expect(await preventsLeaving(page)).toBe(false);
+    await open.click(); await page.getByRole('link',{name:'이 비율로 시작하기'}).click();
+    dialog=page.getByRole('dialog',{name:'내 투자금으로 미리보기'});await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('내 월 투자금 200,000원 기준')).toBeVisible();
+    await expect(dialog.getByText('100,000원',{exact:true})).toHaveCount(2);
+    expect(server.operations).toEqual([]);
+    await page.screenshot({path:testInfo.outputPath(`lounge-import-${width}.png`)});
+    await dialog.getByRole('button',{name:'초안으로 가져오기'}).click();
+    await expect(page.getByRole('dialog',{name:'투자 배분 수정'})).toBeVisible();
+    await expect.poll(()=>server.rows.get(userA)?.portfolio.draft?.items[0].name).toBe('SCHD');
+    expect(server.rows.get(userA)?.portfolio.plans).toEqual(original.portfolio.plans);
+    for(const field of ['main','simulation','locations','accountMap'] as const) expect(server.rows.get(userA)?.[field]).toEqual(original[field]);
+    expect(server.operations.every(op=>op==='save_portfolio')).toBe(true);
+    // Publishing has its own table: no further workspace mutation.
+    await page.goto('apps/lounge/');const before=structuredClone(server.rows.get(userA));
+    await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();
+    dialog=page.getByRole('dialog',{name:'내 포트폴리오 공유'});await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('로그인한 모든 사용자에게 공개 · 금액 제외')).toBeVisible();
+    await dialog.getByLabel('제목',{exact:true}).fill('나만의 배분');await dialog.getByLabel('공유할 별명').fill('나의별명');
+    expect(await preventsLeaving(page)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath(`lounge-publish-${width}.png`)});
+    await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click(); await expect(dialog).toHaveCount(0);
+    await expect.poll(()=>preventsLeaving(page)).toBe(false);
+    expect(server.rows.get(userA)).toEqual(before);
+    expect(JSON.stringify(server.loungeWrites)).not.toMatch(/syncedInvestmentWon|monthly|amountWon|@|classification|sourceMain|accountMap/);
+    await page.getByRole('button',{name:'내 공유',exact:true}).click();await page.getByRole('button',{name:'나만의 배분 상세 보기'}).click();
+    await page.getByRole('button',{name:'공유 삭제',exact:true}).click();dialog=page.getByRole('dialog',{name:'공유를 삭제할까요?'});
+    await dialog.getByRole('button',{name:'공유 삭제',exact:true}).click();await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('heading',{name:'아직 공유한 포트폴리오가 없어요'})).toBeVisible();
+    expect(server.rows.get(userA)).toEqual(before); expect(server.publications.has(sharedPortfolio.id)).toBe(true);
+  });
+}
+test('Lounge requires login; deleted link and cancelled copy never write',async({page,context})=>{
+  const server=fakeServer();await server.attach(context,null);await page.goto(`apps/lounge/?post=${sharedPortfolio.id}`);
+  await expect(page.getByRole('button',{name:/Google로/})).toBeVisible(); await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toHaveCount(0);
+  expect(server.operations).toEqual([]);
+});
+test('Lounge publish failure keeps inputs; unchanged view closes quietly and changed input asks',async({page,context})=>{
+  const server=fakeServer();server.rows.set(userA,resultCardPlan());await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('apps/lounge/');await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'내 포트폴리오 공유'})).toBeVisible();
+  await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();let dialog=page.getByRole('dialog');
+  await dialog.getByLabel('제목',{exact:true}).fill('보존할 제목');server.setFailWrite(true);
+  await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click();await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(dialog.getByLabel('제목',{exact:true})).toHaveValue('보존할 제목');
+  await page.keyboard.press('Escape');dialog=page.getByRole('dialog',{name:'작성 중인 내용을 닫을까요?'});await expect(dialog).toBeVisible();
+  await dialog.getByRole('button',{name:'그만두기'}).click();await expect(dialog).toHaveCount(0);
+  expect(server.publications.size).toBe(0);
+  await page.goto(`apps/portfolio/?publication=${sharedPortfolio.id}`);await expect(page.getByRole('alert').filter({hasText:'삭제되었거나'})).toBeVisible();
+  await page.keyboard.press('Escape');expect(server.operations).toEqual([]);
+});
+
+test('Lounge allows a signed-in new account to browse without initializing a workspace', async({page,context})=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});await server.attach(context,userA);
+  await page.goto('apps/lounge/');await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toBeVisible();
+  expect(server.rows.has(userA)).toBe(false);expect(server.operations).toEqual([]);
+  await expect(page.getByRole('link',{name:'내 포트폴리오 만들기',exact:true})).toBeVisible();
+});
+test('Lounge paginates without repeats and updates its one shared post',async({page,context})=>{
+  const server=fakeServer();server.rows.set(userA,resultCardPlan());await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  for(let i=0;i<13;i++) {const post={...sharedPortfolio,id:`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`,title:`구성 ${i+1}`};server.publications.set(post.id,{owner:userB,post});}
+  const own={...sharedPortfolio,id:'dddddddd-dddd-4ddd-8ddd-dddddddddddd',isMine:true,title:'내 이전 공유'};server.publications.set(own.id,{owner:userA,post:own});
+  await page.goto('apps/lounge/');await expect(page.locator('.lounge-card')).toHaveCount(12);await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.locator('.lounge-card')).toHaveCount(14);
+  await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();const dialog=page.getByRole('dialog',{name:'공유 포트폴리오 갱신'});
+  await dialog.getByLabel('제목',{exact:true}).fill('갱신한 공유');await dialog.getByRole('button',{name:'이 내용으로 갱신'}).click();await expect(dialog).toHaveCount(0);
+  expect(server.publications.size).toBe(14);expect(server.publications.get(own.id)?.post.version).toBe(2);expect(server.operations).toEqual([]);
+});

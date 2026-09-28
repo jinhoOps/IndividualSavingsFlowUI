@@ -4,7 +4,7 @@
 
 ISF는 지금의 월간 돈 흐름을 정리하고, 그 결과를 장기 전략과 실행 계획으로 점차 연결하는 개인 재무 계획 도구다. 정적 웹에서 Google 로그인과 Supabase 계정별 저장을 사용한다.
 
-현재 지원 제품은 **Main, Simulation, Portfolio** 세 앱이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. 2026-09-15 사용자 요청으로 Account Map UI를 제거하고 기존 URL은 Main으로 연결한다. 세 앱은 계정당 하나의 schema v5 workspace를 사용하며 기존 계좌지도·금융 위치 데이터의 저장·백업·복구 호환성은 보존한다. 2026-09-10 v5 운영 DB 적용·Pages 배포와 실제 계정 검증을 완료했다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
+현재 지원 제품은 **Main, Simulation, Portfolio, Lounge** 네 앱이다. Lounge는 로그인한 사용자끼리 Portfolio 비율을 공유하고 자신의 투자금으로 가져오는 공간이다. Main은 월 자금 흐름을, Simulation은 장기 복리를, Portfolio는 최신 Main 투자금의 전체 기준 배분을 보여준다. 2026-09-15 사용자 요청으로 Account Map UI를 제거하고 기존 URL은 Main으로 연결한다. 세 재무 앱은 계정당 하나의 schema v5 workspace를 사용하며 기존 계좌지도·금융 위치 데이터의 저장·백업·복구 호환성은 보존한다. 2026-09-10 v5 운영 DB 적용·Pages 배포와 실제 계정 검증을 완료했다. 이 브랜치의 계정 저장 구현과 운영 rollout 상태는 [운영 안내](../../../../../docs/supabase-account-setup.md)로 구분한다.
 
 ## 2. Epic
 
@@ -100,7 +100,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 
 ### Simulation과 Portfolio journey
 
-- 런처는 Main, Simulation, Portfolio를 아이콘으로 표시하고 현재 앱을 선택선과 접근성 상태로 구분한다.
+- 런처는 Main, Simulation, Portfolio, Lounge를 아이콘으로 표시하고 현재 앱을 선택선과 접근성 상태로 구분한다.
 - 런처와 CTA는 URL 탐색만 수행하고 별도 전달 데이터를 저장하지 않는다.
 - Simulation은 단일 workspace의 최신 Main 월 저축·투자를 읽어 장기 복리 성장과 전부 저축 기준선을 비교하고 자체 Simulation slice만 갱신한다.
 - Portfolio는 같은 workspace의 최신 Main 투자금을 읽고 하나의 aggregate-only 적용 배분과 편집 초안을 소유한다.
@@ -198,6 +198,17 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 계좌·기관·보관처 관리 UI는 제공하지 않는다. 기존 공유 위치 데이터는 저장·복구 호환성 범위에서만 유지한다.
 - Portfolio 투자 대상과 계좌·보관처 연결은 현재 범위가 아니며 별도 승인 명세 전에는 진입점이나 연결 상태를 표시하지 않는다.
 
+### Portfolio Lounge — 2026-09-28 신규 앱
+
+- 로그인한 사용자끼리 게시물을 열람·공유한다. 앱 경로는 `apps/lounge/`이며 런처와 Portfolio 결과에서 연결한다.
+- 적용된 Portfolio의 종목명·비율·현금 비율과 별명·제목·짧은 메모만 별도 게시물로 공유한다. 원본 workspace, 이메일, 실명, 월 금액, 대출, 실제 수익률은 포함하지 않는다.
+- 계정당 게시물 하나를 명시적으로 게시·갱신·삭제한다. 원본 계획을 수정해도 게시물은 자동 변경되지 않는다. 삭제 시까지 유지하며 기존 48시간 이미지 공유와 별도다.
+- 최신순 목록, 내 공유 필터, 페이지 더 보기, 전체 비율 상세, 로그인 전용 게시물 링크를 제공한다. 댓글·팔로우·추천 순위는 범위에 없다.
+- 가져오기는 게시물 UUID URL로 Portfolio에 진입하고 내 Main 투자금으로 미리본 뒤 명시적으로 초안을 대체한다. 기존 적용 계획은 마지막 적용까지 보존하며 다른 workspace slice는 변경하지 않는다.
+- 신규 `portfolio_publications` 테이블과 최소 권한 RPC를 사용한다. RLS로 인증/소유권을 제한하고 목록 응답에서 owner UID를 제외한다. version 충돌 검사, strict JSON allowlist, 계정 삭제 cascade를 검증한다.
+- 이미지 업로드 없이 4KB 이하 allocation·10개 종목·계정당 1행·최대 5,000행으로 제한한다. schema v5·protocol 5·백업은 유지하고 라운지 게시물을 workspace 백업에 넣지 않는다.
+- [상세 설계](../../../../superpowers/specs/2026-09-28-portfolio-lounge-design.md), [구현·운영 진행](../../../../superpowers/plans/2026-09-28-portfolio-lounge.md)을 따른다.
+
 ### Account Map 제거와 데이터 보존
 
 - Account Map 전용 진입점, 지도·계좌·목적·이체 편집, application·repository와 소비자가 없는 전용 계산·command를 제거한다.
@@ -215,7 +226,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 
 ## 9. Data Contract
 
-현재 제품의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v5를 사용한다. 여기에는 Main applied/setup progress/expenseAssistant, Simulation draft, aggregate-only Portfolio plans/draft, 보존된 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. 호환성 데이터인 Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
+개인 재무 계획의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v5를 사용한다. 여기에는 Main applied/setup progress/expenseAssistant, Simulation draft, aggregate-only Portfolio plans/draft, 보존된 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. 호환성 데이터인 Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
 
 기존 브라우저 데이터는 사용자 선택에 따른 read-only 이전 후보다. v5 → v4 → v3 → 유효한 retired v1/v2 순으로 읽고 invalid 최신 원본에서 fallback하지 않는다. 이전 성공 후에도 원본·foreign record를 보존한다. 계정 캐시는 `isf-account-workspace-v3`/cache version 3이며 구 v2/v1의 미전송 요청을 자동 재생하지 않고 복구 원문으로 격리한다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 기존 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)와 [v5 확장 계약](../../../../superpowers/specs/2026-09-10-main-expense-assistant-design.md)을 따른다.
 

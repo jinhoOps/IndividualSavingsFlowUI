@@ -12,6 +12,7 @@ const supportedEntries = [
   'apps/main/index.html',
   'apps/simulation/index.html',
   'apps/portfolio/index.html',
+  'apps/lounge/index.html',
   'apps/account-map/index.html',
 ] as const;
 

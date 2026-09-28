@@ -19,7 +19,7 @@
 - Main과 Simulation은 완료된 현재 제품 기준선이다.
 - Main은 다섯 월간 금액과 지출 계산 도우미의 보조 답변을 소유하며 Main UI에서 수정한다.
 - Simulation은 Main을 읽기 전용으로 사용하며 자체 복리 시뮬레이션 초안만 소유한다.
-- 현재 지원 제품은 Main, Simulation, Portfolio 세 앱이다. Account Map UI는 제거되었으며 구 URL은 Main으로 연결한다.
+- 현재 지원 제품은 Main, Simulation, Portfolio, Lounge 네 앱이다. Lounge는 로그인 사용자끼리 비율을 공유하며 workspace를 수정하지 않는다. Account Map UI는 제거되었으며 구 URL은 Main으로 연결한다.
 - `workspace.locations`와 `workspace.accountMap`은 저장·백업·복구 호환성을 위해 보존한다. schema v5·서버 protocol 5를 유지하며 현재 앱의 일반 저장으로 이 데이터를 삭제하거나 변경하지 않는다. 검증된 whole-workspace 복원 계약은 유지한다.
 - 레거시 코드는 기능과 데이터 계약 이관을 위한 임시자산이며 지원 제품 경로나 신규 기능 기반이 아니다.
 - 레거시 제거 전 동작과 데이터 계약을 목록화하고, 이관 또는 명시적 폐기 근거·호환성 검증·참조 제거·회귀 검증을 완료한다.

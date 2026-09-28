@@ -1,3 +1,7 @@
+import '../../lounge/ui/lounge.css';
+import {publicationQuery} from '../../lounge/domain/publication';
+import type {LoungeRepository} from '../../lounge/infrastructure/loungeRepository';
+import {PublicationImport} from '../../lounge/ui/PublicationImport';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppContentFrame } from '../../components/common/AppContentFrame';
 import { AppShell } from '../../components/common/AppShell';
@@ -48,12 +52,15 @@ export function PortfolioApp({
   repository: providedRepository,
   preferencesRepository: providedPreferencesRepository,
   now = Date.now,
+  loungeRepository,
 }: {
   mainSourceRepository?: PortfolioMainSourceRepository;
   repository?: PortfolioRepository;
   preferencesRepository?: PortfolioPreferencesRepository;
   now?: () => number;
+  loungeRepository?: LoungeRepository;
 }) {
+  const [publication, setPublication] = useState(() => publicationQuery(typeof window === 'undefined' ? '' : window.location.search, 'publication'));
   const accountSession = useContext(AccountDraftContext);
   const autosaveDebounceMs = accountSession === null ? 0 : 500;
   const mainRepository = useMemo(
@@ -408,6 +415,7 @@ export function PortfolioApp({
                     setResultCardIntent('share');
                   }}
                 />
+                <div className="portfolio-lounge-entry"><a className="ui-button ui-button--quiet" href={appPath('lounge')}>다른 사람의 포트폴리오 보기</a></div>
               </div>
               {state.view === 'edit' || closingEdit !== null ? (
                 <PortfolioEditSurface
@@ -470,6 +478,18 @@ export function PortfolioApp({
           </AppContentFrame>
         )}
       </main>
+      {publication && loungeRepository ? <PublicationImport id={publication} repository={loungeRepository}
+        investmentWon={state?.draft.syncedInvestmentWon ?? 0}
+        onImport={draft => {
+          dispatchDraft({type: 'draft-replaced', draft});
+          if (state?.applied) dispatchState({type: 'edit-opened'});
+          else if (state?.setupStep === 'welcome') dispatchState({type: 'setup-next'});
+        }}
+        onClose={() => {
+          setPublication(null);
+          const url = new URL(window.location.href); url.searchParams.delete('publication');
+          window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        }} /> : null}
     </AppShell>
   );
 }

@@ -313,7 +313,7 @@ test('groups icon navigation and management in a compact dock across viewports',
         const rect = link.getBoundingClientRect();
         return { width: rect.width, height: rect.height, top: rect.top };
       }));
-    expect(appTargets).toHaveLength(3);
+    expect(appTargets).toHaveLength(4);
     for (const target of appTargets) {
       expect(target.width).toBe(44);
       expect(target.height).toBe(44);
@@ -356,7 +356,7 @@ test('keeps all app icons visible while launcher geometry is unresolved', async 
 
   const navigation = page.getByRole('navigation', { name: 'ISF 앱' });
   const links = navigation.locator('.journey-launcher__app-link');
-  await expect(links).toHaveCount(3);
+  await expect(links).toHaveCount(4);
 
   const unresolvedGeometry = await page.addStyleTag({
     content: `
@@ -371,11 +371,11 @@ test('keeps all app icons visible while launcher geometry is unresolved', async 
     `,
   });
 
-  await expect(links).toHaveCount(3);
+  await expect(links).toHaveCount(4);
   await expect(navigation.getByRole('button', { name: '앱 더보기' })).toHaveCount(0);
 
   await unresolvedGeometry.evaluate((style) => style.remove());
-  await expect(links).toHaveCount(3);
+  await expect(links).toHaveCount(4);
   await expect.poll(async () => links.first().evaluate((link) => link.getBoundingClientRect().width))
     .toBe(44);
 });
@@ -408,6 +408,8 @@ test('dock preview follows pointer and keyboard without changing the current app
 
   await portfolio.focus();
   await tracks(portfolio);
+  await page.keyboard.press('Tab');
+  await expect(navigation.getByRole('link', {name: /라운지/})).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: '관리 메뉴', exact: true })).toBeFocused();
   await tracks(main);
@@ -581,7 +583,7 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(overflowBox).not.toBeNull();
   expect(overflowBox!.x).toBeGreaterThanOrEqual(16);
   expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(752);
-  await expect(overflow.getByRole('link')).toHaveCount(2);
+  await expect(overflow.getByRole('link')).toHaveCount(3);
   await expect(overflow.getByRole('link').nth(0)).toContainText('자금 흐름 (Main)');
   await expect(overflow.getByRole('link').nth(1)).toContainText('미래 성장 (Simulation)');
 
@@ -607,7 +609,7 @@ test('keeps the current app direct and exposes hidden apps through overflow', as
   expect(await page.locator('html').evaluate((html) => html.scrollWidth <= innerWidth)).toBe(true);
 
   await narrowLauncher.evaluate((style) => style.remove());
-  await expect(navigation.getByRole('link')).toHaveCount(3);
+  await expect(navigation.getByRole('link')).toHaveCount(4);
   await expect(more).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: /투자 배분.*현재 위치/ })).toBeFocused();
 });

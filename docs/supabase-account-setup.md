@@ -186,3 +186,14 @@ from public.result_card_shares group by state;
 - 이미지 상한 400MB는 사용자 지정 운영 예산이다. Free DB 500MB와 Storage 한도는 별도 지표이며 전송량도 따로 관찰한다. 다른 bucket 사용량이 있으면 여유 100MB를 남기도록 이미지 예약 상한을 낮춘다.
 
 상세 계약은 [설계](superpowers/specs/2026-09-22-result-card-storage-budget-design.md), 로컬·운영 검증 순서는 [실행 계획](superpowers/plans/2026-09-22-result-card-storage-budget.md)을 따른다.
+
+
+## Portfolio Lounge — 2026-09-28
+
+`202609280002_portfolio_lounge.sql`을 운영 프로젝트에 적용하고 migration 이력을 기록했다. 별도 `portfolio_publications` 테이블과 로그인 전용 RPC 네 개를 사용한다. 직접 테이블 접근·anon 실행·RPC 역할의 workspace 접근은 차단한다. 기존 workspace 5개의 적용 전후 전체 행 checksum은 같았다. 실제 사용자 포트폴리오는 검증용으로 게시하지 않았다.
+
+- 로그인 사용자끼리 이름·비율만 공유하고 계정당 하나를 게시·갱신·삭제한다.
+- allocation 최대 4KB·10개 대상, 전체 5,000행 상한. 이미지를 업로드하지 않으며 기존 이미지 Storage 예산과 보관 정책은 유지한다.
+- 라운지 게시물은 삭제 시까지 유지하고 계정 삭제 시 cascade한다. schema v5·protocol 5·workspace 백업에 포함하지 않는다.
+- 검증: `node scripts/test-workspace-db.mjs`에 권한·두 계정·payload·CAS·페이지·삭제·상한 회귀가 포함된다.
+- [설계](superpowers/specs/2026-09-28-portfolio-lounge-design.md), [구현·배포 상태](superpowers/plans/2026-09-28-portfolio-lounge.md).
