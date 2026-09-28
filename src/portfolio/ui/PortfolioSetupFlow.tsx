@@ -1,3 +1,4 @@
+import { AssetClassBreakdown } from './AssetClassBreakdown';
 import { useEffect, useRef, useState } from 'react';
 import { useAnimatedProgress } from '../../components/motion/useAnimatedProgress';
 import { AccountProductBoundary } from '../../auth/AccountManagementContext';
@@ -199,26 +200,13 @@ function PortfolioSetupReview({
   headingRef: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const allocation = materializeAllocation(draft, investmentWon);
-  const stablePercentage = allocation.cashPercentage + allocation.items
-    .filter((item) => item.classification === 'stable')
-    .reduce((sum, item) => sum + item.percentage, 0);
-  const growthPercentage = Math.max(0, 100 - stablePercentage);
   return (
     <div className="portfolio-setup__review" role="region" aria-label="배분 검토">
       <h1 id="portfolio-setup-title" ref={headingRef} tabIndex={-1}>
-        성장에 {formatAllocationPercent(growthPercentage)}, 안정에 {formatAllocationPercent(stablePercentage)} 배분해요
+        투자 배분 확인
       </h1>
       <p className="portfolio-setup__review-meta">매달 {formatPortfolioWon(investmentWon)}</p>
-      <section className="portfolio-setup__strategy" aria-label="성장 안정 구성">
-        <div className="portfolio-setup-summary__bar" aria-hidden="true">
-          <span className="portfolio-setup-summary__growth" style={{ width: `${growthPercentage}%` }} />
-          <span className="portfolio-setup-summary__stable" style={{ width: `${stablePercentage}%` }} />
-        </div>
-        <div className="portfolio-setup-summary__legend">
-          <span>성장 <strong>{formatAllocationPercent(growthPercentage)}</strong></span>
-          <span>안정 <strong>{formatAllocationPercent(stablePercentage)}</strong></span>
-        </div>
-      </section>
+      <AssetClassBreakdown allocation={draft} withBar />
       <ul className="portfolio-setup-review__list">
         {allocation.items.map((item) => {
           return (

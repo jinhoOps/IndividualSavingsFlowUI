@@ -245,7 +245,7 @@ test('PWA offline revisit keeps all app routes and final motion state available'
   const routes = [
     { path: 'apps/main/', heading: '이번 달 자금 흐름', motion: '.cashflow-allocation' },
     { path: 'apps/simulation/', heading: /1억 원을 모으려면/, motion: '.growth-chart' },
-    { path: 'apps/portfolio/', heading: '안정 50%', motion: '.portfolio-summary' },
+    { path: 'apps/portfolio/', heading: '자산 구성', motion: '.portfolio-summary' },
   ] as const;
 
   for (const route of routes) {

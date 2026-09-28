@@ -100,7 +100,7 @@ const apps = [
     name: 'portfolio',
     path: 'apps/portfolio/',
     frameTestId: 'portfolio-page-frame',
-    resultHeading: '안정 40%',
+    resultHeading: '자산 구성',
   },
 ] as const;
 

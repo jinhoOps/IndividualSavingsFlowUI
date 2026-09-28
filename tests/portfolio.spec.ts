@@ -350,7 +350,7 @@ test('creates one allocation and revisits result-first', async ({ page }) => {
   await expect(review).toContainText('60%');
   await page.getByRole('button', { name: '이대로 시작' }).click();
   await expect(page.locator('.portfolio-allocation-row__select').first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '자산 구성' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (
     JSON.parse(localStorage.getItem('isf-workspace-v5')!).portfolio.draft
   ))).toBeNull();
@@ -410,7 +410,7 @@ test('starts from a sample without changing the applied plan until the existing 
 
   await page.getByRole('button', { name: '배분 확인' }).click();
   await page.getByRole('button', { name: '이대로 시작' }).click();
-  await expect(page.getByRole('heading', { name: '안정 30%' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '자산 구성' })).toBeVisible();
   await expect(page.locator('.portfolio-summary')).toContainText('VOO70%');
   await expect(page.locator('.portfolio-summary')).toContainText('금(GOLD)30%');
 });
@@ -497,7 +497,7 @@ test('puts a Main investment increase into cash', async ({ page }) => {
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
   const summary = page.locator('.portfolio-summary');
-  await expect(page.getByRole('heading', { name: '안정 60%' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '자산 구성' })).toBeVisible();
   await expect(summary.getByRole('listitem').filter({ hasText: /현금.*60%/ })).toBeVisible();
   await expect(summary.getByRole('listitem').filter({ hasText: /인덱스.*40%/ })).toBeVisible();
   await expect(summary).not.toContainText('원');
@@ -509,10 +509,10 @@ test('shows the source-state summary first and keeps view preferences separate',
   await page.goto('apps/portfolio/');
 
   const summary = page.locator('.portfolio-summary');
-  const summaryHeading = summary.getByRole('heading', { name: '안정 50%' });
+  const summaryHeading = summary.getByRole('heading', { name: '자산 구성' });
   await expect(summaryHeading).toBeVisible();
   await expect(summaryHeading).not.toContainText('원');
-  await expect(summary.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+  await expect(summary.getByRole('heading', { name: '자산 구성' })).toBeVisible();
   const summaryRows = summary.getByRole('listitem');
   await expect(summaryRows).toHaveCount(4);
   for (const row of await summaryRows.all()) {
@@ -546,7 +546,7 @@ test('gates zero investment and focuses Main investment editing', async ({ page 
   await expect(page.getByLabel('월 투자액')).toBeFocused();
 });
 
-test('keeps the summary-first ratio list usable across required widths', async ({ page }) => {
+test('keeps the summary-first ratio list usable across required widths', async ({ page }, testInfo) => {
   await seedMain(page, 800_000);
   await seedSourceVisualPortfolio(page);
   await page.addInitScript(() => {
@@ -569,7 +569,14 @@ test('keeps the summary-first ratio list usable across required widths', async (
     expect(Math.abs((viewport.width - frameBox!.width) / 2 - frameBox!.x)).toBeLessThan(1);
     const summary = page.locator('.portfolio-summary');
     await expect(summary).toHaveClass(/ui-surface/);
-    await expect(page.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '자산 구성' })).toBeVisible();
+    const groups = summary.locator('[aria-label="자산군별 비중"]');
+    await expect(groups).toHaveText('주식50%현물15%채권25%현금10%');
+    for (const group of await groups.locator(':scope > div').all()) {
+      await expect(group).toBeInViewport();
+      expect(await group.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    }
+    await page.screenshot({path: testInfo.outputPath(`asset-classes-${viewport.width}.png`), fullPage: true});
     const summaryBox = await summary.boundingBox();
     expect(summaryBox).not.toBeNull();
     for (const [name, ratio] of [['글로벌 인덱스', '50%'], ['채권', '25%'], ['금', '15%'], ['현금', '10%']]) {
@@ -603,7 +610,7 @@ test('keeps the summary-first ratio list usable across required widths', async (
       expect(listBox!.y - (heroBox!.y + heroBox!.height)).toBeGreaterThanOrEqual(24);
       expect(await summary.evaluate((element) => getComputedStyle(element).backgroundColor))
         .toBe('rgba(0, 0, 0, 0)');
-      expect(Number.parseInt(await page.getByRole('heading', { name: '안정 50%' })
+      expect(Number.parseInt(await page.getByRole('heading', { name: '자산 구성' })
         .evaluate((element) => getComputedStyle(element).fontWeight), 10)).toBeGreaterThanOrEqual(700);
       const rows = summary.getByRole('listitem');
       await expect(rows).toHaveCount(4);
@@ -1377,7 +1384,7 @@ test('clears setup cash validation when back navigation discards its local input
   await expect(page.getByLabel('현금 금액')).not.toHaveAttribute('aria-invalid');
   await next.click();
   await page.getByRole('button', { name: '이대로 시작' }).click();
-  await expect(page.getByRole('heading', { name: '안정 100%' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '자산 구성' })).toBeVisible();
 });
 
 

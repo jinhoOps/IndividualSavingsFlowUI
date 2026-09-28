@@ -7,8 +7,7 @@ import { Button } from '../../components/common/Button';
 import { ResponsiveDialog, useResponsiveDialogClose } from '../../components/common/ResponsiveDialog';
 import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../components/common/ResponsiveDialogLayout';
 import { Surface } from '../../components/common/Surface';
-import { materializeAllocation } from '../domain/allocation';
-import { stableShareUnits } from '../domain/classification';
+import { assetClassAllocation } from '../domain/classification';
 import type { PortfolioDraft } from '../domain/model';
 import { validateApplicableDraft } from '../domain/validation';
 import { formatAllocationPercent, formatPortfolioWon } from './format';
@@ -51,7 +50,6 @@ export function PortfolioApplyBar({
   }, [open]);
 
   if (!dirty) return null;
-  const allocation = materializeAllocation(draft, investmentWon);
 
   function close(): void {
     if (applying) return;
@@ -109,8 +107,7 @@ export function PortfolioApplyBar({
           >
             <dl className="portfolio-confirmation">
               <div className="portfolio-confirmation__row"><dt>투자 대상</dt><dd>{draft.items.length}개</dd></div>
-              <div className="portfolio-confirmation__row"><dt>안정 비중</dt><dd>{formatAllocationPercent(stableShareUnits(draft) / 10_000)}</dd></div>
-              <div className="portfolio-confirmation__row"><dt>현금 비중</dt><dd>{formatAllocationPercent(allocation.cashPercentage)}</dd></div>
+              {assetClassAllocation(draft).map(group => <div key={group.id} className="portfolio-confirmation__row"><dt>{group.label} 비중</dt><dd>{formatAllocationPercent(group.percentage)}</dd></div>)}
               {showAmounts ? <div className="portfolio-confirmation__row"><dt>총 투자금</dt><dd>{formatPortfolioWon(investmentWon)}</dd></div> : null}
             </dl>
             {fieldError ? <p role="alert">입력 오류를 수정한 뒤 적용해 주세요.</p> : null}
