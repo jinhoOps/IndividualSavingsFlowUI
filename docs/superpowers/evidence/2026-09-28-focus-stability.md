@@ -42,4 +42,4 @@
 
 운영 로그인 화면에서 미읽음 수 1은 버튼의 접근성 이름에 들어왔지만, 숫자 배경과 목록 미읽음 점은 보이지 않았다. 두 요소의 CSS가 정의되지 않은 `--accent`를 참조해 배경이 투명해진 것이 원인이었다. 둘 다 앱에서 정의한 `--tone-accent`를 사용하도록 고쳤다. 알림 조회·읽음 상태와 저장 데이터는 바꾸지 않았다.
 
-운영 반영 뒤 같은 계정의 브라우저에서 숫자 배경과 미읽음 점의 실제 렌더링을 확인한다.
+커밋 `0d1d801ab680e67dfe88370883d51d48243a0448`의 [Pages 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36444786648)와 [CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36444786594)가 모두 성공했다. 배포 artifact와 공개 HTML·JS·CSS 37개가 바이트 단위로 일치한다. 로그인된 운영 화면에서 미읽음 1개 배지의 청록색 배경(`rgb(15, 118, 110)`)과 미읽음 알림 행의 같은 색 점을 확인했다.
