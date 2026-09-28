@@ -44,7 +44,11 @@ SQLi·HTML/script·제어/zero-width/bidi 문자·과대 입력 거부, SQL/HTML
 
 ## 배포
 
-운영 DB 반영 완료. PR·CI·Pages 배포 진행 중.
+- [PR #28](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/28) 병합, 코드 병합 커밋 `6fb0d23f`.
+- [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36382348240), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36382444776), [Pages 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36382444729) 성공.
+- 실제 [라운지](https://jinhoops.github.io/IndividualSavingsFlowUI/apps/lounge/)와 JS 7개 HTTP 200. 배포 파일의 48시간 제한 안내, `change_lounge_nickname`, `get_lounge_profile_v2` 포함을 확인했다.
+- 390/1280 비로그인 진입은 로그인 화면이며 JavaScript 오류·가로 overflow가 없다. 운영 사용자 이름을 시험 등록/변경하지 않았다.
+- `jinhoOps/lounge-nickname-change` 로컬·원격 브랜치를 삭제하고 main을 동기화했다. Orca 하위 작업공간은 없다.
 
 ## 화면 증거
 

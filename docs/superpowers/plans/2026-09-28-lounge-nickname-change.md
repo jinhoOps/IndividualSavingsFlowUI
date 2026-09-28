@@ -26,7 +26,7 @@
 2. [x] 변경 UI·서버 기준 대기·실패/재시도·동일 이름 무변경·게시물 갱신.
 3. [x] 최초 등록 안내·PRD·README·DESIGN·현재 spec 갱신.
 4. [x] 타입·unit·DB·390/768/1280 focused·전체 E2E·build·직접 화면 검토.
-5. [ ] 운영 migration 보존 검사·PR·CI·배포·main/Orca 정리.
+5. [x] 운영 migration 보존 검사·PR·CI·배포·main/Orca 정리.
 
 ## 참고
 
@@ -34,4 +34,4 @@
 - [OWASP XSS Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html): 사용자 입력은 텍스트로 렌더링하며 위험한 HTML sink를 사용하지 않는다.
 - [Supabase Database Functions](https://supabase.com/docs/guides/database/functions): definer의 search_path와 실행 권한 제한.
 
-현재 검증: 타입·harness·1,259 unit, 전체 PostgreSQL, Lounge focused 20개, build 및 화면 직접 검토 통과. 전체 E2E는 283 통과·기존 PWA 1 제외·기존 모션 측정 1 실패였고, 폰트 준비 후 측정하도록 수정한 해당 테스트가 5회 연속 통과했다. 운영 migration 보존·권한·SQL 일치 검사 완료. PR·CI·배포 진행 중. [상세 검증 증거](../evidence/2026-09-28-lounge-nickname-change.md).
+현재 검증: 타입·harness·1,259 unit, 전체 PostgreSQL, Lounge focused 20개, build 및 화면 직접 검토 통과. 전체 E2E는 283 통과·기존 PWA 1 제외·기존 모션 측정 1 실패였고, 폰트 준비 후 측정하도록 수정한 해당 테스트가 5회 연속 통과했다. 운영 migration 보존·권한·SQL 일치 검사 완료. PR #28 병합·PR/main CI·Pages 배포와 실제 URL 확인 완료. 작업 브랜치 정리·main 동기화 완료, Orca 하위 작업공간 없음. [상세 검증 증거](../evidence/2026-09-28-lounge-nickname-change.md).
