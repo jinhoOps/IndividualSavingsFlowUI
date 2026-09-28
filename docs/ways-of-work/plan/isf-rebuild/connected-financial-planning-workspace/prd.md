@@ -187,6 +187,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 배분 단계와 재편집은 정적 7개 샘플 또는 주력·보조 직접 조합을 임시 출발점으로 제공할 수 있다. 이 선택은 aggregate draft를 바로 저장하거나 applied를 바꾸지 않으며, 유효한 후보를 명시적으로 확정할 때만 기존 draft를 한 번 교체한다. GOLD는 특정 상품 티커가 아닌 금 자산이며, 샘플의 방어·성장·공격 지향 구간은 정성적 탐색 보조값으로 저장 schema나 성장·안정 분류를 바꾸지 않는다.
 - 사용자는 Portfolio 관리 메뉴에서 전체 금액 표시와 비율순·입력순 정렬을 바꾸며, 이 보기 설정은 배분 schema와 분리된 Portfolio 전용 localStorage record에 저장한다.
 - Portfolio 결과의 각 배분 행은 배분 편집 진입점이다. 별도 연필 버튼을 두지 않으며, 항목 추가·수정 폼은 부모 배분 편집 영역 안에서 행 위치를 유지한 채 인라인으로 전환한다. 편집 화면 밖 클릭으로 닫기를 시도할 때 적용하지 않은 변경이 있으면 폐기 확인을 거친다. 샘플 탐색은 넓은 화면의 목록·상세 2열과 좁은 화면의 목록 → 상세 전환을 제공하고, 선택·조정·초안 반영·최종 적용의 경계를 유지한다.
+- 포인터 hover·키보드 초점에 대응하는 막대 구간 하나만 강조한다. 포인터 이탈·Escape·편집 진입에서 강조를 해제하고, 터치 또는 마우스로 편집을 닫은 뒤 반환 초점이 지속적인 선택 표시를 만들지 않게 한다.
 - 각 투자 대상은 `성장` 또는 `안정` 분류와 자동 추천·사용자 지정 출처를 소유하고, 현금은 항상 안정으로 계산한다.
 - 금·채권 관련 이름의 분류는 자동 추천일 뿐이며 사용자 지정을 덮어쓰지 않는다. `ETF`만으로는 안정을 추천하지 않는다.
 - 구 Portfolio standalone plan과 draft 저장값은 이관·읽기·삭제하지 않는 foreign record다.
@@ -223,6 +224,8 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 - 이미지 업로드 없이 4KB 이하 allocation·10개 종목·계정당 1행·최대 5,000행으로 제한한다. schema v5·protocol 5·백업은 유지하고 커뮤니티 프로필·게시물을 workspace 백업에 넣지 않는다. 프로필도 계정당 1행·최대 5,000행이며 계정 삭제 시 함께 제거한다.
 - [상세 설계](../../../../superpowers/specs/2026-09-28-portfolio-lounge-design.md), [구현·운영 진행](../../../../superpowers/plans/2026-09-28-portfolio-lounge.md)을 따른다.
 - [대화·탐색 확장](../../../../superpowers/specs/2026-09-28-community-conversation-discovery-design.md)은 원댓글 아래 한 단계 답글, 답글 대상 공개 식별자, 선택한 사용자 최대 3명의 멘션, 수신자 전용 앱 내 알림을 제공한다. 닉네임 변경 후에도 대상은 유지되며 일반 @문자열은 알리지 않는다. 알림은 30일/사용자 100개/전역 20,000개 상한이며 조회 스냅샷 기준으로 명시적 읽음을 처리한다.
+- 2026-09-28 후속 요청: 다른 사람 계획에서도 `@`를 열면 작성자·대화 참여자를 우선하고 다른 등록 사용자로 최대 5명까지 채운다. 본인은 제외하고 닉네임 두 글자 검색을 유지한다. [후보 조회 migration](../../../../../supabase/migrations/202609280010_lounge_mention_candidates.sql)을 운영에 적용했다. 로그인된 실제 화면 확인은 [후속 검증 기록](../../../../superpowers/evidence/2026-09-28-developer-notifications-portfolio-highlight.md)을 따른다.
+- 2026-09-28 사용자 확인: `okho04@gmail.com`의 기존 확인된 계정 ID를 서버 개발자 목록에 등록해 본인 알림함에 테스트 알림을 보낸다. 개발자별 한 건을 교체하고 10초 요청 간격·30일 조회·전체 알림 100개 한도를 적용한다. 공개 게시물·댓글·다른 수신자의 알림·workspace는 바꾸지 않는다. 기존 알림 RPC는 유지하며 테스트 포함 조회·읽음은 v2 RPC를 사용한다. [migration 011](../../../../../supabase/migrations/202609280011_lounge_developer_notifications.sql)과 [계정 등록 SQL](../../../../../supabase/operations/grant-lounge-developer.sql)을 운영에 적용하고 대상 계정 권한을 등록했다. 프런트 배포·실제 알림 확인 상태는 [후속 검증 기록](../../../../superpowers/evidence/2026-09-28-developer-notifications-portfolio-highlight.md)을 따른다.
 - 댓글은 여백·메타데이터를 압축하고 44px 조작 영역·16px 입력을 유지한다. 자산군 막대는 같은 색의 종목 사이에도 옅은 1px 경계를 두되 비율에 틈이나 최소 폭을 추가하지 않는다.
 - 2026-09-28 대화·탐색 구현의 검증·운영 적용 상태는 [대화 증거](../../../../superpowers/evidence/2026-09-28-community-conversation.md), [탐색 증거](../../../../superpowers/evidence/2026-09-28-community-discovery.md)를 따른다.
 

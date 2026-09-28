@@ -12,6 +12,15 @@ function fixture() {
   return {client,headers,rpc,setAccount:(value:string)=>{account=value;},setResponse:(value:unknown)=>{response=value;}};
 }
 describe('Lounge authenticated transport',()=>{
+  it('uses server developer access and sends a test UUID without a client-selected recipient',async()=>{
+    const f=fixture(),repo=createLoungeRepository(f.client);f.setResponse(false);
+    expect(await repo.getDeveloperAccess()).toBe(false);expect(f.rpc).toHaveBeenLastCalledWith('get_lounge_developer_access',{});
+    f.setResponse({allowed:true});await expect(repo.getDeveloperAccess()).rejects.toMatchObject({code:'invalid'});
+    f.setResponse({status:'forbidden'});await expect(repo.createTestNotification(id)).rejects.toMatchObject({code:'forbidden'});
+    const state={unreadCount:1,readCutoff:post.updatedAt};f.setResponse({status:'saved',state});
+    expect(await repo.createTestNotification(id)).toEqual(state);expect(f.rpc).toHaveBeenLastCalledWith('create_lounge_test_notification',{p_id:id});
+    await expect(repo.createTestNotification('invalid')).rejects.toMatchObject({code:'invalid'});
+  });
   it('searches all server data and refuses mismatched conditions or malformed feed pages',async()=>{
     const f=fixture(),repo=createLoungeRepository(f.client),asOf=post.updatedAt;
     const query={...DEFAULT_FEED_QUERY,q:'금'},cursor={v:1 as const,queryKey:feedQueryKey(query),asOf,epoch:null,last:{id,updatedAt:asOf,score:null}};
@@ -45,9 +54,9 @@ describe('Lounge authenticated transport',()=>{
     const state={unreadCount:1,readCutoff:post.updatedAt};
     f.setResponse({...state,items:[],nextCursor:null,readIds:[id]});
     expect((await repo.listNotifications(true)).readIds).toEqual([id]);
-    expect(f.rpc).toHaveBeenLastCalledWith('list_lounge_notifications',{p_unread_only:true,p_cursor:null});
+    expect(f.rpc).toHaveBeenLastCalledWith('list_lounge_notifications_v2',{p_unread_only:true,p_cursor:null});
     f.setResponse(state);await repo.readNotifications([id],post.updatedAt);
-    expect(f.rpc).toHaveBeenLastCalledWith('read_lounge_notifications',{p_ids:[id],p_cutoff:post.updatedAt});
+    expect(f.rpc).toHaveBeenLastCalledWith('read_lounge_notifications_v2',{p_ids:[id],p_cutoff:post.updatedAt});
     await expect(repo.readNotifications(Array(101).fill(id),null)).rejects.toMatchObject({code:'invalid'});
     f.setResponse([{publicId:id,nickname:'a@b'}]);expect((await repo.findMentionTargets(id,'a@'))[0].nickname).toBe('a@b');
     f.setAccount('B');await expect(repo.getUnreadCount()).rejects.toMatchObject({code:'account'});

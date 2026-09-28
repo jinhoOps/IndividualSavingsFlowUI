@@ -16,6 +16,21 @@ export async function verifyLoungeConversation({sql,asUser,userA,userC,parallelS
   const a=profiles.find(p=>p.userId===userA),b=profiles.find(p=>p.userId===userC),d=profiles.find(p=>p.userId===userD);
   assert.notEqual(a.publicId,userA);
   const post=call('publish_lounge_portfolio_v3',`'대화 테스트','',${json({items:[],cashShareUnits:1000000})},null,null`).post;
+  assert.deepEqual(call('find_lounge_mention_targets',`'${post.id}',''`,userC),[{publicId:a.publicId,nickname:a.nickname}],
+    'the previous picker only suggests people already connected to the plan');
+  const conversationBefore=sql("select md5(string_agg(row_to_json(p)::text,'' order by id)) from public.portfolio_publications p");
+  sql(`set role migration_admin; ${await readFile(new URL('../supabase/migrations/202609280010_lounge_mention_candidates.sql',import.meta.url),'utf8')}`);
+  assert.equal(sql("select md5(string_agg(row_to_json(p)::text,'' order by id)) from public.portfolio_publications p"),conversationBefore);
+  const defaultTargets=call('find_lounge_mention_targets',`'${post.id}',''`,userC);
+  assert.deepEqual(defaultTargets[0],{publicId:a.publicId,nickname:a.nickname},'another account sees the plan author first');
+  assert.ok(defaultTargets.some(p=>p.publicId===d.publicId),'someone who has not commented is also suggested');
+  assert.equal(defaultTargets.length,Math.min(5,profiles.length-1));assert.ok(defaultTargets.every(p=>p.publicId!==b.publicId));
+  assert.deepEqual(call('find_lounge_mention_targets',`'${post.id}','a@'`,userC),[{publicId:d.publicId,nickname:d.nickname}],
+    'another account can search for someone outside the plan conversation');
+  assert.deepEqual(call('find_lounge_mention_targets',`'${post.id}','a'`,userC),[]);
+  assert.deepEqual(call('find_lounge_mention_targets',`'${randomUUID()}',''`,userC),[]);
+  assert.equal(sql("select has_function_privilege('authenticated','public.find_lounge_mention_targets(uuid,text)','execute')"),'t');
+  for(const role of ['anon','service_role'])assert.equal(sql(`select has_function_privilege('${role}','public.find_lounge_mention_targets(uuid,text)','execute')`),'f');
   const age=()=>sql("update private.lounge_community_activity set last_comment_at=clock_timestamp()-interval '11 seconds'");
   const input=(body,extra={})=>({id:randomUUID(),postId:post.id,rootId:null,replyToId:null,body,mentions:[],...extra});
   const add=(value,user=userA)=>call('add_lounge_comment_v2',json(value),user);
@@ -26,9 +41,24 @@ export async function verifyLoungeConversation({sql,asUser,userA,userC,parallelS
     assert.equal(sql(`select private.valid_lounge_mentions('내용',${json(malformed)})`),'f','incomplete mention shape is rejected');
   assert.equal(sql("select private.valid_lounge_cursor('{}'::jsonb)"),'f');
   const root=add(input('원댓글')).comment;assert.ok(root);
-  const body=`😀 @${a.nickname} 질문 있어요`;
-  const replyInput=input(body,{rootId:root.id,replyToId:root.id,mentions:[{start:2,end:3+[...a.nickname].length,publicId:a.publicId,label:a.nickname}]});
+  const body=`😀 @${a.nickname} @${d.nickname} 질문 있어요`;
+  const replyInput=input(body,{rootId:root.id,replyToId:root.id,mentions:[
+    {start:2,end:3+[...a.nickname].length,publicId:a.publicId,label:a.nickname},
+    {start:4+[...a.nickname].length,end:5+[...a.nickname].length+[...d.nickname].length,publicId:d.publicId,label:d.nickname}]});
   age();const reply=add(replyInput,userC);assert.equal(reply.status,'saved');assert.ok(parseCommentContext(reply.context));
+  const participantTargets=call('find_lounge_mention_targets',`'${post.id}',''`,userD);
+  assert.deepEqual(participantTargets.slice(0,2),[
+    {publicId:a.publicId,nickname:a.nickname},{publicId:b.publicId,nickname:b.nickname}],
+    'the plan author precedes other participants');
+  assert.ok(participantTargets.every(p=>p.publicId!==d.publicId),'the current user is excluded');
+  const extraUsers=Array.from({length:6},()=>randomUUID());
+  sql(`insert into auth.users values ${extraUsers.map(id=>`('${id}')`).join(',')};
+    insert into public.lounge_profiles(user_id,nickname) values ${extraUsers.map((id,i)=>`('${id}','00후보${i}')`).join(',')}`);
+  const boundedTargets=call('find_lounge_mention_targets',`'${post.id}',''`,userD);
+  assert.equal(boundedTargets.length,5);assert.deepEqual(boundedTargets.slice(0,2),[{publicId:a.publicId,nickname:a.nickname},{publicId:b.publicId,nickname:b.nickname}]);
+  assert.equal(new Set(boundedTargets.map(p=>p.publicId)).size,5);assert.ok(boundedTargets.every(p=>p.publicId!==d.publicId));
+  sql(`delete from auth.users where id in(${extraUsers.map(id=>`'${id}'`).join(',')})`);
+  assert.equal(inbox(userD).items[0].kind,'mention','someone outside the conversation receives the selected mention');
   const first=inbox();assert.ok(parseNotificationPage(first));assert.equal(first.items.length,1);assert.equal(first.items[0].kind,'mention');
   assert.equal(add(replyInput,userC).comment.id,reply.comment.id);assert.equal(inbox().items.length,1);
   assert.equal(add({...replyInput,body:'다른 내용',mentions:[]},userC).status,'conflict');

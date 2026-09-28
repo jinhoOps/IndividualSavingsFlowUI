@@ -228,6 +228,8 @@ try {
   await verifyLoungeDiscovery({sql,asUser,userA,vite});
   const {verifyLoungeRanking}=await import('./verify-lounge-ranking-db.mjs');
   await verifyLoungeRanking({sql,asUser,userA,vite,parallelSql});
+  const {verifyLoungeDeveloper}=await import('./verify-lounge-developer-db.mjs');
+  await verifyLoungeDeveloper({sql,asUser,userA,userC,vite,parallelSql});
   console.log(`PASS: ${fixtures.length} shared TS/SQL fixtures; v3 upgrade/before-images/rollback; required v4 protocol; PostgreSQL RLS, narrow RPCs, revisions, receipts, concurrent writes/retries/initialization.`);
 } finally {
   await vite?.close();

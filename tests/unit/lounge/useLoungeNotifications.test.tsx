@@ -9,6 +9,19 @@ let poll:()=>Promise<void>;
 vi.mock('../../../src/lounge/ui/useLoungeRefresh',()=>({useLoungeRefresh:(handler:()=>Promise<void>)=>{poll=handler;}}));
 afterEach(cleanup);
 function fixture(){return {getUnreadCount:vi.fn().mockResolvedValue({unreadCount:1,readCutoff:time}),listNotifications:vi.fn().mockResolvedValue(page),readNotifications:vi.fn().mockResolvedValue({unreadCount:1,readCutoff:time})};}
+it('keeps a newly created test badge when an older count or read request finishes late',async()=>{
+  const repo=fixture();let resolveCount!:(value:unknown)=>void,resolveRead!:(value:unknown)=>void;
+  repo.getUnreadCount.mockImplementation(()=>new Promise(resolve=>{resolveCount=resolve;}));
+  const {result}=renderHook(()=>useLoungeNotifications(repo as unknown as ConversationRepository,true));
+  await waitFor(()=>expect(result.current.items).toHaveLength(1));
+  act(()=>result.current.acceptUnreadState({unreadCount:2,readCutoff:time}));
+  await act(async()=>{resolveCount({unreadCount:0,readCutoff:time});});expect(result.current.unreadCount).toBe(2);
+  repo.readNotifications.mockImplementation(()=>new Promise(resolve=>{resolveRead=resolve;}));
+  let reading!:Promise<boolean>;act(()=>{reading=result.current.markRead(id);});
+  act(()=>result.current.acceptUnreadState({unreadCount:1,readCutoff:time}));
+  await act(async()=>{resolveRead({unreadCount:0,readCutoff:time});await reading;});
+  expect(result.current.unreadCount).toBe(1);expect(result.current.items[0].read).toBe(true);
+});
 it('only loads the inbox when visible and marks the observed snapshot without losing a newer unread count',async()=>{
   const repo=fixture();const {result,rerender}=renderHook(({open})=>useLoungeNotifications(repo as unknown as ConversationRepository,open),{initialProps:{open:false}});
   await waitFor(()=>expect(result.current.unreadCount).toBe(1));expect(repo.listNotifications).not.toHaveBeenCalled();

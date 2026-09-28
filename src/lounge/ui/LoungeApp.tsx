@@ -8,7 +8,7 @@ import {ResponsiveDialogLayout, ResponsiveDialogActionRow} from '../../component
 import {appPath} from '../../journey/routes';
 import type {PortfolioPlan} from '../../portfolio/domain/model';
 import {allocationFromPlan, publicationQuery, type Publication} from '../domain/publication';
-import {loungeErrorMessage, type LoungeRepository} from '../infrastructure/loungeRepository';
+import {LoungeError,loungeErrorMessage, type LoungeRepository} from '../infrastructure/loungeRepository';
 import {AllocationSummary} from './AllocationSummary';
 import type {AssetBand} from '../domain/assetBand';
 import {AssetBandBadge} from './AssetBandBadge';
@@ -51,6 +51,20 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
   const [commentId,setCommentId]=useState<string|undefined>(),[commentContext,setCommentContext]=useState<CommentContext|undefined>();
   const inboxPosition=useRef<InboxPosition>({id:null,scroll:0}),notificationLock=useRef(false);
   const notifications=useLoungeNotifications(repository,detailOpen && detailMode==='notifications');
+  const [developer,setDeveloper]=useState(false),[testingNotification,setTestingNotification]=useState(false);
+  const testAttempt=useRef<string|null>(null),testLock=useRef(false);
+  useEffect(()=>{let active=true;setDeveloper(false);
+    void repository.getDeveloperAccess().then(allowed=>{if(active)setDeveloper(allowed);}).catch(()=>{});
+    return()=>{active=false;};
+  },[repository]);
+  async function testNotification(){
+    if(testLock.current)return;testLock.current=true;setTestingNotification(true);setActionError('');
+    testAttempt.current??=crypto.randomUUID();
+    try {const state=await repository.createTestNotification(testAttempt.current);if(!mounted.current)return;
+      notifications.acceptUnreadState(state);testAttempt.current=null;setNotice('테스트 알림을 보냈어요. 알림함에서 확인해 주세요.');
+    }catch(error){if(mounted.current)setActionError(error instanceof LoungeError && error.code==='forbidden'?'개발자 계정에서만 알림을 테스트할 수 있어요.':loungeErrorMessage(error));}
+    finally{testLock.current=false;if(mounted.current)setTestingNotification(false);}
+  }
   const [commentsBusy,setCommentsBusy] = useState(false);
   const commentNavigationRef=useRef<CommentNavigation>(null);
   const detailCommentsRef=useRef<HTMLButtonElement|null>(null);
@@ -94,6 +108,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     if(notificationLock.current)return;notificationLock.current=true;setNotificationOpening(true);setNotificationError('');
     const token=++detailGeneration.current;
     try {
+      if(item.kind==='test'){if(!item.read)await notifications.markRead(item.id);return;}
       const [post,context]=await Promise.all([repository.get(item.postId),repository.getCommentContext(item.postId,item.commentId)]);
       if(!mounted.current || token!==detailGeneration.current)return;
       if(!post || !context){setNotificationError('삭제되었거나 더 이상 볼 수 없는 댓글이에요.');return;}
@@ -135,7 +150,9 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     await summaries;
   });
   return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu triggerRef={managementTrigger}
-    items={[{kind:'action',id:'change-nickname',label:'닉네임 변경',onSelect:() => setChangingNickname(true)}]} />}>
+    items={[{kind:'action',id:'change-nickname',label:'닉네임 변경',onSelect:() => setChangingNickname(true)},
+      ...(developer ? [{kind:'separator' as const,id:'developer'},{kind:'message' as const,id:'developer-label',text:'개발자 계정'},
+        {kind:'action' as const,id:'test-notification',label:testingNotification?'테스트 알림 보내는 중…':'내게 테스트 알림 보내기',disabled:testingNotification,onSelect:testNotification}] : [])]} />}>
     <AppContentFrame className="lounge-page">
       <h1 className="lounge-heading" ref={headingRef} tabIndex={-1}>커뮤니티 (Lounge)</h1>
       <header className="lounge-header"><p className="lounge-muted" aria-label="내 커뮤니티 닉네임">{currentNickname}</p>

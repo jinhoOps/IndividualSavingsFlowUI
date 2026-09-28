@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {ConversationRepository} from '../infrastructure/conversationRepository';
 import type {ConversationCursor} from '../domain/conversation';
-import type {LoungeNotification,NotificationPage} from '../domain/notifications';
+import type {LoungeNotification,NotificationPage,UnreadState} from '../domain/notifications';
 import {loungeErrorMessage} from '../infrastructure/loungeErrors';
 import {useLoungeRefresh} from './useLoungeRefresh';
 
@@ -70,16 +70,18 @@ export function useLoungeNotifications(repository:ConversationRepository,visible
   async function mark(ids:string[],cutoff:string|null){
     if(writeLock.current!==null || !ids.length)return false;
     const token=++changeGeneration.current,account=scope.current;writeLock.current=token;
-    generation.current++;countGeneration.current++;setWriting(true);setError('');
+    generation.current++;const countToken=++countGeneration.current;setWriting(true);setError('');
     try {
       const state=await repository.readNotifications(ids,cutoff);
       if(account!==scope.current || token!==changeGeneration.current)return false;
-      setUnreadCount(state.unreadCount);setItems(old=>old.map(item=>ids.includes(item.id)?{...item,read:true}:item).filter(item=>!unreadOnly || !item.read));
+      if(countToken===countGeneration.current)setUnreadCount(state.unreadCount);
+      setItems(old=>old.map(item=>ids.includes(item.id)?{...item,read:true}:item).filter(item=>!unreadOnly || !item.read));
       snapshot.current={...snapshot.current,readIds:snapshot.current.readIds.filter(id=>!ids.includes(id))};return true;
     }catch(error){if(account===scope.current && token===changeGeneration.current)setError(loungeErrorMessage(error));return false;}
     finally{if(writeLock.current===token){writeLock.current=null;setWriting(false);}}
   }
   return {items,unreadCount,unreadOnly,changeFilter,loading,writing,error,nextCursor,hasNew,
+    acceptUnreadState(state:UnreadState){countGeneration.current++;setUnreadCount(state.unreadCount);},
     refresh:()=>load(),loadMore:()=>load(true),markRead:(id:string)=>mark([id],null),
     markAllRead:()=>mark([...snapshot.current.readIds],snapshot.current.readCutoff||null)};
 }

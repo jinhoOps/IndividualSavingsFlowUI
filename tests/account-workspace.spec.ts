@@ -2076,9 +2076,9 @@ for(const width of [390,1280])test(`Lounge notifications open exact reply, prese
   server.community.notifications.set(notification.id,notification);
   await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
   const bell=page.getByRole('button',{name:'알림함 · 읽지 않은 알림 1개'});await expect(bell).toBeVisible();
-  expect(server.community.requests.filter(r=>r.operation==='list_lounge_notifications')).toHaveLength(0);
+  expect(server.community.requests.filter(r=>r.operation==='list_lounge_notifications_v2')).toHaveLength(0);
   await bell.click();const inbox=page.getByRole('dialog',{name:'알림함',exact:true});await expect(inbox.getByText('대화 25')).toBeVisible();
-  expect(server.community.requests.filter(r=>r.operation==='read_lounge_notifications')).toHaveLength(0);
+  expect(server.community.requests.filter(r=>r.operation==='read_lounge_notifications_v2')).toHaveLength(0);
   await inbox.getByRole('button',{name:/차곡차곡.*답글/}).click();const comments=page.getByRole('dialog',{name:/^댓글/});
   await expect(comments.locator(`#comment-${targetId}`)).toBeFocused();await expect(comments.locator('#comment-'+targetId)).toContainText('대화 25');
   await expect(comments.getByText('대화 2',{exact:true})).toHaveCount(0);
@@ -2107,7 +2107,7 @@ test('Lounge notifications keep late arrivals unread, retry reads and pause hidd
   server.community.notifications.set(later,{...notification,id:later,commentId:later,preview:'조회 뒤 도착'});
   await inbox.getByRole('button',{name:'모두 읽음'}).click();await expect(inbox.getByRole('alert')).toHaveCount(0);
   expect(server.community.notifications.get(later)?.read).toBe(false);
-  expect(server.community.requests.filter(r=>r.operation==='read_lounge_notifications').at(-1)?.args.p_ids).toEqual([id]);
+  expect(server.community.requests.filter(r=>r.operation==='read_lounge_notifications_v2').at(-1)?.args.p_ids).toEqual([id]);
   await expect(inbox.getByRole('button',{name:'전체',exact:true})).toBeEnabled();
   await inbox.getByRole('button',{name:'전체',exact:true}).focus();await expect(inbox.getByRole('button',{name:'전체',exact:true})).toBeFocused();
   await page.clock.fastForward(30_000);await expect(inbox.getByRole('button',{name:'새 알림 확인'})).toBeVisible();
@@ -2714,6 +2714,66 @@ test('Lounge discovery ranking keeps epoch order and explicitly recovers expired
   server.community.refreshRanking();await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.getByText(/목록의 기준 시각이 만료/)).toBeVisible();await expect(page.locator('.lounge-card')).toHaveCount(24);
   await page.getByRole('button',{name:'최신 순서로 다시 보기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(12);await expect(page.locator('.lounge-card').first()).toContainText('정렬 25');
   await sort.selectOption('comments');await expect(page.locator('.lounge-card').first()).toContainText('정렬 1');
+});
+
+for(const width of [390,768,1280])test(`Lounge developer can send and read a private test notification at ${width}px`,async({page,context},testInfo)=>{
+  const server=fakeServer();server.community.developers.add(userA);
+  await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'관리 메뉴',exact:true}).click();await expect(page.getByText('개발자 계정',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'내게 테스트 알림 보내기',exact:true}).click();
+  const bell=page.getByRole('button',{name:'알림함 · 읽지 않은 알림 1개'});await expect(bell).toBeVisible();
+  await bell.click();const inbox=page.getByRole('dialog',{name:'알림함',exact:true});
+  const item=inbox.getByRole('button',{name:/개발자 테스트.*알림이 도착했어요/});await expect(item).toBeVisible();
+  await expect(item).toHaveAttribute('data-unread','true');
+  const area=(await inbox.boundingBox())!;expect(area.x).toBeGreaterThanOrEqual(0);expect(area.x+area.width).toBeLessThanOrEqual(width+1);
+  expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`developer-notification-${width}.png`)});
+  await item.click();await expect(item).not.toHaveAttribute('data-unread');await expect(inbox).toBeVisible();
+  await page.reload();await page.getByRole('button',{name:'알림함',exact:true}).click();await expect(item).not.toHaveAttribute('data-unread');
+  expect(server.publications.size).toBe(0);expect(server.community.comments.size).toBe(0);expect(server.operations).toEqual([]);
+  expect([...server.community.notifications.values()].every(n=>n.recipient===userA)).toBe(true);
+});
+test('Lounge hides developer controls from regular accounts and retries a lost test response once',async({page,context})=>{
+  const server=fakeServer();await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'관리 메뉴',exact:true}).click();await expect(page.getByRole('button',{name:'내게 테스트 알림 보내기'})).toHaveCount(0);
+  server.community.developers.add(userA);await page.reload();await page.getByRole('button',{name:'관리 메뉴',exact:true}).click();
+  server.community.loseResponse=true;await page.getByRole('button',{name:'내게 테스트 알림 보내기'}).click();await expect(page.getByRole('alert')).toBeVisible();
+  await page.getByRole('button',{name:'관리 메뉴',exact:true}).click();await page.getByRole('button',{name:'내게 테스트 알림 보내기'}).click();
+  await expect(page.getByRole('button',{name:'알림함 · 읽지 않은 알림 1개'})).toBeVisible();
+  const writes=server.community.requests.filter(r=>r.operation==='create_lounge_test_notification');expect(writes).toHaveLength(2);expect(writes[0].args).toEqual(writes[1].args);
+  expect(server.community.notifications.size).toBe(1);
+  server.community.developers.clear();await page.getByRole('button',{name:'관리 메뉴',exact:true}).click();await page.getByRole('button',{name:'내게 테스트 알림 보내기'}).click();
+  await expect(page.getByRole('alert')).toContainText('개발자 계정에서만');expect(server.community.notifications.size).toBe(1);
+});
+
+for(const width of [390,768,1280])test(`Lounge mentions in another person's plan comments and replies at ${width}px`,async({page,context},testInfo)=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  const outsider='dddddddd-dddd-4ddd-8ddd-dddddddddddd';server.profiles.set(outsider,{nickname:'가나다'});
+  await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'댓글 0개 보기'}).click();const dialog=page.getByRole('dialog',{name:/^댓글/});
+  const input=dialog.getByLabel('댓글 남기기');
+  await dialog.getByRole('button',{name:'사용자 멘션'}).click();
+  const search=dialog.getByRole('combobox',{name:'멘션할 닉네임 검색'});
+  await expect(search).toBeFocused();await expect(dialog.getByRole('option')).toHaveText(['차곡차곡','가나다']);
+  const bounds=(await dialog.boundingBox())!;
+  for(const control of [search,dialog.getByRole('option').first(),dialog.getByRole('option').last(),dialog.getByRole('button',{name:'등록',exact:true})]){
+    const box=(await control.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.x).toBeGreaterThanOrEqual(bounds.x);expect(box.x+box.width).toBeLessThanOrEqual(bounds.x+bounds.width+1);
+    expect(box.y).toBeGreaterThanOrEqual(bounds.y);expect(box.y+box.height).toBeLessThanOrEqual(bounds.y+bounds.height+1);
+  }
+  expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`other-plan-mention-${width}.png`)});
+  await search.press('Enter');await expect(input).toBeFocused();await input.pressSequentially('계획 잘 봤어요');
+  await dialog.getByRole('button',{name:'등록',exact:true}).click();
+  await expect(dialog.locator('[data-comment-body]')).toHaveText('@차곡차곡 계획 잘 봤어요');await expect(input).toHaveValue('');
+  const [id,comment]=[...server.community.comments][0];
+  expect(comment).toMatchObject({owner:userA,postId:sharedPortfolio.id,rootId:null,mentions:[{start:0,end:5,publicId:`f${userB.slice(1)}`,label:'차곡차곡'}]});
+  await dialog.getByRole('button',{name:'답글',exact:true}).click();await input.pressSequentially('@');
+  await expect(search).toBeFocused();await search.fill('가나');await dialog.getByRole('option',{name:'가나다',exact:true}).click();
+  await expect(input).toBeFocused();await input.pressSequentially('추가 질문이에요');await dialog.getByRole('button',{name:'등록',exact:true}).click();
+  await expect(dialog.locator('[data-comment-body]').filter({hasText:'추가 질문이에요'})).toBeVisible();
+  expect([...server.community.comments.values()].find(c=>c.rootId===id)).toMatchObject({replyToId:id,mentions:[{start:0,end:4,publicId:`f${outsider.slice(1)}`,label:'가나다'}]});
+  expect(server.operations).toEqual([]);
 });
 
 for(const viewport of [{width:390,height:520},{width:640,height:450}])test(`Lounge compact conversation contains composer and mentions at ${viewport.width}x${viewport.height}`,async({page,context},testInfo)=>{

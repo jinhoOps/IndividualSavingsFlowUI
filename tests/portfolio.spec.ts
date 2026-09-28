@@ -1,5 +1,28 @@
 import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
 
+for(const width of [390,768,1280])test.describe(`allocation highlight ${width}px`,()=>{
+  test.use({hasTouch:width===390});
+  test('emphasizes only the active segment and clears pointer selection after editing',async({page},testInfo)=>{
+    await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});
+    await seedMain(page,800_000);await seedSourceVisualPortfolio(page);await page.goto('apps/portfolio/');
+    const rows=page.locator('.portfolio-allocation-row__select'),segments=page.locator('.portfolio-allocation-bar__segment');
+    await rows.first().hover();await expect(page.locator('.portfolio-allocation-bar__segment.is-active')).toHaveCount(1);
+    await expect(segments.first()).toHaveCSS('opacity','1');await expect(segments.nth(1)).toHaveCSS('opacity','0.38');
+    await page.screenshot({path:testInfo.outputPath(`portfolio-highlight-${width}.png`)});
+    await page.mouse.move(0,0);await expect(page.locator('.portfolio-allocation-bar__segment.is-active')).toHaveCount(0);
+    if(width===390)await rows.first().tap();else await rows.first().click();
+    const dialog=page.getByRole('dialog',{name:'투자 배분 수정'});await expect(dialog).toBeVisible();
+    await expect(page.locator('.portfolio-allocation-bar__segment.is-active')).toHaveCount(0);
+    if(width===390)await dialog.getByRole('button',{name:'닫기',exact:true}).tap();else await dialog.getByRole('button',{name:'닫기',exact:true}).click();
+    await expect(dialog).toHaveCount(0);await expect(rows.first()).toBeFocused();await page.mouse.move(0,0);
+    await expect(page.locator('.portfolio-allocation-bar__segment.is-active')).toHaveCount(0);
+    await page.keyboard.press('Tab');await expect(rows.nth(1)).toBeFocused();
+    await expect(page.locator('.portfolio-allocation-bar__segment.is-active')).toHaveCount(1);await expect(segments.nth(1)).toHaveCSS('opacity','1');
+    await page.keyboard.press('Escape');await expect(page.locator('.portfolio-allocation-bar__segment.is-active')).toHaveCount(0);
+    expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+  });
+});
+
 for (const entry of ['setup', 'edit'] as const) {
   test(`returns from a ratio-adjusted direct composition to the ${entry} save action`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 600 });

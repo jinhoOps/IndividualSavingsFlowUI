@@ -38,7 +38,7 @@ export function NotificationInbox({notifications,onClose,onOpen,position,error,o
     <ol ref={list} onFocusCapture={event=>{focused.current=(event.target as HTMLElement).closest<HTMLElement>('[data-notification-id]')?.dataset.notificationId??null;}} className="community-notifications" aria-label="알림 목록">{notifications.items.map(item=><li key={item.id}>
       <button type="button" data-notification-id={item.id} disabled={pending} data-unread={!item.read || undefined} onClick={()=>{
         position.current={id:item.id,scroll:list.current?.closest('[data-surface-body]')?.scrollTop??0};void onOpen(item);
-      }}><span className="community-notification-heading"><strong>{item.actor.nickname}</strong><span>{item.kind==='mention'?'님이 나를 멘션했어요':'님이 답글을 남겼어요'}</span>
+      }}><span className="community-notification-heading"><strong>{item.kind==='test'?'개발자 테스트':item.actor.nickname}</strong><span>{item.kind==='test'?'알림이 도착했어요':item.kind==='mention'?'님이 나를 멘션했어요':'님이 답글을 남겼어요'}</span>
         {!item.read?<i aria-label="읽지 않음"/>:null}</span><p>{item.preview}</p>
         <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</time></button></li>)}</ol>
     {notifications.nextCursor?<button className="ui-button ui-button--quiet lounge-more" disabled={pending || notifications.loading} onClick={()=>void notifications.loadMore()}>알림 더 보기</button>:null}

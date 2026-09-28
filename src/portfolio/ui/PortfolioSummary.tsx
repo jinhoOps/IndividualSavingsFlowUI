@@ -76,7 +76,8 @@ export function PortfolioSummary({
   }), [allocation, cashShareUnits, preferences.sortMode]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
-  const activeItemId = selectedItemId ?? focusedItemId;
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const activeItemId = hoveredItemId ?? selectedItemId ?? focusedItemId;
   const motionKey = JSON.stringify(items.map((item) => [item.id, clampedPercentage(item.percentage)]));
   const motionSnapshotRef = useRef<AllocationMotionSnapshot | null>(null);
   const summaryRef = useAnimeScope<HTMLElement>(({ root, reducedMotion }) => {
@@ -212,6 +213,7 @@ export function PortfolioSummary({
         onKeyDown={(event) => {
           if (event.key === 'Escape') setSelectedItemId(null);
           if (event.key === 'Escape') setFocusedItemId(null);
+          if (event.key === 'Escape') setHoveredItemId(null);
         }}
       >
         {items.map((item) => {
@@ -236,12 +238,13 @@ export function PortfolioSummary({
                 aria-haspopup={onEdit ? 'dialog' : undefined}
                 data-return-focus-id={onEdit ? 'portfolio-edit' : undefined}
                 aria-pressed={onEdit ? undefined : selectedItemId === item.id}
-                onFocus={() => setFocusedItemId(item.id)}
+                onFocus={(event) => setFocusedItemId(event.currentTarget.matches(':focus-visible') ? item.id : null)}
                 onBlur={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
-                onPointerEnter={() => setFocusedItemId(item.id)}
-                onPointerLeave={() => setFocusedItemId((focused) => focused === item.id ? null : focused)}
+                onPointerEnter={(event) => { if (event.pointerType !== 'touch') setHoveredItemId(item.id); }}
+                onPointerLeave={() => setHoveredItemId((hovered) => hovered === item.id ? null : hovered)}
+                onPointerDown={() => setFocusedItemId(null)}
                 onClick={(event) => {
-                  if (onEdit) onEdit(event);
+                  if (onEdit) { setHoveredItemId(null); setFocusedItemId(null); onEdit(event); }
                   else setSelectedItemId((selected) => selected === item.id ? null : item.id);
                 }}
               >

@@ -15,6 +15,8 @@ export interface ConversationRepository {
   listNotifications(unreadOnly:boolean,cursor?:ConversationCursor):Promise<NotificationPage>;
   getUnreadCount():Promise<UnreadState>;
   readNotifications(ids:string[],cutoff:string|null):Promise<UnreadState>;
+  getDeveloperAccess():Promise<boolean>;
+  createTestNotification(id:string):Promise<UnreadState>;
 }
 const required=<T>(value:T|null):T=>{if(value===null)throw new LoungeError('invalid');return value;};
 function validateIds(...ids:string[]){if(!ids.every(publicationId))throw new LoungeError('invalid');}
@@ -64,13 +66,22 @@ export function createConversationRepository(rpc:(name:string,args:Record<string
     },
     async listNotifications(unreadOnly,cursor){
       if(typeof unreadOnly!=='boolean')throw new LoungeError('invalid');
-      return required(parseNotificationPage(await rpc('list_lounge_notifications',{p_unread_only:unreadOnly,p_cursor:cursorValue(cursor)})));
+      return required(parseNotificationPage(await rpc('list_lounge_notifications_v2',{p_unread_only:unreadOnly,p_cursor:cursorValue(cursor)})));
     },
-    async getUnreadCount(){return required(parseUnreadState(await rpc('get_lounge_unread_count',{})));},
+    async getUnreadCount(){return required(parseUnreadState(await rpc('get_lounge_unread_count_v2',{})));},
     async readNotifications(ids,cutoff){
       if(!Array.isArray(ids) || ids.length>100 || new Set(ids).size!==ids.length || !ids.every(publicationId)
         || cutoff!==null && (typeof cutoff!=='string' || !Number.isFinite(Date.parse(cutoff))))throw new LoungeError('invalid');
-      return required(parseUnreadState(await rpc('read_lounge_notifications',{p_ids:ids,p_cutoff:cutoff})));
+      return required(parseUnreadState(await rpc('read_lounge_notifications_v2',{p_ids:ids,p_cutoff:cutoff})));
+    },
+    async getDeveloperAccess(){
+      const allowed=await rpc('get_lounge_developer_access',{});
+      if(typeof allowed!=='boolean')throw new LoungeError('invalid');return allowed;
+    },
+    async createTestNotification(id){
+      validateIds(id);const result=await rpc('create_lounge_test_notification',{p_id:id}) as {status?:unknown;state?:unknown};
+      if(result?.status!=='saved')return failure(result?.status);
+      return required(parseUnreadState(result.state));
     },
   };
 }

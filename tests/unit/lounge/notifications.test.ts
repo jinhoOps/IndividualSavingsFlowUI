@@ -19,3 +19,9 @@ it('빈 알림과 조회 실패를 구분하고 미읽음 개수 상한을 검�
   expect(parseUnreadState({unreadCount:0,readCutoff:time})).toEqual({unreadCount:0,readCutoff:time});
   expect(parseUnreadState({unreadCount:-1,readCutoff:time})).toBeNull();
 });
+it('개발자 테스트는 댓글 링크가 없는 별도 알림으로 검증한다',()=>{
+  const testItem={...item,kind:'test',postId:null,commentId:null};
+  expect(parseNotificationPage({...page,items:[testItem]})?.items[0]).toEqual(testItem);
+  expect(parseNotificationPage({...page,items:[{...testItem,postId:id}]})).toBeNull();
+  expect(parseNotificationPage({...page,items:[{...item,commentId:null}]})).toBeNull();
+});

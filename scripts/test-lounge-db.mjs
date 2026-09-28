@@ -33,7 +33,7 @@ try {
   sql(asUser("select public.register_lounge_nickname('원래투자자')"));
   vite=await createServer({server:{middlewareMode:true},appType:'custom',logLevel:'error'});
   if(process.argv.includes('--benchmark')){
-    for(const file of ['202609280007_lounge_conversation','202609280008_lounge_discovery','202609280009_lounge_ranking'])
+    for(const file of ['202609280007_lounge_conversation','202609280008_lounge_discovery','202609280009_lounge_ranking','202609280010_lounge_mention_candidates','202609280011_lounge_developer_notifications'])
       sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}.sql`,import.meta.url),'utf8')}`);
     const {benchmarkLoungeDiscovery}=await import('./benchmark-lounge-discovery-db.mjs');
     await benchmarkLoungeDiscovery({sql,asUser,userA,vite});
@@ -42,5 +42,7 @@ try {
   await verifyLoungeDiscovery({sql,asUser,userA,vite});
   const {verifyLoungeRanking}=await import('./verify-lounge-ranking-db.mjs');
   await verifyLoungeRanking({sql,asUser,userA,vite,parallelSql});
+  const {verifyLoungeDeveloper}=await import('./verify-lounge-developer-db.mjs');
+  await verifyLoungeDeveloper({sql,asUser,userA,userC,vite,parallelSql});
   }
 } finally {await vite?.close();try{docker(['rm','-f',container]);}catch{}}

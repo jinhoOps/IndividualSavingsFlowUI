@@ -4,9 +4,10 @@ import type {LoungeNotification} from '../../src/lounge/domain/notifications';
 import type {CommentWrite,ConversationComment,ConversationCursor,MentionRange} from '../../src/lounge/domain/conversation';
 import type {Publication} from '../../src/lounge/domain/publication';
 
-export const COMMUNITY_OPERATIONS = ['get_lounge_community','set_lounge_reaction','list_lounge_comments','add_lounge_comment','delete_lounge_comment','list_lounge_threads_v2','list_lounge_replies_v2','get_lounge_comment_context','add_lounge_comment_v2','delete_lounge_comment_v2','find_lounge_mention_targets','get_lounge_unread_count','list_lounge_notifications','read_lounge_notifications','search_lounge_portfolios'];
+export const COMMUNITY_OPERATIONS = ['get_lounge_community','set_lounge_reaction','list_lounge_comments','add_lounge_comment','delete_lounge_comment','list_lounge_threads_v2','list_lounge_replies_v2','get_lounge_comment_context','add_lounge_comment_v2','delete_lounge_comment_v2','find_lounge_mention_targets','get_lounge_unread_count_v2','list_lounge_notifications_v2','read_lounge_notifications_v2','get_lounge_developer_access','create_lounge_test_notification','search_lounge_portfolios'];
 export function loungeCommunityFixture(publications:Map<string,{owner:string;post:Publication}>,profiles:Map<string,{nickname:string}>) {
   const notifications=new Map<string,LoungeNotification & {recipient:string}>();
+  const developers=new Set<string>();
   const reactions=new Map<string,Map<EmojiId,Set<string>>>();
   const comments=new Map<string,{postId:string;owner:string;body:string;createdAt:string;rootId?:string|null;replyToId?:string|null;mentions?:MentionRange[];deleted?:boolean}>();
   const requests:Array<{operation:string;args:Record<string,unknown>}> = [];
@@ -40,7 +41,7 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
     if(rankings.size>2)rankings.delete(rankings.keys().next().value!);
     return epoch;
   }
-  return {notifications,reactions,comments,requests,summary,refreshRanking,readFailure:false,writeFailure:false,loseResponse:false,
+  return {notifications,developers,reactions,comments,requests,summary,refreshRanking,readFailure:false,writeFailure:false,loseResponse:false,
     reply(operation:string,args:Record<string,unknown>,user:string):unknown {
       if(operation==='search_lounge_portfolios'){
         const query=parseFeedQuery(args.p_query),cursor=args.p_cursor as FeedCursor|null;if(!query)throw new Error('invalid query');
@@ -63,8 +64,18 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
       }
       const unread=[...notifications.values()].filter(n=>n.recipient===user && !n.read);
       const unreadState={unreadCount:unread.length,readCutoff:new Date().toISOString()};
-      if(operation==='get_lounge_unread_count')return unreadState;
-      if(operation==='list_lounge_notifications'){
+      if(operation==='get_lounge_developer_access')return developers.has(user);
+      if(operation==='create_lounge_test_notification'){
+        if(!developers.has(user))return {status:'forbidden'};
+        if(!notifications.has(String(args.p_id))){
+          for(const [id,item] of notifications)if(item.kind==='test' && item.recipient===user)notifications.delete(id);
+          notifications.set(String(args.p_id),{id:String(args.p_id),recipient:user,kind:'test',postId:null,commentId:null,
+            actor:{publicId:publicId(user),nickname:profiles.get(user)!.nickname},preview:'본인에게만 보이는 개발자 테스트 알림이에요.',createdAt:new Date().toISOString(),read:false});
+        }
+        return {status:'saved',state:{...unreadState,unreadCount:[...notifications.values()].filter(n=>n.recipient===user && !n.read).length}};
+      }
+      if(operation==='get_lounge_unread_count_v2')return unreadState;
+      if(operation==='list_lounge_notifications_v2'){
         const cursor=args.p_cursor as ConversationCursor|null;
         const all=[...notifications.values()].filter(n=>n.recipient===user && (!args.p_unread_only || !n.read))
           .sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id))
@@ -72,7 +83,7 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
         const items=all.slice(0,20).map(({recipient:_,...item})=>item),last=items.at(-1);
         return {...unreadState,readIds:unread.map(n=>n.id),items,nextCursor:all.length>20 && last?{id:last.id,createdAt:last.createdAt}:null};
       }
-      if(operation==='read_lounge_notifications'){
+      if(operation==='read_lounge_notifications_v2'){
         for(const id of args.p_ids as string[]){const item=notifications.get(id);if(item?.recipient===user && (!args.p_cutoff || item.createdAt<=String(args.p_cutoff)))notifications.set(id,{...item,read:true});}
         return {...unreadState,unreadCount:[...notifications.values()].filter(n=>n.recipient===user && !n.read).length};
       }
@@ -93,7 +104,13 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
           .filter(([id,c])=>!args.p_before_time || c.createdAt<String(args.p_before_time) || (c.createdAt===args.p_before_time && id<String(args.p_before_id)));
         return {comments:list.slice(0,20).map(([id,c])=>view(id,c,user)),hasMore:list.length>20};
       }
-      if(operation==='find_lounge_mention_targets')return [...profiles].filter(([,p])=>!args.p_query || p.nickname.toLowerCase().startsWith(String(args.p_query).toLowerCase())).slice(0,5).map(([owner,p])=>({publicId:publicId(owner),nickname:p.nickname}));
+      if(operation==='find_lounge_mention_targets'){
+        const query=String(args.p_query).normalize('NFC').trim().toLowerCase();
+        const priority=(owner:string)=>query || publications.get(postId)?.owner===owner?0
+          : [...comments.values()].some(c=>c.postId===postId && c.owner===owner && !c.deleted)?1:2;
+        return [...profiles].filter(([owner,p])=>owner!==user && (!query || [...query].length>=2 && p.nickname.toLowerCase().startsWith(query)))
+          .sort(([a,x],[b,y])=>priority(a)-priority(b)||x.nickname.localeCompare(y.nickname)).slice(0,5).map(([owner,p])=>({publicId:publicId(owner),nickname:p.nickname}));
+      }
       if(operation==='list_lounge_threads_v2' || operation==='list_lounge_replies_v2'){
         const replies=operation==='list_lounge_replies_v2',older=args.p_direction==='older',cursor=args.p_cursor as ConversationCursor|null;
         let list=[...comments].filter(([,v])=>v.postId===postId && (replies?v.rootId===args.p_root_id:!v.rootId));
