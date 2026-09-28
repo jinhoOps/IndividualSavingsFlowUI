@@ -186,10 +186,10 @@ describe('PortfolioApp', () => {
     if (mode === 'scope-failure') anime.createScope.mockImplementationOnce(() => { throw new Error('scope unavailable'); });
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
     const summary = screen.getByRole('region', { name: '현재 배분 요약' });
-    expect(summary).toHaveTextContent('성장 55%');
-    expect(summary).toHaveTextContent('안정 45%');
-    expect(summary.querySelector('.portfolio-setup-summary__growth')).toHaveStyle({ width: '55%' });
-    expect(summary.querySelector('.portfolio-setup-summary__stable')).toHaveStyle({ width: '45%' });
+    expect(summary).toHaveTextContent('주식55%');
+    expect(summary).toHaveTextContent('현금45%');
+    expect(summary.querySelector('[data-asset-class="equity"]')).toHaveStyle({ width: '55%' });
+    expect(summary.querySelector('[data-asset-class="cash"]')).toHaveStyle({ width: '45%' });
     expect(screen.getByRole('button', { name: '적용' })).toBeEnabled();
   });
 
@@ -403,7 +403,7 @@ describe('PortfolioApp', () => {
     });
     expect(repository.saveApplied).toHaveBeenCalledOnce();
     expect(repository.clearDraft).toHaveBeenCalledOnce();
-    expect(screen.getByRole('heading', { name: '안정 100%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
     expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
     expect(screen.queryByText('저장됨')).not.toBeInTheDocument();
   });
@@ -465,7 +465,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '자산 구성' })).toBeVisible();
     expect(repository.applied).not.toBeNull();
   });
 
@@ -483,13 +483,13 @@ describe('PortfolioApp', () => {
 
     const liveSummary = screen.getByRole('region', { name: '현재 배분 요약' });
     expect(liveSummary).toHaveTextContent('월 투자금 200,000원');
-    expect(liveSummary).toHaveTextContent('성장 60%');
-    expect(liveSummary).toHaveTextContent('안정 40%');
+    expect(liveSummary).toHaveTextContent('주식60%');
+    expect(liveSummary).toHaveTextContent('현금40%');
 
     fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
 
     const review = screen.getByRole('region', { name: '배분 검토' });
-    expect(within(review).getByRole('heading', { name: '성장에 60%, 안정에 40% 배분해요' })).toBeVisible();
+    expect(within(review).getByRole('heading', { name: '투자 배분 확인' })).toBeVisible();
     expect(within(review).getByRole('listitem', { name: '미국 인덱스 120,000원 60%' })).toBeVisible();
     expect(within(review).getByRole('listitem', { name: '현금 80,000원 40%' })).toBeVisible();
     expect(review).not.toHaveTextContent('자동 배분');
@@ -499,8 +499,8 @@ describe('PortfolioApp', () => {
   it('revisits a saved plan result-first', () => {
     render(<PortfolioApp mainSourceRepository={mainFound} repository={createMemoryPortfolioRepository({ applied: plan })} now={() => 2} />);
     expect(screen.getByText('현재 포트폴리오')).toBeVisible();
-    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: '안정 40%' }).closest('section'))
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' }).closest('section'))
       .toHaveClass('ui-surface', 'portfolio-summary');
     expect(screen.getByRole('list', { name: '투자 배분 비율' }).querySelector<HTMLButtonElement>('.portfolio-allocation-row__select')!)
       .toHaveClass('portfolio-allocation-row__select');
@@ -595,8 +595,8 @@ describe('PortfolioApp', () => {
     expect(anime.animate).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '완료' }));
 
-    expect(screen.getByTestId('portfolio-result-controls')).toHaveTextContent('안정 40%');
-    expect(screen.getByRole('region', { name: '현재 배분 요약' })).toHaveTextContent('안정 45%');
+    expect(screen.getByTestId('portfolio-result-controls')).toHaveTextContent('현금40%');
+    expect(screen.getByRole('region', { name: '현재 배분 요약' })).toHaveTextContent('현금45%');
     await waitFor(() => expect(anime.animate).toHaveBeenCalledWith(
       expect.any(HTMLElement), expect.objectContaining({ duration: 260 }),
     ));
@@ -605,7 +605,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(within(screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' }))
       .getByRole('button', { name: '배분 적용' }));
 
-    expect(await screen.findByRole('heading', { name: '안정 45%' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '자산 구성' })).toBeVisible();
     await waitFor(() => expect(anime.animate).toHaveBeenCalledWith(
       expect.objectContaining({ value: 60 }),
       expect.objectContaining({ value: 55, duration: 180 }),
@@ -668,7 +668,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '배분 확인' }));
     fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
 
-    expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '자산 구성' })).toBeVisible();
     expect(await screen.findByRole('alert')).toHaveTextContent('배분은 적용했지만 편집 초안을 정리하지 못했습니다');
     expect(repository.applied).not.toBeNull();
   });
@@ -708,7 +708,7 @@ describe('PortfolioApp', () => {
     );
 
     await gated.started;
-    expect(screen.getByRole('heading', { name: '안정 70%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
     expect(screen.queryByText('저장 중')).not.toBeInTheDocument();
     gated.release();
     await waitFor(() => {
@@ -735,7 +735,7 @@ describe('PortfolioApp', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole('heading', { name: '성장에 0%, 안정에 100% 배분해요' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '투자 배분 확인' })).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('저장하지 못했습니다');
     expect(repository.applied).toBeNull();
     expect(saveApplied).toHaveBeenCalledOnce();
@@ -804,7 +804,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(screen.getByRole('button', { name: '이대로 시작' }));
     gated.release();
 
-    expect(await screen.findByRole('heading', { name: '안정 100%' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '자산 구성' })).toBeVisible();
     const persisted = JSON.parse(storage.getItem(WORKSPACE_STORAGE_KEY) ?? '') as WorkspaceDocument;
     expect(persisted).toEqual({
       ...saved,
@@ -842,7 +842,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(await screen.findByRole('button', { name: '초기화' }));
 
     await waitFor(() => expect(repository.clearScope).toHaveBeenCalledWith({ type: 'aggregate' }));
-    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
     releaseClear?.();
     expect(await screen.findByRole('heading', { name: '매달 200,000원을 어디에 투자할까요?' })).toBeVisible();
     expect(repository.applied).toBeNull();
@@ -858,7 +858,7 @@ describe('PortfolioApp', () => {
     fireEvent.click(await screen.findByRole('button', { name: '초기화' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('저장하지 못했습니다');
-    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
   });
 
   it('isolates a corrupt draft and keeps the valid applied result', () => {
@@ -870,7 +870,7 @@ describe('PortfolioApp', () => {
 
     render(<PortfolioApp mainSourceRepository={mainFound} repository={repository} now={() => 2} />);
 
-    expect(screen.getByRole('heading', { name: '안정 40%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
   });
 
   it('keeps an unavailable view-preference save out of allocation save state', () => {

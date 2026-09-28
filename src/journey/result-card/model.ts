@@ -1,7 +1,8 @@
 import { calculateCashflow, percentageOfIncome } from '../../main/domain/cashflow';
 import { materializeAllocation, orderedResultItems } from '../../portfolio/domain/allocation';
-import { stableShareUnits } from '../../portfolio/domain/classification';
+import { assetClassAllocation } from '../../portfolio/domain/classification';
 import { formatAllocationPercent, formatPortfolioWon } from '../../portfolio/ui/format';
+import { formatWon } from '../../simulation/ui/format';
 import { projectCompoundGrowth } from '../../simulation/domain/projection';
 import type { WorkspaceDocument } from '../../workspace/domain/model';
 
@@ -25,12 +26,13 @@ export interface ResultCardModel {
     segments: Array<{ id: string; ratio: number; color: string }>;
   };
   growth: {
+    label: string;
     headline: string;
+    context: string;
     rows: ResultCardRow[];
-    points: Array<{ x: number; plan: number; baseline: number }>;
   };
   allocation: {
-    headline: string;
+    groups: Array<{ label: string; percentage: string }>;
     rows: Array<{ id: string; name: string; percentage: string; amount?: string; color: string }>;
   };
   notes: string[];
@@ -87,16 +89,9 @@ export function buildResultCardModel(workspace: WorkspaceDocument, options: Resu
       color: item.isCash ? '#8dbab4' : colors[index % colors.length],
     };
   });
-  const maximum = Math.max(1, ...projection.points.map(point => Math.max(
-    point.currentPlanNominalWon, point.allSavingsNominalWon,
-    point.currentPlanRealWon, point.allSavingsRealWon,
-  )));
-  const points = projection.points.map(point => ({
-    x: simulation.years === 0 ? 0 : point.year / simulation.years,
-    plan: selectedProjectionValue(simulation.amountMode, point) / maximum,
-    baseline: selectedBaselineValue(simulation.amountMode, point) / maximum,
-  }));
-  const stable = stableShareUnits({items: allocation.items, cashShareUnits: plan.cashShareUnits}) / 10_000;
+  const final = projection.points.at(-1)!;
+  const principal = simulation.amountMode === 'real' ? final.contributedPrincipalRealWon : final.contributedPrincipalWon;
+  const gain = projection.finalCurrentPlanWon - principal;
   const monthlyRows = includeAmounts ? [
     { label: '월 수입', value: formatPortfolioWon(cashflow.incomeWon) },
     { label: '주거 고정비', value: formatPortfolioWon(cashflow.housingWon) },
@@ -110,11 +105,15 @@ export function buildResultCardModel(workspace: WorkspaceDocument, options: Resu
     { label: '투자 비중', value: ratioLabel(main.monthlyInvestmentWon, main.monthlyNetIncomeWon) },
   ];
   const growthRows = includeAmounts ? [
-    { label: '납입원금', value: formatPortfolioWon(projection.points.at(-1)!.contributedPrincipalWon) },
-    { label: '전부 저축', value: formatPortfolioWon(projection.finalAllSavingsWon) },
+    { label: '납입원금', value: formatWon(principal) },
+    { label: '예상 수익', value: signedWon(gain) },
+    { label: '전부 저축 시', value: formatWon(projection.finalAllSavingsWon) },
+    { label: '전부 저축 대비', value: signedWon(projection.advantageOverAllSavingsWon) },
   ] : [
+    { label: '누적 수익률', value: principal > 0 ? formatAllocationPercent(gain / principal * 100) : '미설정' },
     { label: '전부 저축 대비', value: multiplierLabel(projection.finalCurrentPlanWon, projection.finalAllSavingsWon) },
-    { label: '기간', value: `${simulation.years}년` },
+    { label: '연 기대수익률', value: formatAllocationPercent(simulation.expectedAnnualReturnPercent) },
+    { label: '저축 기준금리', value: formatAllocationPercent(simulation.baseRatePercent) },
   ];
 
   return {
@@ -135,14 +134,13 @@ export function buildResultCardModel(workspace: WorkspaceDocument, options: Resu
         ],
       },
       growth: {
-        headline: includeAmounts
-          ? `${simulation.years}년 후 ${formatPortfolioWon(projection.finalCurrentPlanWon)}`
-          : `${simulation.years}년 · 연 ${formatAllocationPercent(simulation.expectedAnnualReturnPercent)} 가정`,
+        label: `${simulation.years}년 후 · ${includeAmounts ? '예상 자산' : '원금 대비'}`,
+        headline: includeAmounts ? formatWon(projection.finalCurrentPlanWon) : multiplierLabel(projection.finalCurrentPlanWon, principal),
+        context: `연 ${formatAllocationPercent(simulation.expectedAnnualReturnPercent)} 가정 · ${simulation.amountMode === 'real' ? '실질' : '명목'}`,
         rows: growthRows,
-        points,
       },
       allocation: {
-        headline: `성장 ${formatAllocationPercent(100 - stable)} / 안정 ${formatAllocationPercent(stable)}`,
+        groups: assetClassAllocation(plan).map(group => ({ label: group.label, percentage: formatAllocationPercent(group.percentage) })),
         rows: ordered,
       },
       notes: [
@@ -154,12 +152,7 @@ export function buildResultCardModel(workspace: WorkspaceDocument, options: Resu
   };
 }
 
-function selectedProjectionValue(mode: 'nominal' | 'real', point: {currentPlanNominalWon: number; currentPlanRealWon: number}): number {
-  return mode === 'real' ? point.currentPlanRealWon : point.currentPlanNominalWon;
-}
-function selectedBaselineValue(mode: 'nominal' | 'real', point: {allSavingsNominalWon: number; allSavingsRealWon: number}): number {
-  return mode === 'real' ? point.allSavingsRealWon : point.allSavingsNominalWon;
-}
+function signedWon(value: number): string { return `${value > 0 ? '+' : ''}${formatWon(value)}`; }
 function ratio(value: number, total: number): number { return total > 0 && Number.isFinite(value) ? Math.max(0, value / total) : 0; }
 function ratioLabel(value: number, total: number): string { return total > 0 ? formatAllocationPercent(value / total * 100) : '미설정'; }
 function multiplierLabel(value: number, baseline: number): string { return baseline > 0 ? `${(value / baseline).toFixed(1)}배` : '미설정'; }

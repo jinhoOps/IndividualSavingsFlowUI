@@ -13,7 +13,7 @@ import {
 } from '../../components/motion/tokens';
 import { useAnimeScope } from '../../components/motion/useAnimeScope';
 import { orderedResultItems } from '../domain/allocation';
-import { stableShareUnits } from '../domain/classification';
+import { AssetClassBreakdown } from './AssetClassBreakdown';
 import type {
   AllocationResultItem,
   MaterializedAllocation,
@@ -74,10 +74,6 @@ export function PortfolioSummary({
       percentage: materialized?.percentage ?? 0,
     };
   }), [allocation, cashShareUnits, preferences.sortMode]);
-  const stablePercent = formatAllocationPercent(stableShareUnits({
-    items: allocation.items,
-    cashShareUnits,
-  }) / 10_000);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null);
   const activeItemId = selectedItemId ?? focusedItemId;
@@ -179,10 +175,11 @@ export function PortfolioSummary({
       <header className="portfolio-summary__hero">
         <p className="portfolio-summary__eyebrow">현재 포트폴리오</p>
         <div className="portfolio-summary__headline">
-          <h1 id="portfolio-summary-title">안정 {stablePercent}</h1>
+          <h1 id="portfolio-summary-title">자산 구성</h1>
         </div>
+        <AssetClassBreakdown allocation={{ items: allocation.items, cashShareUnits }} />
         {preferences.showAmounts ? (
-          <p className="portfolio-summary__stable">이번 달 투자금 {formatPortfolioWon(investmentWon)}</p>
+          <p className="portfolio-summary__total">이번 달 투자금 {formatPortfolioWon(investmentWon)}</p>
         ) : null}
       </header>
 

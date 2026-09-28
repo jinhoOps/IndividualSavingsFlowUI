@@ -146,7 +146,7 @@ describe('PortfolioSummary', () => {
     expect(screen.getByText('공유 링크는 최대 2일 동안 열 수 있어요.')).toBeVisible();
   });
 
-  it('leads with the stable ratio and hides every won amount by default', () => {
+  it('leads with asset-class ratios and hides every won amount by default', () => {
     const onEdit = vi.fn();
     render(
       <PortfolioSummary
@@ -157,7 +157,10 @@ describe('PortfolioSummary', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
+    const groups = document.querySelector('[aria-label="자산군별 비중"]')!;
+    expect(groups.textContent).toBe('주식50%현물15%채권25%현금10%');
+    expect(screen.queryByText(/안정 \d/)).not.toBeInTheDocument();
     expect(screen.queryByText('글로벌 인덱스에 50%를 배분해요')).not.toBeInTheDocument();
     expect(screen.queryByText(/원/)).not.toBeInTheDocument();
     expect(visibleRowNames()).toEqual(['글로벌 인덱스', '채권', '금', '현금']);
@@ -235,7 +238,7 @@ describe('PortfolioSummary', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { name: '안정 50%' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '자산 구성' })).toBeVisible();
     expect(screen.getByText('이번 달 투자금 800,000원')).toBeVisible();
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(4);

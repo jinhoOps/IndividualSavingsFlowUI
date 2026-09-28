@@ -52,12 +52,12 @@ describe('AllocationEditor', () => {
   });
 
   describe.each(['setup', 'edit'] as const)('%s focused editor', (presentation) => {
-    it('keeps unallocated manual cash separate from growth', () => {
+    it('keeps unallocated manual cash separate from asset-class totals', () => {
       render(<AllocationEditor draft={{ ...draft, cashMode: 'manual', cashShareUnits: 100_000 }}
         investmentWon={200_000} onAction={vi.fn()} now={() => 2} presentation={presentation} />);
       const summary = screen.getByRole('region', { name: '현재 배분 요약' });
-      expect(summary).toHaveTextContent('성장 60%');
-      expect(summary).toHaveTextContent('안정 10%');
+      expect(summary).toHaveTextContent('주식60%');
+      expect(summary).toHaveTextContent('현금10%');
       expect(summary).toHaveTextContent('아직 배분하지 않은 금액 60,000원');
     });
 
@@ -394,7 +394,7 @@ describe('AllocationEditor', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it('summarizes target count, stable share, then cash share before applying', () => {
+  it('summarizes target count and asset classes regardless of risk tags before applying', () => {
     const classifiedDraft = {
       ...draft,
       items: [{ ...draft.items[0], classification: 'stable' as const }],
@@ -410,8 +410,8 @@ describe('AllocationEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '적용' }));
     const dialog = screen.getByRole('dialog', { name: '투자 배분을 적용할까요?' });
     expect(within(dialog).getAllByRole('term').map((term) => term.textContent))
-      .toEqual(['투자 대상', '안정 비중', '현금 비중']);
-    expect(within(dialog).getByText('100%')).toBeVisible();
+      .toEqual(['투자 대상', '주식 비중', '현금 비중']);
+    expect(within(dialog).getByText('60%')).toBeVisible();
     expect(within(dialog).getByText('40%')).toBeVisible();
   });
 });

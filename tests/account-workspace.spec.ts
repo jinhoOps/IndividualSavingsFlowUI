@@ -289,6 +289,9 @@ for (const includeAmounts of [true, false]) {
     await page.goto('apps/portfolio/');
     await page.setViewportSize({width: 1080, height: 1440});
     await page.setContent(`<style>body{margin:0}</style>${svg}`);
+    await expect(page.locator('svg path')).toHaveCount(0);
+    await expect(page.locator('svg')).toContainText(includeAmounts ? '예상 수익' : '누적 수익률');
+    await expect(page.locator('svg')).not.toContainText('안정');
     await page.screenshot({path: testInfo.outputPath('card.png')});
     const boxes = await page.locator('svg text').evaluateAll(elements => elements.map(element => {
       const box = (element as SVGGraphicsElement).getBBox();
@@ -314,6 +317,7 @@ for (const includeAmounts of [true, false]) {
       const {renderResultCardPng} = await import(modulePath);
       return Array.from(new Uint8Array(await (await renderResultCardPng(svg)).arrayBuffer()));
     }, svg);
+    expect(png.length).toBeLessThanOrEqual(1_000_000);
     const output = testInfo.outputPath('exported-card.png');
     await writeFile(output, Buffer.from(png));
     await testInfo.attach('exported-card.png', {path: output, contentType: 'image/png'});
