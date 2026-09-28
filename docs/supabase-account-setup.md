@@ -233,9 +233,9 @@ from public.result_card_shares group by state;
 - 댓글 20,000개·공감 100,000행·요청 제한을 두고 DB 400MiB 이상에서는 신규 저장을 거부한다. 삭제와 무변경 재시도는 허용한다. Storage 이미지 정책과 별도이며 DB 전체 크기를 함께 관찰한다.
 
 
-### 커뮤니티 답글·멘션·알림·탐색 확장 — rollout 준비
+### 커뮤니티 답글·멘션·알림·탐색 확장 — 2026-09-28
 
-로컬 검증은 [대화 증거](superpowers/evidence/2026-09-28-community-conversation.md)·[탐색 증거](superpowers/evidence/2026-09-28-community-discovery.md)를 따른다. 운영 적용 완료 전에는 아래 migration을 적용됐다고 간주하지 않는다.
+migration 007~009와 알림 정리·15분 집계 job을 운영에 적용했다. 원본 workspace 8개·게시물 2개·프로필 2개·댓글 1개·공감 3개의 기존 값, SQL 이력 digest와 권한을 확인했다. 프런트 출시 및 검증 상태는 [대화 증거](superpowers/evidence/2026-09-28-community-conversation.md)·[탐색 증거](superpowers/evidence/2026-09-28-community-discovery.md)를 따른다. 아래는 재현 가능한 적용 순서이며 이미 적용한 migration은 다시 실행하지 않는다.
 
 1. 운영 테이블의 원본 projection/digest와 DB 전체 크기, migration 007~009 미적용을 확인한다. 기존 자료를 비공개 백업하고 같은 트랜잭션에서 기존 열 전후 digest가 같음을 검사한다.
 2. [007 대화](../supabase/migrations/202609280007_lounge_conversation.sql) → [008 탐색](../supabase/migrations/202609280008_lounge_discovery.sql) → [009 집계](../supabase/migrations/202609280009_lounge_ranking.sql)를 각각 이력과 함께 적용한다. 이미 기록된 버전을 재실행하지 않는다.

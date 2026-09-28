@@ -1,6 +1,6 @@
 # 커뮤니티 탐색·정렬 검증
 
-상태: 2026-09-28 로컬 구현 완료, 전체 E2E·운영 rollout 진행 중. 브랜치 `jinhoOps/community-expansion`.
+상태: 2026-09-28 운영 DB·job 적용 완료, 전체 E2E·프런트 rollout 진행 중. 브랜치 `jinhoOps/community-expansion`.
 
 ## 구현
 
@@ -11,7 +11,7 @@
 
 ## 로컬 검증
 
-- `npm run check:ci`: 146개 파일, 1,316개 unit 통과.
+- `npm run check:ci`: 146개 파일, 1,317개 unit 통과.
 - `node scripts/test-workspace-db.mjs`: 기존 170 TS/SQL fixture·금융/저장/대화/탐색/집계 모두 통과.
 - `npx playwright test tests/account-workspace.spec.ts --project=cloud --grep 'Lounge discovery'`: 6/6. 390/768/1280 화면 확인, focus/취소/오류/IME/오래된 응답/커서 만료 포함.
 - 전체 E2E와 배포 빌드 결과는 rollout 완료 시 아래에 추가한다. 로컬 빌드는 test fixture 공개 연결 설정을 사용하며 운영 CI는 기존 배포 설정을 사용한다.
@@ -46,4 +46,13 @@
 
 ## 운영
 
-미적용. migration 008/009와 최초 집계·15분 cron, 전후 원본 digest·권한·기존 API·배포 확인을 완료한 뒤 기록한다.
+migration 007~009의 전후 원본 비교·운영 이력 MD5·권한 검증을 완료했다. 자세한 공통 결과는 [대화 운영 증거](2026-09-28-community-conversation.md#운영)를 따른다.
+
+- 최초 `private.refresh_lounge_ranking()` 성공: 1세대·2행.
+- `lounge-ranking-refresh` 매 15분 활성화. 최초 수동 실행은 성공했고 예약 실행 기록은 확인 중이다.
+- 클라이언트의 private 집계 테이블 직접 접근과 유지보수 함수 실행 권한은 없다.
+- 원본 사용자 데이터 보존, 운영 DB 약 19.2MB. 실제 사용자 게시물·댓글·반응을 시험용으로 추가하지 않았다.
+
+## 전체 E2E 재검증
+
+최초 전체 실행은 316 통과·1 skip·3 실패였다. 실패는 Main 버튼 hover 색 대비 한 건과 닉네임 저장 후 초점 복귀/설정 재진입 두 건이다. 동일 코드로 trace 재현 4/4 및 초점·색상 진단을 넣은 3회 반복 12/12가 통과해 제품 코드를 임의 변경하지 않았다. 임시 진단을 제거한 뒤 모든 파일 변경을 멈추고 전체 실행을 재검증한다. skip은 일반 프로젝트에서 service worker를 차단하므로 별도 PWA 프로젝트가 담당하는 offline revisit 한 건이다.
