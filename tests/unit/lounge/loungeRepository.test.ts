@@ -26,4 +26,14 @@ describe('Lounge authenticated transport',()=>{
     await expect(repo.publish({...post,allocation:{...post.allocation,money:10}} as never,null)).rejects.toMatchObject({code:'invalid'});
     expect(f.rpc).not.toHaveBeenCalled();
   });
+  it('sends a band code or explicit null through v2, with no source amount',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    const input={title:post.title,alias:post.alias,note:post.note,allocation:post.allocation};
+    f.setResponse({status:'saved',post:{...post,assetBand:'20m'}});
+    await repo.publish({...input,assetBand:'20m'},null);
+    expect(f.rpc).toHaveBeenLastCalledWith('publish_lounge_portfolio_v2',{p_title:post.title,p_alias:post.alias,p_note:'',p_allocation:post.allocation,p_asset_band:'20m',p_expected_version:null});
+    f.setResponse({status:'saved',post:{...post,assetBand:null}});
+    await repo.publish(input,1);
+    expect(f.rpc).toHaveBeenLastCalledWith('publish_lounge_portfolio_v2',expect.objectContaining({p_asset_band:null}));
+  });
 });

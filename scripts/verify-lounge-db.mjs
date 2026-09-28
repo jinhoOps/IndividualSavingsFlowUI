@@ -28,6 +28,13 @@ export async function verifyLoungeDatabase({sql, quote, asUser, vite, userA, use
   assert.equal(publish(' ',1).status,'invalid');
   assert.equal(publish('추가 금액',1,userA,{...allocation,money:500}).status,'invalid');
   const updated=publish('새 제목',1); assert.equal(updated.post.version,2);
+  const publicationBefore = sql('select jsonb_agg(to_jsonb(p) order by id) from public.portfolio_publications p');
+  const assetMigration = await readFile(new URL('../supabase/migrations/202609280003_lounge_asset_band.sql',import.meta.url),'utf8');
+  sql(`set role migration_admin; ${assetMigration}`);
+  assert.equal(sql("select jsonb_agg(to_jsonb(p)-'asset_band' order by id) from public.portfolio_publications p"),publicationBefore);
+  assert.equal(call('get_lounge_portfolio_v2',`'${id}'`).assetBand,null);
+  assert.ok(!('assetBand' in call('get_lounge_portfolio',`'${id}'`)),'v1 response remains compatible');
+
   assert.equal(call('delete_lounge_portfolio',`'${id}',1`).status,'conflict');
   // Another account can never remove the row, regardless of knowledge of ID/version.
   call('delete_lounge_portfolio',`'${id}',2`,userC); assert.ok(call('get_lounge_portfolio',`'${id}'`));
@@ -41,9 +48,31 @@ export async function verifyLoungeDatabase({sql, quote, asUser, vite, userA, use
   assert.throws(()=>sql(asUser('select public.list_lounge_portfolios()',null,'anon')),/permission denied/);
   assert.throws(()=>sql(asUser('select public.list_lounge_portfolios()',null)),/authentication required/);
   assert.equal(sql("select rolcanlogin or rolinherit or rolbypassrls from pg_roles where rolname='lounge_rpc_owner'"),'f');
-  assert.equal(sql("select count(*) from pg_proc where proname like '%lounge_portfolio%' and prosecdef and proconfig @> array['search_path=\"\"'] and proowner='lounge_rpc_owner'::regrole"),'4');
+  assert.equal(sql("select count(*) from pg_proc where proname like '%lounge_portfolio%' and prosecdef and proconfig @> array['search_path=\"\"'] and proowner='lounge_rpc_owner'::regrole"),'7');
   assert.equal(sql("select has_table_privilege('lounge_rpc_owner','public.user_workspaces','SELECT')"),'f');
   call('delete_lounge_portfolio',`'${id}',2`); assert.equal(call('get_lounge_portfolio',`'${id}'`),null);
+  const publishBand=(band,version='null',title='자산 구간')=>call('publish_lounge_portfolio_v2',`'${title}','투자자','',${quote(allocation)},${version},${band===null?'null':"'"+band+"'"}`);
+  assert.equal(publishBand('20123456').status,'invalid');
+  const bandPost=publishBand('20m').post; assert.equal(bandPost.assetBand,'20m');
+  assert.equal(publishBand('20m').post.version,1,'same-content lost response retry');
+  assert.equal(call('get_lounge_portfolio_v2',`'${bandPost.id}'`,userC).assetBand,'20m');
+  assert.ok(call('list_lounge_portfolios_v2').some(p=>p.assetBand==='20m'));
+  assert.ok(!('assetBand' in call('get_lounge_portfolio',`'${bandPost.id}'`)));
+  assert.equal(publish('구버전 갱신',1).status,'saved');
+  assert.equal(call('get_lounge_portfolio_v2',`'${bandPost.id}'`).assetBand,'20m','v1 update preserves consented band');
+  assert.equal(publishBand(null,1).status,'conflict');
+  const hidden=publishBand(null,2); assert.equal(hidden.post.assetBand,null); assert.equal(hidden.post.version,3);
+  assert.equal(publishBand(null,2).post.version,3,'removal retry is idempotent');
+  assert.equal(publishBand('under_10m',3).post.assetBand,'under_10m');
+  for(const band of ['10m','30m','90m','100m','900m','1b_plus']) {
+    const current=call('get_lounge_portfolio_v2',`'${bandPost.id}'`);
+    assert.equal(publishBand(band,current.version).post.assetBand,band);
+  }
+  assert.throws(()=>sql(asUser('select public.list_lounge_portfolios_v2()',null,'anon')),/permission denied/);
+  assert.throws(()=>sql(asUser('select public.list_lounge_portfolios_v2()',null)),/authentication required/);
+  assert.throws(()=>sql(asUser(`select public.get_lounge_portfolio_v2('${bandPost.id}')`,null,'anon')),/permission denied/);
+  const current=call('get_lounge_portfolio_v2',`'${bandPost.id}'`);
+  call('delete_lounge_portfolio',`'${bandPost.id}',${current.version}`);
   // Separate disposable auth row proves cascade without changing existing workspace users.
   const temp='eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'; sql(`insert into auth.users values('${temp}')`);
   publish('cascade','null',temp); sql(`delete from auth.users where id='${temp}'`);
@@ -54,6 +83,7 @@ export async function verifyLoungeDatabase({sql, quote, asUser, vite, userA, use
     insert into public.portfolio_publications(owner_id,title,alias,note,allocation)
     select id,'cap','cap','','{"items":[],"cashShareUnits":1000000}' from auth.users where id not in('${userA}','${userC}')`);
   assert.equal(publish().status,'full');
+  assert.equal(publishBand('20m').status,'full');
   assert.equal(publish('상한에서도 갱신',1,userC).status,'saved');
   console.log('PASS: Lounge strict TS/SQL payloads, two-account read/ownership, anon and direct access denial, pagination, retry/CAS, deletion/cascade, original workspace preservation, global 5000-row cap.');
 }

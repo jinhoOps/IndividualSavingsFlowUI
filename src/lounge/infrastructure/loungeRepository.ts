@@ -38,19 +38,19 @@ export function createLoungeRepository(client: SupabaseClient): LoungeRepository
   const parse = (value: unknown) => {const post = parsePublication(value); if (!post) throw new LoungeError('invalid'); return post;};
   return {
     async list(mine, before) {
-      const data = await rpc('list_lounge_portfolios', {p_mine: mine, p_before_time: before?.updatedAt ?? null, p_before_id: before?.id ?? null, p_limit: PUBLICATION_PAGE_SIZE});
+      const data = await rpc('list_lounge_portfolios_v2', {p_mine: mine, p_before_time: before?.updatedAt ?? null, p_before_id: before?.id ?? null, p_limit: PUBLICATION_PAGE_SIZE});
       if (!Array.isArray(data)) throw new LoungeError('invalid');
       return data.map(parse);
     },
     async get(id) {
       if (!publicationId(id)) throw new LoungeError('invalid');
-      const data = await rpc('get_lounge_portfolio', {p_id: id});
+      const data = await rpc('get_lounge_portfolio_v2', {p_id: id});
       return data === null ? null : parse(data);
     },
     async publish(input, expectedVersion) {
       const safe = parsePublicationInput(input);
       if (!safe) throw new LoungeError('invalid');
-      const data = await rpc('publish_lounge_portfolio', {p_title: safe.title, p_alias: safe.alias, p_note: safe.note, p_allocation: safe.allocation, p_expected_version: expectedVersion}) as {status?: string; post?: unknown};
+      const data = await rpc('publish_lounge_portfolio_v2', {p_title: safe.title, p_alias: safe.alias, p_note: safe.note, p_allocation: safe.allocation, p_asset_band: safe.assetBand ?? null, p_expected_version: expectedVersion}) as {status?: string; post?: unknown};
       if (data?.status !== 'saved') throw new LoungeError(data?.status === 'conflict' ? 'conflict' : data?.status === 'full' ? 'full' : 'invalid');
       return parse(data.post);
     },

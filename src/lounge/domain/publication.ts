@@ -1,8 +1,9 @@
+import {isAssetBand, type AssetBand} from './assetBand';
 import {recommendClassification, normalizePortfolioName} from '../../portfolio/domain/classification';
 import {SHARE_SCALE, type PortfolioDraft, type PortfolioPlan} from '../../portfolio/domain/model';
 
 export interface SharedAllocation {items: Array<{name: string; shareUnits: number}>; cashShareUnits: number}
-export interface PublicationInput {title: string; alias: string; note: string; allocation: SharedAllocation}
+export interface PublicationInput {title: string; alias: string; note: string; allocation: SharedAllocation; assetBand?: AssetBand | null}
 export interface Publication extends PublicationInput {id: string; version: number; updatedAt: string; isMine: boolean}
 export const PUBLICATION_PAGE_SIZE = 12;
 export const publicationId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -28,15 +29,16 @@ export function parseSharedAllocation(value: unknown): SharedAllocation | null {
   return {items, cashShareUnits: value.cashShareUnits};
 }
 export function parsePublicationInput(value: unknown): PublicationInput | null {
-  if (!record(value) || !keys(value, ['title', 'alias', 'note', 'allocation']) || !text(value.title, 40) || !text(value.alias, 20) || !text(value.note, 160, true)) return null;
+  if (!record(value) || !keys(value, ['title', 'alias', 'note', 'allocation', ...('assetBand' in value ? ['assetBand'] : [])]) || !text(value.title, 40) || !text(value.alias, 20) || !text(value.note, 160, true)) return null;
+  if ('assetBand' in value && value.assetBand !== null && !isAssetBand(value.assetBand)) return null;
   const allocation = parseSharedAllocation(value.allocation);
-  return allocation ? {title: value.title, alias: value.alias, note: value.note, allocation} : null;
+  return allocation ? {title: value.title, alias: value.alias, note: value.note, allocation, ...('assetBand' in value ? {assetBand: value.assetBand as AssetBand | null} : {})} : null;
 }
 export function parsePublication(value: unknown): Publication | null {
-  if (!record(value) || !keys(value, ['id', 'title', 'alias', 'note', 'allocation', 'version', 'updatedAt', 'isMine'])
+  if (!record(value) || !keys(value, ['id', 'title', 'alias', 'note', 'allocation', 'version', 'updatedAt', 'isMine', ...('assetBand' in value ? ['assetBand'] : [])])
     || !publicationId(value.id) || !Number.isSafeInteger(value.version) || Number(value.version) < 1
     || typeof value.updatedAt !== 'string' || !Number.isFinite(Date.parse(value.updatedAt)) || typeof value.isMine !== 'boolean') return null;
-  const input = parsePublicationInput({title: value.title, alias: value.alias, note: value.note, allocation: value.allocation});
+  const input = parsePublicationInput({title: value.title, alias: value.alias, note: value.note, allocation: value.allocation, ...('assetBand' in value ? {assetBand: value.assetBand} : {})});
   return input ? {...input, id: value.id, version: Number(value.version), updatedAt: value.updatedAt, isMine: value.isMine} : null;
 }
 export function allocationFromPlan(plan: PortfolioPlan): SharedAllocation | null {
