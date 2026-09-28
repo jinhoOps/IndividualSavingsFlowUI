@@ -42,14 +42,15 @@ describe('Lounge privacy and copy contract', () => {
     expect(parsePublicationInput({title:' ',alias:'A',note:'',allocation})).toBeNull();
   });
   it('shares only an opted-in fixed band while retaining old publication compatibility', () => {
-    const input = {title:'비율 공유',alias:'투자자',note:'',allocation};
+    const input = {title:'비율 공유',note:'',allocation};
     for (const assetBand of [null, 'under_10m', '20m', '100m', '1b_plus']) {
       expect(parsePublicationInput({...input,assetBand})).toEqual({...input,assetBand});
-      const post={...input,id,version:1,updatedAt:'2026-09-28T00:00:00Z',isMine:false,assetBand};
+      const post={...input,alias:'투자자',id,version:1,updatedAt:'2026-09-28T00:00:00Z',isMine:false,assetBand};
       expect(parsePublication(post)).toEqual(post);
     }
     for (const assetBand of ['20123456', 20_123_456, '2천만원대', undefined]) expect(parsePublicationInput({...input,assetBand})).toBeNull();
     expect(parsePublicationInput({...input,initialInvestmentWon:20_123_456})).toBeNull();
+    expect(parsePublicationInput({...input,alias:'다른이름'})).toBeNull();
   });
   it('keeps only validated publication IDs through Google return paths', () => {
     const base='/IndividualSavingsFlowUI/';
