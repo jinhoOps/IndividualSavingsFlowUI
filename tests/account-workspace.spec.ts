@@ -1,3 +1,4 @@
+import {parseNickname} from '../src/lounge/domain/profile';
 import type {Publication} from '../src/lounge/domain/publication';
 import {createExpenseDraft, EXPENSE_ITEMS} from '../src/main/domain/expenseAssistant';
 import {withExpenseDraft} from '../src/main/infrastructure/expenseAssistantRepository';
@@ -45,6 +46,9 @@ function planWithExpenseHistory(): WorkspaceDocument {
 function fakeServer() {
   const publications = new Map<string, {owner: string; post: Publication}>();
   const loungeWrites: unknown[] = [];
+  const profiles = new Map<string, {nickname: string}>([[userA,{nickname:'나의별명'}],[userB,{nickname:'차곡차곡'}]]);
+  const profileWrites: unknown[] = [];
+  let failProfileRead = false;
   const rows = new Map<string, WorkspaceDocument>();
   const receipts = new Map<string, unknown>();
   const sharePolicy = {hours: 48, failures: [] as Array<{status: number; code: string}>};
@@ -109,6 +113,23 @@ function fakeServer() {
         await route.fulfill({json: current ? [row(user, current)] : []}); return;
       }
       const operation = url.pathname.split('/').at(-1)!;
+      if (operation==='get_lounge_profile') {
+        if(failProfileRead) {await route.abort('failed');return;}
+        await route.fulfill({json:profiles.get(user)??null});return;
+      }
+      if (operation==='register_lounge_nickname') {
+        const args=route.request().postDataJSON();profileWrites.push(args);
+        if(failWrite) {await route.abort('failed');return;}
+        const existing=profiles.get(user);
+        if(existing) {await route.fulfill({json:{status:'exists',profile:existing}});return;}
+        const nickname=parseNickname(args.p_nickname);
+        if(!nickname) {await route.fulfill({json:{status:'invalid'}});return;}
+        if([...profiles.values()].some(p=>p.nickname.toLowerCase()===nickname.toLowerCase())) {await route.fulfill({json:{status:'taken'}});return;}
+        const profile={nickname};profiles.set(user,profile);
+        for(const p of publications.values()) if(p.owner===user&&p.post.alias!==nickname) {p.post={...p.post,alias:nickname,version:p.post.version+1};}
+        if(loseResponse) {loseResponse=false;await route.abort('failed');return;}
+        await route.fulfill({json:{status:'saved',profile}});return;
+      }
       if (operation.includes('lounge_portfolio')) {
         const args=route.request().postDataJSON();
         const own=[...publications.values()].find(p=>p.owner===user);
@@ -121,9 +142,10 @@ function fakeServer() {
         if (operation==='get_lounge_portfolio_v2') {const p=publications.get(args.p_id); await route.fulfill({json:p?view(p):null});return;}
         loungeWrites.push(args);
         if (failWrite) {await route.abort('failed');return;}
-        if (operation==='publish_lounge_portfolio_v2') {
+        if (operation==='publish_lounge_portfolio_v3') {
+          if(!profiles.has(user)) {await route.fulfill({json:{status:'profile-required'}});return;}
           if ((own?.post.version??null)!==args.p_expected_version) {await route.fulfill({json:{status:'conflict'}});return;}
-          const post:Publication={id:own?.post.id??'dddddddd-dddd-4ddd-8ddd-dddddddddddd',title:args.p_title,alias:args.p_alias,note:args.p_note,allocation:args.p_allocation,assetBand:args.p_asset_band,version:(own?.post.version??0)+1,updatedAt:new Date().toISOString(),isMine:true};
+          const post:Publication={id:own?.post.id??'dddddddd-dddd-4ddd-8ddd-dddddddddddd',title:args.p_title,alias:profiles.get(user)!.nickname,note:args.p_note,allocation:args.p_allocation,assetBand:args.p_asset_band,version:(own?.post.version??0)+1,updatedAt:new Date().toISOString(),isMine:true};
           publications.set(post.id,{owner:user,post});await route.fulfill({json:{status:'saved',post}});return;
         }
         if (operation==='delete_lounge_portfolio') {
@@ -152,7 +174,7 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, publications, loungeWrites, shares, sharePolicy, attach, holdWrites() {
+  return {rows, operations, publications, loungeWrites, profiles, profileWrites, setFailProfileRead(value: boolean) {failProfileRead=value;}, shares, sharePolicy, attach, holdWrites() {
     let release!: () => void;
     writeBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {writeBarrier = null; release();};
@@ -1957,7 +1979,7 @@ for (const width of [390,768,1280]) {
     await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();
     dialog=page.getByRole('dialog',{name:'내 포트폴리오 공유'});await expect(dialog).toBeVisible();
     await expect(dialog.getByText('로그인한 모든 사용자에게 공개 · 정확한 금액 제외')).toBeVisible();
-    await dialog.getByLabel('제목',{exact:true}).fill('나만의 배분');await dialog.getByLabel('공유할 별명').fill('나의별명');
+    await dialog.getByLabel('제목',{exact:true}).fill('나만의 배분');await expect(dialog.getByLabel('공유할 별명')).toHaveCount(0);await expect(dialog.getByText('나의별명',{exact:true})).toBeVisible();
     const assetSwitch = dialog.getByRole('switch',{name:'자산 규모 표시'});
     await expect(assetSwitch).not.toBeChecked();
     await expect(dialog.getByLabel('공유할 자산 규모')).toHaveCount(0);
@@ -1975,7 +1997,7 @@ for (const width of [390,768,1280]) {
     await dialog.getByRole('button',{name:'라운지에 공유',exact:true}).click(); await expect(dialog).toHaveCount(0);
     await expect.poll(()=>preventsLeaving(page)).toBe(false);
     expect(server.rows.get(userA)).toEqual(before);
-    expect(JSON.stringify(server.loungeWrites)).not.toMatch(/syncedInvestmentWon|initialInvestmentWon|15000000|monthly|amountWon|@|classification|sourceMain|accountMap/);
+    expect(JSON.stringify(server.loungeWrites)).not.toMatch(/p_alias|syncedInvestmentWon|initialInvestmentWon|15000000|monthly|amountWon|@|classification|sourceMain|accountMap/);
     expect(server.loungeWrites[0]).toMatchObject({p_asset_band:'20m'});
     await expect(page.getByText('자산 규모 · 2천만원대',{exact:true})).toBeVisible();
     await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();
@@ -2048,4 +2070,75 @@ test('Lounge paginates without repeats and updates its one shared post',async({p
   await page.getByRole('button',{name:'내 포트폴리오 공유',exact:true}).click();const dialog=page.getByRole('dialog',{name:'공유 포트폴리오 갱신'});
   await dialog.getByLabel('제목',{exact:true}).fill('갱신한 공유');await dialog.getByRole('button',{name:'이 내용으로 갱신'}).click();await expect(dialog).toHaveCount(0);
   expect(server.publications.size).toBe(14);expect(server.publications.get(own.id)?.post.version).toBe(2);expect(server.operations).toEqual([]);
+});
+
+for (const width of [390,768,1280]) {
+  test(`Lounge nickname landing, confirmation and immutable return at ${width}px`, async ({page,context},testInfo)=>{
+    const server=fakeServer();server.profiles.delete(userA);await server.attach(context,userA);
+    await page.setViewportSize({width,height:844});
+    await page.goto('apps/lounge/');
+    const heading=page.getByRole('heading',{name:'서로의 투자 구성을 만나보세요'});
+    await expect(heading).toBeVisible();await expect(heading).toBeFocused();
+    expect(await preventsLeaving(page)).toBe(false);
+    const input=page.getByLabel('라운지에서 사용할 닉네임');
+    const confirm=page.getByRole('button',{name:'닉네임 확인',exact:true});
+    await expect(confirm).toBeDisabled();
+    for(const invalid of ['a','a b','name_1','😊이름','-.@','a'.repeat(21)]) {
+      await input.fill(invalid);await expect(input).toHaveAttribute('aria-invalid','true');await expect(confirm).toBeDisabled();
+    }
+    await input.fill('Kim-지호.1@');await expect(input).toHaveAttribute('aria-invalid','false');
+    expect(await preventsLeaving(page)).toBe(true);
+    await page.evaluate(()=>document.fonts.ready);
+    expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+    expect((await confirm.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await page.screenshot({path:testInfo.outputPath(`lounge-nickname-landing-${width}.png`),fullPage:true});
+    await confirm.click();const dialog=page.getByRole('dialog',{name:'이 닉네임으로 시작할까요?'});
+    await expect(dialog).toBeVisible();await expect(dialog).toHaveAttribute('data-presentation',width<768?'sheet':'modal');
+    await expect(dialog.getByRole('button',{name:'닫기',exact:true})).toBeFocused();
+    await expect(dialog.getByText('최초 설정 후 변경할 수 없어요.',{exact:true})).toBeVisible();
+    await expect(dialog).toHaveCSS('transform','none');await expect(dialog).toHaveCSS('opacity','1');
+    const box=(await dialog.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width+1);expect(box.height).toBeLessThanOrEqual(844*.88+1);expect(box.y+box.height).toBeLessThanOrEqual(845);
+    await dialog.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).focus();await page.keyboard.press('Tab');
+    await expect(dialog.getByRole('button',{name:'닫기',exact:true})).toBeFocused();
+    expect(server.profileWrites).toEqual([]);
+    await page.screenshot({path:testInfo.outputPath(`lounge-nickname-confirm-${width}.png`)});
+    await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);await expect(confirm).toBeFocused();await expect(input).toHaveValue('Kim-지호.1@');
+    await confirm.click();await dialog.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeFocused();
+    await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('Kim-지호.1@');
+    expect(server.profileWrites).toEqual([{p_nickname:'Kim-지호.1@'}]);
+    expect(server.rows.size).toBe(0);expect(server.operations).toEqual([]);expect(await preventsLeaving(page)).toBe(false);
+    await page.reload();await expect(page.getByRole('heading',{name:'포트폴리오 라운지',exact:true})).toBeVisible();
+    await expect(input).toHaveCount(0);expect(server.profileWrites).toHaveLength(1);
+  });
+}
+
+test('Lounge nickname duplicate, failed save and response-lost retry preserve identity and linked post',async({page,context})=>{
+  const server=fakeServer();server.profiles.delete(userA);server.profiles.set(userB,{nickname:'Used.Name'});
+  const oldPost={...sharedPortfolio,alias:'예전별명',isMine:true};server.publications.set(oldPost.id,{owner:userA,post:oldPost});
+  await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto(`apps/lounge/?post=${oldPost.id}`);
+  const input=page.getByLabel('라운지에서 사용할 닉네임');const confirm=page.getByRole('button',{name:'닉네임 확인',exact:true});
+  await input.fill('used.name');await confirm.click();
+  const dialog=page.getByRole('dialog',{name:'이 닉네임으로 시작할까요?'});const save=dialog.getByRole('button',{name:'이 닉네임으로 시작',exact:true});
+  await save.click();await expect(dialog.getByRole('alert')).toContainText('이미 사용 중');expect(server.profiles.has(userA)).toBe(false);
+  await dialog.getByRole('button',{name:'다시 입력',exact:true}).click();await expect(input).toHaveValue('used.name');
+  await input.fill('새닉네임');await confirm.click();server.setFailWrite(true);await save.click();await expect(dialog.getByRole('alert')).toContainText('다시 시도');
+  server.setFailWrite(false);server.loseNextResponse();await save.click();await expect.poll(()=>server.profiles.get(userA)?.nickname).toBe('새닉네임');
+  await expect(dialog.getByRole('alert')).toContainText('다시 시도');await save.click();
+  await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('새닉네임');await expect(dialog).toHaveCount(0);
+  const detail=page.getByRole('dialog',{name:oldPost.title});await expect(detail).toBeVisible();await expect(detail.getByText(/^새닉네임 ·/)).toBeVisible();
+  expect(server.publications.get(oldPost.id)?.post).toEqual({...oldPost,alias:'새닉네임',version:2});
+  expect(server.rows.size).toBe(0);expect(server.operations).toEqual([]);expect(await preventsLeaving(page)).toBe(false);
+});
+
+test('Lounge profile read failure cannot start onboarding, and concurrent registration uses the first name',async({page,context})=>{
+  const server=fakeServer();server.profiles.delete(userA);server.setFailProfileRead(true);await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('apps/lounge/');await expect(page.getByRole('heading',{name:'라운지를 불러오지 못했어요'})).toBeVisible();
+  await expect(page.getByLabel('라운지에서 사용할 닉네임')).toHaveCount(0);expect(server.profileWrites).toEqual([]);
+  server.setFailProfileRead(false);await page.getByRole('button',{name:'다시 불러오기',exact:true}).click();
+  await page.getByLabel('라운지에서 사용할 닉네임').fill('이쪽이름');await page.getByRole('button',{name:'닉네임 확인',exact:true}).click();
+  server.profiles.set(userA,{nickname:'먼저등록'});
+  await page.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).click();
+  await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('먼저등록');expect(server.profiles.get(userA)?.nickname).toBe('먼저등록');
 });

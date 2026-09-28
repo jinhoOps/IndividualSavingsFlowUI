@@ -14,7 +14,9 @@ import type {AssetBand} from '../domain/assetBand';
 import {AssetBandBadge} from './AssetBandBadge';
 import {PublicationEditor} from './PublicationEditor';
 
-export function LoungeApp({repository, plan, suggestedAssetBand = null}: {repository: LoungeRepository; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
+export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null}: {repository: LoungeRepository; nickname: string; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {headingRef.current?.focus();}, []);
   const [mine, setMine] = useState(false);
   const [posts, setPosts] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export function LoungeApp({repository, plan, suggestedAssetBand = null}: {reposi
   }
   return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu items={[]} />}>
     <AppContentFrame className="lounge-page">
-      <header className="lounge-header"><div><p className="lounge-eyebrow">PORTFOLIO LOUNGE</p><h1>포트폴리오 라운지</h1></div>
+      <header className="lounge-header"><div><p className="lounge-eyebrow">PORTFOLIO LOUNGE</p><h1 ref={headingRef} tabIndex={-1}>포트폴리오 라운지</h1><p className="lounge-muted" aria-label="내 라운지 닉네임">{nickname}</p></div>
         {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor}><Plus size={18} aria-hidden="true" />{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</button>
           : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}
       </header>
@@ -125,7 +127,7 @@ export function LoungeApp({repository, plan, suggestedAssetBand = null}: {reposi
         </div> : null}
       </ResponsiveDialogLayout>}
     </ResponsiveDialog> : null}
-    {editor && allocation ? <PublicationEditor repository={repository} existing={editor.existing} allocation={allocation} suggestedAssetBand={suggestedAssetBand} returnFocusRef={publishTrigger} onClose={() => setEditor(null)}
+    {editor && allocation ? <PublicationEditor repository={repository} nickname={nickname} existing={editor.existing} allocation={allocation} suggestedAssetBand={suggestedAssetBand} returnFocusRef={publishTrigger} onClose={() => setEditor(null)}
       onSaved={() => {setEditor(null); setNotice('라운지에 공유했어요.'); void load();}} /> : null}
   </AppShell>;
 }

@@ -11,6 +11,29 @@ function fixture() {
   return {client,headers,rpc,setAccount:(value:string)=>{account=value;},setResponse:(value:unknown)=>{response=value;}};
 }
 describe('Lounge authenticated transport',()=>{
+  it('distinguishes a missing profile from a malformed or private response',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    f.setResponse(null);expect(await repo.getProfile()).toBeNull();
+    expect(f.rpc).toHaveBeenLastCalledWith('get_lounge_profile',{});
+    f.setResponse({nickname:'나의이름'});expect(await repo.getProfile()).toEqual({nickname:'나의이름'});
+    f.setResponse({nickname:'나의이름',user_id:id});await expect(repo.getProfile()).rejects.toMatchObject({code:'invalid'});
+    f.setResponse(undefined);await expect(repo.getProfile()).rejects.toMatchObject({code:'invalid'});
+  });
+  it('normalizes registration and uses the immutable server name on retry',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    f.setResponse({status:'saved',profile:{nickname:'가나'}});
+    expect(await repo.registerNickname('가나'.normalize('NFD'))).toEqual({nickname:'가나'});
+    expect(f.rpc).toHaveBeenLastCalledWith('register_lounge_nickname',{p_nickname:'가나'});
+    f.setResponse({status:'exists',profile:{nickname:'먼저등록'}});
+    expect(await repo.registerNickname('다른이름')).toEqual({nickname:'먼저등록'});
+  });
+  it('rejects invalid names locally and surfaces duplicate or missing-profile results',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    await expect(repo.registerNickname('공 백')).rejects.toMatchObject({code:'invalid'});expect(f.rpc).not.toHaveBeenCalled();
+    f.setResponse({status:'taken'});await expect(repo.registerNickname('Valid')).rejects.toMatchObject({code:'nickname-taken'});
+    f.setResponse({status:'profile-required'});
+    await expect(repo.publish({title:post.title,note:'',allocation:post.allocation},null)).rejects.toMatchObject({code:'profile-required'});
+  });
   it('pins the account token and refuses a different account on subsequent requests',async()=>{
     const f=fixture();const repository=createLoungeRepository(f.client);
     expect(await repository.get(id)).toEqual(post);expect(f.headers).toEqual(['Bearer A-token']);
@@ -26,14 +49,14 @@ describe('Lounge authenticated transport',()=>{
     await expect(repo.publish({...post,allocation:{...post.allocation,money:10}} as never,null)).rejects.toMatchObject({code:'invalid'});
     expect(f.rpc).not.toHaveBeenCalled();
   });
-  it('sends a band code or explicit null through v2, with no source amount',async()=>{
+  it('sends a band code or explicit null through v3, with no source amount',async()=>{
     const f=fixture();const repo=createLoungeRepository(f.client);
-    const input={title:post.title,alias:post.alias,note:post.note,allocation:post.allocation};
+    const input={title:post.title,note:post.note,allocation:post.allocation};
     f.setResponse({status:'saved',post:{...post,assetBand:'20m'}});
     await repo.publish({...input,assetBand:'20m'},null);
-    expect(f.rpc).toHaveBeenLastCalledWith('publish_lounge_portfolio_v2',{p_title:post.title,p_alias:post.alias,p_note:'',p_allocation:post.allocation,p_asset_band:'20m',p_expected_version:null});
+    expect(f.rpc).toHaveBeenLastCalledWith('publish_lounge_portfolio_v3',{p_title:post.title,p_note:'',p_allocation:post.allocation,p_asset_band:'20m',p_expected_version:null});
     f.setResponse({status:'saved',post:{...post,assetBand:null}});
     await repo.publish(input,1);
-    expect(f.rpc).toHaveBeenLastCalledWith('publish_lounge_portfolio_v2',expect.objectContaining({p_asset_band:null}));
+    expect(f.rpc).toHaveBeenLastCalledWith('publish_lounge_portfolio_v3',expect.objectContaining({p_asset_band:null}));
   });
 });

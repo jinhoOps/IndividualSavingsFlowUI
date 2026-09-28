@@ -9,13 +9,12 @@ import {ASSET_BANDS, isAssetBand, type AssetBand} from '../domain/assetBand';
 import {AssetBandBadge} from './AssetBandBadge';
 import {AllocationSummary} from './AllocationSummary';
 
-export function PublicationEditor({repository, existing, allocation, suggestedAssetBand, returnFocusRef, onClose, onSaved}: {
-  repository: LoungeRepository; existing: Publication | null; allocation: SharedAllocation; suggestedAssetBand: AssetBand | null;
+export function PublicationEditor({repository, nickname, existing, allocation, suggestedAssetBand, returnFocusRef, onClose, onSaved}: {
+  repository: LoungeRepository; nickname: string; existing: Publication | null; allocation: SharedAllocation; suggestedAssetBand: AssetBand | null;
   returnFocusRef: RefObject<HTMLElement | null>; onClose(): void; onSaved(post: Publication): void;
 }) {
   const account = useContext(AccountManagementContext);
   const [title, setTitle] = useState(existing?.title ?? '나의 포트폴리오');
-  const [alias, setAlias] = useState(existing?.alias ?? '투자자');
   const [note, setNote] = useState(existing?.note ?? '');
   const [showAssetBand, setShowAssetBand] = useState(Boolean(existing?.assetBand));
   const [selectedAssetBand, setSelectedAssetBand] = useState<AssetBand | null>(existing?.assetBand ?? suggestedAssetBand);
@@ -26,9 +25,9 @@ export function PublicationEditor({repository, existing, allocation, suggestedAs
   const [error, setError] = useState('');
   const [discard, setDiscard] = useState(false);
   const discardApproved = useRef(false);
-  const dirty = title !== (existing?.title ?? '나의 포트폴리오') || alias !== (existing?.alias ?? '투자자') || note !== (existing?.note ?? '') || showAssetBand !== Boolean(existing?.assetBand) || assetBand !== (existing?.assetBand ?? null);
+  const dirty = title !== (existing?.title ?? '나의 포트폴리오') || note !== (existing?.note ?? '') || showAssetBand !== Boolean(existing?.assetBand) || assetBand !== (existing?.assetBand ?? null);
   useUncommittedInput(dirty && saved.current === null && !discardApproved.current);
-  const input = showAssetBand && !assetBand ? null : parsePublicationInput({title, alias, note, allocation, assetBand});
+  const input = showAssetBand && !assetBand ? null : parsePublicationInput({title, note, allocation, assetBand});
   return <ResponsiveDialog open labelledBy="lounge-editor-title" returnFocusRef={returnFocusRef} busy={pending}
     onRequestClose={() => {
       if (lock.current) return false;
@@ -49,7 +48,7 @@ export function PublicationEditor({repository, existing, allocation, suggestedAs
       {discard ? <p>아직 공유하지 않은 입력 내용이 사라져요.</p> : <div className="lounge-editor">
         <p className="lounge-audience">로그인한 모든 사용자에게 공개 · 정확한 금액 제외</p>
         <label>제목<input value={title} maxLength={40} onChange={e => setTitle(e.target.value)} disabled={pending} /></label>
-        <label>공유할 별명<input value={alias} maxLength={20} onChange={e => setAlias(e.target.value)} disabled={pending} autoComplete="off" /></label>
+        <p className="lounge-publisher"><span className="lounge-muted">공유 닉네임</span><strong>{nickname}</strong></p>
         <label>짧은 메모 <span className="lounge-muted">선택</span><input value={note} maxLength={160} onChange={e => setNote(e.target.value)} disabled={pending} /></label>
         <section className="lounge-asset-option" aria-label="자산 규모 공유 설정">
           <label className="lounge-asset-toggle"><span>자산 규모 표시 <span className="lounge-muted">선택</span></span>

@@ -216,6 +216,8 @@ try {
   await verifyHousingLoansDatabase({sql, quote, asUser, vite, userA, userC});
   const {verifyLoungeDatabase} = await import('./verify-lounge-db.mjs');
   await verifyLoungeDatabase({sql, quote, asUser, vite, userA, userC});
+  const {verifyLoungeProfiles} = await import('./verify-lounge-profile-db.mjs');
+  await verifyLoungeProfiles({sql, quote, asUser, vite, userA, userC, parallelSql});
   console.log(`PASS: ${fixtures.length} shared TS/SQL fixtures; v3 upgrade/before-images/rollback; required v4 protocol; PostgreSQL RLS, narrow RPCs, revisions, receipts, concurrent writes/retries/initialization.`);
 } finally {
   await vite?.close();

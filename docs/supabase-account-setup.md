@@ -206,3 +206,12 @@ from public.result_card_shares group by state;
 - 새로운 RPC도 전용 역할·빈 search_path·로그인 필수와 FORCE RLS를 유지한다. anon 실행·authenticated 직접 조회/쓰기 차단을 운영에서 확인했다.
 - 로컬 파일과 운영 migration 이력의 SQL digest는 `24c250f8391686389cf7c6bf41b695f4`로 일치한다.
 - [선택적 자산 규모 계획·검증](superpowers/plans/2026-09-28-lounge-asset-band.md).
+
+### 라운지 최초 닉네임 — 2026-09-28
+
+`202609280004_lounge_nickname.sql`은 `lounge_profiles`·조회/등록 RPC·별명 없는 게시 RPC v3와 고정 닉네임 trigger를 추가한다. 운영 프로젝트에 migration과 이력을 한 트랜잭션으로 적용했으며 workspace 5개·게시물 1개의 전후 전체 행 checksum이 같았다. 프로필은 자동 등록하지 않았다. 권한·원본 일치·로컬 검증과 배포 결과는 [검증 증거](superpowers/evidence/2026-09-28-lounge-nickname.md)에 기록한다.
+
+- 계정당 한 번 등록하며 영문 대소문자를 무시한 중복은 DB UNIQUE로 차단한다. 직접 테이블 접근·변경 API는 제공하지 않고 FORCE RLS·전용 역할·계정 삭제 cascade·5,000행 상한을 적용한다.
+- 기존 게시물 별명은 migration 중 자동 등록하지 않는다. 사용자가 직접 확정할 때 기존 공유의 이름·version만 갱신한다.
+- 구버전 읽기·삭제는 유지한다. 미등록 사용자의 구버전 게시·갱신은 차단되므로 최신 앱에서 닉네임을 설정해야 한다. 등록 후에는 구버전이 보낸 임의의 별명도 고정 닉네임으로 저장한다.
+- workspace schema v5/protocol 5와 저장·백업 계약은 그대로다. 이미지 생성·보관 용량에는 영향이 없다.
