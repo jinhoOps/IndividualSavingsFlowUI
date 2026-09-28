@@ -5,6 +5,7 @@ import {promisify} from 'node:util';
 import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {createServer} from 'vite';
+import {verifyLoungeDiscovery} from './verify-lounge-discovery-db.mjs';
 import {verifyLoungeConversation} from './verify-lounge-conversation-db.mjs';
 const container=`isf-lounge-test-${randomUUID()}`;
 const exec=promisify(execFile);
@@ -32,4 +33,5 @@ try {
   sql(asUser("select public.register_lounge_nickname('원래투자자')"));
   vite=await createServer({server:{middlewareMode:true},appType:'custom',logLevel:'error'});
   await verifyLoungeConversation({sql,asUser,userA,userC,parallelSql,vite});
+  await verifyLoungeDiscovery({sql,asUser,userA,vite});
 } finally {await vite?.close();try{docker(['rm','-f',container]);}catch{}}

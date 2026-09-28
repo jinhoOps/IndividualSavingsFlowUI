@@ -1,3 +1,4 @@
+import {parseFeedQuery,parseFeedCursor,parseFeedPage,feedQueryKey,type FeedQuery,type FeedCursor,type FeedPage} from '../domain/discovery';
 import {createConversationRepository, type ConversationRepository} from './conversationRepository';
 import {LoungeError} from './loungeErrors';
 export {LoungeError,loungeErrorMessage} from './loungeErrors';
@@ -7,6 +8,7 @@ import {getBrowserClient, readSupabaseConfig} from '../../auth/auth';
 import {parsePublication, parsePublicationInput, publicationId, PUBLICATION_PAGE_SIZE, type Publication, type PublicationInput} from '../domain/publication';
 import {isEmojiId, parseComment, parseCommentBody, parseCommentPage, parseCommunitySummary, type CommentCursor, type CommentPage, type CommunitySummary, type EmojiId, type LoungeComment} from '../domain/community';
 export interface LoungeRepository extends ConversationRepository {
+  search(query:FeedQuery,cursor?:FeedCursor):Promise<FeedPage>;
   getProfile(): Promise<LoungeProfile | null>;
   registerNickname(nickname: string): Promise<LoungeProfile>;
   getNicknameSettings(): Promise<NicknameSettings>;
@@ -52,6 +54,14 @@ export function createLoungeRepository(client: SupabaseClient): LoungeRepository
   };
   return {
     ...createConversationRepository(rpc),
+    async search(query,cursor){
+      const safe=parseFeedQuery(query),after=cursor===undefined?null:parseFeedCursor(cursor);
+      if(!safe || cursor!==undefined && !after || after && (after.queryKey!==feedQueryKey(safe) || (safe.sort==='updated')!==(after.epoch===null)))throw new LoungeError('invalid');
+      const page=parseFeedPage(await rpc('search_lounge_portfolios',{p_query:safe,p_cursor:after}));
+      if(!page || page.status==='ok' && (page.nextCursor && page.nextCursor.queryKey!==feedQueryKey(safe)
+        || (safe.sort==='updated')!==(page.rankedAt===null) || after && (page.asOf!==after.asOf || page.rankedAt!==after.epoch)))throw new LoungeError('invalid');
+      return page;
+    },
     async getCommunity(postIds) {
       if (postIds.length > 24 || !postIds.every(publicationId)) throw new LoungeError('invalid');
       const data = await rpc('get_lounge_community',{p_post_ids:postIds});

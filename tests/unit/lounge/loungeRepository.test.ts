@@ -1,5 +1,6 @@
 import {describe, expect, it, vi} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
+import {DEFAULT_FEED_QUERY,feedQueryKey} from '../../../src/lounge/domain/discovery';
 import {createLoungeRepository} from '../../../src/lounge/infrastructure/loungeRepository';
 const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const post={id,title:'배분',alias:'투자자',note:'',allocation:{items:[],cashShareUnits:1000000},version:1,updatedAt:'2026-09-28T00:00:00Z',isMine:true};
@@ -11,6 +12,17 @@ function fixture() {
   return {client,headers,rpc,setAccount:(value:string)=>{account=value;},setResponse:(value:unknown)=>{response=value;}};
 }
 describe('Lounge authenticated transport',()=>{
+  it('searches all server data and refuses mismatched conditions or malformed feed pages',async()=>{
+    const f=fixture(),repo=createLoungeRepository(f.client),asOf=post.updatedAt;
+    const query={...DEFAULT_FEED_QUERY,q:'금'},cursor={v:1 as const,queryKey:feedQueryKey(query),asOf,epoch:null,last:{id,updatedAt:asOf,score:null}};
+    const response={status:'ok',items:[post],nextCursor:cursor,asOf,rankedAt:null};f.setResponse(response);
+    expect(await repo.search(query)).toEqual(response);expect(f.rpc).toHaveBeenLastCalledWith('search_lounge_portfolios',{p_query:query,p_cursor:null});
+    await expect(repo.search({...query,q:'다른 조건'},cursor)).rejects.toMatchObject({code:'invalid'});
+    f.setResponse({...response,nextCursor:{...cursor,queryKey:'wrong'}});await expect(repo.search(query)).rejects.toMatchObject({code:'invalid'});
+    f.setResponse({status:'cursor-expired'});expect(await repo.search(query,cursor)).toEqual({status:'cursor-expired'});
+    f.setResponse({status:'ranking-unavailable'});expect(await repo.search({...query,sort:'reactions'})).toEqual({status:'ranking-unavailable'});
+    f.setAccount('B');await expect(repo.search(query)).rejects.toMatchObject({code:'account'});
+  });
   it('sends selected mentions and reply relationships as one idempotent request',async()=>{
     const f=fixture(),repo=createLoungeRepository(f.client);
     const other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
