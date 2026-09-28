@@ -1,9 +1,10 @@
+import {parseFeedQuery,feedQueryKey,type FeedCursor} from '../../src/lounge/domain/discovery';
 import {parseCommentBody, isEmojiId, type EmojiId, type CommunitySummary} from '../../src/lounge/domain/community';
 import type {LoungeNotification} from '../../src/lounge/domain/notifications';
 import type {CommentWrite,ConversationComment,ConversationCursor,MentionRange} from '../../src/lounge/domain/conversation';
 import type {Publication} from '../../src/lounge/domain/publication';
 
-export const COMMUNITY_OPERATIONS = ['get_lounge_community','set_lounge_reaction','list_lounge_comments','add_lounge_comment','delete_lounge_comment','list_lounge_threads_v2','list_lounge_replies_v2','get_lounge_comment_context','add_lounge_comment_v2','delete_lounge_comment_v2','find_lounge_mention_targets','get_lounge_unread_count','list_lounge_notifications','read_lounge_notifications'];
+export const COMMUNITY_OPERATIONS = ['get_lounge_community','set_lounge_reaction','list_lounge_comments','add_lounge_comment','delete_lounge_comment','list_lounge_threads_v2','list_lounge_replies_v2','get_lounge_comment_context','add_lounge_comment_v2','delete_lounge_comment_v2','find_lounge_mention_targets','get_lounge_unread_count','list_lounge_notifications','read_lounge_notifications','search_lounge_portfolios'];
 export function loungeCommunityFixture(publications:Map<string,{owner:string;post:Publication}>,profiles:Map<string,{nickname:string}>) {
   const notifications=new Map<string,LoungeNotification & {recipient:string}>();
   const reactions=new Map<string,Map<EmojiId,Set<string>>>();
@@ -33,6 +34,21 @@ export function loungeCommunityFixture(publications:Map<string,{owner:string;pos
   };
   return {notifications,reactions,comments,requests,summary,readFailure:false,writeFailure:false,loseResponse:false,
     reply(operation:string,args:Record<string,unknown>,user:string):unknown {
+      if(operation==='search_lounge_portfolios'){
+        const query=parseFeedQuery(args.p_query),cursor=args.p_cursor as FeedCursor|null;if(!query)throw new Error('invalid query');
+        const asOf=cursor?.asOf??new Date().toISOString(),key=feedQueryKey(query);
+        if(cursor && Date.parse(asOf)<Date.now()-86400000)return {status:'cursor-expired'};
+        if(query.sort!=='updated')return {status:'ranking-unavailable'};
+        const normalize=(value:string)=>value.normalize('NFC').toLowerCase().trim().replace(/\s+/g,' ');
+        const all=[...publications.values()].filter(({owner,post:p})=>p.updatedAt<=asOf && (query.scope==='all' || owner===user)
+          && (query.period==='all' || Date.parse(p.updatedAt)>=Date.parse(asOf)-(query.period==='7d'?7:30)*86400000)
+          && (!query.hasCash || p.allocation.cashShareUnits>0) && (!query.assetBands.length || query.assetBands.includes(p.assetBand??'hidden'))
+          && (!query.q || [p.title,p.note,p.alias,...p.allocation.items.map(item=>item.name)].some(field=>normalize(field).includes(query.q))))
+          .sort((a,b)=>b.post.updatedAt.localeCompare(a.post.updatedAt)||b.post.id.localeCompare(a.post.id))
+          .filter(({post:p})=>!cursor || p.updatedAt<cursor.last.updatedAt || p.updatedAt===cursor.last.updatedAt && p.id<cursor.last.id);
+        const items=all.slice(0,12).map(({owner,post})=>({...post,isMine:owner===user})),last=items.at(-1);
+        return {status:'ok',items,asOf,rankedAt:null,nextCursor:all.length>12 && last?{v:1,queryKey:key,asOf,epoch:null,last:{id:last.id,updatedAt:last.updatedAt,score:null}}:null};
+      }
       const unread=[...notifications.values()].filter(n=>n.recipient===user && !n.read);
       const unreadState={unreadCount:unread.length,readCutoff:new Date().toISOString()};
       if(operation==='get_lounge_unread_count')return unreadState;

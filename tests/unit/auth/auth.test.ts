@@ -36,3 +36,10 @@ describe('static Google auth', () => {
     expect(calls).toEqual(['/callback/']);
   });
 });
+
+it('keeps allowlisted discovery conditions across login without carrying credentials',()=>{
+  const post='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',comment='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const returned=safeReturnPath(`/IndividualSavingsFlowUI/apps/lounge/?q=VOO&scope=mine&cash=1&band=20m&sort=comments&post=${post}&comment=${comment}&access_token=secret#refresh_token=private`,'/IndividualSavingsFlowUI/');
+  expect(returned).toBe(`/IndividualSavingsFlowUI/apps/lounge/?q=voo&scope=mine&cash=1&band=20m&sort=comments&post=${post}&comment=${comment}`);
+  expect(safeReturnPath('/IndividualSavingsFlowUI/apps/lounge/?q=금&sort=bad&band=secret&comment='+comment,'/IndividualSavingsFlowUI/')).toBe('/IndividualSavingsFlowUI/apps/lounge/?q=%EA%B8%88');
+});

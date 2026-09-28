@@ -125,8 +125,8 @@ function fakeServer() {
       const operation = url.pathname.split('/').at(-1)!;
       if(COMMUNITY_OPERATIONS.includes(operation)) {
         const args=route.request().postDataJSON();community.requests.push({operation,args});
-        const read=operation.startsWith('get_')||operation.startsWith('list_')||operation.startsWith('find_');
-        if((read&&community.readFailure)||(!read&&community.writeFailure)){await route.abort('failed');return;}
+        const read=operation.startsWith('get_')||operation.startsWith('list_')||operation.startsWith('find_')||operation.startsWith('search_');
+        if((read&&community.readFailure&&operation!=='search_lounge_portfolios')||(!read&&community.writeFailure)){await route.abort('failed');return;}
         if(!read)await writeBarrier;
         const result=community.reply(operation,args,user);
         if(!read&&community.loseResponse){community.loseResponse=false;await route.abort('failed');return;}
@@ -1978,6 +1978,62 @@ for (const failure of ['response-lost', 'conflict'] as const) {
 
 const sharedPortfolio: Publication = {id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc', title:'배당과 금의 균형',alias:'차곡차곡',note:'매달 같은 비율로 나눠요.',assetBand:'100m',
   allocation:{items:[{name:'SCHD',shareUnits:500000},{name:'금',shareUnits:500000}],cashShareUnits:0},version:1,updatedAt:'2026-09-28T01:00:00Z',isMine:false};
+for(const width of [390,768,1280])test(`Lounge discovery literal search, filter drafts and returning card focus at ${width}px`,async({page,context},testInfo)=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  for(let i=1;i<=25;i++)server.publications.set(`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`,{owner:userB,post:{...sharedPortfolio,id:`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`,title:`분산 ${i}`,
+    note:i===1?'기호 %_ 그대로':'',allocation:{items:[{name:i===1?'VOO':'SCHD',shareUnits:i%2?1000000:900000}],cashShareUnits:i%2?0:100000},assetBand:i%2?'20m':null}});
+  const divided=server.publications.get('eeeeeeee-eeee-4eee-8eee-000000000025')!;divided.post.allocation={items:[{name:'SCHD',shareUnits:500000},{name:'QQQM',shareUnits:500000}],cashShareUnits:0};
+  await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  const search=page.getByRole('searchbox',{name:'포트폴리오 검색'});await expect(search).toBeVisible();await expect(page.locator('.lounge-card')).toHaveCount(12);
+  await search.fill('VOO');await search.press('Enter');await expect(page.locator('.lounge-card')).toHaveCount(1);await expect(page.locator('.lounge-card')).toContainText('분산 1');
+  expect(new URL(page.url()).searchParams.get('q')).toBe('voo');await search.fill('%_');await search.press('Enter');await expect(page.locator('.lounge-card')).toHaveCount(1);
+  await page.getByRole('button',{name:'검색 지우기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(12);
+  await page.getByRole('button',{name:'필터',exact:true}).click();const filter=page.getByRole('dialog',{name:'필터',exact:true});
+  await filter.getByLabel('현금 포함').check();await filter.getByLabel('자산 규모 미공개').check();await filter.getByRole('button',{name:'닫기',exact:true}).click();
+  expect(new URL(page.url()).searchParams.has('cash')).toBe(false);
+  await page.getByRole('button',{name:'필터',exact:true}).click();await expect(filter.getByLabel('현금 포함')).not.toBeChecked();
+  await filter.getByLabel('현금 포함').check();await filter.getByLabel('자산 규모 미공개').check();await filter.getByRole('button',{name:'필터 적용'}).click();
+  await expect(page.locator('.lounge-card')).toHaveCount(12);await expect(page.getByRole('button',{name:'더 보기',exact:true})).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.get('cash')).toBe('1');await page.getByRole('button',{name:'조건 초기화'}).click();
+  await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.locator('.lounge-card')).toHaveCount(24);
+  const card=page.locator('.lounge-card').nth(18),opener=card.getByRole('button',{name:/상세 보기/});await opener.scrollIntoViewIfNeeded();await opener.click();
+  await page.getByRole('dialog').getByRole('button',{name:'닫기',exact:true}).click();await expect(opener).toBeFocused();await expect(page.locator('.lounge-card')).toHaveCount(24);
+  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:testInfo.outputPath(`discovery-${width}.png`)});
+  expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+});
+test('Lounge discovery waits for IME and debounce, and ignores a stale search response',async({page,context})=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
+  const voo={...sharedPortfolio,id:'eeeeeeee-eeee-4eee-8eee-000000000001',title:'미국 주식',allocation:{items:[{name:'VOO',shareUnits:1000000}],cashShareUnits:0}};
+  server.publications.set(voo.id,{owner:userB,post:voo});await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');await expect(page.locator('.lounge-card')).toHaveCount(2);
+  const search=page.getByRole('searchbox',{name:'포트폴리오 검색'}),calls=server.community.requests.filter(r=>r.operation==='search_lounge_portfolios').length;
+  await search.dispatchEvent('compositionstart');await search.fill('미');await page.clock.fastForward(500);
+  expect(server.community.requests.filter(r=>r.operation==='search_lounge_portfolios')).toHaveLength(calls);
+  await search.fill('미국');await search.dispatchEvent('compositionend');await page.clock.fastForward(349);
+  expect(server.community.requests.filter(r=>r.operation==='search_lounge_portfolios')).toHaveLength(calls);
+  await page.clock.fastForward(1);await expect(page.locator('.lounge-card')).toHaveCount(1);await expect(page.locator('.lounge-card')).toContainText('미국 주식');
+  let release!:()=>void,held=false;const barrier=new Promise<void>(r=>{release=r;});
+  await page.route('**/rest/v1/rpc/search_lounge_portfolios',async route=>{
+    const args=route.request().postDataJSON();if(args.p_query.q==='금'){held=true;await barrier;await route.fulfill({json:server.community.reply('search_lounge_portfolios',args,userA)});}else await route.fallback();
+  });
+  await search.fill('금');await search.press('Enter');await expect.poll(()=>held).toBe(true);await expect(page.locator('.lounge-card')).toContainText('미국 주식');
+  await search.fill('VOO');await search.press('Enter');await expect(page.locator('.lounge-card')).toContainText('미국 주식');
+  const response=page.waitForResponse(r=>r.url().endsWith('/search_lounge_portfolios') && r.request().postDataJSON().p_query.q==='금');release();await (await response).finished();await page.clock.runFor(100);
+  await expect(page.locator('.lounge-card')).toHaveCount(1);await expect(page.locator('.lounge-card')).toContainText('미국 주식');
+  await page.route('**/rest/v1/rpc/search_lounge_portfolios',route=>route.abort('failed'));await search.fill('없는 항목');await search.press('Enter');
+  await expect(page.getByRole('alert')).toBeVisible();await expect(page.locator('.lounge-card')).toContainText('미국 주식');
+});
+test('Lounge discovery bounds card batches and restores browser history',async({page,context})=>{
+  const server=fakeServer();for(let i=1;i<=132;i++){const id=`eeeeeeee-eeee-4eee-8eee-${String(i).padStart(12,'0')}`;server.publications.set(id,{owner:userB,post:{...sharedPortfolio,id,title:`공유 ${i}`}});}
+  await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');await expect(page.locator('.lounge-card')).toHaveCount(12);
+  for(let i=2;i<=10;i++){await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.locator('.lounge-card')).toHaveCount(i*12);}
+  await page.getByRole('button',{name:'다음 묶음 보기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(12);await expect(page.locator('.lounge-card').first()).toContainText('공유 12');
+  await page.getByRole('button',{name:'이전 묶음 보기'}).click();await expect(page.locator('.lounge-card')).toHaveCount(120);await expect(page.locator('.lounge-card').first()).toContainText('공유 132');
+  const search=page.getByRole('searchbox',{name:'포트폴리오 검색'});await search.fill('공유 1');await search.press('Enter');await expect(page.getByRole('button',{name:'더 보기',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.locator('.lounge-card')).toHaveCount(24);
+  await page.goBack();await expect(page.locator('.lounge-card')).toHaveCount(120);await expect(search).toHaveValue('');
+  await page.goForward();await expect(page.locator('.lounge-card')).toHaveCount(24);await expect(search).toHaveValue('공유 1');
+});
 for(const width of [390,768,1280]) test(`Lounge conversation compact threads and preserved reply drafts at ${width}px`,async({page,context},testInfo)=>{
   await page.setViewportSize({width,height:844});await page.emulateMedia({reducedMotion:'reduce'});
   const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
@@ -2065,14 +2121,14 @@ test('Lounge quiet refresh discards a late feed response after the filter change
   await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');
   await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toBeVisible();
   let release!:()=>void;const barrier=new Promise<void>(r=>{release=r;});let held=false;
-  await page.route('**/rest/v1/rpc/list_lounge_portfolios_v2',async route=>{
-    if(!held){held=true;await barrier;await route.fulfill({json:[sharedPortfolio]});}else await route.fallback();
+  await page.route('**/rest/v1/rpc/search_lounge_portfolios',async route=>{
+    if(!held){held=true;await barrier;await route.fulfill({json:{status:'ok',items:[sharedPortfolio],asOf:new Date().toISOString(),rankedAt:null,nextCursor:null}});}else await route.fallback();
   });
   await page.clock.fastForward(30_000);await expect.poll(()=>held).toBe(true);
   await expect(page.getByRole('status').filter({hasText:'포트폴리오를 불러오'})).toHaveCount(0);
   await page.getByRole('button',{name:'내 공유',exact:true}).click();
   await expect(page.getByRole('heading',{name:'아직 공유한 포트폴리오가 없어요'})).toBeVisible();
-  const late=page.waitForResponse(r=>r.url().endsWith('/list_lounge_portfolios_v2'));release();await (await late).finished();await page.clock.runFor(100);
+  const late=page.waitForResponse(r=>r.url().endsWith('/search_lounge_portfolios'));release();await (await late).finished();await page.clock.runFor(100);
   await expect(page.getByRole('button',{name:'내 공유',exact:true})).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('.lounge-card')).toHaveCount(0);
 });

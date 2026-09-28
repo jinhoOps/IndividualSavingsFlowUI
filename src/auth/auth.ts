@@ -1,3 +1,4 @@
+import {feedQueryFromSearch,feedSearchParams} from '../lounge/domain/discovery';
 import {createClient, type SupabaseClient} from '@supabase/supabase-js';
 import {appPath, type JourneyApp} from '../journey/routes';
 import type {SupabaseConfig} from './config';
@@ -16,11 +17,13 @@ export function safeReturnPath(path: string | null, base: string): string {
   const key = normalized === appPath('lounge', base) ? 'post' : normalized === appPath('portfolio', base) ? 'publication' : null;
   const id = key ? url.searchParams.get(key) : null;
   const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if(!key || !id || !uuid.test(id))return normalized;
-  const params=new URLSearchParams({[key]:id});
-  const comment=key==='post'?url.searchParams.get('comment'):null;
-  if(comment && uuid.test(comment))params.set('comment',comment);
-  return `${normalized}?${params}`;
+  const params=key==='post'?feedSearchParams(feedQueryFromSearch(url.search)):new URLSearchParams();
+  if(key && id && uuid.test(id)){
+    params.set(key,id);
+    const comment=key==='post'?url.searchParams.get('comment'):null;
+    if(comment && uuid.test(comment))params.set('comment',comment);
+  }
+  const search=params.toString();return `${normalized}${search?`?${search}`:''}`;
 }
 export async function completeAuthCallback(href: string, scrub: (url: string) => void,
   exchange: (code: string) => Promise<{error: unknown}>): Promise<boolean> {

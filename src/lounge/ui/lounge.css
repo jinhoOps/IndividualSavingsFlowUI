@@ -179,3 +179,24 @@
 .community-notifications time,.community-inbox-footer { font-size:12px; color:var(--muted); }
 .community-inbox-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 @media(max-width:767px) { .lounge-share-label { display:none; } .lounge-share-short { display:inline; } }
+
+.lounge-discovery { margin-bottom:20px; }
+.lounge-search { display:flex; align-items:center; gap:8px; min-height:48px; border:1px solid var(--line-strong); border-radius:14px; padding-left:14px; background:var(--panel); color:var(--muted); margin-bottom:12px; }
+.lounge-search input { width:100%; min-width:0; min-height:46px; border:0; outline-offset:2px; background:transparent; color:var(--ink); font:inherit; font-size:16px; }
+.lounge-search input::-webkit-search-cancel-button { display:none; }
+.lounge-search svg { flex-shrink:0; }
+.lounge-search-status { font-size:12px; white-space:nowrap; padding-right:12px; }
+.lounge-discovery .lounge-toolbar { margin-bottom:0; gap:8px; }
+.lounge-discovery-actions { display:flex; align-items:center; gap:4px; }
+.lounge-discovery-actions .lounge-muted { white-space:nowrap; }
+.lounge-filter-chips { display:flex; flex-wrap:wrap; gap:4px 6px; margin-top:8px; }
+.lounge-filter-chips button { display:flex; align-items:center; gap:6px; min-height:44px; padding:4px 10px; border:1px solid var(--line); border-radius:22px; color:var(--muted); background:transparent; font-size:12px; }
+.lounge-filter-fields { display:grid; gap:24px; }
+.lounge-filter-fields fieldset { padding:0; margin:0; border:0; }
+.lounge-filter-fields legend { margin-bottom:10px; font-size:14px; font-weight:700; }
+.lounge-filter-fields label { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; padding:6px 10px; font-size:14px; border:1px solid var(--line); border-radius:10px; }
+.lounge-filter-fields input { width:20px; height:20px; flex-shrink:0; accent-color:var(--accent); }
+.lounge-period-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.lounge-band-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.lounge-feed-pages { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:12px; margin:24px 0; }
+@media(max-width:400px) { .lounge-discovery .lounge-tabs button { padding-inline:12px; } .lounge-band-options { gap:6px; } .lounge-band-options label { font-size:13px; padding-inline:8px; } }
