@@ -49,6 +49,8 @@ Main, Simulation, Portfolio, Lounge, 공유 결과 화면과 공통 UI를 검수
 
 ### 최초 실패와 재검증 한계
 
+후속 원인 조사와 댓글 focus 수정, 실제 터치 기반 검증은 [안정화 기록](2026-09-28-focus-stability.md)을 따른다. 아래는 이 검수 시점의 최초 결과다.
+
 - `mobile dock supports direct taps and history while preserving Main amounts`: 길게 누르기 tooltip을 찾지 못했다. AppLauncher 구현은 이 변경에 포함되지 않으며, 별도 포트의 동일 검사 3회는 소스나 테스트 수정 없이 통과했다.
 - `Lounge notifications open exact reply, preserve return focus and explicitly mark read`의 390px·1280px: 댓글을 비운 뒤 뒤로 가기에서 알림함 대신 댓글 폐기 확인이 남아 focus 기대가 실패했다. 입력·이탈 보호·초점 복귀 로직을 검토했고 변경한 부분은 버튼 컴포넌트 적용뿐이다. 개별 재실행 2개와 3회 반복 6개가 모두 통과했다.
 - 최초 세 실패의 원인은 재현되지 않아 확정하지 못했다. 전체 E2E를 모두 통과했다고 주장하지 않는다. 실패를 숨기기 위한 테스트 변경이나 재시도 설정 변경은 없다. 재현 시 후속 조사 시작점은 위 두 spec과 원래 `test-results/*/error-context.md`, `/tmp/isf-shared-components-e2e.log`다.

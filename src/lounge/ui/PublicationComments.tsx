@@ -87,7 +87,9 @@ export function PublicationComments({repository,post,onSummary,onBack,onClose,re
         <Button variant="secondary" onClick={()=>{setDiscard(null);requestAnimationFrame(()=>composer.current?.focus());}}>계속 작성</Button>
         <Button variant="primary" onClick={()=>{approved.current=true;if(discard==='back')onBack();else requestClose();}}>그만두기</Button>
       </ResponsiveDialogActionRow>:null}</>}>
-    {discard?<p>아직 등록하지 않은 댓글이 사라져요.</p>:<>
+    {discard?<p>아직 등록하지 않은 댓글이 사라져요.</p>:null}
+    {/* Preserve reply pages and avoid replaying notification-target focus on resume. */}
+    <div hidden={Boolean(discard)}>
       {loading?<p role="status" className="lounge-muted">댓글을 불러오고 있어요…</p>:null}
       {readError?<div role="alert"><p>{readError}</p><Button variant="secondary" disabled={loading} onClick={()=>void loadPage(attemptedPage.current)}>다시 불러오기</Button></div>:null}
       {!loading && !readError && roots.length===0?<p className="community-comments-empty">첫 댓글을 남겨 보세요.</p>:null}
@@ -100,6 +102,6 @@ export function PublicationComments({repository,post,onSummary,onBack,onClose,re
         <Button variant="quiet" disabled={!page.nextCursor || loading || pending} onClick={()=>{
           if(!page.nextCursor)return;cursors.current[index+1]=page.nextCursor;void loadPage(index+1,true);
         }}>다음</Button></nav>:null}
-    </>}
+    </div>
   </ResponsiveDialogLayout>;
 }

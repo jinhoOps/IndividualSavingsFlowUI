@@ -2066,7 +2066,7 @@ for(const width of [390,768,1280]) test(`Lounge conversation compact threads and
   expect(server.community.comments.size).toBe(9);await expect(input).toHaveValue('');
   expect(await preventsLeaving(page)).toBe(false);
 });
-for(const width of [390,1280])test(`Lounge notifications open exact reply, preserve return focus and explicitly mark read at ${width}px`,async({page,context},testInfo)=>{
+for(const width of [390,768,1280])test(`Lounge notifications open exact reply, preserve return focus and explicitly mark read at ${width}px`,async({page,context},testInfo)=>{
   const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});
   const rootId='dddddddd-dddd-4ddd-8ddd-000000000001',targetId='dddddddd-dddd-4ddd-8ddd-000000000025';
   server.community.comments.set(rootId,{postId:sharedPortfolio.id,owner:userA,body:'원래 질문',createdAt:'2026-09-28T01:00:00Z'});
@@ -2086,9 +2086,16 @@ for(const width of [390,1280])test(`Lounge notifications open exact reply, prese
   await page.screenshot({path:testInfo.outputPath(`notification-thread-${width}.png`)});
   await comments.getByRole('button',{name:'이전 답글'}).click();await expect(comments.getByText('대화 6',{exact:true})).toBeVisible();
   await comments.getByRole('button',{name:'다음 답글'}).click();await expect(comments.getByText('대화 25',{exact:true})).toBeVisible();
+  await comments.getByRole('button',{name:'이전 답글'}).click();await expect(comments.getByText('대화 6',{exact:true})).toBeVisible();
   await comments.getByLabel('댓글 남기기').fill('이어서 작성 중');await comments.getByRole('button',{name:'뒤로',exact:true}).click();
   await page.getByRole('button',{name:'계속 작성'}).click();await expect(comments.getByLabel('댓글 남기기')).toHaveValue('이어서 작성 중');
-  await comments.getByLabel('댓글 남기기').fill('');await comments.getByRole('button',{name:'뒤로',exact:true}).click();
+  // Let deferred focus requests finish before checking the user's next editing target.
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  await expect(comments.getByLabel('댓글 남기기')).toBeFocused();
+  await expect(comments.getByText('대화 6',{exact:true})).toBeVisible();
+  await expect(comments.getByText('대화 25',{exact:true})).toHaveCount(0);
+  await comments.getByLabel('댓글 남기기').fill('');await expect(comments.getByLabel('댓글 남기기')).toHaveValue('');
+  await comments.getByRole('button',{name:'뒤로',exact:true}).click();
   await expect(inbox.getByRole('button',{name:/차곡차곡.*답글/})).toBeFocused();await inbox.getByRole('button',{name:'닫기',exact:true}).click();
   await expect(page.getByRole('button',{name:'알림함',exact:true})).toBeFocused();
 });

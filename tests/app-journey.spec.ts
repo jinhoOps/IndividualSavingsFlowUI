@@ -442,12 +442,16 @@ test('mobile dock supports direct taps and history while preserving Main amounts
     const simulation = page.getByRole('link', { name: /미래 성장/ });
     await expect(selection).toHaveCSS('transition-property', 'none');
     await expect(simulation.locator('svg')).toHaveCSS('transition-property', 'none');
-    await simulation.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 7 });
+    await simulation.scrollIntoViewIfNeeded();
+    const box = (await simulation.boundingBox())!;
+    const touch = await context.newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+    });
     await expect(page.getByRole('tooltip')).toHaveText('미래 성장 (Simulation)');
     const [background, target] = await Promise.all([selection.boundingBox(), simulation.boundingBox()]);
     expect(Math.abs(background!.x - target!.x)).toBeLessThan(1);
-    await simulation.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 7 });
-    await simulation.dispatchEvent('click');
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(page).toHaveURL(/\/apps\/main\/$/);
     await simulation.tap();
     await expect(page).toHaveURL(/\/apps\/simulation\/$/);
