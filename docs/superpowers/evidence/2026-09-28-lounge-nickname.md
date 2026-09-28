@@ -41,7 +41,11 @@
 
 ## 배포
 
-구현·로컬 검증·운영 migration 완료. PR·Pages 배포 확인 후 이 절에 결과를 기록한다.
+- [PR #27](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/27) 병합, 코드 병합 커밋 `d8546764`.
+- [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36380239756), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36380371509), [Pages 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36380371466) 성공.
+- 실제 [라운지](https://jinhoops.github.io/IndividualSavingsFlowUI/apps/lounge/)와 JS 7개 HTTP 200. 배포 파일의 최초 랜딩, `register_lounge_nickname`, `publish_lounge_portfolio_v3` 포함을 확인했다.
+- 390/1280 비로그인 진입은 로그인 화면이고 JavaScript 오류·가로 overflow가 없다. 운영 검증을 위해 실제 닉네임·게시물을 만들지 않았다.
+- `jinhoOps/lounge-nickname` 로컬·원격 브랜치를 삭제하고 main을 동기화했다. Orca 하위 작업공간은 없다.
 
 ## 화면 증거
 

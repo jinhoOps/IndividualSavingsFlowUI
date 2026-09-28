@@ -19,6 +19,6 @@
 2. [x] 프로필 migration·등록/조회·고정 별명 강제·DB 호환/권한/경합 검사.
 3. [x] 랜딩·확인·오류/재시도·재방문, 게시 별명 입력 제거.
 4. [x] 문서, 타입·unit·전체 DB·390/768/1280·전체 E2E, 화면 직접 검토.
-5. [ ] 운영 보존 검사·migration·PR·CI·배포·브랜치/Orca 정리.
+5. [x] 운영 보존 검사·migration·PR·CI·배포·브랜치/Orca 정리.
 
-검증 완료: 타입·harness·1,255 unit, 전체 PostgreSQL, 14 focused / 278 전체 E2E(기존 PWA 1개 제외), build·390/768/1280 화면 검토 통과. 운영 migration 반영·기존 workspace 5개와 게시물 1개 보존·권한·원본 일치 확인 완료. PR·배포 확인을 이어간다. [검증 증거](../evidence/2026-09-28-lounge-nickname.md).
+검증 완료: 타입·harness·1,255 unit, 전체 PostgreSQL, 14 focused / 278 전체 E2E(기존 PWA 1개 제외), build·390/768/1280 화면 검토 통과. 운영 migration 반영·기존 workspace 5개와 게시물 1개 보존·권한·원본 일치 확인 완료. PR #27 병합, PR/main CI·Pages 배포·실제 서비스 확인 완료. 로컬·원격 작업 브랜치를 삭제하고 main을 동기화했다. [검증 증거](../evidence/2026-09-28-lounge-nickname.md).
