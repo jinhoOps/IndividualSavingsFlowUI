@@ -1,5 +1,7 @@
 import {useRef, useState, type FormEvent} from 'react';
 import type {SupabaseClient} from '@supabase/supabase-js';
+import {isKakaoBrowser} from './externalBrowser';
+import {KakaoBrowserNotice} from './KakaoBrowserNotice';
 
 export function AccountSignIn({client, onStart, onGoogleLogin, email: initialEmail = '', reauthenticate = false}: {
   client: SupabaseClient;
@@ -42,9 +44,9 @@ export function AccountSignIn({client, onStart, onGoogleLogin, email: initialEma
   }
 
   return <>
-    <button className="account-google-sign-in" type="button" disabled={busy} onClick={() => void signInWithGoogle()}>
+    {isKakaoBrowser(navigator.userAgent) ? <KakaoBrowserNotice reauthenticate={reauthenticate} /> : <button className="account-google-sign-in" type="button" disabled={busy} onClick={() => void signInWithGoogle()}>
       {reauthenticate ? 'Google로 다시 로그인' : 'Google로 계속하기'}
-    </button>
+    </button>}
     <form className="account-sign-in" aria-label="이메일 로그인" aria-busy={busy} onSubmit={event => void signIn(event)}>
       <p>기존 이메일 계정으로도 로그인할 수 있어요.</p>
       <label>이메일<input type="email" name="email" autoComplete="username" autoCapitalize="none" spellCheck={false}

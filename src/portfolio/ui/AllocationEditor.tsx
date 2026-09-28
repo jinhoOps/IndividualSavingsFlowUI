@@ -122,11 +122,24 @@ export function AllocationEditor({
       pendingCaretRef.current = null;
     }
     if (scroll !== null) {
+      scroll.element.scrollTop = scroll.top;
+      scroll.element.scrollLeft = scroll.left;
+      let lastTop = scroll.element.scrollTop;
+      let lastLeft = scroll.element.scrollLeft;
+      let interrupted = false;
       const restoreScroll = () => {
+        // Layout may settle after this commit. Never overwrite a newer scroll
+        // (including focus/keyboard navigation) while waiting for that layout.
+        if (interrupted || !scroll.element.isConnected
+          || scroll.element.scrollTop !== lastTop || scroll.element.scrollLeft !== lastLeft) {
+          interrupted = true;
+          return;
+        }
         scroll.element.scrollTop = scroll.top;
         scroll.element.scrollLeft = scroll.left;
+        lastTop = scroll.element.scrollTop;
+        lastLeft = scroll.element.scrollLeft;
       };
-      restoreScroll();
       itemEditorScrollRef.current = null;
       requestAnimationFrame(restoreScroll);
       setTimeout(restoreScroll, 0);
