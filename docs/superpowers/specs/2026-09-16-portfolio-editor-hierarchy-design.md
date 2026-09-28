@@ -14,6 +14,8 @@
 
 ## Product boundary
 
+> 2026-09-28 핫픽스: 아래의 금액 전용 입력·변경 전 적용 숨김 규칙은 [비율 편집·적용 동선 계획](../plans/2026-09-28-portfolio-ratio-save-hotfix.md)으로 대체한다. 대상 편집은 금액/비율 전환을 제공하고, 최상위 편집 footer는 변경이 없어도 비활성 적용 버튼과 함께 유지한다. 샘플 반영 뒤 focus는 활성 적용 버튼으로 돌아온다. 저장 schema와 앱 소유권은 유지한다.
+
 - Portfolio는 최신 Main `monthlyInvestmentWon`을 읽기 전용으로 사용하고 aggregate Portfolio plan·draft만 쓴다.
 - 최대 10개 자유 이름 대상, 원화 금액 입력, 계산 비율, 성장/안정 분류와 자동/사용자 지정 분류 출처를 유지한다. 현금은 항상 안정이다.
 - 결과의 금액 기본 숨김, 명시적 적용, Main 투자금 0원 안내, schema v5·protocol 5·revision·backup·retained `locations`와 `accountMap` 계약을 바꾸지 않는다.

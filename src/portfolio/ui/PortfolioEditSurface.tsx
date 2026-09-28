@@ -117,9 +117,13 @@ export function PortfolioEditSurface({
     else onCancel();
   }
 
-  function closeExamples(): void {
+  function closeExamples(replaced = false): void {
     setStage('allocation');
-    requestAnimationFrame(() => sampleTriggerRef.current?.focus());
+    requestAnimationFrame(() => {
+      const applyButton = sampleTriggerRef.current?.closest('dialog')?.querySelector<HTMLButtonElement>('.portfolio-apply-bar__actions .ui-button--primary');
+      if (replaced && applyButton && !applyButton.disabled) applyButton.focus({ preventScroll: true });
+      else sampleTriggerRef.current?.focus({ preventScroll: true });
+    });
   }
 
   return (
@@ -154,9 +158,10 @@ export function PortfolioEditSurface({
           contextHidden={stage !== 'allocation'}
           status={showSaving ? <p role="status">저장 중</p> : undefined}
           bodyClassName="portfolio-edit-surface__body"
-          footer={stage === 'allocation' && !itemEditing && dirty ? (
+          footer={stage === 'allocation' && !itemEditing ? (
             <PortfolioApplyBar
-              dirty
+              dirty={dirty}
+              persistent
               saveError={saveError}
               fieldError={cashError ?? fieldError}
               applying={applying}
@@ -175,6 +180,7 @@ export function PortfolioEditSurface({
               if (action.type === 'draft-replaced') {
                 setCashError(null);
                 setCashDirty(false);
+                setItemEditing(false);
                 setEditorGeneration((generation) => generation + 1);
               }
             }}

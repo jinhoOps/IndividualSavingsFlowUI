@@ -1,5 +1,29 @@
 import { expect, test, type CDPSession, type Locator, type Page } from '@playwright/test';
 
+for (const entry of ['setup', 'edit'] as const) {
+  test(`returns from a ratio-adjusted direct composition to the ${entry} save action`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 600 });
+    await seedMain(page, 200_000);
+    if (entry === 'edit') await seedAppliedPortfolio(page);
+    await page.goto('apps/portfolio/');
+    if (entry === 'edit') await page.getByRole('button', { name: '인덱스', exact: true }).click();
+    else await enterFirstSetupAllocation(page);
+    await page.getByRole('button', { name: '샘플로 구성하기', exact: true }).click();
+    const picker = page.getByRole('dialog', { name: '샘플로 구성하기', exact: true });
+    await picker.getByRole('button', { name: '직접 조합', exact: true }).click();
+    await picker.getByLabel('주 투자 대상', { exact: true }).selectOption('VOO');
+    await picker.getByLabel('보조 투자 대상 1', { exact: true }).selectOption('GOLD');
+    await picker.getByRole('button', { name: '주력 비율 5% 높이기' }).click();
+    await picker.getByRole('button', { name: '이 구성으로 초안 채우기' }).click();
+    if (entry === 'edit') await picker.getByRole('button', { name: '초안 바꾸기', exact: true }).click();
+    const next = page.getByRole('button', { name: entry === 'edit' ? '적용' : '배분 확인', exact: true });
+    await expect(next).toBeEnabled();
+    await next.click();
+    await page.getByRole('button', { name: entry === 'edit' ? '배분 적용' : '이대로 시작', exact: true }).click();
+    await expect(page.locator('.portfolio-allocation-list')).toContainText('VOO75%');
+  });
+}
+
 for (const entry of ['setup', 'edit']) {
   test(`replaces stale cash input when a sample fills the ${entry} draft`, async ({ page }) => {
     await seedMain(page, 200_000);
@@ -1225,8 +1249,16 @@ for (const width of [390, 768, 1280]) {
     const body = page.locator('.portfolio-edit-surface__body');
     const add = editor.getByRole('button', { name: '투자 대상 추가' });
     await expect(editor.getByRole('region', { name: '현재 배분 요약' })).toBeVisible();
+    await expect(editor.getByRole('button', { name: '적용', exact: true })).toBeDisabled();
+    await expect(editor.getByRole('button', { name: '적용', exact: true })).toBeInViewport();
+    // The persistent footer owns its space; every row and the add action remain reachable in the body.
+    for (const target of await editor.locator('.portfolio-editor__row-summary').all()) {
+      await target.scrollIntoViewIfNeeded();
+      await expect(target).toBeInViewport();
+    }
+    await add.scrollIntoViewIfNeeded();
     await expect(add).toBeInViewport();
-    for (const row of await editor.locator('.portfolio-editor__row-summary').all()) await expect(row).toBeInViewport();
+    await body.evaluate(element => { element.scrollTop = 0; });
     let row = editor.getByRole('button', { name: /글로벌 인덱스 편집/ });
     await row.click();
     let item = page.getByRole('region', { name: '투자 대상 수정' });

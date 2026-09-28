@@ -69,6 +69,8 @@ describe('Portfolio shared dialogs', () => {
 
     const dialog = screen.getByRole('dialog', { name: '투자 배분 수정' });
     expect(dialog.querySelector('[data-surface-layout="edit"]')).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: '적용' })).toBeDisabled();
+    expect(within(dialog).getByText('변경사항이 없어요')).toBeVisible();
     fireEvent.click(within(dialog).getByRole('button', { name: /미국 인덱스 편집/ }));
 
     expect(screen.getAllByRole('dialog')).toHaveLength(1);

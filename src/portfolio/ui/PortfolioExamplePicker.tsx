@@ -45,7 +45,7 @@ export function PortfolioExamplePicker({
   investmentWon: number;
   now(): number;
   onAction(action: PortfolioAction): void;
-  onClose(): void;
+  onClose(replaced?: boolean): void;
   onDismiss?(): void;
   active?: boolean;
   embedded?: boolean;
@@ -183,7 +183,7 @@ export function PortfolioExamplePicker({
 
   function replaceDraft(candidate: PortfolioDraft): void {
     onAction({ type: 'draft-replaced', draft: candidate });
-    onClose();
+    onClose(true);
   }
 
   function setAssistant(index: number, assetId: PortfolioAssetId | ''): void {

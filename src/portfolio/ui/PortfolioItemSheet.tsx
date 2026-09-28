@@ -9,7 +9,7 @@ import { ResponsiveDialogActionRow, ResponsiveDialogLayout } from '../../compone
 import { SegmentedControl } from '../../components/common/SegmentedControl';
 import { adjustWon, formatWonInput, normalizeMoneyEdit, parseWonInput } from '../../core/domain/moneyInput';
 import { normalizePortfolioName, recommendClassification } from '../domain/classification';
-import type { Classification, ClassificationOrigin } from '../domain/model';
+import type { Classification, ClassificationOrigin, InputMode } from '../domain/model';
 import { formatAllocationPercent } from './format';
 
 const QUICK_TARGET_NAMES = ['S&P 500', '나스닥', '코스피', '미국 국채', '금 현물'] as const;
@@ -25,6 +25,8 @@ export interface PortfolioItemSheetProps {
   initialValue: PortfolioItemSheetValue;
   existingNames: string[];
   investmentWon: number;
+  initialInputMode?: InputMode;
+  onInputModeChange?(mode: InputMode): void;
   returnFocusRef: RefObject<HTMLElement | null>;
   inline?: boolean;
   inlineStage?: boolean;
@@ -43,6 +45,8 @@ export function PortfolioItemSheet({
   initialValue,
   existingNames,
   investmentWon,
+  initialInputMode = 'amount',
+  onInputModeChange,
   returnFocusRef,
   inline = false,
   inlineStage = false,
@@ -56,6 +60,9 @@ export function PortfolioItemSheet({
   const session = useContext(AccountDraftContext);
   const [name, setName] = useState(recovered?.name ?? initialValue.name);
   const [amount, setAmount] = useState(() => recovered?.amount ?? formatWonInput(initialValue.amountWon));
+  const [inputMode, setInputMode] = useState<InputMode>(recovered?.inputMode ?? initialInputMode);
+  const [percentage, setPercentage] = useState(() => recovered?.percentage
+    ?? percentageForAmount(parseWonInput(recovered?.amount ?? formatWonInput(initialValue.amountWon)), investmentWon));
   const [classification, setClassification] = useState(recovered?.classification ?? initialValue.classification);
   const [classificationOrigin, setClassificationOrigin] = useState(recovered?.classificationOrigin ?? initialValue.classificationOrigin);
   const [nameTouched, setNameTouched] = useState(false);
@@ -75,15 +82,21 @@ export function PortfolioItemSheet({
   const nameError = normalizedName.length === 0
     ? '투자 대상 이름을 입력해 주세요.'
     : duplicateName ? '같은 이름의 투자 대상이 이미 있습니다.' : null;
-  const amountError = !Number.isInteger(amountWon) || amountWon < 1_000
+  const percentageError = inputMode === 'percentage' && !validPercentage(percentage)
+    ? '0~100% 사이의 비율을 소수점 넷째 자리까지 입력해 주세요.' : null;
+  const amountError = percentageError ?? (!Number.isInteger(amountWon) || amountWon < 1_000
     ? '투자 대상 금액은 1,000원 이상이어야 합니다.'
-    : amountWon > investmentWon ? '월 투자금을 초과할 수 없습니다.' : commitError;
+    : amountWon > investmentWon ? '월 투자금을 초과할 수 없습니다.' : commitError);
   const dirty = name !== initialValue.name
     || amount !== formatWonInput(initialValue.amountWon)
+    || percentageError !== null
     || classification !== initialValue.classification
     || classificationOrigin !== initialValue.classificationOrigin;
   const title = mode === 'add' ? '투자 대상 추가' : '투자 대상 수정';
-  useAccountRecovery(recoveryKey, { name, amount, classification, classificationOrigin }, dirty);
+  useAccountRecovery(recoveryKey, {
+    name, amount, classification, classificationOrigin,
+    ...(inputMode === 'percentage' ? { inputMode, percentage } : {}),
+  }, dirty);
 
   useLayoutEffect(() => {
     if (pendingCaretRef.current === null || amountInputRef.current === null) return;
@@ -165,6 +178,21 @@ export function PortfolioItemSheet({
     amountInputRef.current?.focus();
   }
 
+  function changeInputMode(nextMode: InputMode): void {
+    if (nextMode === inputMode) return;
+    // Switching presentation must not round or alter the amount being edited.
+    setPercentage(percentageForAmount(amountWon, investmentWon));
+    setInputMode(nextMode);
+    onInputModeChange?.(nextMode);
+  }
+
+  function changePercentage(value: string): void {
+    setPercentage(value);
+    setAmountTouched(true);
+    setCommitError(null);
+    if (validPercentage(value)) setAmount(formatWonInput(Math.round(investmentWon * Number(value) / 100)));
+  }
+
   const removeItem = () => {
     session?.recordRecoveryDraft(recoveryKey, null);
     onRemove?.();
@@ -223,16 +251,26 @@ export function PortfolioItemSheet({
               ))}
             </div>
           ) : null}
+          <SegmentedControl
+            label="배분 입력 방식"
+            value={inputMode}
+            options={[{ value: 'amount', label: '금액' }, { value: 'percentage', label: '비율' }]}
+            onChange={changeInputMode}
+          />
           <label className="portfolio-item-sheet__amount">
-            <span>금액</span>
+            <span>{inputMode === 'percentage' ? '비율' : '금액'}</span>
             <span className="portfolio-item-sheet__amount-control"><input
               ref={amountInputRef}
-              inputMode="numeric"
-              aria-label="금액"
+              inputMode={inputMode === 'percentage' ? 'decimal' : 'numeric'}
+              aria-label={inputMode === 'percentage' ? '비율' : '금액'}
               aria-invalid={amountTouched && amountError ? 'true' : undefined}
               aria-describedby={amountTouched && amountError ? 'portfolio-item-amount-error' : amountError ? undefined : 'portfolio-item-calculated-percentage'}
-              value={amount}
+              value={inputMode === 'percentage' ? percentage : amount}
               onChange={(event) => {
+                if (inputMode === 'percentage') {
+                  changePercentage(event.target.value);
+                  return;
+                }
                 const normalized = normalizeMoneyEdit(
                   event.target.value,
                   event.target.selectionStart ?? event.target.value.length,
@@ -244,16 +282,24 @@ export function PortfolioItemSheet({
                 setAmount(normalized.displayValue);
               }}
             />
-            <span aria-hidden="true">원</span></span>
+            <span aria-hidden="true">{inputMode === 'percentage' ? '%' : '원'}</span></span>
             {amountTouched && amountError ? (
               <span className="portfolio-editor__field-error" id="portfolio-item-amount-error">{amountError}</span>
             ) : amountError === null ? (
               <span className="portfolio-item-sheet__calculated" id="portfolio-item-calculated-percentage">
-                계산 비율 {formatAllocationPercent(investmentWon > 0 ? amountWon / investmentWon * 100 : 0)}
+                {inputMode === 'percentage'
+                  ? <>환산 금액 <strong>{formatWonInput(amountWon)}원</strong></>
+                  : <>계산 비율 {formatAllocationPercent(investmentWon > 0 ? amountWon / investmentWon * 100 : 0)}</>}
               </span>
               ) : null}
           </label>
-          <MoneyAdjustments
+          {inputMode === 'percentage' ? <div className="ui-money-adjustments portfolio-item-sheet__quick-adjustments" role="group" aria-label="비율 빠른 조정">
+            {[-5, -1, 1, 5].map(delta => <Button key={delta} type="button" variant="quiet"
+              data-direction={delta < 0 ? 'decrease' : 'increase'}
+              disabled={!validPercentage(percentage) || Number(percentage) + delta < 0 || Number(percentage) + delta > 100}
+              onClick={() => changePercentage(String(Number((Number(percentage) + delta).toFixed(4))))}
+            >{delta > 0 ? '+' : ''}{delta}%p</Button>)}
+          </div> : <MoneyAdjustments
             className="portfolio-item-sheet__quick-adjustments"
             label="빠른 조정"
             onAdjust={(deltaWon) => {
@@ -261,7 +307,7 @@ export function PortfolioItemSheet({
               setCommitError(null);
               setAmount(formatWonInput(adjustWon(amountWon, deltaWon)));
             }}
-          />
+          />}
     </div>
   );
 
@@ -273,6 +319,8 @@ export function PortfolioItemSheet({
       amountInputRef.current?.focus();
       return;
     }
+    // Recovery can restore the local mode before the draft preference reached the server.
+    if (inputMode !== initialInputMode) onInputModeChange?.(inputMode);
     session?.recordRecoveryDraft(recoveryKey, null);
   };
 
@@ -401,6 +449,8 @@ function parseItemRecovery(value: unknown): {
   amount: string;
   classification: Classification;
   classificationOrigin: ClassificationOrigin;
+  inputMode?: InputMode;
+  percentage?: string;
 } | null {
   if (typeof value !== 'object' || value === null) return null;
   const draft = value as Record<string, unknown>;
@@ -412,5 +462,15 @@ function parseItemRecovery(value: unknown): {
     amount: draft.amount,
     classification: draft.classification,
     classificationOrigin: draft.classificationOrigin,
+    ...(draft.inputMode === 'percentage' && typeof draft.percentage === 'string'
+      ? { inputMode: 'percentage' as const, percentage: draft.percentage } : {}),
   };
+}
+
+function validPercentage(value: string): boolean {
+  return /^(?:\d+(?:\.\d{0,4})?|\.\d{1,4})$/.test(value) && Number(value) <= 100;
+}
+
+function percentageForAmount(amountWon: number, investmentWon: number): string {
+  return String(investmentWon > 0 ? Number((amountWon / investmentWon * 100).toFixed(4)) : 0);
 }
