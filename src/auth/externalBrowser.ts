@@ -4,7 +4,7 @@ export function isKakaoBrowser(userAgent: string): boolean {
   return /KAKAOTALK/i.test(userAgent);
 }
 
-/** Only the current site's app path and approved publication ID leave this browser. */
+/** Only the current site's app path and validated post/comment targets leave this browser. */
 export function externalBrowserLinks(href: string, base: string): {url: string; kakao: string} | null {
   try {
     const current = new URL(href);

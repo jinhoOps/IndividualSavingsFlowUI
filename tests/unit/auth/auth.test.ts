@@ -1,5 +1,13 @@
 import {describe, expect, it} from 'vitest';
 import {authCallbackUrl, completeAuthCallback, readSupabaseConfig, safeReturnPath} from '../../../src/auth/auth';
+it('keeps a validated community comment target with its post and removes credentials',()=>{
+  const post='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',comment='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const base='/IndividualSavingsFlowUI/';
+  expect(safeReturnPath(`${base}apps/lounge/?post=${post}&comment=${comment}&access_token=secret#refresh_token=private`,base))
+    .toBe(`${base}apps/lounge/?post=${post}&comment=${comment}`);
+  expect(safeReturnPath(`${base}apps/lounge/?comment=${comment}`,base)).toBe(`${base}apps/lounge/`);
+  expect(safeReturnPath(`${base}apps/portfolio/?comment=${comment}`,base)).toBe(`${base}apps/portfolio/`);
+});
 
 describe('static Google auth', () => {
   it('requires public configuration and refuses secret credentials', () => {

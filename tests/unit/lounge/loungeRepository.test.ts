@@ -11,6 +11,35 @@ function fixture() {
   return {client,headers,rpc,setAccount:(value:string)=>{account=value;},setResponse:(value:unknown)=>{response=value;}};
 }
 describe('Lounge authenticated transport',()=>{
+  it('sends selected mentions and reply relationships as one idempotent request',async()=>{
+    const f=fixture(),repo=createLoungeRepository(f.client);
+    const other='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const write={id,postId:id,rootId:null,replyToId:null,body:'@사용자 안녕',mentions:[{start:0,end:4,publicId:other,label:'사용자'}]};
+    const comment={id,rootId:null,replyToId:null,author:{publicId:other,nickname:'작성자'},body:write.body,
+      mentions:[{...write.mentions[0],currentNickname:'사용자'}],createdAt:post.updatedAt,deleted:false,isMine:true,replyCount:0};
+    const summary={postId:id,reactions:[],commentCount:1,uniqueReactors:0};
+    const context={postId:id,root:comment,page:{comments:[],nextCursor:null},targetId:id,previousCursor:null};
+    f.setResponse({status:'saved',comment,summary,context});
+    expect((await repo.addConversationComment(write)).comment.id).toBe(id);
+    expect(f.rpc).toHaveBeenLastCalledWith('add_lounge_comment_v2',{p_input:write});
+    await repo.addConversationComment(write);expect(f.rpc).toHaveBeenLastCalledWith('add_lounge_comment_v2',{p_input:write});
+    f.setResponse({status:'mention-changed'});await expect(repo.addConversationComment(write)).rejects.toMatchObject({code:'mention-changed'});
+    f.setResponse({comments:[comment],nextCursor:null});expect((await repo.listThreads(id)).comments).toEqual([comment]);
+    f.setResponse(context);expect(await repo.getCommentContext(id,id)).toEqual(context);
+    f.setResponse({...context,postId:other});await expect(repo.getCommentContext(id,id)).rejects.toMatchObject({code:'invalid'});
+  });
+  it('keeps notification reads recipient-bound and only marks explicit snapshot IDs',async()=>{
+    const f=fixture(),repo=createLoungeRepository(f.client);
+    const state={unreadCount:1,readCutoff:post.updatedAt};
+    f.setResponse({...state,items:[],nextCursor:null,readIds:[id]});
+    expect((await repo.listNotifications(true)).readIds).toEqual([id]);
+    expect(f.rpc).toHaveBeenLastCalledWith('list_lounge_notifications',{p_unread_only:true,p_cursor:null});
+    f.setResponse(state);await repo.readNotifications([id],post.updatedAt);
+    expect(f.rpc).toHaveBeenLastCalledWith('read_lounge_notifications',{p_ids:[id],p_cutoff:post.updatedAt});
+    await expect(repo.readNotifications(Array(101).fill(id),null)).rejects.toMatchObject({code:'invalid'});
+    f.setResponse([{publicId:id,nickname:'a@b'}]);expect((await repo.findMentionTargets(id,'a@'))[0].nickname).toBe('a@b');
+    f.setAccount('B');await expect(repo.getUnreadCount()).rejects.toMatchObject({code:'account'});
+  });
   it('sends idempotent community intent with no account, nickname or client time fields',async()=>{
     const f=fixture();const repo=createLoungeRepository(f.client);
     const summary={postId:id,reactions:[{emoji:'like',count:1,mine:true}],commentCount:1,uniqueReactors:1};
