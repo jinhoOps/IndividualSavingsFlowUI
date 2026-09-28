@@ -48,6 +48,13 @@ function fakeServer() {
   const loungeWrites: unknown[] = [];
   const profiles = new Map<string, {nickname: string}>([[userA,{nickname:'나의별명'}],[userB,{nickname:'차곡차곡'}]]);
   const profileWrites: unknown[] = [];
+  const nicknameWrites: unknown[] = [];
+  const profileVersions = new Map<string, number>();
+  const profileChangeTimes = new Map<string, number>();
+  let nicknameClock: number | null = null;
+  const nicknameSettings = (user: string) => profiles.has(user) ? {nickname: profiles.get(user)!.nickname, version: profileVersions.get(user) ?? 1,
+    nextChangeAt: profileChangeTimes.has(user) ? new Date(profileChangeTimes.get(user)! + 48 * 3600000).toISOString() : null,
+    serverNow: new Date(nicknameClock ?? Date.now()).toISOString()} : null;
   let failProfileRead = false;
   const rows = new Map<string, WorkspaceDocument>();
   const receipts = new Map<string, unknown>();
@@ -117,6 +124,25 @@ function fakeServer() {
         if(failProfileRead) {await route.abort('failed');return;}
         await route.fulfill({json:profiles.get(user)??null});return;
       }
+      if (operation==='get_lounge_profile_v2') {
+        if(failProfileRead) {await route.abort('failed');return;}
+        await route.fulfill({json:nicknameSettings(user)});return;
+      }
+      if (operation==='change_lounge_nickname') {
+        const args=route.request().postDataJSON();nicknameWrites.push(args);await writeBarrier;
+        if(failWrite) {await route.abort('failed');return;}
+        const nickname=parseNickname(args.p_nickname),profile=nicknameSettings(user);
+        if(!nickname||!Number.isSafeInteger(args.p_expected_version)||args.p_expected_version<1) {await route.fulfill({json:{status:'invalid'}});return;}
+        if(!profile) {await route.fulfill({json:{status:'profile-required'}});return;}
+        if(nickname===profile.nickname) {await route.fulfill({json:{status:'unchanged',profile}});return;}
+        if(args.p_expected_version!==profile.version) {await route.fulfill({json:{status:'conflict',profile}});return;}
+        if(profile.nextChangeAt&&Date.parse(profile.nextChangeAt)>Date.parse(profile.serverNow)) {await route.fulfill({json:{status:'cooldown',profile}});return;}
+        if([...profiles].some(([id,p])=>id!==user&&p.nickname.toLowerCase()===nickname.toLowerCase())) {await route.fulfill({json:{status:'taken'}});return;}
+        profiles.set(user,{nickname});profileVersions.set(user,profile.version+1);profileChangeTimes.set(user,nicknameClock??Date.now());
+        for(const p of publications.values()) if(p.owner===user&&p.post.alias!==nickname) p.post={...p.post,alias:nickname,version:p.post.version+1};
+        if(loseResponse) {loseResponse=false;await route.abort('failed');return;}
+        await route.fulfill({json:{status:'saved',profile:nicknameSettings(user)}});return;
+      }
       if (operation==='register_lounge_nickname') {
         const args=route.request().postDataJSON();profileWrites.push(args);
         if(failWrite) {await route.abort('failed');return;}
@@ -174,7 +200,7 @@ function fakeServer() {
       await route.fulfill({json: result});
     });
   }
-  return {rows, operations, publications, loungeWrites, profiles, profileWrites, setFailProfileRead(value: boolean) {failProfileRead=value;}, shares, sharePolicy, attach, holdWrites() {
+  return {rows, operations, publications, loungeWrites, profiles, profileWrites, profileVersions, profileChangeTimes, nicknameWrites, setNicknameTime(value: number) {nicknameClock=value;}, setFailProfileRead(value: boolean) {failProfileRead=value;}, shares, sharePolicy, attach, holdWrites() {
     let release!: () => void;
     writeBarrier = new Promise<void>(resolve => {release = resolve;});
     return () => {writeBarrier = null; release();};
@@ -2073,7 +2099,7 @@ test('Lounge paginates without repeats and updates its one shared post',async({p
 });
 
 for (const width of [390,768,1280]) {
-  test(`Lounge nickname landing, confirmation and immutable return at ${width}px`, async ({page,context},testInfo)=>{
+  test(`Lounge nickname landing, confirmation and saved return at ${width}px`, async ({page,context},testInfo)=>{
     const server=fakeServer();server.profiles.delete(userA);await server.attach(context,userA);
     await page.setViewportSize({width,height:844});
     await page.goto('apps/lounge/');
@@ -2095,7 +2121,7 @@ for (const width of [390,768,1280]) {
     await confirm.click();const dialog=page.getByRole('dialog',{name:'이 닉네임으로 시작할까요?'});
     await expect(dialog).toBeVisible();await expect(dialog).toHaveAttribute('data-presentation',width<768?'sheet':'modal');
     await expect(dialog.getByRole('button',{name:'닫기',exact:true})).toBeFocused();
-    await expect(dialog.getByText('최초 설정 후 변경할 수 없어요.',{exact:true})).toBeVisible();
+    await expect(dialog.getByText('닉네임을 변경하면 48시간 동안 다시 바꿀 수 없어요.',{exact:true})).toBeVisible();
     await expect(dialog).toHaveCSS('transform','none');await expect(dialog).toHaveCSS('opacity','1');
     const box=(await dialog.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width+1);expect(box.height).toBeLessThanOrEqual(844*.88+1);expect(box.y+box.height).toBeLessThanOrEqual(845);
     await dialog.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).focus();await page.keyboard.press('Tab');
@@ -2141,4 +2167,75 @@ test('Lounge profile read failure cannot start onboarding, and concurrent regist
   server.profiles.set(userA,{nickname:'먼저등록'});
   await page.getByRole('button',{name:'이 닉네임으로 시작',exact:true}).click();
   await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('먼저등록');expect(server.profiles.get(userA)?.nickname).toBe('먼저등록');
+});
+
+for(const width of [390,768,1280]) {
+  test(`Lounge nickname change, 48h server lock and publication refresh at ${width}px`,async({page,context},testInfo)=>{
+    const server=fakeServer();const original=resultCardPlan();server.rows.set(userA,original);
+    const oldPost={...sharedPortfolio,alias:'나의별명',isMine:true};server.publications.set(oldPost.id,{owner:userA,post:oldPost});
+    server.setNicknameTime(Date.parse('2026-09-28T12:00:00Z'));
+    await server.attach(context,userA);await page.setViewportSize({width,height:844});await page.goto('apps/lounge/');
+    const open=page.getByRole('button',{name:'닉네임 변경',exact:true});await open.click();
+    const dialog=page.getByRole('dialog',{name:'닉네임 변경',exact:true});
+    await expect(dialog).toHaveAttribute('data-presentation',width<768?'sheet':'modal');await expect(dialog).toHaveCSS('transform','none');
+    const input=dialog.getByLabel('새 닉네임'),save=dialog.getByRole('button',{name:'변경하기',exact:true});
+    await expect(input).toHaveValue('나의별명');await expect(save).toBeDisabled();expect(await preventsLeaving(page)).toBe(false);
+    await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);await expect(open).toBeFocused();
+    await open.click();await expect(input).toHaveValue('나의별명');
+    for(const bad of ["x';DROP TABLE x--",'<svg/onload=alert(1)>','a\u202eb']) {await input.fill(bad);await expect(save).toBeDisabled();}
+    await input.fill('새로운-Kim.1@');await expect(save).toBeEnabled();
+    await expect(dialog).toHaveCSS('transform','none');await expect(dialog).toHaveCSS('opacity','1');
+    const box=(await dialog.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width+1);expect(box.y+box.height).toBeLessThanOrEqual(845);
+    expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath(`nickname-change-${width}.png`)});
+    await save.click();await expect(dialog).toHaveCount(0);await expect(open).toBeFocused();
+    await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('새로운-Kim.1@');
+    await expect(page.getByRole('button',{name:`${oldPost.title} 상세 보기`})).toContainText('새로운-Kim.1@');
+    expect(server.nicknameWrites).toEqual([{p_nickname:'새로운-Kim.1@',p_expected_version:1}]);
+    expect(server.publications.get(oldPost.id)?.post).toEqual({...oldPost,alias:'새로운-Kim.1@',version:2});
+    expect(server.rows.get(userA)).toEqual(original);expect(server.operations).toEqual([]);expect(await preventsLeaving(page)).toBe(false);
+    await open.click();await expect(input).toBeDisabled();await expect(save).toBeDisabled();await expect(dialog.getByText(/다음 변경 가능/)).toBeVisible();
+    await expect(dialog).toHaveCSS('transform','none');await expect(dialog).toHaveCSS('opacity','1');
+    await page.screenshot({path:testInfo.outputPath(`nickname-cooldown-${width}.png`)});
+    await page.keyboard.press('Escape');server.setNicknameTime(Date.parse('2026-09-30T11:59:00Z'));
+    await open.click();await expect(input).toBeDisabled();await page.keyboard.press('Escape');
+    server.setNicknameTime(Date.parse('2026-09-30T12:00:00Z'));await open.click();await expect(input).toBeEnabled();
+    await input.fill('다음-이름');await save.click();await expect(dialog).toHaveCount(0);expect(server.profileVersions.get(userA)).toBe(3);
+  });
+}
+
+test('Lounge nickname failed load, duplicate and lost-response retry preserve input and do not renew lock',async({page,context})=>{
+  const server=fakeServer();await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('apps/lounge/');const open=page.getByRole('button',{name:'닉네임 변경',exact:true});
+  await expect(open).toBeVisible();server.setFailProfileRead(true);await open.click();
+  const dialog=page.getByRole('dialog',{name:'닉네임 변경',exact:true}),save=dialog.getByRole('button',{name:'변경하기',exact:true});
+  await expect(dialog.getByRole('alert')).toBeVisible();await expect(save).toBeDisabled();
+  server.setFailProfileRead(false);await dialog.getByRole('button',{name:'다시 불러오기',exact:true}).click();
+  const input=dialog.getByLabel('새 닉네임');await input.fill('차곡차곡');await save.click();await expect(dialog.getByRole('alert')).toContainText('이미 사용 중');
+  await input.fill('보존할이름');server.setFailWrite(true);await save.click();await expect(dialog.getByRole('alert')).toContainText('다시 시도');await expect(input).toHaveValue('보존할이름');
+  server.setFailWrite(false);server.loseNextResponse();await save.click();await expect(dialog.getByRole('alert')).toContainText('다시 시도');
+  const changedAt=server.profileChangeTimes.get(userA);expect(changedAt).toBeDefined();await save.click();await expect(dialog).toHaveCount(0);
+  expect(server.profileVersions.get(userA)).toBe(2);expect(server.profileChangeTimes.get(userA)).toBe(changedAt);
+  expect(await preventsLeaving(page)).toBe(false);
+});
+
+test('Lounge nickname concurrent update is shown without overwriting and dirty cancel is explicit',async({page,context})=>{
+  const server=fakeServer();await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('apps/lounge/');
+  const open=page.getByRole('button',{name:'닉네임 변경',exact:true});await open.click();const dialog=page.getByRole('dialog',{name:'닉네임 변경',exact:true});
+  await dialog.getByLabel('새 닉네임').fill('내입력');await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog',{name:'입력 중인 닉네임을 버릴까요?'})).toBeVisible();await page.getByRole('button',{name:'계속 입력',exact:true}).click();
+  server.profiles.set(userA,{nickname:'다른기기이름'});server.profileVersions.set(userA,2);server.profileChangeTimes.set(userA,Date.now());
+  await dialog.getByRole('button',{name:'변경하기',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('다른 곳에서');
+  await expect(dialog.getByLabel('새 닉네임')).toHaveValue('내입력');await expect(dialog.getByLabel('새 닉네임')).toBeDisabled();
+  await expect(page.getByLabel('내 라운지 닉네임')).toHaveText('다른기기이름');expect(server.profiles.get(userA)?.nickname).toBe('다른기기이름');
+  await page.keyboard.press('Escape');await page.getByRole('button',{name:'입력 버리기',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await preventsLeaving(page)).toBe(false);await expect(open).toBeFocused();
+});
+
+test('Lounge renders hostile published text as text without executable HTML',async({page,context})=>{
+  const server=fakeServer();const hostile={...sharedPortfolio,title:'<img src=x onerror=alert(1)>',note:"<script>alert(1)</script> '; DROP TABLE lounge_profiles; --"};
+  server.publications.set(hostile.id,{owner:userB,post:hostile});await server.attach(context,userA);await page.emulateMedia({reducedMotion:'reduce'});
+  const dialogs:string[]=[];page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss();});
+  await page.goto('apps/lounge/');await page.getByRole('button',{name:`${hostile.title} 상세 보기`}).click();const dialog=page.getByRole('dialog',{name:hostile.title});
+  await expect(dialog.getByText(hostile.note,{exact:true})).toBeVisible();await expect(dialog.locator('script,img')).toHaveCount(0);expect(dialogs).toEqual([]);expect(server.operations).toEqual([]);
 });

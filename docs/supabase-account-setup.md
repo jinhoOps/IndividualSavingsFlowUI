@@ -211,7 +211,15 @@ from public.result_card_shares group by state;
 
 `202609280004_lounge_nickname.sql`은 `lounge_profiles`·조회/등록 RPC·별명 없는 게시 RPC v3와 고정 닉네임 trigger를 추가한다. 운영 프로젝트에 migration과 이력을 한 트랜잭션으로 적용했으며 workspace 5개·게시물 1개의 전후 전체 행 checksum이 같았다. 프로필은 자동 등록하지 않았다. 권한·원본 일치·로컬 검증과 배포 결과는 [검증 증거](superpowers/evidence/2026-09-28-lounge-nickname.md)에 기록한다.
 
-- 계정당 한 번 등록하며 영문 대소문자를 무시한 중복은 DB UNIQUE로 차단한다. 직접 테이블 접근·변경 API는 제공하지 않고 FORCE RLS·전용 역할·계정 삭제 cascade·5,000행 상한을 적용한다.
+- 최초 등록은 계정당 한 번이며 영문 대소문자를 무시한 중복은 DB UNIQUE로 차단한다. 직접 테이블 접근은 차단하고 FORCE RLS·전용 역할·계정 삭제 cascade·5,000행 상한을 적용한다. 이후 변경 기능은 아래 48시간 제한 rollout을 따른다.
 - 기존 게시물 별명은 migration 중 자동 등록하지 않는다. 사용자가 직접 확정할 때 기존 공유의 이름·version만 갱신한다.
 - 구버전 읽기·삭제는 유지한다. 미등록 사용자의 구버전 게시·갱신은 차단되므로 최신 앱에서 닉네임을 설정해야 한다. 등록 후에는 구버전이 보낸 임의의 별명도 고정 닉네임으로 저장한다.
 - workspace schema v5/protocol 5와 저장·백업 계약은 그대로다. 이미지 생성·보관 용량에는 영향이 없다.
+
+### 라운지 닉네임 변경 · 48시간 제한
+
+`202609280005_lounge_nickname_change.sql`은 기존 이름을 보존하면서 서버 변경시각·version을 추가하고 profile v2/변경 RPC를 제공한다. v1 등록·조회 응답은 유지한다. 최초 변경은 즉시 가능하며 실제 변경 성공부터 48시간 동안 다음 변경을 거부한다. 운영 migration과 이력 적용을 완료했으며 workspace 5개·게시물 1개·기존 프로필 값의 전후 checksum이 같았다. 권한·trigger·로컬/운영 SQL digest 일치를 확인했다. [변경 계획](superpowers/plans/2026-09-28-lounge-nickname-change.md)과 [검증 증거](superpowers/evidence/2026-09-28-lounge-nickname-change.md)에 기록한다.
+
+- 고정 SQL·매개변수 RPC·정규화 전 입력 상한·allowlist·본인 claim·FORCE RLS·전용 owner/빈 search_path를 사용한다. RPC 역할은 profile의 nickname 컬럼만 UPDATE할 수 있고 시간/version은 trigger가 설정한다.
+- 닉네임과 기존 본인 게시물 이름/version을 한 트랜잭션에서 바꾼다. 기존 게시물 날짜·비율·정확한 금액 비공개 정책·workspace는 유지한다.
+- 기존 영구 변경 금지 trigger를 48시간 검사로 교체하며 등록 RPC는 변경 용도로 사용할 수 없다.

@@ -34,6 +34,25 @@ describe('Lounge authenticated transport',()=>{
     f.setResponse({status:'profile-required'});
     await expect(repo.publish({title:post.title,note:'',allocation:post.allocation},null)).rejects.toMatchObject({code:'profile-required'});
   });
+  it('loads server time and changes through parameter-only RPC without client identity or clock',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    const profile={nickname:'새닉네임',version:2,nextChangeAt:'2026-09-30T12:00:00Z',serverNow:'2026-09-28T12:00:00Z'};
+    f.setResponse(profile);expect(await repo.getNicknameSettings()).toEqual(profile);
+    expect(f.rpc).toHaveBeenLastCalledWith('get_lounge_profile_v2',{});
+    for(const status of ['saved','unchanged','cooldown','conflict']) {
+      f.setResponse({status,profile});expect(await repo.changeNickname('새닉네임',1)).toEqual({status,profile});
+      expect(f.rpc).toHaveBeenLastCalledWith('change_lounge_nickname',{p_nickname:'새닉네임',p_expected_version:1});
+    }
+    f.setResponse({status:'taken'});await expect(repo.changeNickname('다른이름',2)).rejects.toMatchObject({code:'nickname-taken'});
+    f.setResponse({status:'saved',profile:{...profile,user_id:id}});await expect(repo.changeNickname('다른이름',2)).rejects.toMatchObject({code:'invalid'});
+  });
+  it('rejects malformed change inputs and account switching before sending a request',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    await expect(repo.changeNickname("x';drop table x--",1)).rejects.toMatchObject({code:'invalid'});
+    await expect(repo.changeNickname('닉네임',NaN)).rejects.toMatchObject({code:'invalid'});expect(f.rpc).not.toHaveBeenCalled();
+    f.setResponse(null);await expect(repo.getNicknameSettings()).rejects.toMatchObject({code:'profile-required'});
+    f.setAccount('B');await expect(repo.changeNickname('새이름',1)).rejects.toMatchObject({code:'account'});expect(f.rpc).toHaveBeenCalledTimes(1);
+  });
   it('pins the account token and refuses a different account on subsequent requests',async()=>{
     const f=fixture();const repository=createLoungeRepository(f.client);
     expect(await repository.get(id)).toEqual(post);expect(f.headers).toEqual(['Bearer A-token']);

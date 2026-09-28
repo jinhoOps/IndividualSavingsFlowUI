@@ -758,6 +758,8 @@ test('slides the mobile edit card in from below the viewport', async ({ page }, 
   await seedAppliedPortfolio(page);
   await page.goto('apps/portfolio/');
   await expect(page.locator('.portfolio-allocation-row__select').first()).toBeVisible();
+  // Measure the entrance after the page's font metrics settle.
+  await page.evaluate(() => document.fonts.ready);
   const frames = await page.evaluate(async () => {
     const samples: { top: number; height: number; bottom: number }[] = [];
     const started = performance.now();
