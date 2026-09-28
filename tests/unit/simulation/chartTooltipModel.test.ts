@@ -21,20 +21,20 @@ const source: ProjectionPoint = {
 const [point] = buildChartSeries([source], 'nominal');
 
 describe('buildChartTooltipModel', () => {
-  it('builds compact period, values, and screen-reader status from one display point', () => {
-    expect(buildChartTooltipModel(point!, true)).toMatchObject({
+  it('builds matching visible values and screen-reader status from one display point', () => {
+    expect(buildChartTooltipModel(point!)).toMatchObject({
       periodLabel: '6개월',
       values: {
         periodLabel: '6개월',
         currentPlanWon: 12_000_000,
         principalWon: 9_000_000,
       },
-      status: '6개월, 현재 계획 총액 1,200만 원, 누적 납입원금 900만 원',
+      status: '6개월, 현재 계획 총액 1,200만 원, 전부 저축 총액 1,000만 원, 누적 납입원금 900만 원, 저축 잔액 400만 원, 투자 잔액 800만 원',
     });
   });
 
   it('keeps every detailed value from the same display point', () => {
-    expect(buildChartTooltipModel(point!, false).values).toMatchObject({
+    expect(buildChartTooltipModel(point!).values).toMatchObject({
       periodLabel: '6개월',
       currentPlanWon: point!.currentPlanWon,
       allSavingsWon: point!.allSavingsWon,
