@@ -41,7 +41,14 @@
 - 신규 테이블 3개 모두 ENABLE/FORCE RLS. RPC 5개는 `lounge_rpc_owner` 소유, SECURITY DEFINER, 빈 search_path.
 - authenticated RPC 실행 권한 5개, anon/service_role RPC 실행 0개, 세 역할의 직접 테이블·private helper 권한 0개.
 - RPC owner는 NOLOGIN/NOINHERIT/NOBYPASSRLS. 새 댓글·공감·활동 행은 모두 0개로 운영 테스트 콘텐츠를 만들지 않았다.
-- 적용 후 DB **18,599,059바이트**. 프런트 PR·Pages 배포 결과는 완료 후 갱신한다.
+- 적용 후 DB **18,599,059바이트**. [PR #30](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/30) 병합 SHA `cbbc9a906cf5e008cfc50d15b54c5044569928ce`. [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36386514210), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36386681680), [Pages](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36386681692) 모두 성공.
+
+### 실제 배포 확인
+
+- 실제 로그인된 운영 라운지에서 카드의 이모지 추가·댓글 0개를 확인하고 댓글 창을 열었다. `get_lounge_community`, `get_lounge_portfolio_v2`, `list_lounge_comments`가 모두 HTTP 200으로 응답했다.
+- 빈 댓글 목록·빈 입력의 등록 비활성화, dialog 화면 포함·가로 overflow 없음, 조회 후 닫기에서 확인창 없음·원래 댓글 버튼 초점 복귀를 확인했다. 실제 운영 댓글·공감은 작성하지 않았다.
+- 별도 새 브라우저에서 일반 UA 390/1280, Kakao UA 390/768/1280의 실제 배포 로그인 화면을 확인했다. 모두 HTTP 200, JS 오류·가로 overflow 없음. Kakao의 외부 링크는 구조와 안내만 검증했으며 실제 휴대폰 앱 전환을 검증한 것은 아니다.
+- 로컬/원격 기능 브랜치를 삭제하고 main을 동기화했다. Orca 조회 결과 작업 트리는 루트 1개이며 하위 작업 트리는 없다.
 
 ## 화면
 

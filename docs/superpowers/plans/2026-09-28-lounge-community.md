@@ -33,8 +33,8 @@
 
 - [x] PRD·DESIGN·라운지 기존 spec의 범위 갱신, 사용자 README 갱신.
 - [x] 운영 DB 크기와 기존 세 테이블 digest 확인 → 신규 migration 적용 → 권한/RPC·digest 재확인. 운영 테스트 게시물/댓글은 생성하지 않는다.
-- [ ] PR·CI·병합·Pages 확인과 실제 배포 화면 smoke. 검증 기록·화면 보관.
-- [ ] 원격/로컬 branch·Orca 상태 정리. 카카오 실기기 전환 한계와 DB 전체 예산 관찰 필요를 사실대로 인계.
+- [x] PR·CI·병합·Pages 확인과 실제 배포 화면 smoke. 검증 기록·화면 보관.
+- [x] 원격/로컬 branch·Orca 상태 정리. 카카오 실기기 전환 한계와 DB 전체 예산 관찰 필요를 사실대로 인계.
 
 ## 리뷰 초점
 
