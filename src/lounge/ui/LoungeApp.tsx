@@ -17,9 +17,12 @@ import {NicknameChangeDialog} from './NicknameChangeDialog';
 import {CommunityBar} from './CommunityBar';
 import {PublicationComments, type CommentNavigation} from './PublicationComments';
 import {useLoungeCommunity} from './useLoungeCommunity';
+import {useLoungeRefresh} from './useLoungeRefresh';
+import {refreshPublications} from './refreshPublications';
 
 export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null}: {repository: LoungeRepository; nickname: string; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const gridRef=useRef<HTMLDivElement>(null);
   const managementTrigger = useRef<HTMLButtonElement>(null);
   const [currentNickname, setCurrentNickname] = useState(nickname);
   const [changingNickname, setChangingNickname] = useState(false);
@@ -94,10 +97,38 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     } catch(error) {if (mounted.current) setError(loungeErrorMessage(error));}
     finally {editorLock.current = false; if (mounted.current) setOpeningEditor(false);}
   }
+  const refreshBlocked=useRef(false);
+  refreshBlocked.current=loading || Boolean(error) || detailOpen || Boolean(editor) || openingEditor || changingNickname;
+  function canRefreshFeed() {
+    return !refreshBlocked.current && document.visibilityState!=='hidden' && window.scrollY<=1 &&
+      !gridRef.current?.contains(document.activeElement) && !document.querySelector('[role="dialog"],[role="menu"],.community-picker');
+  }
+  useLoungeRefresh(async()=>{
+    const visible=[...(gridRef.current?.querySelectorAll<HTMLElement>('[data-post-id]')??[])].filter(card=>{
+      const box=card.getBoundingClientRect();
+      return box.bottom>0 && box.top<innerHeight && !card.querySelector('.community')?.contains(document.activeElement);
+    }).map(card=>card.dataset.postId!);
+    if(detailOpen && detail) visible.push(detail.id);
+    const summaries=community.load(visible,true,()=>!document.activeElement?.closest('.community'));
+    if(canRefreshFeed()) {
+      const token=generation.current;
+      try {
+        const latest=await repository.list(mine);
+        if(mounted.current && token===generation.current && canRefreshFeed()) {
+          const next=refreshPublications(posts,latest);
+          setPosts(previous=>JSON.stringify(previous)===JSON.stringify(next)?previous:next);
+          if(next.length<=PUBLICATION_PAGE_SIZE) setMore(latest.length===PUBLICATION_PAGE_SIZE);
+          void community.load(latest.filter(post=>!community.entries[post.id]).map(post=>post.id));
+        }
+      } catch { /* A background failure keeps the current view until the next poll. */ }
+    }
+    await summaries;
+  });
   return <AppShell currentApp="lounge" managementMenu={<AppManagementMenu triggerRef={managementTrigger}
     items={[{kind:'action',id:'change-nickname',label:'닉네임 변경',onSelect:() => setChangingNickname(true)}]} />}>
     <AppContentFrame className="lounge-page">
-      <header className="lounge-header"><div><p className="lounge-eyebrow">PORTFOLIO LOUNGE</p><h1 ref={headingRef} tabIndex={-1}>포트폴리오 라운지</h1><p className="lounge-muted" aria-label="내 라운지 닉네임">{currentNickname}</p></div>
+      <h1 className="lounge-heading" ref={headingRef} tabIndex={-1}>포트폴리오 라운지</h1>
+      <header className="lounge-header"><p className="lounge-muted" aria-label="내 라운지 닉네임">{currentNickname}</p>
         {allocation ? <button ref={publishTrigger} className="ui-button ui-button--primary" onClick={openEditor} disabled={openingEditor}><Plus size={18} aria-hidden="true" />{openingEditor ? '불러오는 중' : '내 포트폴리오 공유'}</button>
           : <a className="ui-button ui-button--secondary" href={appPath('portfolio')}>{plan ? '투자 대상 이름 확인' : '내 포트폴리오 만들기'}</a>}
       </header>
@@ -106,7 +137,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
       <div aria-live="polite">{notice ? <p className="lounge-notice">{notice}</p> : null}{loading ? <p className="lounge-muted" role="status">포트폴리오를 불러오고 있어요…</p> : null}</div>
       {error ? <div className="lounge-empty" role="alert"><p>{error}</p><button className="ui-button ui-button--secondary" onClick={() => void load()}>다시 불러오기</button></div> : null}
       {!loading && !error && posts.length===0 ? <section className="lounge-empty"><h2>{mine ? '아직 공유한 포트폴리오가 없어요' : '첫 포트폴리오를 공유해 보세요'}</h2><p>종목과 비율로 서로의 투자 구성을 살펴봐요.</p>{!allocation ? <a className="ui-button ui-button--quiet" href={appPath('portfolio')}>투자 배분 시작하기 <ArrowUpRight size={18} /></a> : null}</section> : null}
-      <div className="lounge-grid">{posts.map(post => <article key={post.id} className="lounge-card">
+      <div ref={gridRef} className="lounge-grid">{posts.map(post => <article key={post.id} className="lounge-card" data-post-id={post.id}>
         <button className="lounge-card__open" aria-label={`${post.title} 상세 보기`} aria-describedby={post.assetBand ? `lounge-asset-${post.id}` : undefined} onClick={event => {trigger.current=event.currentTarget; void loadDetail(post.id);}}>
           <span className="lounge-card__meta"><span>{post.alias}{post.isMine ? ' · 내 공유' : ''}</span><time dateTime={post.updatedAt}>{new Date(post.updatedAt).toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}</time></span>
           <span className="lounge-card__title">{post.title}<ArrowUpRight size={20} aria-hidden="true" /></span>

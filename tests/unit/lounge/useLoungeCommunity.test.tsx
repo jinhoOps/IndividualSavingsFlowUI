@@ -7,6 +7,31 @@ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const empty:CommunitySummary={postId:id,reactions:[],commentCount:0,uniqueReactors:0};
 const selected:CommunitySummary={...empty,reactions:[{emoji:'like',count:1,mine:true}],uniqueReactors:1};
 describe('Lounge summary request ordering',()=>{
+  it('defers a quiet result if the user starts interacting before it returns',async()=>{
+    const read=vi.fn().mockResolvedValueOnce([empty]);
+    const {result}=renderHook(()=>useLoungeCommunity({getCommunity:read} as unknown as LoungeRepository));
+    await act(async()=>{await result.current.load([id]);});
+    let finish!:(value:CommunitySummary[])=>void,allowed=true;
+    read.mockImplementationOnce(()=>new Promise<CommunitySummary[]>(r=>{finish=r;}));
+    let request!:Promise<void>;act(()=>{request=result.current.load([id],true,()=>allowed);});
+    allowed=false;await act(async()=>{finish([selected]);await request;});
+    expect(result.current.entries[id]).toEqual({summary:empty});
+  });
+  it('keeps controls available during quiet reads and preserves data on background failure',async()=>{
+    const read=vi.fn().mockResolvedValueOnce([empty]);
+    const {result}=renderHook(()=>useLoungeCommunity({getCommunity:read} as unknown as LoungeRepository));
+    await act(async()=>{await result.current.load([id]);});
+    let finish!:(value:CommunitySummary[])=>void;
+    read.mockImplementationOnce(()=>new Promise<CommunitySummary[]>(r=>{finish=r;}));
+    let request!:Promise<void>;act(()=>{request=result.current.load([id],true);});
+    expect(result.current.entries[id].loading).not.toBe(true);expect(result.current.entries[id].summary).toEqual(empty);
+    await act(async()=>{finish([selected]);await request;});expect(result.current.entries[id].summary).toEqual(selected);
+    read.mockRejectedValueOnce(new Error('offline'));
+    await act(async()=>{await result.current.load([id],true);});
+    expect(result.current.entries[id]).toEqual({summary:selected});
+    read.mockResolvedValueOnce([selected]);await act(async()=>{await result.current.load([id]);});
+    expect(result.current.entries[id].loading).not.toBe(true);
+  });
   for(const olderReactionResponse of [false,true]) it(`reconciles overlapping comment and reaction mutations, older response: ${olderReactionResponse}`,async()=>{
     let resolve!:(value:{status:'saved';summary:CommunitySummary})=>void;
     const final={...selected,commentCount:1};

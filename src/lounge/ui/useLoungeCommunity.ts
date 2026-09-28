@@ -9,13 +9,16 @@ export function useLoungeCommunity(repository: LoungeRepository) {
   const sequence = useRef(0);
   const locks = useRef(new Set<string>());
   const mounted = useRef(true);
+  const currentEntries=useRef(entries);
+  currentEntries.current=entries;
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;tokens.current={};};},[]);
   const next = (id:string) => tokens.current[id]=++sequence.current;
-  const load = useCallback(async (ids:string[])=>{
-    const requested = [...new Set(ids)].filter(id=>!locks.current.has(id));
+  const load = useCallback(async (ids:string[],quiet=false,canApply:()=>boolean=()=>true)=>{
+    const requested = [...new Set(ids)].filter(id=>!locks.current.has(id) &&
+      (!quiet || (currentEntries.current[id]?.summary && !currentEntries.current[id]?.loading)));
     if (!requested.length) return;
     const current = new Map(requested.map(id=>[id,next(id)]));
-    setEntries(previous=>{
+    if(!quiet) setEntries(previous=>{
       const result={...previous};for(const id of requested) result[id]={...result[id],pending:false,loading:true,error:''};return result;
     });
     // Publication pages contain 12 IDs; explicitly bound batches for other callers.
@@ -23,17 +26,19 @@ export function useLoungeCommunity(repository: LoungeRepository) {
       const batch=requested.slice(offset,offset+24);
       try {
         const summaries=await repository.getCommunity(batch);
-        if (!mounted.current) return;
+        if (!mounted.current || !canApply()) return;
         setEntries(previous=>{
           const result={...previous};
           for(const id of batch) if(tokens.current[id]===current.get(id)) {
             const summary=summaries.find(s=>s.postId===id);
-            result[id]=summary?{summary}:{error:'삭제되었거나 더 이상 볼 수 없는 게시물이에요.'};
+            if(summary) result[id]=quiet && JSON.stringify(previous[id]?.summary)===JSON.stringify(summary) && !previous[id]?.error
+              ? previous[id] : {summary};
+            else if(!quiet) result[id]={error:'삭제되었거나 더 이상 볼 수 없는 게시물이에요.'};
           }
           return result;
         });
       } catch(error) {
-        if (!mounted.current) return;
+        if (!mounted.current || quiet) return;
         setEntries(previous=>{
           const result={...previous};for(const id of batch) if(tokens.current[id]===current.get(id)) result[id]={...result[id],loading:false,error:loungeErrorMessage(error)};return result;
         });

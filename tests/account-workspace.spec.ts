@@ -1978,6 +1978,87 @@ for (const failure of ['response-lost', 'conflict'] as const) {
 
 const sharedPortfolio: Publication = {id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc', title:'배당과 금의 균형',alias:'차곡차곡',note:'매달 같은 비율로 나눠요.',assetBand:'100m',
   allocation:{items:[{name:'SCHD',shareUnits:500000},{name:'금',shareUnits:500000}],cashShareUnits:0},version:1,updatedAt:'2026-09-28T01:00:00Z',isMine:false};
+test('Lounge quiet refresh discards a late feed response after the filter changes',async({page,context})=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});await server.attach(context,userA);
+  await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');
+  await expect(page.getByRole('button',{name:'배당과 금의 균형 상세 보기'})).toBeVisible();
+  let release!:()=>void;const barrier=new Promise<void>(r=>{release=r;});let held=false;
+  await page.route('**/rest/v1/rpc/list_lounge_portfolios_v2',async route=>{
+    if(!held){held=true;await barrier;await route.fulfill({json:[sharedPortfolio]});}else await route.fallback();
+  });
+  await page.clock.fastForward(30_000);await expect.poll(()=>held).toBe(true);
+  await expect(page.getByRole('status').filter({hasText:'포트폴리오를 불러오'})).toHaveCount(0);
+  await page.getByRole('button',{name:'내 공유',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'아직 공유한 포트폴리오가 없어요'})).toBeVisible();
+  const late=page.waitForResponse(r=>r.url().endsWith('/list_lounge_portfolios_v2'));release();await (await late).finished();await page.clock.runFor(100);
+  await expect(page.getByRole('button',{name:'내 공유',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.lounge-card')).toHaveCount(0);
+});
+test('Lounge quiet refresh never replaces comments after typing starts during a read',async({page,context})=>{
+  const server=fakeServer();server.publications.set(sharedPortfolio.id,{owner:userB,post:sharedPortfolio});await server.attach(context,userA);
+  await page.emulateMedia({reducedMotion:'reduce'});await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');
+  await page.getByRole('button',{name:'댓글 0개 보기'}).click();
+  const dialog=page.getByRole('dialog',{name:'댓글',exact:true});await expect(dialog.getByText('첫 댓글을 남겨 보세요.')).toBeVisible();
+  let release!:()=>void;const barrier=new Promise<void>(r=>{release=r;});let held=false;
+  await page.route('**/rest/v1/rpc/list_lounge_comments',async route=>{
+    held=true;await barrier;await route.fulfill({json:{comments:[{id:'dddddddd-dddd-4ddd-8ddd-000000000001',nickname:'차곡차곡',body:'늦은 응답',createdAt:'2026-09-28T04:00:00Z',isMine:false}],hasMore:false}});
+  });
+  await page.clock.fastForward(30_000);await expect.poll(()=>held).toBe(true);
+  const input=dialog.getByLabel('댓글 남기기');await input.fill('입력을 유지해 주세요');
+  const late=page.waitForResponse(r=>r.url().endsWith('/list_lounge_comments'));release();await (await late).finished();await page.clock.runFor(100);
+  await expect(input).toHaveValue('입력을 유지해 주세요');await expect(input).toBeFocused();
+  await expect(dialog.getByText('늦은 응답',{exact:true})).toHaveCount(0);
+});
+for(const width of [390,768,1280]) test(`Lounge quiet refresh preserves browsing and drafts at ${width}px`,async({page,context},testInfo)=>{
+  const server=fakeServer();server.rows.set(userA,resultCardPlan());
+  const posts=Array.from({length:13},(_,i)=>({...sharedPortfolio,id:`eeeeeeee-eeee-4eee-8eee-${String(i+1).padStart(12,'0')}`,
+    title:`공유 ${i+1}`,updatedAt:new Date(Date.UTC(2026,8,28,1,0,59-i)).toISOString()}));
+  for(const post of posts)server.publications.set(post.id,{owner:userB,post});
+  server.community.reactions.set(posts[0].id,new Map([['like',new Set([userB])]]));
+  await server.attach(context,userA);await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:'reduce'});
+  await page.clock.install();await page.clock.pauseAt(new Date());await page.goto('apps/lounge/');
+  await expect(page.locator('.lounge-card')).toHaveCount(12);
+  await expect(page.getByRole('button',{name:'좋아요 1명',exact:true})).toBeVisible();
+  await page.evaluate(()=>document.fonts.ready);
+  expect((await page.locator('.lounge-header').boundingBox())!.height).toBeLessThanOrEqual(50);
+  expect((await page.getByRole('heading',{name:'포트폴리오 라운지',exact:true}).boundingBox())!.width).toBe(1);
+  await expect(page.locator('.lounge-header .lounge-eyebrow')).toHaveCount(0);
+  expect(await page.locator('html').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`lounge-compact-${width}.png`),fullPage:false});
+  server.community.reactions.get(posts[0].id)!.get('like')!.add(userA);
+  const newest={...sharedPortfolio,id:'ffffffff-ffff-4fff-8fff-ffffffffffff',title:'새로운 공유',updatedAt:'2026-09-28T03:00:00Z'};
+  server.publications.set(newest.id,{owner:userB,post:newest});
+  await page.clock.fastForward(29_000);await expect(page.getByRole('button',{name:'좋아요 1명',exact:true})).toBeVisible();
+  await page.clock.fastForward(1_000);await expect(page.getByRole('button',{name:'좋아요 2명',exact:true})).toBeVisible();
+  await expect(page.locator('.lounge-card').first()).toContainText('새로운 공유');
+  await expect(page.getByRole('status').filter({hasText:'불러오'})).toHaveCount(0);
+  expect(await page.evaluate(()=>scrollY)).toBe(0);
+  await page.getByRole('button',{name:'더 보기',exact:true}).click();await expect(page.locator('.lounge-card')).toHaveCount(14);
+  const last=page.locator('.lounge-card').last();await last.scrollIntoViewIfNeeded();
+  await last.evaluate(el=>{el.setAttribute('data-preserved','yes');});
+  const scroll=await page.evaluate(()=>scrollY);
+  server.publications.set(newest.id,{owner:userB,post:{...newest,title:'맨 위에서 반영될 제목',version:2}});
+  server.community.reactions.set(posts[12].id,new Map([['heart',new Set([userB])]]));
+  await page.clock.fastForward(30_000);
+  await expect(last.getByRole('button',{name:'마음에 들어요 1명',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>scrollY)).toBe(scroll);await expect(last).toHaveAttribute('data-preserved','yes');
+  await expect(page.getByRole('button',{name:'새로운 공유 상세 보기'})).toHaveCount(1);
+  await last.getByRole('button',{name:'댓글 0개 보기'}).click();
+  const dialog=page.getByRole('dialog',{name:'댓글',exact:true});await expect(dialog.getByText('첫 댓글을 남겨 보세요.')).toBeVisible();
+  server.community.comments.set('dddddddd-dddd-4ddd-8ddd-000000000001',{postId:posts[12].id,owner:userB,body:'자동으로 갱신된 댓글',createdAt:'2026-09-28T03:00:00.000Z'});
+  await page.clock.fastForward(30_000);await expect(dialog.getByText('자동으로 갱신된 댓글',{exact:true})).toBeVisible();
+  const input=dialog.getByLabel('댓글 남기기');await input.fill('작성 중인 댓글');
+  server.community.comments.set('dddddddd-dddd-4ddd-8ddd-000000000002',{postId:posts[12].id,owner:userB,body:'입력 후에 보일 댓글',createdAt:'2026-09-28T04:00:00.000Z'});
+  await page.clock.fastForward(30_000);await expect(input).toHaveValue('작성 중인 댓글');await expect(input).toBeFocused();
+  await expect(dialog.getByText('입력 후에 보일 댓글',{exact:true})).toHaveCount(0);
+  await input.fill('');await page.clock.fastForward(30_000);await expect(dialog.getByText('입력 후에 보일 댓글',{exact:true})).toBeVisible();
+  await expect(input).toBeFocused();await expect(dialog.getByRole('status').filter({hasText:'불러오'})).toHaveCount(0);
+  server.community.readFailure=true;await page.clock.fastForward(30_000);
+  await expect(dialog.getByText('입력 후에 보일 댓글',{exact:true})).toBeVisible();await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await dialog.getByRole('button',{name:'닫기',exact:true}).click();await expect(dialog).toHaveCount(0);
+  await expect(last.getByRole('button',{name:'댓글 2개 보기'})).toBeFocused();
+  expect(server.operations).toEqual([]);expect(server.loungeWrites).toEqual([]);
+});
 for (const width of [390,768,1280]) {
   test(`Lounge community reactions and paged comments at ${width}px`,async({page,context},testInfo)=>{
     const server=fakeServer();const original=resultCardPlan();server.rows.set(userA,structuredClone(original));
