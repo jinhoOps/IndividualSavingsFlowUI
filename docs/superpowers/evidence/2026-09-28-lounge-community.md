@@ -34,7 +34,14 @@
 
 ## 운영 진행
 
-운영 반영 전 조회: workspace **6개 / bb648f4df4b9f594fad3f90a706e0843**, publication **2개 / 6db7f3b098778958980bebd80bc1d028**, profile **2개 / edb9c11d8d6c37a3075420d6e2cc67d6**. DB **18,394,259바이트**. 새 테이블·006 이력은 없었다. DB migration·프런트 배포 결과는 완료 후 갱신한다.
+운영 반영 전 조회: workspace **6개 / bb648f4df4b9f594fad3f90a706e0843**, publication **2개 / 6db7f3b098778958980bebd80bc1d028**, profile **2개 / edb9c11d8d6c37a3075420d6e2cc67d6**. DB **18,394,259바이트**. 새 테이블·006 이력은 없었다.
+
+운영 migration `202609280006` 적용 완료. 원본 SQL MD5 `bb8c2c006c41d25cb6ee6549760ec6fa`와 migration 이력의 SQL이 일치한다. 기존 세 테이블을 잠시 읽기 잠금하고 같은 트랜잭션에서 전후 digest가 다르면 롤백하도록 적용했다. 별도 사후 조회에서도 위 건수·해시가 모두 동일했다.
+
+- 신규 테이블 3개 모두 ENABLE/FORCE RLS. RPC 5개는 `lounge_rpc_owner` 소유, SECURITY DEFINER, 빈 search_path.
+- authenticated RPC 실행 권한 5개, anon/service_role RPC 실행 0개, 세 역할의 직접 테이블·private helper 권한 0개.
+- RPC owner는 NOLOGIN/NOINHERIT/NOBYPASSRLS. 새 댓글·공감·활동 행은 모두 0개로 운영 테스트 콘텐츠를 만들지 않았다.
+- 적용 후 DB **18,599,059바이트**. 프런트 PR·Pages 배포 결과는 완료 후 갱신한다.
 
 ## 화면
 
