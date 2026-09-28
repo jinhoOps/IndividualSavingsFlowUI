@@ -1,6 +1,6 @@
 # 커뮤니티 답글·멘션·알림함 구현 계획
 
-**상태:** 2026-09-28 구현·로컬 검증 및 운영 DB/job 적용 완료. 프런트 PR/Pages 출시 확인 중.
+**상태:** 2026-09-28 구현·검증·운영 DB/job·PR #33/Pages 출시·로컬/Orca 정리 완료. [검증 증거](../evidence/2026-09-28-community-conversation.md)를 따른다.
 
 **실행:** 이 세션의 native 방식으로 순차 진행한다. 각 단계의 계약·실제 DB 검증·UI 검증을 마친 뒤 다음 단계로 간다.
 
@@ -222,7 +222,7 @@ expect(fullyVisible).toBeGreaterThanOrEqual(5);
 **파일:** PRD, DESIGN, 기존 댓글 spec의 현재 상태, `docs/supabase-account-setup.md`, 새 `docs/superpowers/evidence/2026-09-28-community-conversation.md`.
 
 - [x] 답글 깊이·계정 삭제 자리 처리·공개 식별자·앱 내 알림·밀도 규격을 현재 제품 문서에 반영한다. 구현 전에는 본 계획의 초안 표시를 완료로 바꾸지 않는다.
-- [ ] `npm run check:ci`, `node scripts/test-workspace-db.mjs`, `npx vite build`, `npx playwright test`를 실행한다. v1 댓글/프로필/게시물, 로그인 복귀·Kakao 안전 URL, 가져오기/금융 workspace 보존을 회귀 범위에 넣는다.
+- [x] `npm run check:ci`, `node scripts/test-workspace-db.mjs`, `npx vite build`, `npx playwright test`를 실행한다. v1 댓글/프로필/게시물, 로그인 복귀·Kakao 안전 URL, 가져오기/금융 workspace 보존을 회귀 범위에 넣는다.
 - [x] 390/768/1280, 짧은 모바일 높이, 실제 모바일 키보드, 200% 확대, pointer drag/scroll, 키보드·스크린리더 이름·44px·reduced motion을 기록한다. 실기기 미검증은 별도로 남긴다.
 - [x] migration 전후 기존 데이터의 변경 대상 외 projection/digest·DB 크기·권한·v1/v2 RPC를 확인한다. 삭제/탈퇴 fixture는 로컬 disposable DB에서만 만든다.
-- [ ] DB migration과 알림 정리 job → 프런트 PR/CI/Pages → 운영 읽기 확인 순서로 출시한다. 롤백 시 대화 데이터를 삭제하지 않고 이전 프런트로 되돌린다. 원격/로컬·Orca 정리는 이 출시 범위가 모두 끝난 후 한다.
+- [x] DB migration과 알림 정리 job → 프런트 PR/CI/Pages → 운영 읽기 확인 순서로 출시한다. 롤백 시 대화 데이터를 삭제하지 않고 이전 프런트로 되돌린다. 원격/로컬·Orca 정리는 이 출시 범위가 모두 끝난 후 한다.

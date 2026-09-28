@@ -1,6 +1,6 @@
 # 커뮤니티 탐색·정렬 검증
 
-상태: 2026-09-28 운영 DB·job 적용 완료, 전체 E2E·프런트 rollout 진행 중. 브랜치 `jinhoOps/community-expansion`.
+상태: 2026-09-28 구현·전체 검증·운영 DB/job·Pages 출시·PR 병합·작업공간 정리 완료. 현재 `main`.
 
 ## 구현
 
@@ -14,7 +14,7 @@
 - `npm run check:ci`: 146개 파일, 1,317개 unit 통과.
 - `node scripts/test-workspace-db.mjs`: 기존 170 TS/SQL fixture·금융/저장/대화/탐색/집계 모두 통과.
 - `npx playwright test tests/account-workspace.spec.ts --project=cloud --grep 'Lounge discovery'`: 6/6. 390/768/1280 화면 확인, focus/취소/오류/IME/오래된 응답/커서 만료 포함.
-- 전체 E2E와 배포 빌드 결과는 rollout 완료 시 아래에 추가한다. 로컬 빌드는 test fixture 공개 연결 설정을 사용하며 운영 CI는 기존 배포 설정을 사용한다.
+- `npx playwright test --trace retain-on-failure`: 319 통과·1 의도된 PWA 프로젝트 skip (13.0분). `npx vite build`: test fixture 공개 연결 설정으로 성공. 운영 CI는 기존 배포 설정을 사용한다.
 
 ## 최대 규모 성능
 
@@ -49,10 +49,19 @@
 migration 007~009의 전후 원본 비교·운영 이력 MD5·권한 검증을 완료했다. 자세한 공통 결과는 [대화 운영 증거](2026-09-28-community-conversation.md#운영)를 따른다.
 
 - 최초 `private.refresh_lounge_ranking()` 성공: 1세대·2행.
-- `lounge-ranking-refresh` 매 15분 활성화. 최초 수동 실행은 성공했고 예약 실행 기록은 확인 중이다.
+- `lounge-ranking-refresh` 매 15분 활성화. 최초 수동 실행에 이어 2026-09-28 09:00 UTC 예약 실행도 succeeded(약 40ms)로 확인했다. 집계 2세대·4행, DB 19,229,843B.
 - 클라이언트의 private 집계 테이블 직접 접근과 유지보수 함수 실행 권한은 없다.
 - 원본 사용자 데이터 보존, 운영 DB 약 19.2MB. 실제 사용자 게시물·댓글·반응을 시험용으로 추가하지 않았다.
 
 ## 전체 E2E 재검증
 
-최초 전체 실행은 316 통과·1 skip·3 실패였다. 실패는 Main 버튼 hover 색 대비 한 건과 닉네임 저장 후 초점 복귀/설정 재진입 두 건이다. 동일 코드로 trace 재현 4/4 및 초점·색상 진단을 넣은 3회 반복 12/12가 통과해 제품 코드를 임의 변경하지 않았다. 임시 진단을 제거한 뒤 모든 파일 변경을 멈추고 전체 실행을 재검증한다. skip은 일반 프로젝트에서 service worker를 차단하므로 별도 PWA 프로젝트가 담당하는 offline revisit 한 건이다.
+최초 전체 실행은 316 통과·1 skip·3 실패였다. 실패는 Main 버튼 hover 색 대비 한 건과 닉네임 저장 후 초점 복귀/설정 재진입 두 건이다. 동일 코드로 trace 재현 4/4 및 초점·색상 진단을 넣은 3회 반복 12/12가 통과해 제품 코드를 임의 변경하지 않았다. 임시 진단을 제거한 뒤 모든 파일 변경을 멈춘 전체 재실행에서 319 통과·1 skip을 확인했다. 제품 코드 수정 없이 전체 gate가 통과했으며 간헐 실패의 단일 원인을 확정하지는 않았다. skip은 일반 프로젝트에서 service worker를 차단하므로 별도 PWA 프로젝트가 담당하는 offline revisit 한 건이다.
+
+## 출시·정리 완료
+
+- [PR #33](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/33) 병합: `9da8259c4a18376454aa8f6022b545e613afc099`.
+- [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36400040496), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36401416563), [Pages 운영 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36401416485) 모두 성공했다.
+- 배포 후 실제 로그인 브라우저에서 `SCHD` 검색·댓글순 정렬·기존 댓글 조회·답글/멘션 입력 UI·빈 알림함·관리 메뉴 내부 닉네임 변경 진입을 읽기만으로 확인했다. 해당 검색/대화/알림 RPC는 HTTP 200이었다. 운영 게시물·댓글·공감·읽음 상태를 시험용으로 변경하지 않았다.
+- 기존 PWA의 자동 업데이트 후 일반 새로고침으로 새 UI가 반영됐다. 인증/저장 데이터를 초기화하지 않았다.
+- 같은 주식색 두 종목의 실제 폭 66.6667%/33.3333%, 뒤 구간의 흰색 35%·1px inset 경계를 운영 DOM에서도 확인했다.
+- 로컬 main을 원격 병합 결과로 fast-forward하고, 완료된 계획/구현 브랜치와 Orca 하위 workspace를 정리했다. 실행 ledger는 메인 workspace에 보존했다. 이 문서의 후속 변경은 출시 증거만 보완하며 제품 코드 변경은 없다.

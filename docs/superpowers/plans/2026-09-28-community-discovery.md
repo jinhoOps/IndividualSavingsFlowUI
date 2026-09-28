@@ -1,6 +1,6 @@
 # 커뮤니티 검색·필터·정렬 구현 계획
 
-**상태:** 2026-09-28 구현·로컬 검증 및 운영 DB/job 적용 완료. 프런트 PR/Pages 출시 확인 중.
+**상태:** 2026-09-28 구현·검증·운영 DB/job·PR #33/Pages 출시·로컬/Orca 정리 완료. [검증 증거](../evidence/2026-09-28-community-discovery.md)를 따른다.
 
 **실행:** native 방식으로 순차 진행한다. Task 1~3 검색·필터와 Task 4 정렬을 순차 구현하고 대화와 한 프런트 출시로 통합한다. [대화·알림 계획](2026-09-28-community-conversation.md) 이후 실행을 추천하며 선행 출시 없이 탐색부터 진행할 경우 알림 슬롯은 추가하지 않는다.
 
@@ -159,7 +159,7 @@ job 실패 => 이전 pointer/집계 동일, 읽기는 가능
 - [x] disposable 로컬 DB에 최대 5,000 게시물·20,000 댓글·100,000 반응을 구성한다. `EXPLAIN (ANALYZE, BUFFERS)`와 준비 후 20회 쿼리의 p95를 환경과 함께 기록한다. 초기 SQL 실행 목표는 p95 200ms 이내이며 실제 운영 네트워크 성능 보장과 구분한다.
 - [x] 대상은 전체 최근순, 한 글자 `금`, 티커, 미공개 구간, 다중 필터, 공감/댓글 정렬 후반 커서다. 인덱스/집계 크기·최대 DB 증가량·15분 job 시간을 함께 기록한다.
 - [x] 검색이 목표를 넘으면 먼저 계획과 읽은 행 수를 확인한다. 그때만 정규화 검색 컬럼+pg_trgm 후보를 비교한다. 한 글자 검색을 삭제하거나 외부 검색 서비스를 즉시 도입하지 않는다. 추가 인덱스는 migration·용량 검증과 같이 커밋한다.
-- [ ] 검색·필터와 정렬 각각 출시 전 `npm run check:ci`, `node scripts/test-workspace-db.mjs`, `npx vite build`, `npx playwright test`, 문서 링크·`git diff --check`를 통과시킨다. UI는 390/768/1280·200% 확대·44px·focus·sheet containment를 확인한다.
+- [x] 검색·필터와 정렬 각각 출시 전 `npm run check:ci`, `node scripts/test-workspace-db.mjs`, `npx vite build`, `npx playwright test`, 문서 링크·`git diff --check`를 통과시킨다. UI는 390/768/1280·200% 확대·44px·focus·sheet containment를 확인한다.
 - [x] 구현된 기능만 README/PRD/DESIGN에 현재 기능으로 적는다. 이름 추정 자산군 필터·번호 페이지·가상 스크롤·팔로우/개인화는 미구현 상태로 남긴다. 필요성은 실제 결과/성능으로 다시 판단한다.
-- [ ] 검색 출시: 기존 데이터 비교 → migration008/RPC 권한·v2 호환 검증 → 프런트/CI/Pages → 운영 읽기 확인. 정렬 출시: migration009 → 첫 집계/cron 실행 성공·행/용량 확인 → UI 활성화 → 운영 읽기 확인.
+- [x] 검색 출시: 기존 데이터 비교 → migration008/RPC 권한·v2 호환 검증 → 프런트/CI/Pages → 운영 읽기 확인. 정렬 출시: migration009 → 첫 집계/cron 실행 성공·행/용량 확인 → UI 활성화 → 운영 읽기 확인.
 - [x] 정렬 장애 시 정렬 메뉴/cron만 비활성화하고 최근 수정순을 제공한다. 검색 장애 시 이전 프런트/list RPC로 복귀한다. 사용자 게시물·대화·workspace를 rollback 용도로 삭제하지 않는다.

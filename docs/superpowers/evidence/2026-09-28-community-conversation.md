@@ -1,6 +1,6 @@
 # 커뮤니티 대화·알림·밀도 검증
 
-상태: 2026-09-28 운영 DB·job 적용 완료, 전체 E2E·프런트 rollout 진행 중. 브랜치 `jinhoOps/community-expansion`.
+상태: 2026-09-28 구현·전체 검증·운영 DB/job·Pages 출시·PR 병합·작업공간 정리 완료. 현재 `main`.
 
 ## 구현과 확인
 
@@ -19,7 +19,7 @@
 - 390×844에서 두 줄 댓글 5개, 768/1280 중앙 모달 확인. 44px 조작 영역과 16px 입력, 본문/입력 분리, 답글 초안 유지·dirty guard·성공 후 해제·알림 왕복 focus 확인.
 - 390×520 및 1280×900의 200% zoom 상당 640×450에서 멘션 후보와 등록 버튼 containment 확인. 기존 inline 후보가 footer를 밀어 잘리는 실패를 재현하고 입력 위 제한 높이 후보 목록/짧은 화면 2줄 입력으로 수정, 같은 테스트 통과. drag 닫기·후보 키보드 선택·focus 복귀 확인.
 - 실제 iOS/Android 키보드, 실제 스크린리더, 물리 기기 200% browser zoom은 미검증이다. viewport emulation과 접근성 이름/키보드 검증을 실기기 증거로 주장하지 않는다.
-- 전체 E2E·production build 결과는 아래 운영 완료와 함께 추가한다.
+- `npx playwright test --trace retain-on-failure`: 319 통과·1 의도된 PWA 프로젝트 skip (13.0분). `npx vite build`: 공개 fixture 연결 설정으로 성공. GitHub 운영 빌드는 기존 배포 설정을 사용한다.
 
 ## 운영
 
@@ -48,4 +48,15 @@
 
 ## 전체 E2E 재검증
 
-최초 전체 실행은 316 통과·1 skip·3 실패였다. 실패는 Main 버튼 hover 색 대비 한 건과 닉네임 저장 후 초점 복귀/설정 재진입 두 건이다. 동일 코드로 trace 재현 4/4 및 초점·색상 진단을 넣은 3회 반복 12/12가 통과해 제품 코드를 임의 변경하지 않았다. 임시 진단을 제거한 뒤 모든 파일 변경을 멈추고 전체 실행을 재검증한다. skip은 일반 프로젝트에서 service worker를 차단하므로 별도 PWA 프로젝트가 담당하는 offline revisit 한 건이다.
+최초 전체 실행은 316 통과·1 skip·3 실패였다. 실패는 Main 버튼 hover 색 대비 한 건과 닉네임 저장 후 초점 복귀/설정 재진입 두 건이다. 동일 코드로 trace 재현 4/4 및 초점·색상 진단을 넣은 3회 반복 12/12가 통과해 제품 코드를 임의 변경하지 않았다. 임시 진단을 제거한 뒤 모든 파일 변경을 멈춘 전체 재실행에서 319 통과·1 skip을 확인했다. 제품 코드 수정 없이 전체 gate가 통과했으며 간헐 실패의 단일 원인을 확정하지는 않았다. skip은 일반 프로젝트에서 service worker를 차단하므로 별도 PWA 프로젝트가 담당하는 offline revisit 한 건이다.
+
+운영 read-only 트랜잭션에서 실제 로그인 계정의 request claim과 authenticated 역할로 기존 profile v1·publication v2·comment v1, 새 threads v2·notifications·세 정렬을 조회했다. 게시물 2개·기존 댓글 1개, 모든 feed status `ok`를 확인했다. 이는 SQL 역할 검증이며 아래 실제 브라우저 확인과 구분한다.
+
+## 출시·정리 완료
+
+- [PR #33](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/33) 병합: `9da8259c4a18376454aa8f6022b545e613afc099`.
+- [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36400040496), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36401416563), [Pages 운영 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36401416485) 모두 성공했다.
+- 배포 후 실제 로그인 브라우저에서 `SCHD` 검색·댓글순 정렬·기존 댓글 조회·답글/멘션 입력 UI·빈 알림함·관리 메뉴 내부 닉네임 변경 진입을 읽기만으로 확인했다. 해당 검색/대화/알림 RPC는 HTTP 200이었다. 운영 게시물·댓글·공감·읽음 상태를 시험용으로 변경하지 않았다.
+- 기존 PWA의 자동 업데이트 후 일반 새로고침으로 새 UI가 반영됐다. 인증/저장 데이터를 초기화하지 않았다.
+- 같은 주식색 두 종목의 실제 폭 66.6667%/33.3333%, 뒤 구간의 흰색 35%·1px inset 경계를 운영 DOM에서도 확인했다.
+- 로컬 main을 원격 병합 결과로 fast-forward하고, 완료된 계획/구현 브랜치와 Orca 하위 workspace를 정리했다. 실행 ledger는 메인 workspace에 보존했다. 이 문서의 후속 변경은 출시 증거만 보완하며 제품 코드 변경은 없다.
