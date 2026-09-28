@@ -95,3 +95,43 @@
 .lounge-nickname-edit p { margin:0; }
 .lounge-nickname-edit input { width:100%; min-height:52px; padding:.8rem; font:inherit; color:var(--ink); background:var(--panel); border:1px solid var(--line-strong); border-radius:12px; }
 .lounge-nickname-edit input:disabled { opacity:.65; }
+
+.community { margin-top:1.2rem; border-top:1px solid var(--line); padding-top:.7rem; }
+.lounge-detail .community { margin-top:0; }
+.community-bar { display:flex; align-items:flex-start; gap:.5rem; }
+.community-reactions { display:flex; flex:1; min-width:0; flex-wrap:wrap; align-items:center; gap:.25rem; }
+.community-bar button, .community-picker button { display:inline-flex; align-items:center; justify-content:center; gap:.3rem; min-width:44px; min-height:44px; border:1px solid transparent; border-radius:14px; background:none; color:var(--muted); font:inherit; cursor:pointer; padding:.3rem .45rem; }
+.community-bar button:focus-visible, .community-picker button:focus-visible { outline:2px solid var(--tone-accent); outline-offset:2px; }
+.community-bar button:disabled, .community-picker button:disabled { opacity:.55; cursor:default; }
+.community-bar .community-reaction { background:var(--bg); border-color:var(--line); font-size:.75rem; font-variant-numeric:tabular-nums; }
+.community-reaction > span:first-child { font-size:1.05rem; }
+.community-bar .community-reaction[aria-pressed=true] { color:var(--tone-accent); background:rgb(15 118 110 / 9%); border-color:var(--tone-accent); }
+.community-bar .community-comments { flex:0 0 auto; font-size:.75rem; font-variant-numeric:tabular-nums; }
+.community-bar .community-more { display:none; font-size:.7rem; }
+.community-loading { font-size:.75rem; color:var(--muted); padding-block:.8rem; }
+.community-picker { display:grid; grid-template-columns:repeat(auto-fit,minmax(44px,1fr)); gap:.25rem; padding:.5rem; margin-top:.5rem; border:1px solid var(--line); border-radius:16px; background:var(--bg); }
+.community-picker button { font-size:1.25rem; }
+.community-picker button:hover { background:var(--panel); }
+.community-error { font-size:.75rem; line-height:1.5; color:var(--muted); margin:.5rem 0 0; }
+.community-error .ui-button { font-size:.75rem; }
+.community-post-title { color:var(--muted); font-size:.85rem; margin:0; overflow-wrap:anywhere; }
+.community-compose { display:grid; gap:.5rem; }
+.community-compose label { font-size:.85rem; font-weight:600; }
+.community-compose textarea { width:100%; min-height:68px; max-height:140px; resize:vertical; padding:.7rem .8rem; border:1px solid var(--line-strong); border-radius:12px; font:inherit; font-size:1rem; line-height:1.5; background:var(--panel); color:var(--ink); }
+.community-compose > div { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.community-compose .ui-button { min-width:88px; }
+.community-comment-list { list-style:none; margin:0; padding:0; outline-offset:4px; }
+.community-comment-list li { padding:1rem 0; border-bottom:1px solid var(--line); }
+.community-comment-list li:first-child { padding-top:0; }
+.community-comment-list li > p { font-size:.95rem; line-height:1.65; white-space:pre-wrap; overflow-wrap:anywhere; margin:.5rem 0 0; }
+.community-comment-meta { display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; }
+.community-comment-meta strong { font-size:.85rem; overflow-wrap:anywhere; }
+.community-comment-meta time { font-size:.7rem; color:var(--muted); flex-shrink:0; }
+.community-comment-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:.25rem; font-size:.75rem; color:var(--muted); }
+.community-comment-actions .ui-button { font-size:.75rem; padding-inline:.6rem; }
+.community-comments-empty { color:var(--muted); text-align:center; padding:2rem 0; font-size:.9rem; }
+.community-pagination { display:flex; align-items:center; justify-content:center; gap:1rem; margin-top:1rem; font-size:.8rem; }
+@media(max-width:767px) {
+  .community-bar:not([data-expanded=true]) .community-reaction:nth-child(n+5) { display:none; }
+  .community-bar .community-more { display:inline-flex; }
+}

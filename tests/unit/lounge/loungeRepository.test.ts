@@ -11,6 +11,34 @@ function fixture() {
   return {client,headers,rpc,setAccount:(value:string)=>{account=value;},setResponse:(value:unknown)=>{response=value;}};
 }
 describe('Lounge authenticated transport',()=>{
+  it('sends idempotent community intent with no account, nickname or client time fields',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    const summary={postId:id,reactions:[{emoji:'like',count:1,mine:true}],commentCount:1,uniqueReactors:1};
+    f.setResponse([summary]);expect(await repo.getCommunity([id])).toEqual([summary]);
+    expect(f.rpc).toHaveBeenLastCalledWith('get_lounge_community',{p_post_ids:[id]});
+    f.setResponse({status:'saved',summary});await repo.setReaction(id,'like',true);
+    expect(f.rpc).toHaveBeenLastCalledWith('set_lounge_reaction',{p_post_id:id,p_emoji:'like',p_active:true});
+    f.setResponse({status:'reaction-limit',summary});expect((await repo.setReaction(id,'heart',true)).status).toBe('reaction-limit');
+    const comment={id,nickname:'나의이름',body:"<b>문자</b>\n'; DROP TABLE x; --",createdAt:'2026-09-28T01:00:00Z',isMine:true};
+    f.setResponse({status:'saved',comment,summary});expect(await repo.addComment(id,id,comment.body)).toEqual({comment,summary});
+    expect(f.rpc).toHaveBeenLastCalledWith('add_lounge_comment',{p_post_id:id,p_id:id,p_body:comment.body});
+    f.setResponse({comments:[comment],hasMore:false});await repo.listComments(id,comment);
+    expect(f.rpc).toHaveBeenLastCalledWith('list_lounge_comments',{p_post_id:id,p_before_id:id,p_before_time:comment.createdAt});
+    f.setResponse({status:'deleted',summary});expect(await repo.removeComment(id,id)).toEqual(summary);
+  });
+  it('fails closed on unsafe community inputs, malformed responses and account changes',async()=>{
+    const f=fixture();const repo=createLoungeRepository(f.client);
+    await expect(repo.getCommunity(Array(25).fill(id))).rejects.toMatchObject({code:'invalid'});
+    await expect(repo.setReaction(id,'<img>' as never,true)).rejects.toMatchObject({code:'invalid'});
+    await expect(repo.addComment(id,id,'a'.repeat(501))).rejects.toMatchObject({code:'invalid'});
+    expect(f.rpc).not.toHaveBeenCalled();
+    f.setResponse(null);await expect(repo.listComments(id)).rejects.toMatchObject({code:'missing'});
+    for(const status of ['rate-limited','full','forbidden','comment-limit','profile-required']){
+      f.setResponse({status});await expect(repo.addComment(id,id,'내용')).rejects.toMatchObject({code:status});
+    }
+    f.setResponse([{postId:id,reactions:[],commentCount:0,uniqueReactors:0,user_id:id}]);await expect(repo.getCommunity([id])).rejects.toMatchObject({code:'invalid'});
+    f.setAccount('B');const count=f.rpc.mock.calls.length;await expect(repo.setReaction(id,'like',true)).rejects.toMatchObject({code:'account'});expect(f.rpc).toHaveBeenCalledTimes(count);
+  });
   it('distinguishes a missing profile from a malformed or private response',async()=>{
     const f=fixture();const repo=createLoungeRepository(f.client);
     f.setResponse(null);expect(await repo.getProfile()).toBeNull();

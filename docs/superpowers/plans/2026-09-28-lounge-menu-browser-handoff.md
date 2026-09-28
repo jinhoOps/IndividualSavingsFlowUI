@@ -15,8 +15,8 @@
 
 1. [x] UI·URL helper·문서 구현.
 2. [x] 타입·unit, Lounge/로그인 focused, 390/768/1280 시각·focus·44px·복사 실패 검증.
-3. [ ] 공유 관리 메뉴/로그인 영향으로 전체 E2E, build, diff·문서 링크.
-4. [ ] PR·CI·Pages 배포, 원격/로컬·Orca 정리.
+3. [x] 공유 관리 메뉴/로그인 영향으로 전체 E2E, build, diff·문서 링크.
+4. [x] PR·CI·Pages 배포, 원격/로컬·Orca 정리.
 
 OS 앱 실행은 자동화 브라우저에서 검증할 수 없다. Kakao 실기기에서 실제 전환·기본 브라우저 선택 여부는 별도 확인이 필요하며, 수동 열기/복사를 제공한다. DB migration은 없다.
 
@@ -26,4 +26,4 @@ OS 앱 실행은 자동화 브라우저에서 검증할 수 없다. Kakao 실기
 - [카카오 callback 이동 주의](https://devtalk.kakao.com/t/topic/136998): callback에서 브라우저를 바꾸면 code 중복 소비 문제가 발생할 수 있다.
 - [Google OAuth 정책](https://developers.google.com/identity/protocols/oauth2/policies#use-secure-browsers): 안전한 브라우저를 사용한다.
 
-현재 검증: 타입·harness·1,263 unit, 로그인/Lounge focused 32개 통과. 화면 간격 조정 후 Kakao 8개 재검증 통과(재인증 입력 보존 포함), build 성공. 390/768/1280 화면 직접 검토. 전체 E2E와 배포 진행 중.
+완료: PR #29 병합·CI/Pages 성공. 전체 E2E 291 통과·1 실패·1 기존 제외 후, 발견한 Portfolio 스크롤 복원을 보완하고 해당 반복 3회·Portfolio 전체 49개를 재검증했다. 실제 배포 5개 브라우저/화면 조건 smoke 통과. [검증 증거](../evidence/2026-09-28-lounge-menu-browser-handoff.md).

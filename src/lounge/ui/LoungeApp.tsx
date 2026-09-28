@@ -14,6 +14,9 @@ import type {AssetBand} from '../domain/assetBand';
 import {AssetBandBadge} from './AssetBandBadge';
 import {PublicationEditor} from './PublicationEditor';
 import {NicknameChangeDialog} from './NicknameChangeDialog';
+import {CommunityBar} from './CommunityBar';
+import {PublicationComments, type CommentNavigation} from './PublicationComments';
+import {useLoungeCommunity} from './useLoungeCommunity';
 
 export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null}: {repository: LoungeRepository; nickname: string; plan: PortfolioPlan | null; suggestedAssetBand?: AssetBand | null}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -35,6 +38,11 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
   const [detailError, setDetailError] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailMode,setDetailMode] = useState<'allocation'|'comments'>('allocation');
+  const [commentsBusy,setCommentsBusy] = useState(false);
+  const commentNavigationRef=useRef<CommentNavigation>(null);
+  const detailCommentsRef=useRef<HTMLButtonElement|null>(null);
+  const community=useLoungeCommunity(repository);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
@@ -52,22 +60,24 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
       if (!mounted.current || token !== generation.current) return;
       setPosts(previous => before ? [...previous, ...result.filter(p => !previous.some(old => old.id === p.id))] : result);
       setMore(result.length === PUBLICATION_PAGE_SIZE);
+      void community.load(result.map(post=>post.id));
     } catch(error) {if (mounted.current && token === generation.current) setError(loungeErrorMessage(error));}
     finally {if (mounted.current && token === generation.current) setLoading(false);}
-  }, [repository, mine]);
+  }, [repository, mine, community.load]);
   useEffect(() => {setPosts([]); void load();}, [load]);
-  const loadDetail = useCallback(async (id: string) => {
+  const loadDetail = useCallback(async (id: string, mode:'allocation'|'comments'='allocation') => {
     const token = ++detailGeneration.current;
     setCopied(false);
     const url = new URL(window.location.href); url.searchParams.set('post', id); history.replaceState(null, '', `${url.pathname}${url.search}`);
     setDetail(null); setDetailError(''); setDetailLoading(true); setDetailOpen(true); setDeleteConfirm(false);
+    setDetailMode(mode);void community.load([id]);
     try {
       const post = await repository.get(id);
       if (!mounted.current || token !== detailGeneration.current) return;
       if (post) setDetail(post); else setDetailError('삭제되었거나 더 이상 볼 수 없는 포트폴리오예요.');
     } catch(error) {if (mounted.current && token === detailGeneration.current) setDetailError(loungeErrorMessage(error));}
     finally {if (mounted.current && token === detailGeneration.current) setDetailLoading(false);}
-  }, [repository]);
+  }, [repository, community.load]);
   useEffect(() => {const id = publicationQuery(window.location.search); if (id) void loadDetail(id);}, [loadDetail]);
   function closeDetail() {
     detailGeneration.current++;
@@ -101,15 +111,20 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
           <span className="lounge-card__meta"><span>{post.alias}{post.isMine ? ' · 내 공유' : ''}</span><time dateTime={post.updatedAt}>{new Date(post.updatedAt).toLocaleDateString('ko-KR',{month:'short',day:'numeric'})}</time></span>
           <span className="lounge-card__title">{post.title}<ArrowUpRight size={20} aria-hidden="true" /></span>
         <AssetBandBadge id={`lounge-asset-${post.id}`} band={post.assetBand} /></button><AllocationSummary allocation={post.allocation} compact />
+        <CommunityBar entry={community.entries[post.id]} onReact={(emoji,active)=>community.react(post.id,emoji,active)}
+          onComments={button=>{trigger.current=button;void loadDetail(post.id,'comments');}} onRetry={()=>void community.load([post.id])} />
       </article>)}</div>
       {more ? <button className="ui-button ui-button--secondary lounge-more" disabled={loading} onClick={() => void load(posts.at(-1))}>더 보기</button> : null}
       <p className="lounge-footnote">사용자가 공유한 투자 구성입니다. 실제 수익률이나 추천 순위가 아니에요.</p>
     </AppContentFrame>
     {changingNickname ? <NicknameChangeDialog repository={repository} returnFocusRef={managementTrigger} onCurrentNickname={setCurrentNickname}
       onChanged={() => {setNotice('닉네임을 저장했어요.'); void load();}} onClose={() => setChangingNickname(false)} /> : null}
-    {detailOpen ? <ResponsiveDialog open labelledBy="lounge-detail-title" returnFocusRef={trigger} busy={deleting}
-      onRequestClose={() => !deletingRef.current} onClosed={closeDetail}>
-      {({requestClose}) => <ResponsiveDialogLayout title={deleteConfirm ? '공유를 삭제할까요?' : detail?.title ?? '공유 포트폴리오'} titleId="lounge-detail-title" onClose={closeDetail} layout="preview"
+    {detailOpen ? <ResponsiveDialog open labelledBy="lounge-detail-title" returnFocusRef={trigger} busy={deleting || commentsBusy}
+      onRequestClose={() => !deletingRef.current && (commentNavigationRef.current?.canClose() ?? true)} onClosed={closeDetail}>
+      {({requestClose}) => detail && detailMode==='comments' ? <PublicationComments key={detail.id} repository={repository} post={detail}
+        onSummary={community.accept} onClose={closeDetail} requestClose={()=>requestClose('button')} navigationRef={commentNavigationRef} onBusyChange={setCommentsBusy}
+        onBack={()=>{setDetailMode('allocation');requestAnimationFrame(()=>detailCommentsRef.current?.focus());}} />
+        : <ResponsiveDialogLayout title={deleteConfirm ? '공유를 삭제할까요?' : detail?.title ?? '공유 포트폴리오'} titleId="lounge-detail-title" onClose={closeDetail} layout="preview"
         status={detailError ? <p role="alert">{detailError}</p> : undefined}
         footer={detail ? <ResponsiveDialogActionRow>{deleteConfirm ? <>
           <button className="ui-button ui-button--secondary" disabled={deleting} onClick={() => setDeleteConfirm(false)}>유지하기</button>
@@ -126,6 +141,8 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
         {detail ? deleteConfirm ? <p>라운지에서 사라지고 기존 게시물 링크도 열 수 없어요. 내 투자 배분은 유지돼요.</p> : <div className="lounge-detail">
           <p className="lounge-muted">{detail.alias} · {new Date(detail.updatedAt).toLocaleDateString('ko-KR')}</p>
           <AssetBandBadge band={detail.assetBand} /><AllocationSummary allocation={detail.allocation} />{detail.note ? <p className="lounge-note">{detail.note}</p> : null}
+          <CommunityBar entry={community.entries[detail.id]} commentButtonRef={detailCommentsRef} onReact={(emoji,active)=>community.react(detail.id,emoji,active)}
+            onComments={()=>setDetailMode('comments')} onRetry={()=>void community.load([detail.id])} />
           <button className="ui-button ui-button--quiet" onClick={async () => {
             try {await navigator.clipboard.writeText(`${window.location.origin}${appPath('lounge')}?post=${detail.id}`); setCopied(true);}
             catch {setDetailError('링크를 복사하지 못했어요. 주소창의 링크를 복사해 주세요.');}
