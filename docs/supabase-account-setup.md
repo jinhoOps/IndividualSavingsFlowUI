@@ -223,3 +223,11 @@ from public.result_card_shares group by state;
 - 고정 SQL·매개변수 RPC·정규화 전 입력 상한·allowlist·본인 claim·FORCE RLS·전용 owner/빈 search_path를 사용한다. RPC 역할은 profile의 nickname 컬럼만 UPDATE할 수 있고 시간/version은 trigger가 설정한다.
 - 닉네임과 기존 본인 게시물 이름/version을 한 트랜잭션에서 바꾼다. 기존 게시물 날짜·비율·정확한 금액 비공개 정책·workspace는 유지한다.
 - 기존 영구 변경 금지 trigger를 48시간 검사로 교체하며 등록 RPC는 변경 용도로 사용할 수 없다.
+
+### 라운지 댓글·이모지 공감
+
+`202609280006_lounge_community.sql`은 `lounge_comments`, `lounge_reactions`, private 활동 메타데이터와 로그인 전용 RPC 5개를 추가한다. 기존 publication/profile/workspace 행과 RPC를 변경하지 않는다. 운영 적용·배포 상태는 [검증 기록](superpowers/evidence/2026-09-28-lounge-community.md)을 따른다.
+
+- 직접 테이블 접근·anon 실행을 차단하고 기존 `lounge_rpc_owner`/FORCE RLS/빈 search_path를 사용한다. 댓글·공감의 사용자와 시각은 서버에서 결정한다.
+- 공감 8종·동일 계정/종류 한 번, 댓글 20개 keyset 페이지, 상태 지정/UUID 재시도, 본인 삭제·닉네임 join·cascade를 사용한다.
+- 댓글 20,000개·공감 100,000행·요청 제한을 두고 DB 400MiB 이상에서는 신규 저장을 거부한다. 삭제와 무변경 재시도는 허용한다. Storage 이미지 정책과 별도이며 DB 전체 크기를 함께 관찰한다.
