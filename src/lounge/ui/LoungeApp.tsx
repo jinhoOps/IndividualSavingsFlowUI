@@ -153,7 +153,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
     {detailOpen ? <ResponsiveDialog open labelledBy="lounge-detail-title" returnFocusRef={trigger} busy={deleting || commentsBusy}
       onRequestClose={() => !deletingRef.current && (commentNavigationRef.current?.canClose() ?? true)} onClosed={closeDetail}>
       {({requestClose}) => detail && detailMode==='comments' ? <PublicationComments key={detail.id} repository={repository} post={detail}
-        onSummary={community.accept} onClose={closeDetail} requestClose={()=>requestClose('button')} navigationRef={commentNavigationRef} onBusyChange={setCommentsBusy}
+        count={community.entries[detail.id]?.summary?.commentCount??0} onSummary={community.accept} onClose={closeDetail} requestClose={()=>requestClose('button')} navigationRef={commentNavigationRef} onBusyChange={setCommentsBusy}
         onBack={()=>{setDetailMode('allocation');requestAnimationFrame(()=>detailCommentsRef.current?.focus());}} />
         : <ResponsiveDialogLayout title={deleteConfirm ? '공유를 삭제할까요?' : detail?.title ?? '공유 포트폴리오'} titleId="lounge-detail-title" onClose={closeDetail} layout="preview"
         status={detailError ? <p role="alert">{detailError}</p> : undefined}
