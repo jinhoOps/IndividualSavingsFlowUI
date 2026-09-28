@@ -445,19 +445,22 @@ describe('GrowthChart', () => {
     expect(screen.queryByText('현재 계획 총액')).not.toBeInTheDocument();
   });
 
-  it('shows only two comparison totals in compact mode without a close button', () => {
+  it('keeps mobile values below the explorer with a final-period default and no overlay', () => {
     compactViewport = true;
-    render(<GrowthChart result={result} amountMode="nominal" />);
-    fireEvent.keyDown(screen.getByRole('application', { name: '그래프 기간 탐색' }), {
-      key: 'Home',
-    });
-
-    expect(screen.getByText('현재 계획 총액')).toBeVisible();
-    expect(screen.getByText('누적 납입원금')).toBeVisible();
-    expect(screen.queryByText('전부 저축 총액')).not.toBeInTheDocument();
-    expect(screen.queryByText('저축 잔액')).not.toBeInTheDocument();
-    expect(screen.queryByText('투자 잔액')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    const {container} = render(<GrowthChart result={result} amountMode="nominal" />);
+    const explorer = screen.getByRole('application', { name: '그래프 기간 탐색' });
+    const details = screen.getByRole('region', {name: '그래프 시점 상세'});
+    expect(details).toHaveTextContent('20년');
+    expect(explorer.contains(details)).toBe(false);
+    fireEvent.keyDown(explorer, {key: 'Home'});
+    expect(details).toHaveTextContent('현재');
+    for (const label of ['현재 계획 총액', '누적 납입원금', '전부 저축 총액', '저축 잔액', '투자 잔액']) {
+      expect(screen.getByText(label)).toBeVisible();
+    }
+    expect(container.querySelector('.growth-chart__tooltip')).not.toBeInTheDocument();
+    fireEvent.keyDown(explorer, {key: 'Escape'});
+    expect(details).toHaveTextContent('20년');
+    expect(container.querySelector('.growth-chart__guide')).not.toBeInTheDocument();
   });
 
   it('keeps detailed desktop values but removes the close button', () => {
@@ -496,11 +499,11 @@ describe('GrowthChart', () => {
 
     fireEvent(chart, pointerEvent('pointerdown', 36));
     fireEvent(chart, pointerEvent('pointermove', 36 + 6 / 36 * 620));
-    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('6개월');
-    expect(screen.queryByText('전부 저축 총액')).not.toBeInTheDocument();
+    expect(container.querySelector('.growth-chart__details-heading > strong')).toHaveTextContent('6개월');
+    expect(screen.getByText('전부 저축 총액')).toBeVisible();
     expect(screen.getByText('누적 납입원금')).toBeVisible();
     fireEvent(chart, pointerEvent('pointerup', 36 + 6 / 36 * 620));
-    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('6개월');
+    expect(container.querySelector('.growth-chart__details-heading > strong')).toHaveTextContent('6개월');
   });
 
   it('drags through touch years, keeps release selection, and closes on scroll', () => {
@@ -516,10 +519,11 @@ describe('GrowthChart', () => {
     fireEvent(chart, pointerEvent('pointerdown', 36));
     fireEvent(chart, pointerEvent('pointermove', 656));
     fireEvent(chart, pointerEvent('pointerup', 656));
-    expect(container.querySelector('.growth-chart__tooltip > strong')).toHaveTextContent('20년');
+    expect(container.querySelector('.growth-chart__details-heading > strong')).toHaveTextContent('20년');
 
     fireEvent.scroll(window);
-    expect(container.querySelector('.growth-chart__tooltip')).not.toBeInTheDocument();
+    expect(container.querySelector('.growth-chart__guide')).not.toBeInTheDocument();
+    expect(container.querySelector('.growth-chart__details-heading > strong')).toHaveTextContent('20년');
   });
 
   it('maps the first and last plotted x positions to their exact years', () => {

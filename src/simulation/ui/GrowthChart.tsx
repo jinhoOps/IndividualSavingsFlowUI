@@ -31,7 +31,7 @@ import {
   type VisualChartGeometry,
 } from './chartMotionGeometry';
 import { formatWon } from './format';
-import { GrowthChartTooltip } from './GrowthChartTooltip';
+import { GrowthChartDetails, GrowthChartTooltip } from './GrowthChartTooltip';
 
 export function GrowthChart({
   result,
@@ -50,7 +50,7 @@ export function GrowthChart({
   const firstRevealCompleteRef = useRef(false);
   const motionGenerationRef = useRef(0);
   const revealClipId = `growth-chart-reveal-${useId().replace(/:/g, '')}`;
-  const compactTooltip = useCompactTooltip();
+  const mobileChart = useMobileChart();
   const series = useMemo(
     () => buildChartSeries(result.points, amountMode),
     [amountMode, result.points],
@@ -190,16 +190,14 @@ export function GrowthChart({
   const finalSavings = last?.allSavingsWon ?? 0;
   const activeGeometry = activeIndex === null ? null : geometry.points[activeIndex] ?? null;
   const active = activeGeometry;
-  const tooltip = active === null ? null : buildChartTooltipModel(active, compactTooltip);
-  const tooltipSize = compactTooltip
-    ? { width: 192, height: 112 }
-    : { width: 240, height: 230 };
-  const placement = activeGeometry === null ? null : tooltipPlacement({
+  const tooltip = active === null ? null : buildChartTooltipModel(active);
+  const mobileDetails = mobileChart && last ? tooltip ?? buildChartTooltipModel(last) : null;
+  const placement = mobileChart || activeGeometry === null ? null : tooltipPlacement({
     anchorX: activeGeometry.x,
     anchorY: Math.min(activeGeometry.currentY, activeGeometry.allSavingsY),
     chartWidth: 680,
-    tooltipWidth: tooltipSize.width,
-    tooltipHeight: tooltipSize.height,
+    tooltipWidth: 240,
+    tooltipHeight: 230,
   });
 
   return (
@@ -349,21 +347,21 @@ export function GrowthChart({
             >{tick.label}</text>
           ))}
         </svg>
-        {active === null || activeGeometry === null || tooltip === null || placement === null ? null : (
-          <>
-            <p className="sr-only" role="status">
-              {tooltip.status}
-            </p>
-            <GrowthChartTooltip
-              variant={compactTooltip ? 'compact' : 'detailed'}
-              placement={placement}
-              anchorPercent={activeGeometry.x / 680 * 100}
-              anchorYPercent={Math.min(activeGeometry.currentY, activeGeometry.allSavingsY) / 285 * 100}
-              values={tooltip.values}
-            />
-          </>
+        {tooltip !== null && (
+          <p className="sr-only" role="status">
+            {tooltip.status}
+          </p>
+        )}
+        {activeGeometry !== null && tooltip !== null && placement !== null && (
+          <GrowthChartTooltip
+            placement={placement}
+            anchorPercent={activeGeometry.x / 680 * 100}
+            anchorYPercent={Math.min(activeGeometry.currentY, activeGeometry.allSavingsY) / 285 * 100}
+            values={tooltip.values}
+          />
         )}
       </div>
+      {mobileDetails !== null && <GrowthChartDetails values={mobileDetails.values} />}
     </Surface>
   );
 }
@@ -401,7 +399,7 @@ function continueReveal(
   }
 }
 
-function useCompactTooltip(): boolean {
+function useMobileChart(): boolean {
   const query = '(max-width: 767px)';
   const [compact, setCompact] = useState(() => (
     typeof window.matchMedia === 'function' && window.matchMedia(query).matches

@@ -234,7 +234,7 @@ for (const viewport of [
     await conditionEditor.getByRole('button', { name: '닫기' }).click();
     await expect(conditionEditor).toBeHidden();
     await page.evaluate(() => document.fonts.ready);
-    await expect.poll(() => projection.locator('.simulation-comparison dd').evaluateAll(values => values.every(value => (
+    await expect.poll(() => projection.locator('.simulation-comparison dd:has(.simulation-comparison__semantic-value)').evaluateAll(values => values.every(value => (
       value.querySelector('.simulation-comparison__semantic-value')?.textContent
         === value.querySelector('.simulation-comparison__visual-value')?.textContent
     )))).toBe(true);
@@ -668,7 +668,7 @@ for (const viewport of [
   { width: 768, height: 900, label: 'tablet' },
   { width: 1280, height: 900, label: 'desktop' },
 ]) {
-  test(`${viewport.label} keeps the high-principal goal entry and result contained`, async ({ page }) => {
+  test(`${viewport.label} keeps the high-principal goal entry and result contained`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await seedMain(page);
@@ -753,7 +753,7 @@ for (const viewport of [
     expect(immediateMotionState.motionPaths).toEqual(immediateMotionState.semanticPaths);
     expect(immediateMotionState.revealWidth).toBe('620');
 
-    const comparisonState = await page.locator('.simulation-comparison dd').evaluateAll((values) => (
+    const comparisonState = await page.locator('.simulation-comparison dd:has(.simulation-comparison__semantic-value)').evaluateAll((values) => (
       values.map((value) => ({
         semantic: value.querySelector('.simulation-comparison__semantic-value')?.textContent,
         visual: value.querySelector('.simulation-comparison__visual-value')?.textContent,
@@ -769,25 +769,24 @@ for (const viewport of [
       clientX: box.x + box.width / 2,
       pointerType: 'touch',
     });
-    const tooltip = page.locator('.growth-chart__tooltip');
+    const tooltip = page.locator(viewport.width < 768 ? '.growth-chart__details' : '.growth-chart__tooltip');
     await expect(tooltip).toBeVisible();
     await expect(tooltip.locator('strong')).toHaveText('1년 6개월');
-    if (viewport.width < 768) {
-      await expect(tooltip.getByText('현재 계획 총액')).toBeVisible();
-      await expect(tooltip.getByText('누적 납입원금')).toBeVisible();
-      await expect(tooltip.getByText('전부 저축 총액')).toHaveCount(0);
-    } else {
-      await expect(tooltip.getByText('전부 저축 총액')).toBeVisible();
-      await expect(tooltip.getByText('누적 납입원금')).toBeVisible();
-      await expect(tooltip.getByText('저축 잔액')).toBeVisible();
-      await expect(tooltip.getByText('투자 잔액')).toBeVisible();
+    for (const label of ['현재 계획 총액', '누적 납입원금', '전부 저축 총액', '저축 잔액', '투자 잔액']) {
+      await expect(tooltip.getByText(label)).toBeVisible();
     }
     const tooltipBox = await tooltip.boundingBox();
-    if (tooltipBox === null) throw new Error('tooltip has no bounding box');
+    if (tooltipBox === null) throw new Error('chart values have no bounding box');
     expect(tooltipBox.x).toBeGreaterThanOrEqual(0);
     expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(viewport.width);
-    expect(tooltipBox.y).toBeGreaterThanOrEqual(box.y);
-    expect(tooltipBox.y + tooltipBox.height).toBeLessThanOrEqual(box.y + box.height);
+    if (viewport.width < 768) {
+      expect(tooltipBox.y).toBeGreaterThanOrEqual(box.y + box.height);
+      await expect(page.locator('.growth-chart__tooltip')).toHaveCount(0);
+    } else {
+      expect(tooltipBox.y).toBeGreaterThanOrEqual(box.y);
+      expect(tooltipBox.y + tooltipBox.height).toBeLessThanOrEqual(box.y + box.height);
+    }
+    await page.screenshot({path: testInfo.outputPath(`simulation-chart-${viewport.width}.png`), fullPage: true});
     await graph.dispatchEvent('pointerup', {
       pointerId: 11,
       clientX: box.x + box.width / 2,
@@ -833,67 +832,75 @@ for (const viewport of [
   });
 }
 
-test('mobile keeps compact tooltip stable while dragging', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await seedMain(page);
-  await openFirstResult(page);
-  const conditionEditor = page.getByRole('dialog', { name: '시뮬레이션 조건' });
-  await page.getByRole('button', { name: '조건 편집' }).click();
-  await conditionEditor.getByRole('spinbutton', { name: '기간 숫자' }).fill('30');
-  await conditionEditor.getByRole('button', { name: '닫기' }).click();
-  await expect(conditionEditor).toBeHidden();
-
-  const graph = page.getByRole('img', { name: '기간별 복리 성장 그래프' });
-  const box = await graph.boundingBox();
-  if (box === null) throw new Error('graph has no bounding box');
-  const firstX = box.x + 36 / 680 * box.width;
-  const lastX = box.x + 656 / 680 * box.width;
-
-  await graph.dispatchEvent('pointerdown', {
-    pointerId: 9,
-    pointerType: 'touch',
-    buttons: 1,
-    clientX: firstX,
-  });
-  const tooltip = page.locator('.growth-chart__tooltip--compact');
-  await expect(tooltip).toBeVisible();
-  await expect(tooltip.getByText('현재 계획 총액')).toBeVisible();
-  await expect(tooltip.getByText('누적 납입원금')).toBeVisible();
-  await expect(tooltip.getByText('전부 저축 총액')).toHaveCount(0);
-  await expect(tooltip.getByRole('button')).toHaveCount(0);
-  const firstSize = await tooltip.boundingBox();
-  expect(firstSize?.width).toBe(192);
-  expect(firstSize?.height).toBe(112);
-
-  await graph.dispatchEvent('pointermove', {
-    pointerId: 9,
-    pointerType: 'touch',
-    buttons: 1,
-    clientX: lastX,
-  });
-  await graph.dispatchEvent('pointerup', {
-    pointerId: 9,
-    pointerType: 'touch',
-    buttons: 0,
-    clientX: lastX,
-  });
-  await expect(tooltip.getByText('30년')).toBeVisible();
-  const lastSize = await tooltip.boundingBox();
-  expect(lastSize?.width).toBe(firstSize?.width);
-  expect(lastSize?.height).toBe(firstSize?.height);
-
-  const wrapping = await tooltip.locator('strong, span, b').evaluateAll((nodes) => (
-    nodes.some((node) => {
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.y)));
-      return node.scrollWidth > node.clientWidth || lines.size > 1;
-    })
-  ));
-  expect(wrapping).toBe(false);
-
-  await page.mouse.wheel(0, 120);
-  await expect(tooltip).toBeHidden();
+test.describe('mobile chart touch exploration', () => {
+  test.use({hasTouch: true, isMobile: true});
+  for (const width of [320, 390]) {
+    test(`keeps details below the plot through real dragging and retouching at ${width}px`, async ({page}, testInfo) => {
+      await page.setViewportSize({width, height: 844});
+      await page.emulateMedia({reducedMotion: 'reduce'});
+      await seedMain(page);
+      await openFirstResult(page);
+      const editor = page.getByRole('dialog', {name: '시뮬레이션 조건'});
+      await page.getByRole('button', {name: '조건 편집'}).click();
+      await editor.getByRole('spinbutton', {name: '기간 숫자'}).fill('30');
+      await editor.getByRole('button', {name: '닫기'}).click();
+      await expect(editor).toBeHidden();
+      await page.evaluate(() => document.fonts.ready);
+      const graph = page.getByRole('img', {name: '기간별 복리 성장 그래프'});
+      await graph.scrollIntoViewIfNeeded();
+      const box = (await graph.boundingBox())!;
+      const details = page.getByRole('region', {name: '그래프 시점 상세'});
+      const period = details.locator('strong');
+      const idleBox = (await details.boundingBox())!;
+      const workspaceBefore = await page.evaluate(() => localStorage.getItem('isf-workspace-v5'));
+      await expect(period).toHaveText('30년');
+      expect(idleBox.y).toBeGreaterThanOrEqual(box.y + box.height);
+      const session = await page.context().newCDPSession(page);
+      const point = (year: number) => ({x: box.x + (36 + year / 30 * 620) / 680 * box.width, y: box.y + box.height * .58});
+      await session.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [point(0)]});
+      await expect(period).toHaveText('현재');
+      for (const year of [6, 12, 18, 24, 30]) {
+        await session.send('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: [point(year)]});
+        await expect(period).toHaveText(`${year}년`);
+      }
+      await session.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});
+      await expect(period).toHaveText('30년');
+      // Re-touch across the area formerly covered by the floating compact tooltip.
+      await page.touchscreen.tap(point(12).x, point(12).y);
+      await expect(period).toHaveText('12년');
+      await expect(page.locator('.simulation-comparison__period')).toHaveText('비교 시점30년 기준 비교');
+      await expect(page.locator('.growth-chart__tooltip')).toHaveCount(0);
+      expect(await page.evaluate(({x,y}) => !!document.elementFromPoint(x,y)?.closest('svg'), point(12))).toBe(true);
+      const selectedBox = (await details.boundingBox())!;
+      expect(selectedBox.y).toBeCloseTo(idleBox.y, 0);
+      expect(selectedBox.height).toBeCloseTo(idleBox.height, 0);
+      const wraps = await details.locator('strong, b, dt, dd').evaluateAll(nodes => nodes.some(node => {
+        const range = document.createRange(); range.selectNodeContents(node);
+        return node.scrollWidth > node.clientWidth || new Set([...range.getClientRects()].map(r => Math.round(r.y))).size > 1;
+      }));
+      expect(wraps).toBe(false);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect(await page.evaluate(() => localStorage.getItem('isf-workspace-v5'))).toBe(workspaceBefore);
+      await page.screenshot({path: testInfo.outputPath(`simulation-touch-${width}.png`)});
+      await expect(period).toHaveText('12년');
+      await session.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [point(18)]});
+      await session.send('Input.dispatchTouchEvent', {type: 'touchCancel', touchPoints: []});
+      await expect(period).toHaveText('18년');
+      await page.getByRole('heading', {name: /1억 원을 모으려면|현재 조건으로는 30년 안에 1억 원/}).tap();
+      await expect(page.locator('.growth-chart__guide')).toHaveCount(0);
+      await expect(period).toHaveText('30년');
+      // Vertical scrolling from the graph must still pan the page and release selection.
+      await page.evaluate(() => window.scrollTo(0,0));
+      const scrollBox = (await graph.boundingBox())!;
+      const start = {x: scrollBox.x + scrollBox.width / 2, y: scrollBox.y + scrollBox.height * .75};
+      await session.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [start]});
+      await session.send('Input.dispatchTouchEvent', {type: 'touchMove', touchPoints: [{x:start.x,y:start.y-90}]});
+      await session.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});
+      await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+      await expect(page.locator('.growth-chart__guide')).toHaveCount(0);
+      await session.detach();
+    });
+  }
 });
 
 test('requires a nonzero Main savings or investment contribution', async ({ page }) => {

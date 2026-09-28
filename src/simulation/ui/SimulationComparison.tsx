@@ -5,8 +5,13 @@ import type { ProjectionResult } from '../domain/model';
 import { formatWon } from './format';
 
 export function SimulationComparison({ result }: { result: ProjectionResult }) {
+  const finalYear = result.points.at(-1)?.year ?? 0;
   return (
     <dl className="simulation-comparison" aria-label="핵심 비교">
+      <div className="simulation-comparison__period">
+        <dt className="sr-only">비교 시점</dt>
+        <dd>{finalYear === 0 ? '현재' : `${finalYear}년`} 기준 비교</dd>
+      </div>
       <div>
         <dt>전부 저축보다</dt>
         <dd>
