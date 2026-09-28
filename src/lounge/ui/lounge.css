@@ -18,6 +18,8 @@
 .lounge-card__title svg { flex-shrink:0; color:var(--tone-accent); }
 .lounge-allocation { min-width:0; }
 .lounge-allocation__bar { height:12px; display:flex; overflow:hidden; border-radius:99px; margin-bottom:.8rem; background:var(--line); }
+.lounge-allocation__bar > span { flex-shrink:0; min-width:0; }
+.lounge-allocation__bar > span + span { box-shadow:inset 1px 0 rgb(255 255 255 / 35%); }
 .lounge-allocation__groups { display:flex; flex-wrap:wrap; gap:.5rem 1rem; margin:0 0 1rem; font-size:.72rem; }
 .lounge-allocation__groups > div { display:flex; gap:.3rem; }
 .lounge-allocation dt { display:flex; align-items:center; gap:.45rem; min-width:0; overflow-wrap:anywhere; }
