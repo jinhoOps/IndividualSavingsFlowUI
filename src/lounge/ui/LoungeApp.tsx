@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {ArrowUpRight, Bell, Plus} from 'lucide-react';
+import {ArrowUpRight, Bell, Check, Link, Plus} from 'lucide-react';
 import {AppShell} from '../../components/common/AppShell';
 import {AppContentFrame} from '../../components/common/AppContentFrame';
 import {AppManagementMenu} from '../../journey/ui/AppManagementMenu';
@@ -169,7 +169,7 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
         initialCommentId={commentId} initialContext={commentContext} count={community.entries[detail.id]?.summary?.commentCount??0} onSummary={community.accept} onClose={closeDetail} requestClose={()=>requestClose('button')} navigationRef={commentNavigationRef} onBusyChange={setCommentsBusy}
         onBack={backFromComments} />
         : <ResponsiveDialogLayout title={deleteConfirm ? '공유를 삭제할까요?' : detail?.title ?? '공유 포트폴리오'} titleId="lounge-detail-title" onClose={closeDetail} layout="preview"
-        status={detailError ? <p role="alert">{detailError}</p> : undefined}
+        status={detailError ? <p role="alert">{detailError}</p> : copied && !deleteConfirm ? <p role="status">링크를 복사했어요.</p> : undefined}
         footer={detail ? <ResponsiveDialogActionRow>{deleteConfirm ? <>
           <button className="ui-button ui-button--secondary" disabled={deleting} onClick={() => setDeleteConfirm(false)}>유지하기</button>
           <button className="ui-button ui-button--primary" disabled={deleting} onClick={async () => {
@@ -180,6 +180,10 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
         </> : <>
           {detail.isMine ? <button className="ui-button ui-button--quiet" onClick={() => setDeleteConfirm(true)}>공유 삭제</button> : null}
           <a className="ui-button ui-button--primary" href={`${appPath('portfolio')}?publication=${detail.id}`}>이 비율로 시작하기</a>
+          <button type="button" className="ui-button ui-button--quiet lounge-share-link" aria-label="게시물 링크 복사" title={copied ? '링크 복사 완료' : '게시물 링크 복사'} onClick={async () => {
+            try {await navigator.clipboard.writeText(`${window.location.origin}${appPath('lounge')}?post=${detail.id}`); setCopied(true); setDetailError('');}
+            catch {setCopied(false); setDetailError('링크를 복사하지 못했어요. 주소창의 링크를 복사해 주세요.');}
+          }}>{copied ? <Check size={20} aria-hidden="true" /> : <Link size={20} aria-hidden="true" />}</button>
         </>}</ResponsiveDialogActionRow> : undefined}>
         {detailLoading ? <p role="status">불러오는 중…</p> : null}
         {detail ? deleteConfirm ? <p>커뮤니티에서 사라지고 기존 게시물 링크도 열 수 없어요. 내 투자 배분은 유지돼요.</p> : <div className="lounge-detail">
@@ -187,10 +191,6 @@ export function LoungeApp({repository, nickname, plan, suggestedAssetBand = null
           <AssetBandBadge band={detail.assetBand} /><AllocationSummary allocation={detail.allocation} />{detail.note ? <p className="lounge-note">{detail.note}</p> : null}
           <CommunityBar entry={community.entries[detail.id]} commentButtonRef={detailCommentsRef} onReact={(emoji,active)=>community.react(detail.id,emoji,active)}
             onComments={()=>setDetailMode('comments')} onRetry={()=>void community.load([detail.id])} />
-          <button className="ui-button ui-button--quiet" onClick={async () => {
-            try {await navigator.clipboard.writeText(`${window.location.origin}${appPath('lounge')}?post=${detail.id}`); setCopied(true);}
-            catch {setDetailError('링크를 복사하지 못했어요. 주소창의 링크를 복사해 주세요.');}
-          }}>{copied ? '링크 복사 완료' : '게시물 링크 복사'}</button>
           <p className="lounge-muted">로그인한 사용자에게 공유된 비율이에요. 가져오기 전에 내 투자금 기준으로 확인할 수 있어요.</p>
         </div> : null}
       </ResponsiveDialogLayout>}

@@ -37,6 +37,7 @@
 .lounge-notice { color:var(--tone-accent); padding:.75rem 0; }
 .lounge-detail { display:grid; gap:1.2rem; }
 .lounge-detail > p { margin:0; }
+.responsive-dialog__actions > .lounge-share-link { display:inline-grid; place-items:center; flex:0 0 44px; width:44px; min-width:44px; height:44px; padding:0; }
 .lounge-note { padding:1rem; border-radius:14px; background:var(--bg); line-height:1.7; overflow-wrap:anywhere; }
 .lounge-editor { display:grid; gap:1.2rem; }
 .lounge-editor label { display:grid; gap:.5rem; font-size:.9rem; }
