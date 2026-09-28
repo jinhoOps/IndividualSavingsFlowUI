@@ -53,7 +53,7 @@ Orca의 기존 로그인 세션으로 IndividualSavingsFlow production SQL Edito
 - 운영 DB에서 세 방식의 첫/마지막 예상액을 fixture로 조회. 원리금균등 1,012,451→1,012,507원, 원금균등 1,166,666→836,151원, 만기일시 이자 333,333원+마지막 원금 100,000,000원 확인. 마지막 회차는 원 단위 잔액 정산으로 달라진다.
 - SQL Editor의 긴 입력 교체 과정에서 후속 조회가 이전 DDL과 함께 실행되어 기존 함수 중복 오류로 거부된 1회가 있었다. 첫 migration 성공은 유지됐으며 editor 전체 내용을 교체한 후 읽기 전용 검증을 정상 완료했다.
 
-프론트엔드는 DB 적용 후에 배포한다. **PR [#23](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/23) 검증 중이며 Pages 배포는 아직 진행 전**이다. 실제 사용자 계정에 예시 대출을 저장하거나 월 금액을 바꾸는 운영 테스트는 하지 않았다.
+프론트엔드는 DB 적용 후 PR [#23](https://github.com/jinhoOps/IndividualSavingsFlowUI/pull/23)을 main `ffd56df2`에 통합하여 배포했다. [PR CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36366369285), [main CI](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36366551693), [Pages 배포](https://github.com/jinhoOps/IndividualSavingsFlowUI/actions/runs/36366551697)가 모두 성공했다. 운영 `/apps/main/` HTTP 200 및 로드되는 `mainApp-DEBgsOP5.js`의 새 대출 UI 포함을 확인했다. 실제 사용자 계정에 예시 대출을 저장하거나 월 금액을 바꾸는 운영 테스트는 하지 않았다. 통합한 기능 브랜치는 로컬·원격에서 정리했다.
 
 ## 남은 범위·롤백
 
