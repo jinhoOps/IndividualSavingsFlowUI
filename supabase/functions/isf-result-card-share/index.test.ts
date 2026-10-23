@@ -23,7 +23,7 @@ const png = (length = 40) => {
   return bytes;
 };
 const request = (bytes = png(), headers: Record<string, string> = {}) =>
-  new Request("https://test.supabase.co/functions/v1/result-card-share", {
+  new Request("https://test.supabase.co/functions/v1/isf-result-card-share", {
     method: "POST",
     headers: {
       authorization: "Bearer user",

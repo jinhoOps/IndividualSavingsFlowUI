@@ -6,6 +6,6 @@ declare developer_id uuid;
 begin
   select id into strict developer_id from auth.users
     where lower(email)='okho04@gmail.com' and email_confirmed_at is not null;
-  insert into private.lounge_developers(user_id) values(developer_id) on conflict(user_id) do nothing;
+  insert into individualsavingflow_private.lounge_developers(user_id) values(developer_id) on conflict(user_id) do nothing;
 end $$;
 commit;

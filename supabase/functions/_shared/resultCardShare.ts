@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.115.0";
-export const BUCKET = "result-card-shares";
+export const BUCKET = "isf-result-card-shares";
+// ISF tables live in the shared project's per-repo API schema, not public.
+export const DB_SCHEMA = "individualsavingflow";
 export const MAX_RESULT_CARD_BYTES = 1_000_000;
 export const required = (key: string): string => {
   const value = Deno.env.get(key);
@@ -11,6 +13,7 @@ export function serviceClient(signal?: AbortSignal) {
     required("SUPABASE_URL"),
     required("SUPABASE_SERVICE_ROLE_KEY"),
     {
+      db: { schema: DB_SCHEMA },
       auth: { persistSession: false, autoRefreshToken: false },
       global: {
         fetch: (input, init) =>

@@ -16,7 +16,7 @@ describe('result card share client', () => {
     await expect(client.create(png, '00000000-0000-4000-8000-000000000001', 'ABCD1234_ABCD1234_ABCD1234_ABCD1234', new AbortController().signal)).resolves.toEqual({
       token: 'ABCD1234_ABCD1234_ABCD1234_ABCD1234', expiresAt: '2026-09-23T12:00:00.000Z',
     });
-    expect(fetcher).toHaveBeenCalledWith('https://example.supabase.co/functions/v1/result-card-share', expect.objectContaining({
+    expect(fetcher).toHaveBeenCalledWith('https://example.supabase.co/functions/v1/isf-result-card-share', expect.objectContaining({
       method: 'POST',
       body: png,
       headers: expect.objectContaining({

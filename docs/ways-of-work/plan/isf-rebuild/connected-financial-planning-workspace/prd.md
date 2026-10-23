@@ -246,7 +246,7 @@ Google 로그인으로 계정의 workspace를 연다. 2026-09-10 등록한 Googl
 
 ## 9. Data Contract
 
-개인 재무 계획의 저장 boundary는 Supabase `public.user_workspaces`의 계정당 한 행이며 workspace schema v5를 사용한다. 여기에는 Main applied/setup progress/expenseAssistant, Simulation draft, aggregate-only Portfolio plans/draft, 보존된 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. 호환성 데이터인 Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
+개인 재무 계획의 저장 boundary는 Supabase 공유 프로젝트 `github-jinhoOps`의 `individualsavingflow.user_workspaces` 계정당 한 행이며([ADR 0004](../../../../adr/0004-shared-supabase-project-schema.md)) workspace schema v5를 사용한다. 여기에는 Main applied/setup progress/expenseAssistant, Simulation draft, aggregate-only Portfolio plans/draft, 보존된 공유 금융 위치와 Account Map applied/draft(목적 link와 account transfer 포함)가 들어간다. 호환성 데이터인 Account Map state에는 `legacyPhaseA`나 `layout`이 없다. RLS가 본인 행 조회를 제한하고 소유 slice별 RPC만 서버 revision 검사 후 저장한다. 전체 복원만 검증된 다섯 slice를 원자적으로 교체한다.
 
 기존 브라우저 데이터는 사용자 선택에 따른 read-only 이전 후보다. v5 → v4 → v3 → 유효한 retired v1/v2 순으로 읽고 invalid 최신 원본에서 fallback하지 않는다. 이전 성공 후에도 원본·foreign record를 보존한다. 계정 캐시는 `isf-account-workspace-v3`/cache version 3이며 구 v2/v1의 미전송 요청을 자동 재생하지 않고 복구 원문으로 격리한다. 로그인 전 제품을 mount하지 않고 오프라인은 같은 계정 캐시의 읽기 전용 재방문만 허용한다. 기존 [계정 저장 설계](../../../../superpowers/specs/2026-09-07-supabase-account-workspace-design.md)와 [v5 확장 계약](../../../../superpowers/specs/2026-09-10-main-expense-assistant-design.md)을 따른다.
 

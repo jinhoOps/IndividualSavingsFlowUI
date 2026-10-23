@@ -1,5 +1,9 @@
 project_id = "result-card-storage-budget"
 
+[api]
+# Mirrors the shared github-jinhoOps project, where ISF uses its own API schema.
+schemas = ["public", "graphql_public", "individualsavingflow"]
+
 [db]
 major_version = 17
 
@@ -9,8 +13,8 @@ enabled = false
 [analytics]
 enabled = false
 
-[functions.result-card-share]
+[functions.isf-result-card-share]
 verify_jwt = false
 
-[functions.cleanup-result-card-shares]
+[functions.isf-cleanup-result-card-shares]
 verify_jwt = false

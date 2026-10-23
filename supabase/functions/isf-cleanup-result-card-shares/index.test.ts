@@ -116,7 +116,7 @@ async function fixture(
     }
     if (url.pathname.includes("/storage/v1/object/info/")) {
       return present.has(
-          decodeURIComponent(url.pathname.split("result-card-shares/")[1]),
+          decodeURIComponent(url.pathname.split("isf-result-card-shares/")[1]),
         )
         ? Response.json({ size: 100 })
         : Response.json({ statusCode: "404", error: "not_found" }, {

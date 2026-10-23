@@ -6,38 +6,38 @@ import {assistant, answers, expenseFixtures} from '../supabase/tests/expense-fix
 /** Runs inside test-workspace-db's disposable database after its historical v4 gates. */
 export async function verifyExpenseDatabase({sql, quote, asUser, vite, userA, userC}) {
   const migration = await readFile(new URL('../supabase/migrations/202609100001_workspace_v5_expense_assistant.sql',import.meta.url),'utf8');
-  const before = JSON.parse(sql('select jsonb_agg(to_jsonb(w) order by user_id) from public.user_workspaces w'));
+  const before = JSON.parse(sql('select jsonb_agg(to_jsonb(w) order by user_id) from individualsavingflow.user_workspaces w'));
   // A late migration error must roll back both metadata and before-images.
-  sql("create function private.expense_item_ids() returns text[] language sql as 'select array[]::text[]'");
+  sql("create function individualsavingflow_private.expense_item_ids() returns text[] language sql as 'select array[]::text[]'");
   assert.throws(()=>sql(`set role migration_admin; ${migration}`),/already exists/);
-  assert.deepEqual(JSON.parse(sql('select jsonb_agg(to_jsonb(w) order by user_id) from public.user_workspaces w')),before);
-  assert.equal(sql('select count(*) from private.workspace_schema_backups where schema_version=4'),'0');
-  sql('drop function private.expense_item_ids()');
+  assert.deepEqual(JSON.parse(sql('select jsonb_agg(to_jsonb(w) order by user_id) from individualsavingflow.user_workspaces w')),before);
+  assert.equal(sql('select count(*) from individualsavingflow_private.workspace_schema_backups where schema_version=4'),'0');
+  sql('drop function individualsavingflow_private.expense_item_ids()');
   sql(`set role migration_admin; ${migration}`);
   for (const row of before) {
-    const after = JSON.parse(sql(`select to_jsonb(w) from public.user_workspaces w where user_id='${row.user_id}'`));
+    const after = JSON.parse(sql(`select to_jsonb(w) from individualsavingflow.user_workspaces w where user_id='${row.user_id}'`));
     assert.equal(after.schema_version,5);
     assert.equal(after.payload.main.expenseAssistant,null);
     delete after.payload.main.expenseAssistant;
     assert.deepEqual({...after,schema_version:4},row,'migration preserves every amount, slice, revision and timestamp');
-    assert.deepEqual(JSON.parse(sql(`select row_snapshot from private.workspace_schema_backups where user_id='${row.user_id}' and schema_version=4`)),row);
+    assert.deepEqual(JSON.parse(sql(`select row_snapshot from individualsavingflow_private.workspace_schema_backups where user_id='${row.user_id}' and schema_version=4`)),row);
   }
   const {parseExpenseAssistant,expenseTotals} = await vite.ssrLoadModule('/src/main/domain/expenseAssistant.ts');
   const {parseWorkspaceDocument} = await vite.ssrLoadModule('/src/workspace/domain/validation.ts');
-  const rpc = (name,payload,revision,id=randomUUID(),user=userA,schema=5) => JSON.parse(sql(asUser(`select public.${name}(${quote(payload)},'${id}',${revision},${schema})`,user)));
-  let row = JSON.parse(sql(asUser('select to_jsonb(w) from public.user_workspaces w')));
+  const rpc = (name,payload,revision,id=randomUUID(),user=userA,schema=5) => JSON.parse(sql(asUser(`select individualsavingflow.${name}(${quote(payload)},'${id}',${revision},${schema})`,user)));
+  let row = JSON.parse(sql(asUser('select to_jsonb(w) from individualsavingflow.user_workspaces w')));
   for (const fixture of expenseFixtures) {
     assert.equal(parseExpenseAssistant(fixture.value)!==null,fixture.valid,fixture.name);
-    assert.equal(sql(`select coalesce(private.valid_expense_assistant(${quote(fixture.value)}),false)`),fixture.valid?'t':'f',fixture.name);
+    assert.equal(sql(`select coalesce(individualsavingflow_private.valid_expense_assistant(${quote(fixture.value)}),false)`),fixture.valid?'t':'f',fixture.name);
     const payload={...row.payload,main:{...row.payload.main,expenseAssistant:fixture.value}};
     assert.equal(parseWorkspaceDocument({...payload,schemaVersion:5,revision:0,updatedAt:1000})!==null,fixture.valid);
-    assert.equal(sql(`select private.normalize_workspace_v5(${quote(payload)}) is not null`),fixture.valid?'t':'f');
+    assert.equal(sql(`select individualsavingflow_private.normalize_workspace_v5(${quote(payload)}) is not null`),fixture.valid?'t':'f');
   }
-  assert.deepEqual(JSON.parse(sql(`select private.expense_totals(${quote(answers)},true)`)),expenseTotals(answers));
+  assert.deepEqual(JSON.parse(sql(`select individualsavingflow_private.expense_totals(${quote(answers)},true)`)),expenseTotals(answers));
   const annual=structuredClone(answers); for(const a of Object.values(annual)){a.amountWon=0;a.period='year';}
   annual.rent.amountWon=5;annual.utilities.amountWon=5;annual.food.amountWon=6;
   assert.deepEqual(expenseTotals(annual),{housingWon:1,livingWon:1,totalWon:2});
-  assert.deepEqual(JSON.parse(sql(`select private.expense_totals(${quote(annual)},true)`)),expenseTotals(annual),'round once per destination');
+  assert.deepEqual(JSON.parse(sql(`select individualsavingflow_private.expense_totals(${quote(annual)},true)`)),expenseTotals(annual),'round once per destination');
 
   const original=structuredClone(row.payload);
   const request={main:{...row.payload.main,expenseAssistant:assistant}};
@@ -70,18 +70,18 @@ export async function verifyExpenseDatabase({sql, quote, asUser, vite, userA, us
   assert.equal(row.payload.main.applied.monthlySavingWon,777777,'even an old completion payload preserves latest saving');
   assert.equal(rpc('save_expense_draft',request,row.revision,randomUUID(),userC).status,'conflict','caller cannot address another account');
   for(const name of ['save_expense_draft','apply_expense']) {
-    assert.throws(()=>sql(asUser(`select public.${name}(${quote(request)},gen_random_uuid(),${row.revision},5)`,'','anon')),/permission denied/);
-    assert.equal(sql(`select prosecdef and proowner='workspace_rpc_owner'::regrole and proconfig @> array['search_path=""'] from pg_proc where oid='public.${name}(jsonb,uuid,bigint,integer)'::regprocedure`),'t');
+    assert.throws(()=>sql(asUser(`select individualsavingflow.${name}(${quote(request)},gen_random_uuid(),${row.revision},5)`,'','anon')),/permission denied/);
+    assert.equal(sql(`select prosecdef and proowner='isf_workspace_rpc_owner'::regrole and proconfig @> array['search_path=""'] from pg_proc where oid='individualsavingflow.${name}(jsonb,uuid,bigint,integer)'::regprocedure`),'t');
   }
-  const beforeFailure=sql(asUser('select to_jsonb(w) from public.user_workspaces w'));
-  sql("create function private.reject_expense_receipt() returns trigger language plpgsql as $$ begin raise exception 'expense receipt failure'; end $$; create trigger reject_expense_receipt before insert on private.workspace_mutations for each row execute function private.reject_expense_receipt()");
+  const beforeFailure=sql(asUser('select to_jsonb(w) from individualsavingflow.user_workspaces w'));
+  sql("create function individualsavingflow_private.reject_expense_receipt() returns trigger language plpgsql as $$ begin raise exception 'expense receipt failure'; end $$; create trigger reject_expense_receipt before insert on individualsavingflow_private.workspace_mutations for each row execute function individualsavingflow_private.reject_expense_receipt()");
   assert.throws(()=>rpc('apply_expense',request,row.revision),/expense receipt failure/);
-  assert.equal(sql(asUser('select to_jsonb(w) from public.user_workspaces w')),beforeFailure,'totals and answers roll back together');
-  sql('drop trigger reject_expense_receipt on private.workspace_mutations; drop function private.reject_expense_receipt()');
+  assert.equal(sql(asUser('select to_jsonb(w) from individualsavingflow.user_workspaces w')),beforeFailure,'totals and answers roll back together');
+  sql('drop trigger reject_expense_receipt on individualsavingflow_private.workspace_mutations; drop function individualsavingflow_private.reject_expense_receipt()');
   const resetMigration = await readFile(new URL('../supabase/migrations/202609110001_main_setup_reset.sql', import.meta.url), 'utf8');
-  const beforeResetMigration = sql('select jsonb_agg(to_jsonb(w) order by user_id) from public.user_workspaces w');
+  const beforeResetMigration = sql('select jsonb_agg(to_jsonb(w) order by user_id) from individualsavingflow.user_workspaces w');
   sql(`set role migration_admin; ${resetMigration}`);
-  assert.equal(sql('select jsonb_agg(to_jsonb(w) order by user_id) from public.user_workspaces w'), beforeResetMigration, 'reset migration does not modify stored data');
+  assert.equal(sql('select jsonb_agg(to_jsonb(w) order by user_id) from individualsavingflow.user_workspaces w'), beforeResetMigration, 'reset migration does not modify stored data');
   const {withMainSetupReset} = await vite.ssrLoadModule('/src/main/infrastructure/mainSetupReset.ts');
   const resetPayload = {main: withMainSetupReset({...row.payload}, 2000).main};
   const resetId = randomUUID();
@@ -91,13 +91,13 @@ export async function verifyExpenseDatabase({sql, quote, asUser, vite, userA, us
   const badApplied = structuredClone(resetPayload); badApplied.main.applied.monthlySavingWon=0;
   assert.equal(rpc('reset_main_setup',badApplied,row.revision).status,'invalid','reset cannot change the applied plan');
   assert.equal(rpc('reset_main_setup',{...resetPayload,simulation:row.payload.simulation},row.revision).status,'invalid');
-  assert.throws(()=>sql(asUser(`select public.reset_main_setup(${quote(resetPayload)},gen_random_uuid(),${row.revision},5)`,'','anon')),/permission denied/);
+  assert.throws(()=>sql(asUser(`select individualsavingflow.reset_main_setup(${quote(resetPayload)},gen_random_uuid(),${row.revision},5)`,'','anon')),/permission denied/);
   assert.equal(rpc('reset_main_setup',resetPayload,row.revision,randomUUID(),userC).status,'conflict');
-  const beforeResetFailure = sql(asUser('select to_jsonb(w) from public.user_workspaces w'));
-  sql("create function private.reject_reset_receipt() returns trigger language plpgsql as $$ begin raise exception 'reset receipt failure'; end $$; create trigger reject_reset_receipt before insert on private.workspace_mutations for each row execute function private.reject_reset_receipt()");
+  const beforeResetFailure = sql(asUser('select to_jsonb(w) from individualsavingflow.user_workspaces w'));
+  sql("create function individualsavingflow_private.reject_reset_receipt() returns trigger language plpgsql as $$ begin raise exception 'reset receipt failure'; end $$; create trigger reject_reset_receipt before insert on individualsavingflow_private.workspace_mutations for each row execute function individualsavingflow_private.reject_reset_receipt()");
   assert.throws(()=>rpc('reset_main_setup',resetPayload,row.revision),/reset receipt failure/);
-  assert.equal(sql(asUser('select to_jsonb(w) from public.user_workspaces w')),beforeResetFailure,'failed reset rolls back both progress and assistant deletion');
-  sql('drop trigger reject_reset_receipt on private.workspace_mutations; drop function private.reject_reset_receipt()');
+  assert.equal(sql(asUser('select to_jsonb(w) from individualsavingflow.user_workspaces w')),beforeResetFailure,'failed reset rolls back both progress and assistant deletion');
+  sql('drop trigger reject_reset_receipt on individualsavingflow_private.workspace_mutations; drop function individualsavingflow_private.reject_reset_receipt()');
   const beforeReset = structuredClone(row);
   result=rpc('reset_main_setup',resetPayload,row.revision,resetId);
   assert.equal(result.status,'saved');

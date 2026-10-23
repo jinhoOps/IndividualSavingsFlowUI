@@ -24,7 +24,7 @@ export function createResultCardShareClient({
       if (!token) throw new Error('로그인 상태를 확인한 뒤 다시 시도해 주세요.');
       let response: Response;
       try {
-        response = await fetcher(`${supabaseUrl}/functions/v1/result-card-share`, {
+        response = await fetcher(`${supabaseUrl}/functions/v1/isf-result-card-share`, {
           method: 'POST',
           body: png,
           signal,

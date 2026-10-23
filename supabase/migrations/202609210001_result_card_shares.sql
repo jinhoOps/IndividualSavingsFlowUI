@@ -1,6 +1,6 @@
 begin;
 
-create table public.result_card_shares (
+create table individualsavingflow.result_card_shares (
   id uuid primary key,
   owner_id uuid not null references auth.users(id) on delete cascade,
   request_id uuid not null,
@@ -15,11 +15,11 @@ create table public.result_card_shares (
   unique (owner_id, request_id)
 );
 
-alter table public.result_card_shares enable row level security;
-revoke all on table public.result_card_shares from anon, authenticated;
+alter table individualsavingflow.result_card_shares enable row level security;
+revoke all on table individualsavingflow.result_card_shares from anon, authenticated;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-  values ('result-card-shares', 'result-card-shares', false, 5242880, array['image/png'])
+  values ('isf-result-card-shares', 'isf-result-card-shares', false, 5242880, array['image/png'])
   on conflict (id) do update set public = false, file_size_limit = 5242880, allowed_mime_types = array['image/png'];
 
 commit;

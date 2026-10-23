@@ -37,8 +37,11 @@ export async function completeAuthCallback(href: string, scrub: (url: string) =>
 let browserClient: SupabaseClient | undefined;
 export function getBrowserClient(config: SupabaseConfig): SupabaseClient {
   browserClient ??= createClient(config.url, config.publishableKey, {
+    // ISF tables and RPCs live in the shared github-jinhoOps project's per-repo API schema.
+    db: {schema: 'individualsavingflow'},
     auth: {flowType: 'pkce', detectSessionInUrl: false, persistSession: true, autoRefreshToken: true},
     global: {fetch: (input, init) => fetch(input, {...init, signal: init?.signal ?? AbortSignal.timeout(15000)})},
-  });
+  // The database is untyped (any), so only the schema name type argument differs.
+  }) as unknown as SupabaseClient;
   return browserClient;
 }

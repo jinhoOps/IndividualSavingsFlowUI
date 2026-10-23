@@ -23,14 +23,14 @@ try {
       $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
     grant usage on schema auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;
     create role migration_admin nologin createrole createdb; grant create on database postgres to migration_admin;
-    grant all on schema public to migration_admin with grant option; grant usage on schema auth to migration_admin;
+    create schema individualsavingflow; grant all on schema individualsavingflow to migration_admin with grant option; grant usage on schema auth to migration_admin;
     grant execute on function auth.uid() to migration_admin; grant references on auth.users to migration_admin;
     alter default privileges for role migration_admin grant execute on functions to anon,authenticated,service_role;
     insert into auth.users values('${userA}');`);
-  for(const file of ['202609070001_workspace_validation','202609070002_account_workspaces','202609080001_workspace_request_identity','202609280002_portfolio_lounge',
+  for(const file of ['202609060001_individualsavingflow_schema','202609070001_workspace_validation','202609070002_account_workspaces','202609080001_workspace_request_identity','202609280002_portfolio_lounge',
     '202609280003_lounge_asset_band','202609280004_lounge_nickname','202609280005_lounge_nickname_change','202609280006_lounge_community'])
     sql(`set role migration_admin; ${await readFile(new URL(`../supabase/migrations/${file}.sql`,import.meta.url),'utf8')}`);
-  sql(asUser("select public.register_lounge_nickname('원래투자자')"));
+  sql(asUser("select individualsavingflow.register_lounge_nickname('원래투자자')"));
   vite=await createServer({server:{middlewareMode:true},appType:'custom',logLevel:'error'});
   if(process.argv.includes('--benchmark')){
     for(const file of ['202609280007_lounge_conversation','202609280008_lounge_discovery','202609280009_lounge_ranking','202609280010_lounge_mention_candidates','202609280011_lounge_developer_notifications'])

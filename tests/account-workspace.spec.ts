@@ -95,7 +95,7 @@ function fakeServer() {
         await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({id: user})}); return;
       }
       if (!user) {await route.fulfill({status: 401, body: '{}'}); return;}
-      if (url.pathname === '/functions/v1/result-card-share') {
+      if (url.pathname === '/functions/v1/isf-result-card-share') {
         if (route.request().method() === 'POST') {
           const failure = sharePolicy.failures.shift();
           if (failure) {await route.fulfill({status: failure.status, json: {code: failure.code}}); return;}
@@ -1788,7 +1788,7 @@ for (const width of [390, 768, 1280]) {
     await page.setViewportSize({width,height:900});
     await page.emulateMedia({reducedMotion:'reduce'});
     const requests:string[]=[];
-    page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/functions/v1/result-card-share')) requests.push(request.headers()['x-result-card-request-id']);});
+    page.on('request',request=>{if(request.method()==='POST'&&request.url().includes('/functions/v1/isf-result-card-share')) requests.push(request.headers()['x-result-card-request-id']);});
     await page.goto('apps/portfolio/');
     await page.getByRole('button',{name:'공유하기'}).click();
     const dialog=page.getByRole('dialog',{name:'계획 이미지 공유'});

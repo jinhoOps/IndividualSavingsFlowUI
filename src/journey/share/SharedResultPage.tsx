@@ -33,7 +33,7 @@ export function SharedResultPage() {
       setState({kind: 'loading'});
       try {
         const config = readSupabaseConfig(import.meta.env);
-        const response = await fetch(`${config.url}/functions/v1/result-card-share`, {
+        const response = await fetch(`${config.url}/functions/v1/isf-result-card-share`, {
           headers: {'x-result-card-share': token!}, signal: controller.signal, cache: 'no-store',
         });
         if (released || generation !== current) return;
