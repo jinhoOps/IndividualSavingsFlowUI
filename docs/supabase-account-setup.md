@@ -20,9 +20,11 @@
 
 1. [202609060001](../supabase/migrations/202609060001_individualsavingflow_schema.sql)부터 [202609280011](../supabase/migrations/202609280011_lounge_developer_notifications.sql)까지 이름을 바꾼 migration 20개를 순서대로 적용했다. 이전 프로젝트와 카탈로그(테이블·컬럼·제약·인덱스·RLS 정책·트리거·함수 본문/소유자/설정·ACL·role·bucket)를 비교해 이름 외 차이가 없음을 확인했다. 의도한 차이는 두 가지다. API schema는 `pg_database_owner`가 아닌 `postgres` 소유이고, 결과 이미지 RPC 5개의 `search_path`에서 `public`을 제거했다.
 2. `isf-result-card-share`, `isf-cleanup-result-card-shares`를 `verify_jwt=false`로 배포했다. Edge secret `RESULT_CARD_ALLOWED_ORIGINS=https://jinhoops.github.io`를 등록하고, 새 난수 `RESULT_CARD_CLEANUP_SECRET`을 Vault `isf_result_card_cleanup_secret`과 같은 값으로 등록했다. Vault `isf_result_card_project_url`도 함께 등록했다. cleanup과 inventory를 직접 호출해 HTTP 200과 정책 상태 갱신을 확인한 뒤 [운영 SQL](../supabase/operations/) 세 개로 cron 5개를 등록했다.
-3. Auth에 이전 프로젝트의 Google provider 설정을 그대로 복사하고, ISF callback 두 개를 redirect 허용 목록에 추가했다. `site_url`은 다른 앱이 쓰므로 바꾸지 않았다. ISF는 이메일 링크 흐름이 없고 OAuth는 항상 `redirectTo`를 지정한다.
+3. Auth에서 Google provider를 켜고 같은 OAuth client ID를 등록했다. Management API는 client secret 원문 대신 해시를 돌려주므로 복사할 수 없다. 그래서 GCP `isf-jinhoops`의 OAuth 클라이언트에 secret을 하나 추가(끝자리 `An1T`)해 등록했고, 기존 secret(`ECVu`)은 남겨 두었다. 같은 클라이언트의 승인된 리디렉션 URI에 `https://olqdftjssrzqvcindekh.supabase.co/auth/v1/callback`을 추가했다. ISF callback 두 개는 redirect 허용 목록에 추가했다. `site_url`은 다른 앱이 쓰므로 바꾸지 않았다. ISF는 이메일 링크 흐름이 없고 OAuth는 항상 `redirectTo`를 지정한다.
 4. 사용자 9명과 identity 10개를 옮겼다. 같은 이메일 계정이 이미 있던 2명은 공유 프로젝트의 기존 ID를 유지하고 ISF 행의 사용자 ID를 그 ID로 바꿨다. 이 중 비밀번호 로그인을 쓰던 1명은 비밀번호가 없던 기존 계정에 bcrypt hash를 넣었다. 나머지 7명은 UUID를 그대로 유지했다. ISF 테이블 15개는 한 트랜잭션에서 truncate 후 복사했고, ID 변환을 반영한 원본과 행 단위로 같았다. 이 복사는 다시 실행해도 같은 결과가 나오므로, 앱 전환 직전에 다시 실행해 이전 프로젝트의 최신 데이터를 반영한다.
 5. 9명 각각을 `authenticated`로 바꿔 두 프로젝트에서 workspace RLS 조회와 라운지 읽기 RPC 결과를 비교했다. 응답 시각 필드(`readCutoff`, `serverNow`) 외에는 모두 같았다. anon의 테이블·RPC 접근 거부와 private schema 비노출도 확인했다. 공유 프로젝트의 다른 schema 객체·권한·기본 권한과 mukmuk cron은 이관 전과 같다.
+6. 전환: 2026-10-23 01:44Z에 최종 동기화를 했다(15개 테이블 일치). 이어서 `github-pages` 환경 변수 `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`를 새 프로젝트 값으로 바꾸고 main을 배포했다. 공개 번들이 새 프로젝트와 schema를 쓰는 것을 확인했다. 공개 사이트에서 Google 로그인, PKCE 토큰 교환, workspace 조회가 200으로 성공했다. 동기화 이후 이전 프로젝트에 새 쓰기가 없음을 확인한 뒤 이전 프로젝트를 일시정지했다. 일시정지된 프로젝트는 대시보드에서 복구할 수 있다.
+   - 프로젝트별로 로그인 세션이 저장되므로 모든 사용자는 한 번 다시 로그인해야 한다. 배포 직후 첫 방문에서는 PWA가 새로 고쳐지기 전의 이전 번들이 실행될 수 있다. 이때 로그인하면 한 번 "로그인을 완료하지 못했습니다"가 표시되고, 다시 시도하면 성공한다.
 
 새 migration 적용 규칙:
 
